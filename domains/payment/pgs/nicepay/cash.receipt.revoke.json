@@ -1,0 +1,18 @@
+{
+    "ResultCode": "2001",
+    "ResultMsg": "취소 성공",
+    "ErrorCD": "0000",
+    "ErrorMsg": "정상승인",
+    "CancelAmt": "000000000100",
+    "MID": "nictest00m",
+    "Moid": "imps_230406205100",
+    "PayMethod": "CASHRCPT",
+    "TID": "nictest00m04012304062056111528",
+    "CancelDate": "20230406",
+    "CancelTime": "211143",
+    "CancelNum": "53507896",
+    "RemainAmt": "000000000000",
+    "Signature": "9b46403f91bb79bf619de3e802c1c766674424132d5bc06eba32a8fec033d888",
+    "MallReserved": "",
+    "CancelAuthCode": "535078962"
+}

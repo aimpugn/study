@@ -1,0 +1,49 @@
+{
+    "level": "info",
+    "msg": {
+        "title": "############# Deposit Notice Request #############",
+        "data": {
+            "depositAt": "2022-12-15T19:20:17.779500",
+            "status": "DONE",
+            "storeId": "store-1ea0b1ec-f751-4b86-88f1-28771023a947",
+            "paymentId": "oid_166680350ww48",
+            "transactionId": "imp_095575957530",
+            "pgRawRequest": "{\"createdAt\":\"2022-12-15T19:20:17.779500\",\"secret\":\"ps_GKNbdOvk5rk16WJMyZq3n07xlzmj\",\"status\":\"DONE\",\"transactionKey\":\"C41C5D431EBFD6F1485522ED39A4C2E5\",\"orderId\":\"oid_166680350ww48\"}",
+            "pgTxId": "2WkABYDxNyJQbgMGZzorzDvnelMvK3l5E1em4dKva7XL9njP",
+            "cashReceipt": {
+                "receiptType": 1,
+                "totalPaidAmount": {
+                    "units": 1000,
+                    "nanos": 0
+                },
+                "taxFreeAmount": {
+                    "units": 0,
+                    "nanos": 0
+                },
+                "issueNumber": "160595910",
+                "receiptUrl": "https://dashboard.tosspayments.com/receipts/cash-receipt/oid_166680350ww48/testmid?ref=PX",
+                "pgTxId": "2WkABYDxNyJQbgMGZzorzDvnelMvK3l5E1em4dKva7XL9njP",
+                "approvedAt": "2022-12-15T19:20:17",
+                "vatAmount": null,
+                "currency": 1
+            },
+            "version": "VERSION_V1",
+            "amount": {
+                "units": 1000,
+                "nanos": 0
+            }
+        }
+    },
+    "@timestamp": "2022-12-15T19:20:18+09:00",
+    "logger_name": "core-pay",
+    "etc": {
+        "pid": 25076,
+        "processing_time": "0.0036890506744385(ms)",
+        "memory": "1.5(MB)",
+        "cpu": "0.75(1m)",
+        "stack_trace": {
+            "file": "/var/www/service/app/Controller/NoticeListenerController.php",
+            "line": 32
+        }
+    }
+}

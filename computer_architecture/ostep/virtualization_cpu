@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# 문서 제목: 백그라운드 프로세스 관리와 종료 메시지 제어: Bash 스크립트에서의 효과적인 접근
+
+# Path to the program binary
+PROGRAM_PATH="$HOME/VscodeProjects/study/computer_architecture/ostep/target/debug/ostep"
+
+# 프로세스 카운터 초기화
+launched_processes=0
+terminated_processes=0
+
+# 프로세스 실행
+for LETTER in {A..Z}
+do
+    "$PROGRAM_PATH" "$LETTER" &
+    ((launched_processes++))
+done
+
+sleep 5
+
+# 프로세스 종료
+while read -r pid; do
+    kill -15 "$pid"
+    ((terminated_processes++))
+done < <(pgrep -f "$PROGRAM_PATH")
+
+# 결과 출력
+echo "실행된 프로세스 수: $launched_processes"
+echo "종료된 프로세스 수: $terminated_processes"

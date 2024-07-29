@@ -1,0 +1,23 @@
+{
+    "ResultCode": "4100",
+    "ResultMsg": "가상계좌 발급 성공",
+    "Amt": "000000000100",
+    "MID": "someMID",
+    "Moid": "imp_830642264663",
+    "BuyerEmail": "rody@some.domain",
+    "BuyerTel": "010-1234-5678",
+    "BuyerName": "rody",
+    "GoodsName": "테스트",
+    "TID": "someMID03012302081937346693",
+    "AuthCode": "",
+    "AuthDate": "230208193738",
+    "PayMethod": "VBANK",
+    "CartData": "",
+    "Signature": "1cf54153074a53a3a4b008ddaeaa08534798116ff64c3c11d524e900a37df30a",
+    "MallReserved": "",
+    "VbankBankCode": "081",
+    "VbankBankName": "하나은행",
+    "VbankNum": "15791844306037",
+    "VbankExpDate": "20230218",
+    "VbankExpTime": "235959"
+}

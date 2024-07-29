@@ -1,0 +1,105 @@
+############# before rebase
+* b03bbd3d (HEAD) tossClient request validation (#544)
+* 4688df32 KsnetClient request validation (#539)
+* b8353f39 Effect 를 사용한 KsnetClient 리팩토링  (#538)
+* 3e39cb74 refactor: add typealias ResponseWithRawString<T> = Pair<T, String>
+* 1a138cd0 chore: remove unused TossPaymentsErrorDecoder and the old request method using it
+* 0bc8cae4 refactor: rename TossPaymentsResponseHandler with postfix Handling
+* 440439a5 refactor!: TossPaymentsClient by using Effect
+* ce7857a7 refactor: add effect version of private request function in TossPaymentsHttpClient
+* e4555126 flyway 적용 (#534)
+* 5b2eb7d1 [PPG-46] feat: 토스페이먼츠 고정식 가상계좌 연동 (#515)
+* b9441ced fix: add catch of ShiftCancellationException in WebClientExt.kt
+* e863c373 refactor: CardInformationClient using Effect
+* c20e65d2 feat: new WebClient extension well-fitted with Effect
+* 12a2b614 fix: 간헐적으로 실패하는 publish-unit-test-results 삭제 (#540)
+* 97b49b65 fix: 의도치 않게 null.toString()를 호출하는 코드 수정 (#527)
+* 339feaae feat: interface Transaction for using Either (#526)
+* 1936fece chore: remove needless qualifiers
+* 09320a6a refactor: ChannelServiceContainer with Spring DI style class
+* 9ac30b64 refactor: ensure presentation tests to share only one postgresql container
+* 514e73fa refactor: ensure infrastructure tests to run with only one postgresql container
+* 35b50c82 refactor: TestPostgreSQLContainer with spring DI style class
+* dbd202b8 refactor: rename field `pgTxId` to `pgCashReceiptId` (#516)
+* a83c80e4 remove requestWithoutBody
+* 7f2b880e add decodeOnlyError
+* 9d0c74a9 move Client to infrastructure & move extension functions to Client member functions
+* b7771b46 lint
+* 27443785 Remove unnecessary method
+* 71701d9c lint
+* 427931da ```KsnetTransaction``` 리팩토링 (#520)
+* d6f619b8 refactor: move ksnetSpecific domain to infra, KsnetTransaction이 iso4217value를 사용하도록 변경 (#518)
+* a9c87e61 refactor: TossPaymentsTransaction
+* bed3fa41 chore: move intoEnumByResolver into ResolvableEnum.kt
+* ef6fda1c chore: remove intoEnumByName
+* 4f5331b1 refactor common http client handling
+* 2dc1c247 KsnetClient issueBilligKey Command제거 (#513)
+* 3605fbb2 Refactor/ksnet escrow (#512)
+* 49977deb refactor: improve readability of KsnetModuleAdaptor
+* f62ce3ea refactor: remove KsnetEasyPay and rename KsnetEasyPay.Provider as KsnetEasyPayProvider
+* c3e16ade chore: rename from KsnetTransformerTest to KsnetCardTest
+* 1be0be56 chore: remove unused CardInfoService and other codes about it
+* 7db955f4 refactor: result type of confirm method in KsnetModule
+* 9695a663 refactor: replace confirm command type with String in KsnetModule
+| * 55fc57da (feature/nicepay) fix: 잘못된 package 이름 수정
+| * 9a573a45 fix: 잘못된 package 이름 수정
+| * 8085be75 refactor: `nicepay-common` 브랜치 코드를 `refactoring_base` 위에서 실행되도록 재작성
+| | * 208e9918 (origin/feat/smartro) [PPG-75] feat: 스마트로 연동 공통 코드 추가 (#535)
+| |/
+| * e5495dd7 (tag: v1.3.0-qa.1, tag: v1.2.2-qa.2, origin/release/20230227, release/20230227) tossClient request validation (#544)
+| * e6093878 KsnetClient request validation (#539)
+| * 5d760a5a Effect 를 사용한 KsnetClient 리팩토링  (#538)
+| | * e8e68c27 (feature/nicepay-on-refactoring_base, feature/nicepay-latest, feature/nicepay-bak) refactor: `nicepay-common` 브랜치 코드를 `refactoring_base` 위에서
+ 실행되도록 재작성
+| | * 2dc3859f fix: 의도치 않게 null.toString()를 호출하는 코드 수정 (#527)
+
+
+############## after rebase
+* b03bbd3d (HEAD -> feature/nicepay-on-refactoring_base, feature/nicepay) tossClient request validation (#544)
+* 4688df32 KsnetClient request validation (#539)
+* b8353f39 Effect 를 사용한 KsnetClient 리팩토링  (#538)
+* 3e39cb74 refactor: add typealias ResponseWithRawString<T> = Pair<T, String>
+* 1a138cd0 chore: remove unused TossPaymentsErrorDecoder and the old request method using it
+* 0bc8cae4 refactor: rename TossPaymentsResponseHandler with postfix Handling
+* 440439a5 refactor!: TossPaymentsClient by using Effect
+* ce7857a7 refactor: add effect version of private request function in TossPaymentsHttpClient
+* e4555126 flyway 적용 (#534)
+* 5b2eb7d1 [PPG-46] feat: 토스페이먼츠 고정식 가상계좌 연동 (#515)
+* b9441ced fix: add catch of ShiftCancellationException in WebClientExt.kt
+* e863c373 refactor: CardInformationClient using Effect
+* c20e65d2 feat: new WebClient extension well-fitted with Effect
+* 12a2b614 fix: 간헐적으로 실패하는 publish-unit-test-results 삭제 (#540)
+* 97b49b65 fix: 의도치 않게 null.toString()를 호출하는 코드 수정 (#527)
+* 339feaae feat: interface Transaction for using Either (#526)
+* 1936fece chore: remove needless qualifiers
+* 09320a6a refactor: ChannelServiceContainer with Spring DI style class
+* 9ac30b64 refactor: ensure presentation tests to share only one postgresql container
+* 514e73fa refactor: ensure infrastructure tests to run with only one postgresql container
+* 35b50c82 refactor: TestPostgreSQLContainer with spring DI style class
+* dbd202b8 refactor: rename field `pgTxId` to `pgCashReceiptId` (#516)
+* a83c80e4 remove requestWithoutBody
+* 7f2b880e add decodeOnlyError
+* 9d0c74a9 move Client to infrastructure & move extension functions to Client member functions
+* b7771b46 lint
+* 27443785 Remove unnecessary method
+* 71701d9c lint
+* 427931da ```KsnetTransaction``` 리팩토링 (#520)
+* d6f619b8 refactor: move ksnetSpecific domain to infra, KsnetTransaction이 iso4217value를 사용하도록 변경 (#518)
+* a9c87e61 refactor: TossPaymentsTransaction
+* bed3fa41 chore: move intoEnumByResolver into ResolvableEnum.kt
+* ef6fda1c chore: remove intoEnumByName
+* 4f5331b1 refactor common http client handling
+* 2dc1c247 KsnetClient issueBilligKey Command제거 (#513)
+* 3605fbb2 Refactor/ksnet escrow (#512)
+* 49977deb refactor: improve readability of KsnetModuleAdaptor
+* f62ce3ea refactor: remove KsnetEasyPay and rename KsnetEasyPay.Provider as KsnetEasyPayProvider
+* c3e16ade chore: rename from KsnetTransformerTest to KsnetCardTest
+* 1be0be56 chore: remove unused CardInfoService and other codes about it
+* 7db955f4 refactor: result type of confirm method in KsnetModule
+* 9695a663 refactor: replace confirm command type with String in KsnetModule
+| * 208e9918 (origin/feat/smartro) [PPG-75] feat: 스마트로 연동 공통 코드 추가 (#535)
+| * e5495dd7 (tag: v1.3.0-qa.1, tag: v1.2.2-qa.2, origin/release/20230227, release/20230227) tossClient request validation (#544)
+| * e6093878 KsnetClient request validation (#539)
+| * 5d760a5a Effect 를 사용한 KsnetClient 리팩토링  (#538)
+| | * e8e68c27 (feature/nicepay-latest, feature/nicepay-bak) refactor: `nicepay-common` 브랜치 코드를 `refactoring_base` 위에서 실행되도록 재작성
+| | * 2dc3859f fix: 의도치 않게 null.toString()를 호출하는 코드 수정 (#527)

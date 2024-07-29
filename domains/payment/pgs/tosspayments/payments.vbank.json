@@ -1,0 +1,71 @@
+{
+    "mId": "testmid",
+    "lastTransactionKey": "61B12C08CF420F0725951A43950A175A",
+    "paymentKey": "2WkABYDxNyJQbgMGZzorzDvnelMvK3l5E1em4dKva7XL9njP",
+    "orderId": "oid_166680350ww48",
+    "orderName": "나이키 와플 트레이너 2 SD",
+    "taxExemptionAmount": 0,
+    "status": "CANCELED",
+    "requestedAt": "2022-12-15T19:19:37+09:00",
+    "approvedAt": "2022-12-15T19:20:17+09:00",
+    "useEscrow": false,
+    "cultureExpense": false,
+    "card": null,
+    "virtualAccount": {
+        "accountNumber": "46514312118468",
+        "accountType": "일반",
+        "bank": "우리",
+        "bankCode": "20",
+        "customerName": "신선해",
+        "dueDate": "2022-12-22T19:19:37+09:00",
+        "expired": true,
+        "settlementStatus": "COMPLETED",
+        "refundStatus": "COMPLETED"
+    },
+    "transfer": null,
+    "mobilePhone": null,
+    "giftCertificate": null,
+    "cashReceipt": {
+        "type": "소득공제",
+        "receiptKey": "jgN60L1adJYyZqmkKeP8gp4NqkbBK3bQRxB9lG5DnzWE7pM4",
+        "issueNumber": "160595910",
+        "receiptUrl": "https://dashboard.tosspayments.com/receipts/cash-receipt/oid_166680350ww48/testmid?ref=PX",
+        "amount": 1000,
+        "taxFreeAmount": 0
+    },
+    "discount": null,
+    "cancels": [
+        {
+            "transactionKey": "61B12C08CF420F0725951A43950A175A",
+            "cancelReason": "테스트",
+            "taxExemptionAmount": 0,
+            "canceledAt": "2022-12-15T19:21:31+09:00",
+            "easyPayDiscountAmount": 0,
+            "cancelAmount": 1000,
+            "taxFreeAmount": 0,
+            "taxAmount": null,
+            "refundableAmount": 0
+        }
+    ],
+    "secret": null,
+    "type": "NORMAL",
+    "easyPay": null,
+    "country": "KR",
+    "failure": null,
+    "isPartialCancelable": true,
+    "receipt": {
+        "url": "https://pgweb.tosspayments.com:9091/MpFlowCtrl?eventDiv1=search&eventDiv2=getCasReceiptList&trxid=iampo20221215191945xhvN9&SYSTEM=NEW"
+    },
+    "checkout": {
+        "url": "https://api.tosspayments.com/v1/payments/2WkABYDxNyJQbgMGZzorzDvnelMvK3l5E1em4dKva7XL9njP/checkout"
+    },
+    "transactionKey": "61B12C08CF420F0725951A43950A175A",
+    "currency": "KRW",
+    "totalAmount": 1000,
+    "balanceAmount": 0,
+    "suppliedAmount": 0,
+    "vat": 0,
+    "taxFreeAmount": 0,
+    "method": "가상계좌",
+    "version": "2022-07-27"
+}

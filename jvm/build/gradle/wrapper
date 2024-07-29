@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# upgrade to specific version
+gradle wrapper --gradle-version 7.4.2 --distribution-type all
+
+# using gradle wrapper
+./gradlew wrapper --gradle-version 7.4.2 --distribution-type all

@@ -1,0 +1,107 @@
+name: some-service-test
+
+on:
+    workflow_dispatch:
+        inputs:
+            who_am_i:
+                description: Name of someone who trigger this workflow
+                required: true
+                type: text
+            what_to_do:
+                description: Select one to do
+                required: true
+                type: choice
+                options:
+                    - test
+    push:
+        branches:
+            - feature/test-automation
+            - develop
+            - release/*
+            - main
+    pull_request:
+        types:
+            - opened
+            - synchronize
+            - reopened
+            - edited
+            - closed
+
+env:
+    PORT_CORE_ENV_NAME: "github-actions"
+    MYSQL_ROOT_PASSWORD: root
+    MYSQL_TEST_DATABASE: some_db
+    MYSQL_TEST_USERNAME: testdb
+    MYSQL_TEST_PASSWORD: testdb
+    MYSQL_TEST_PORT: 33060
+
+jobs:
+    test-some-service:
+        runs-on: ubuntu-20.04
+        services:
+            mysql:
+                image: mysql:5.5.59
+                env:
+                    MYSQL_DATABASE: some_db
+                    MYSQL_HOST: 127.0.0.1
+                    MYSQL_USER: testdb
+                    MYSQL_PASSWORD: testdb
+                    MYSQL_ROOT_PASSWORD: root
+                ports:
+                    - 33060:3306
+                options: >-
+                    --health-cmd="mysqladmin ping" 
+                    --health-interval=10s 
+                    --health-timeout=5s 
+                    --health-retries=3
+
+        steps:
+            - name: Print log what triggered this workflow
+              run: |
+                  if [[ '${{ github.event_name }}' == 'workflow_dispatch' ]]; then
+                    initial_message="${{ github.event.inputs.who_am_i }} start workflow for ${{ github.event.inputs.what_to_do }}"
+                  else 
+                    initial_message="'${{ github.ref_type }}:${{ github.ref_name }}' triggered this workflow"
+                  fi
+                  echo "When '${{ github.event_name }}' event, $initial_message"
+
+            - name: Checkout some-service
+              uses: actions/checkout@v3
+              with:
+                  path: some-service
+
+            - name: Checkout core-r1-docker
+              uses: actions/checkout@v3
+              with:
+                  token: ${{ secrets.PORT_COMMON_TOKEN }}
+                  repository: someorg/core-r1-docker
+                  path: core-r1-docker
+
+            - name: Get number of CPU cores
+              uses: SimenB/github-actions-cpu-cores@v1
+              id: cpu-cores
+
+            - name: Set up php5.6
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: 5.6
+                  # grpc-1.32.0 경우 10분 소요돼서 부득이 버전 명시하지 않음
+                  extensions: grpc
+                  tools: pecl
+              env:
+                  MAKEFLAGS: "-j ${{ steps.cpu-cores.outputs.count }}"
+
+            - name: Check php version
+              run: |
+                  php -v
+
+            - name: Sourcing functions, initialize mysql with demo data and test config
+              run: |
+                  source "$GITHUB_WORKSPACE/core-r1-docker/test-resources/scripts/functions"
+                  init_someorg_mysql --verbose
+
+            - name: Run all test
+              run: |
+                  source "$GITHUB_WORKSPACE/core-r1-docker/test-resources/scripts/functions"
+                  bash -c "$GITHUB_WORKSPACE/core-r1-docker/php-fpm/source-ch.sh"
+                  run-test pay All

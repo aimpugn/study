@@ -1,0 +1,24 @@
+# Directories
+.idea/
+.vscode/
+.git/
+.tmp/
+tmp/
+vendor/
+# rust target directory
+target/
+
+#app/Vendor/
+*tmp/
+.gradle/
+*log/
+
+# Files
+*.iml
+.env*
+# Used to store Finder information about that folder,
+.DS_Store
+
+# FVM will create a relative symlink in your project from `.fvm/flutter_sdk` to the cache of the selected version.
+.fvm/flutter_sdk
+

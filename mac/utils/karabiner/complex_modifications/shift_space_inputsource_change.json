@@ -1,0 +1,61 @@
+{
+    "description": "shift + 스페이스 를 사용하여 입력 소스 변경",
+    "manipulators": [
+        {
+            // 이 부분은 특정 애플리케이션이 활성화되지 않았을 때만 동작하도록 설정합니다.
+            // 즉, 터미널 에뮬레이터나 원격 데스크톱 애플리케이션이 전면에 있을 때는 동작하지 않습니다.
+            "conditions": [
+                {
+                    "type": "frontmost_application_unless",
+                    "bundle_identifiers": [
+                        "^co\\.zeit\\.hyper$",
+                        "^co\\.zeit\\.hyperterm$",
+                        "^com\\.2X\\.Client\\.Mac$",
+                        "^com\\.apple\\.Terminal$",
+                        "^com\\.citrix\\.XenAppViewer$",
+                        "^com\\.googlecode\\.iterm2$",
+                        "^com\\.itap-mobile\\.qmote$",
+                        "^com\\.microsoft\\.rdc$",
+                        "^com\\.microsoft\\.rdc\\.mac$",
+                        "^com\\.microsoft\\.rdc\\.macos$",
+                        "^com\\.microsoft\\.rdc\\.osx\\.beta$",
+                        "^com\\.nulana\\.remotixmac$",
+                        "^com\\.p5sys\\.jump\\.mac\\.viewer$",
+                        "^com\\.p5sys\\.jump\\.mac\\.viewer\\.web$",
+                        "^com\\.parallels\\.desktop$",
+                        "^com\\.parallels\\.desktop\\.console$",
+                        "^com\\.parallels\\.vm$",
+                        "^com\\.parallels\\.winapp\\.",
+                        "^com\\.teamviewer\\.TeamViewer$",
+                        "^com\\.thinomenon\\.RemoteDesktopConnection$",
+                        "^com\\.vmware\\.fusion$",
+                        "^com\\.vmware\\.horizon$",
+                        "^com\\.vmware\\.proxyApp\\.",
+                        "^com\\.vmware\\.view$",
+                        "^io\\.alacritty$",
+                        "^net\\.kovidgoyal\\.kitty$",
+                        "^net\\.sf\\.cord$",
+                        "^org\\.virtualbox\\.app\\.VirtualBoxVM$"
+                    ]
+                }
+            ],
+            // Shift + Space 키 조합을 인식하도록 설정합니다
+            "from": {
+                "key_code": "spacebar",
+                "modifiers": {
+                    "mandatory": ["shift"]
+                }
+            },
+            // Shift + Space를 Left Control + Space로 변환합니다.
+            // 이는 Karabiner-Elements가 키보드 입력을 매핑하는 기본적인 방식입니다.
+            // 이 매핑이 동작하는 이유는 시스템에서 Left Control + Space 조합이 특정 동작(예: 입력 소스 전환)을 트리거하기 때문입니다.
+            "to": [
+                {
+                    "key_code": "spacebar",
+                    "modifiers": ["left_control"]
+                }
+            ],
+            "type": "basic"
+        }
+    ]
+}

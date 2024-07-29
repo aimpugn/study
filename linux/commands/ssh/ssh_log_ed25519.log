@@ -1,0 +1,161 @@
+❯ _ssh ubuntu@10.0.6.207
+OpenSSH_9.4p1, LibreSSL 3.3.6
+debug1: Reading configuration data /Users/rody/.ssh/config
+debug1: /Users/rody/.ssh/config line 1: Applying options for *
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: /etc/ssh/ssh_config line 21: include /etc/ssh/ssh_config.d/* matched no files
+debug1: /etc/ssh/ssh_config line 54: Applying options for *
+debug2: resolve_canonicalize: hostname 10.0.6.207 is address
+debug1: Authenticator provider $SSH_SK_PROVIDER did not resolve; disabling
+debug1: Connecting to 10.0.6.207 [10.0.6.207] port 22.
+debug1: Connection established.
+debug1: identity file /Users/rody/.ssh/signed-cert.pub type 7
+debug1: identity file /Users/rody/.ssh/signed-cert.pub-cert type -1
+debug1: identity file /Users/rody/.ssh/id_ed25519 type 3
+debug1: identity file /Users/rody/.ssh/id_ed25519-cert type -1
+debug1: Local version string SSH-2.0-OpenSSH_9.4
+debug1: Remote protocol version 2.0, remote software version OpenSSH_7.2p2 Ubuntu-4ubuntu2.8
+debug1: compat_banner: match: OpenSSH_7.2p2 Ubuntu-4ubuntu2.8 pat OpenSSH_7.0*,OpenSSH_7.1*,OpenSSH_7.2*,OpenSSH_7.3*,OpenSSH_7.5*,OpenSSH_7.6*,OpenSSH_7.7* compat 0x04000002
+debug2: fd 3 setting O_NONBLOCK
+debug1: Authenticating to 10.0.6.207:22 as 'ubuntu'
+debug1: load_hostkeys: fopen /Users/rody/.ssh/known_hosts2: No such file or directory
+debug1: load_hostkeys: fopen /etc/ssh/ssh_known_hosts: No such file or directory
+debug1: load_hostkeys: fopen /etc/ssh/ssh_known_hosts2: No such file or directory
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug2: local client KEXINIT proposal
+debug2: KEX algorithms: sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256,ext-info-c
+debug2: host key algorithms: ssh-ed25519-cert-v01@openssh.com,ecdsa-sha2-nistp256-cert-v01@openssh.com,ecdsa-sha2-nistp384-cert-v01@openssh.com,ecdsa-sha2-nistp521-cert-v01@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,rsa-sha2-512,rsa-sha2-256
+debug2: ciphers ctos: chacha20-poly1305@openssh.com,aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com
+debug2: ciphers stoc: chacha20-poly1305@openssh.com,aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com
+debug2: MACs ctos: umac-64-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,umac-64@openssh.com,umac-128@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1
+debug2: MACs stoc: umac-64-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,umac-64@openssh.com,umac-128@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1
+debug2: compression ctos: none,zlib@openssh.com,zlib
+debug2: compression stoc: none,zlib@openssh.com,zlib
+debug2: languages ctos:
+debug2: languages stoc:
+debug2: first_kex_follows 0
+debug2: reserved 0
+debug2: peer server KEXINIT proposal
+debug2: KEX algorithms: curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group14-sha1
+debug2: host key algorithms: ssh-rsa,rsa-sha2-512,rsa-sha2-256,ecdsa-sha2-nistp256,ssh-ed25519
+debug2: ciphers ctos: chacha20-poly1305@openssh.com,aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com
+debug2: ciphers stoc: chacha20-poly1305@openssh.com,aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com
+debug2: MACs ctos: umac-64-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,umac-64@openssh.com,umac-128@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1
+debug2: MACs stoc: umac-64-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,umac-64@openssh.com,umac-128@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1
+debug2: compression ctos: none,zlib@openssh.com
+debug2: compression stoc: none,zlib@openssh.com
+debug2: languages ctos:
+debug2: languages stoc:
+debug2: first_kex_follows 0
+debug2: reserved 0
+debug1: kex: algorithm: curve25519-sha256@libssh.org
+debug1: kex: host key algorithm: ssh-ed25519
+debug1: kex: server->client cipher: chacha20-poly1305@openssh.com MAC: <implicit> compression: none
+debug1: kex: client->server cipher: chacha20-poly1305@openssh.com MAC: <implicit> compression: none
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: SSH2_MSG_KEX_ECDH_REPLY received
+debug1: Server host key: ssh-ed25519 SHA256:SjQXnFYRVZLclwZC5NPxovNMtBwGr3tzJ10ZIndD+YE
+debug1: load_hostkeys: fopen /Users/rody/.ssh/known_hosts2: No such file or directory
+debug1: load_hostkeys: fopen /etc/ssh/ssh_known_hosts: No such file or directory
+debug1: load_hostkeys: fopen /etc/ssh/ssh_known_hosts2: No such file or directory
+debug1: Host '10.0.6.207' is known and matches the ED25519 host key.
+debug1: Found key in /Users/rody/.ssh/known_hosts:99
+debug2: ssh_set_newkeys: mode 1
+debug1: rekey out after 134217728 blocks
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug2: ssh_set_newkeys: mode 0
+debug1: rekey in after 134217728 blocks
+debug1: get_agent_identities: bound agent to hostkey
+debug1: get_agent_identities: agent returned 3 keys
+debug1: Will attempt key: aimpugn@gmail.com ED25519 SHA256:PcadLpSLj9J4vDoN8pbpXxzsZMmFSwWZ96n1IBcGhtU agent
+debug1: Will attempt key: teleport:teleport.domain.co:teleport.domain.co:rody RSA-CERT SHA256:eogXoGwY+RzZ+CCHwSMzSF7QJu277mDHu1BW2ccAqD4 agent
+debug1: Will attempt key: teleport:teleport.domain.co:teleport.domain.co:rody RSA SHA256:eogXoGwY+RzZ+CCHwSMzSF7QJu277mDHu1BW2ccAqD4 agent
+debug1: Will attempt key: /Users/rody/.ssh/signed-cert.pub ED25519-CERT SHA256:Cs59OxCyK6io0tGponqeP4pCMVLNQqDuBdT5rKTJDfk explicit
+debug1: Will attempt key: /Users/rody/.ssh/id_ed25519 ED25519 SHA256:Cs59OxCyK6io0tGponqeP4pCMVLNQqDuBdT5rKTJDfk explicit
+debug2: pubkey_prepare: done
+debug1: SSH2_MSG_EXT_INFO received
+debug1: kex_input_ext_info: server-sig-algs=<rsa-sha2-256,rsa-sha2-512>
+debug2: service_accept: ssh-userauth
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey
+debug1: Next authentication method: publickey
+debug1: Offering public key: aimpugn@gmail.com ED25519 SHA256:PcadLpSLj9J4vDoN8pbpXxzsZMmFSwWZ96n1IBcGhtU agent
+debug2: we sent a publickey packet, wait for reply
+debug1: Authentications that can continue: publickey
+debug1: Offering public key: teleport:teleport.domain.co:teleport.domain.co:rody RSA-CERT SHA256:eogXoGwY+RzZ+CCHwSMzSF7QJu277mDHu1BW2ccAqD4 agent
+debug1: send_pubkey_test: no mutual signature algorithm
+debug1: Offering public key: teleport:teleport.domain.co:teleport.domain.co:rody RSA SHA256:eogXoGwY+RzZ+CCHwSMzSF7QJu277mDHu1BW2ccAqD4 agent
+debug2: we sent a publickey packet, wait for reply
+debug1: Authentications that can continue: publickey
+debug1: Offering public key: /Users/rody/.ssh/signed-cert.pub ED25519-CERT SHA256:Cs59OxCyK6io0tGponqeP4pCMVLNQqDuBdT5rKTJDfk explicit
+debug2: we sent a publickey packet, wait for reply
+debug1: Server accepts key: /Users/rody/.ssh/signed-cert.pub ED25519-CERT SHA256:Cs59OxCyK6io0tGponqeP4pCMVLNQqDuBdT5rKTJDfk explicit
+debug2: sign_and_send_pubkey: using private key "/Users/rody/.ssh/id_ed25519" for certificate
+Authenticated to 10.0.6.207 ([10.0.6.207]:22) using "publickey".
+debug1: channel 0: new session [client-session] (inactive timeout: 0)
+debug2: channel 0: send open
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: pledge: filesystem
+debug1: client_input_global_request: rtype hostkeys-00@openssh.com want_reply 0
+debug1: client_input_hostkeys: searching /Users/rody/.ssh/known_hosts for 10.0.6.207 / (none)
+debug1: client_input_hostkeys: searching /Users/rody/.ssh/known_hosts2 for 10.0.6.207 / (none)
+debug1: client_input_hostkeys: hostkeys file /Users/rody/.ssh/known_hosts2 does not exist
+debug2: channel_input_open_confirmation: channel 0: callback start
+debug2: fd 3 setting TCP_NODELAY
+debug2: client_session2_setup: id 0
+debug2: channel 0: request pty-req confirm 1
+debug1: Sending environment.
+debug1: channel 0: setting env LC_TERMINAL_VERSION = "3.4.22"
+debug2: channel 0: request env confirm 0
+debug1: channel 0: setting env LANG = "ko_KR.UTF-8"
+debug2: channel 0: request env confirm 0
+debug1: channel 0: setting env LC_TERMINAL = "iTerm2"
+debug2: channel 0: request env confirm 0
+debug2: channel 0: request shell confirm 1
+debug2: channel_input_open_confirmation: channel 0: callback done
+debug2: channel 0: open confirm rwindow 0 rmax 32768
+debug1: client_global_hostkeys_prove_confirm: server used untrusted RSA signature algorithm ssh-rsa for key 0, disregarding
+debug1: update_known_hosts: known hosts file /Users/rody/.ssh/known_hosts2 does not exist
+debug1: pledge: fork
+debug2: channel_input_status_confirm: type 99 id 0
+debug2: PTY allocation request accepted on channel 0
+debug2: channel 0: rcvd adjust 2097152
+debug2: channel_input_status_confirm: type 99 id 0
+debug2: shell request accepted on channel 0
+Welcome to Ubuntu 16.04.6 LTS (GNU/Linux 4.4.0-166-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+
+  System information as of Wed Dec 27 03:02:13 KST 2023
+
+  System load:  0.42                Processes:           719
+  Usage of /:   80.1% of 196.73GB   Users logged in:     1
+  Memory usage: 33%                 IP address for eth0: 10.0.6.207
+  Swap usage:   0%
+
+  Graph this data and manage this system at:
+    https://landscape.canonical.com/
+
+ * Ubuntu Pro delivers the most comprehensive open source security and
+   compliance features.
+
+   https://ubuntu.com/aws/pro
+
+  Get cloud support with Ubuntu Advantage Cloud Guest:
+    http://www.ubuntu.com/business/services/cloud
+
+241 packages can be updated.
+189 updates are security updates.
+
+New release '18.04.6 LTS' available.
+Run 'do-release-upgrade' to upgrade to it.
+
+
+Last login: Wed Dec 27 03:02:09 2023 from 10.40.105.172
+ubuntu@api-c3:~$ client_loop: send disconnect: Broken pipe

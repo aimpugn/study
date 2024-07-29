@@ -1,0 +1,59 @@
+{
+    "description": "Left Shift + Space to switch input source and disable Control + Space",
+    "manipulators": [
+        {
+            "conditions": [
+                {
+                    "input_sources": [
+                        {
+                            "input_source_id": "^com\\.apple\\.inputmethod\\.Korean\\.2SetKorean$"
+                        }
+                    ],
+                    "type": "input_source_unless"
+                }
+            ],
+            "from": {
+                "key_code": "spacebar",
+                "modifiers": {
+                    "mandatory": ["left_shift"],
+                    "optional": ["caps_lock"]
+                }
+            },
+            "to": [
+                // 시스템 설정 > 키보드 > 키보드 단축키 > 입력 소스 메뉴에서
+                // "이전 입력 소스 선택"을 f18로 설정해야 합니다.
+                {
+                    "key_code": "f18"
+                }
+            ],
+            "type": "basic"
+        },
+        {
+            "conditions": [
+                {
+                    "input_sources": [
+                        {
+                            "input_source_id": "^com\\.apple\\.inputmethod\\.Korean\\.2SetKorean$"
+                        }
+                    ],
+                    "type": "input_source_if"
+                }
+            ],
+            "from": {
+                "key_code": "spacebar",
+                "modifiers": {
+                    "mandatory": ["left_shift"],
+                    "optional": ["caps_lock"]
+                }
+            },
+            "to": [
+                // 시스템 설정 > 키보드 > 키보드 단축키 > 입력 소스 메뉴에서
+                // "이전 입력 소스 선택"을 f18로 설정해야 합니다.
+                {
+                    "key_code": "f18"
+                }
+            ],
+            "type": "basic"
+        }
+    ]
+}

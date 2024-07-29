@@ -1,0 +1,34 @@
+#### Before
+
+* a78193e (learn/intro/design-goal) end introduction
+* 0d0be89 (HEAD -> main, origin/main, origin/HEAD) docs: 포맷팅 수정
+* b5fc1df (learn/introduction_persistence) add modified
+* 5c04e25 learn persistence
+* fa7622e docs: add descriptions
+* b724d28 (leanr/introduction_concurrency) learn wrongly working conccurency program
+* 0cb45c5 fix: change alloc to alloc_zeroed and add dealloc at the end
+* f7fa4f6 docs: modify incorrect doc
+* cc48e6d Delete LICENSE
+* 4179c43 style: tab to 4 sapces
+* 9b3a268 (learn/virtualization_memory) learn memory virtualization
+* d8e671e (learn/introduction_cpu) learn virtualization of cpu
+* 071a43b (origin/feature/add-docker-container, feature/add-docker-container) add docker container and some docs
+* 2401b96 Initial commit
+
+#### After
+
+* a78193e (HEAD -> main, learn/intro/design-goal) end introduction
+* 0d0be89 (origin/main, origin/HEAD) docs: 포맷팅 수정
+* b5fc1df (learn/introduction_persistence) add modified
+* 5c04e25 learn persistence
+* fa7622e docs: add descriptions
+* b724d28 (leanr/introduction_concurrency) learn wrongly working conccurency program
+* 0cb45c5 fix: change alloc to alloc_zeroed and add dealloc at the end
+* f7fa4f6 docs: modify incorrect doc
+* cc48e6d Delete LICENSE
+* 4179c43 style: tab to 4 sapces
+* 9b3a268 (learn/virtualization_memory) learn memory virtualization
+* d8e671e (learn/introduction_cpu) learn virtualization of cpu
+* 071a43b (origin/feature/add-docker-container, feature/add-docker-container) add docker container and some docs
+* 2401b96 Initial commit
+(END)

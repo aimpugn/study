@@ -1,0 +1,24 @@
+[package]
+name = "ostep"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+debug = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.fork]
+version="0.1.20"
+
+[dependencies.nix]
+version="0.26.2"
+
+[dependencies.libc]
+version="0.2.158"
+
+[dependencies.rand]
+version="0.8.5"
+
+[dependencies.cargo-show-asm]
+version="0.2.17"

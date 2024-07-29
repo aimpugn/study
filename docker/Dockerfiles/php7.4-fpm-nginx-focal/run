@@ -1,0 +1,22 @@
+#!/bin/bash
+
+EXISTING_CONTAINER_ID=$(cat ./php7.4-fpm-nginx-focal.cid)
+EXISTING_CONTAINER_ID="${EXISTING_CONTAINER_ID// }"
+if [ -n "$EXISTING_CONTAINER_ID" ]
+then
+  echo "EXISTING_CONTAINER_ID: $EXISTING_CONTAINER_ID"
+  docker stop "$EXISTING_CONTAINER_ID"
+  EXISTING_CONTAINER_ID=""
+fi
+
+if [ -z "$EXISTING_CONTAINER_ID" ]
+then
+  # --rm: docker stop 시 삭제
+  # -d: detach
+  docker run --rm \
+    -d \
+    -p 8888:80 \
+    --name php7.4-fpm-nginx-focal \
+    -v /Users/rody/IdeaProjects/how-php-works:/var/www/example.com \
+    php7.4-fpm-nginx-focal:latest > ./php7.4-fpm-nginx-focal.cid
+fi

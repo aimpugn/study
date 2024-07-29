@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -e
+
+NAME=ostep
+
+# to stop and delete running container
+docker rm -f "$NAME"
+
+# build
+docker build . -t "$NAME"
+
+# ex: docker run --name ostep -it ostep
+RUN_OPTIONS=(
+    # mount volume
+    --volume "$(pwd)":/home/ostep/ostep
+    # assign name
+    --name "$NAME"
+    # Run container in background and print container ID
+    -d
+    # Allocate a pseudo-TTY
+    -t
+    # tag name of image to run
+    "$NAME"
+)
+DOCKER_RUN_CMD="docker run ${RUN_OPTIONS[*]}"
+sh -c "$DOCKER_RUN_CMD"
+echo "'$DOCKER_RUN_CMD' executed"

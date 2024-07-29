@@ -1,0 +1,70 @@
+* 9506cde7 feat: add fallbackWith utility function (#474)
+*   8a22601e Merge branch 'main' into refactoring_base
+|\
+* | 07d05792 refactor: remove price set (#473)
+* | 75d82759 refactor: replace Price with Amount that conforms ISO 4217 (#472)
+* | 4e606074 refactor: unify every `pgpTransactionId`s to `pgTxId` by renaming them
+* | 6186f8bc chore: delete unused TossPaymentsWebhook
+* | c4dd4f2a refactor: migrate most Tosspayments-specific classes into infra layer
+* | 4937c58b refactor: simplify payment result in TossPaymentsClient
+* | 1ed813f9 refactor: merge CancelResponseBody into PaymentResponseBody in TossPaymentsHttpClient
+* | ff517776 chore: remove unused codes related with TossPaymentsClient
+* | f5120ec3 refactor: cancel result in TossPaymentsClient
+* | ad13708e refactor: cancel command in TossPaymentsClient
+* | 724f6d60 refactor: cash receipt issue, revoke interfaces in TossPaymentsClient
+* | 704092dd refactor: issue virtual account in TossPaymentsClient
+* | ad6c93ab refactor: CashReceipt and findPayment in TossPaymentsClient
+* | 2575c032 refactor: pay with card command in TossPaymentsClient
+* | d04aa44e refactor: declare TossPaymentsClient.Payment and replace results in TossPaymentsClient with it
+* | a9c253e2 refactor: change pay with card commands using new domain model InstantCardForm
+* | 24567b09 refactor: approve checkout transaction
+* | 01ed430b fix!: billing key transaction now returns payment amount from pg provider
+* | ba9ae8ea refactor: rename secret in TossPaymentsClient.PayWithBillingKeyResult with virtualAccountSecret
+* | 93f8240f refactor!: delete promotionDiscountPrice from PriceSet
+* | 565c3b0d refactor: replace CardReceipts in billing key payment logics with PaymentMethodReceipt.Card
+* | 02600d75 feat: add PaymentMethodReceipt model
+* | 989473cf refactor: replace TossPaymentsClient.IssueBillingKeyResult.CardInfo with PgpCard
+* | d6df6928 Simplify input of confirm in TossPaymentsClient
+* | aae39e99 Rename from TossPaymentsClient.PayResult to PayWithBillingKeyResult
+* | 316e57f3 Simplify payment result in TossPaymentsClient
+* | 511c1085 Simplify pay with billing key command in TossPaymentsClient
+* | 65e2b811 Refactor issue billing key interface in TossPaymentsClient
+| | * 90fb7940 (feature/nice/resolve-conflict-refactoring_base) fix: `PgpCard.cardType`, `PgpCard.cardOwnerType`을 `CardInformation`의 값을 사용하도록 수정
+| | * ba4da4f1 fix: NiceCredential 제거 및 Channel.Nice 추가
+| | * 015996ba fix: refactoring_base 기준으로 충돌 해결 // 3 rebase
+| | * 57c00063 KsnetSpecific 제거 (#393) // 2 rebase
+| | * f7069a47 feat: issue virtual account feature (#330) // 1 rebase <- 리베이스 완료 후 사라짐
+| | * 752674d1 fix: resolve missing spacing before ":"
+| | * 46f762fe feat: implement nicepayments repository
+| | * 5c2041f7 feat: nice repository 작업 (wip)
+| | * 7d4e5cf5 feat: nicepayments 구현 필요 파일 추가
+| | * 4e58c67a fix: 빌링키 결제 요청 누락된 commit 반영
+| | * 5bc614ed fix: Resolve merge conflict
+| | * d99938de wip: nice 가상계좌 구현 - 가상계좌 발급 구현 - `validResponse`를 보다 간단하게 `verify`로 변경 - `CommonResponse` -> `NiceResponseWrapper` 수정 - lint 적용 - 테스트 데이터베이스 컨테이너에서 nice t
+ransaction 테이블 drop하도록 추가 - NiceClient에서 불필요한 데이터 클래스 제거 - 기타 리팩토링
+| | * 73552452 fix: 비인증결제 - NiceCardType 수정에 따라 임시 수정 - `issueBillingKey` 메서드 not implemented 표시
+
+
+
+<commit messages>
+feat: issue virtual account feature (#330)
+
+* feat: issue virtual account feature
+
+* feat: revoke virtual account
+
+* fix: style
+
+* delete: remove comment
+
+* feat: add presentation
+
+* delete: remark
+
+* fix: test spec
+
+
+
+<commit messages for 015996ba>
+fix: refactoring_base 기준으로 충돌 해결
+

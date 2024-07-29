@@ -1,0 +1,18 @@
+{
+    "amount": "1000",
+    "currency": "KRW",
+    "browser_ip": "172.18.0.1",
+    "browser_domain": "",
+    "description": "Order pay test",
+    "token": "o_49ac327a93cca342d6ea5177835b6f0e",
+    "email": "rody@some.domain",
+    "history[registration_date]": "1671101879",
+    "customer[firstname]": "",
+    "customer[lastname]": "",
+    "plan": "221215_1957_rody",
+    "merchant_order_id": "221215_1957_rody",
+    "ag_external_id": "221215_1957_rody",
+    "custom[usercode]": "imp66012716",
+    "store_card": "1",
+    "secure_return_method": "url"
+}

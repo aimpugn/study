@@ -1,0 +1,63 @@
+{
+    "description": "Left Shift + Space 를 사용하여 입력 소스 변경",
+    "manipulators": [
+        {
+            "conditions": [
+                {
+                    "input_sources": [
+                        // conditions: 입력 소스가 영어(com.apple.keylayout.ABC)일 때만 작동합니다.
+                        {
+                            "input_source_id": "^com\\.apple\\.keylayout\\.ABC$"
+                        }
+                    ],
+                    "type": "input_source_if"
+                }
+            ],
+            "from": {
+                "key_code": "spacebar",
+                "modifiers": {
+                    "mandatory": ["left_shift"]
+                }
+            },
+            // 한국어 2벌식 입력 소스(com.apple.inputmethod.Korean.2SetKorean)로 전환합니다.
+            "to": [
+                {
+                    "select_input_source": {
+                        "input_source_id": "^com\\.apple\\.inputmethod\\.Korean\\.2SetKorean$"
+                    }
+                }
+            ],
+            // type이 "basic"으로 설정되어 있어서 key-down 이벤트로 동작합니다.
+            "type": "basic"
+        },
+        // 국어 2벌식(com.apple.inputmethod.Korean.2SetKorean)일 때
+        // right_command 키를 눌렀을 때 영어(com.apple.keylayout.ABC)로 전환하는 설정입니다.
+        {
+            "conditions": [
+                {
+                    "input_sources": [
+                        {
+                            "input_source_id": "^com\\.apple\\.inputmethod\\.Korean\\.2SetKorean$"
+                        }
+                    ],
+                    "type": "input_source_if"
+                }
+            ],
+            "from": {
+                "key_code": "spacebar",
+                "modifiers": {
+                    "mandatory": ["left_shift"]
+                }
+            },
+            // 영어 입력 소스(com.apple.keylayout.ABC)로 전환합니다.
+            "to": [
+                {
+                    "select_input_source": {
+                        "input_source_id": "^com\\.apple\\.keylayout\\.ABC$"
+                    }
+                }
+            ],
+            "type": "basic"
+        }
+    ]
+}

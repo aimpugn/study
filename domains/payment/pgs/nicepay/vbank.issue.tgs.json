@@ -1,0 +1,34 @@
+{
+    "tx_id": "imps_2302281753",
+    "payment_amount": {
+        "total_paid_amount": {
+            "units": "100"
+        },
+        "tax_free_amount": {
+            "units": "0"
+        },
+        "currency": "CURRENCY_KRW"
+    },
+    "pg_tx_id": "someMID03012302281753284323",
+    "pg_raw_response": "{\"ResultCode\":\"4100\",\"ResultMsg\":\"가상계좌 발급 성공\",\"TID\":\"someMID03012302281753284323\",\"Moid\":\"imps_2302281753\",\"Amt\":\"000000000100\",\"AuthDate\":\"230228175328\",\"VbankBankCode\":\"081\",\"VbankBankName\":\"하나은행\",\"VbankNum\":\"15791571357937\",\"VbankExpDate\":\"20230310\",\"VbankExpTime\":\"025159\"}",
+    "channel": {
+        "channel_id": "channel-id-697c85cf-8d2d-45c6-abdb-bb4ed5bda00a",
+        "pg_provider": "PG_PROVIDER_NICE"
+    },
+    "approved_at": {
+        "seconds": "1677606808",
+        "nanos": 694539000
+    },
+    "virtual_account_deposit_info": {
+        "account_number": "15791571357937",
+        "virtual_account_type": "VIRTUAL_ACCOUNT_TYPE_CIRCULAR",
+        "virtual_bank": "BANK_HANA_BANK",
+        "is_expired": false,
+        "refund_status": "REFUND_STATUS_NONE",
+        "due_date": {
+            "seconds": "1678416719",
+            "nanos": 0
+        },
+        "remitter_name": "rody"
+    }
+}

@@ -1,0 +1,7 @@
+#!/bin/bash
+# https://docs.docker.com/engine/reference/commandline/build/#options
+# --rm: 빌드 성공 시 중간 단계 제거
+docker build --rm -t php7.4-fpm-nginx-focal:latest --label php7.4-fpm-nginx-focal .
+
+# https://stackoverflow.com/a/62087982
+docker image prune --force --filter='label=php7.4-fpm-nginx-focal'

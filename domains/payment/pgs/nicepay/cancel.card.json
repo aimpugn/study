@@ -1,0 +1,22 @@
+{
+    "ResultCode": "2001",
+    "ResultMsg": "취소 성공",
+    "ErrorCD": "0000",
+    "ErrorMsg": "정상취소",
+    "CancelAmt": "000000001000",
+    "MID": "someMID",
+    "Moid": "imp_124789106645",
+    "PayMethod": "CARD",
+    "TID": "someMID01012212071746483596",
+    "CancelDate": "20221207",
+    "CancelTime": "185307",
+    "CancelNum": "17174663",
+    "RemainAmt": "000000000000",
+    "Signature": "c431c1b4fbb5afd42f3ec2a556aee8b9c05afff44f4071fb1d616173e3254540",
+    "MallReserved": "",
+    "CouponAmt": "000000000000",
+    "ClickpayCl": "",
+    "MultiCardAcquAmt": "",
+    "MultiPointAmt": "",
+    "MultiCouponAmt": ""
+}

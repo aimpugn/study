@@ -1,0 +1,100 @@
+* 996f1745e (HEAD -> feature/nicepay, origin/feature/nicepay) fix: specify name to function to avoid signature clash
+* 72b54bf08 chore: add nicepay shceme via flyway
+* 7f0437df9 chore: add DDL about nicepay into docker-local init sql
+* 323d72555 refactor: checkout nicepay logic with effect
+| * 900fe8c34 (tag: v1.3.0-qa.7, origin/release/20230227) fix: KSNET 휴대폰결제, 계좌이체 취소 불가능한 버그 수정 (#575)
+| | * 53cb5063a (origin/feat/PPG-68_smartro-checkout) feat: add SmartroHttpClientCheckoutTest.card
+| | * b03b0ce7d delete: SmartroCard.code
+| | * dbf3eab37 fix: easypay support, interface version
+| | * 3f467ad65 Implement: smartro checkoutTransactionService
+| | * e3d2bd3f6 add: smartroPaymentMethod, smartroEasyPay enum, PINPAY in PaymentMethod
+| | * c5b813313 feat: add smartroCard enum
+| | * c04377f8b (origin/feat/smartro) [PPG-72] feat: 스마트로 가상계좌 발급 연동 (#553)
+| | | * 4d34e100b (tag: v1.3.0-rc.9, origin/develop) 카카오페이 디버깅 2 (#573)
+| | | * 1dd32a1c6 (tag: v1.3.0-rc.8) 카카오페이 디버깅 (#572)
+| | | | * a266f1c97 (origin/refactoring_base_phase2) fix: grpc and http error handling
+| | | | * c8171a65b refactor: rename from InvalidResponse to UnexpectedResponse
+| | | | * d44464d49 chore: remove unnecessary `suspend`s from functions
+| | | | * f516b3f66 fix: improve reason of http ResponseStatusException
+| | | | * f32dd6420 refactor!: remove SealedExceptions and refactor the entire project without it
+| | | | * f67421e85 refactor: remove all runOrThrowIfFails functions
+| | | | * 1f6396e80 feat: improve error handling functions to log unexpected crashes
+| | | | * 6d552a291 refactor: remove ExceptionInterceptor
+| | | | * 2b07fbec0 fix: increasing cancel count without runOrThrowIfFails
+| | | | * 41087d241 refactor: the entire notificaiton logic with NotificationEffect
+| | | | * b52784945 refactor: KsnetCheckoutClient which is called KsnetModule before
+| | | | * 866a825fc refactor: all escrow functions with Effect
+| | | | * a4227e6eb refactor: BillingKeyTranssactionService with ApplicationEffect
+| | | | * 7c7003aad fix: remove exception throwing left in the refactored services.
+| | | | * c5284cee2 refactor: BillingKeyService with ApplicationEffect
+| | | | * 3df328d7f refactor: CancelTransactionService and Transaction with Effect
+| | | | * 2199451f3 refactor: CheckoutTransactionService and sugar syntaxes
+| | | | * 609e94731 refactor: VirtualAccountTransactionService with ApplicationEffect
+| | | | * 0c03bc98f refactor: CashReceiptService with ApplicationEffect
+| | | | * 03c505902 refactor: define ApplicationEffect for convenience
+| | | | * bbc7f388d refactor!: define ApplicationError and refactor card transaction
+| | | | * 975fd2581 refactor: improve errors in ChannelRepository
+| | | | * 079f98cbe refactor: DTOs in CancelTransactionService
+| | | | * d140a0be7 refactor: remove companion objects wrapping DTOs
+| | | | * 305229068 chore: rename from Repository.kt to RepositoryError.kt
+| | | | * 602383c37 refactor!: TossPaymentsTransactionRepository
+| | | | * 5388c210a refactor!: KsnetTransactionRepository
+| | | | * 5fec51d12 refactor!: add common repository errors and implementations
+| | | | * 8f142c088 refactor: ChannelRepository
+| | | | * 44ec0f16f refactor: BillingKeyRepository
+| | | | * 12a208609 chore: remove unused default field value in BillingKey
+| | |_|/
+| |/| |
+| * | | 6f95d80d0 Ksnet 계좌이체 시 은행코드 내려오지 않는 이슈 수정 + 계좌, 카드 필드 optional interface 반영 (#563)
+| * | | e83427b98 (tag: v1.3.0-qa.5) 현금영수증 발급 시 currency 받지 않고 KRW로 고정하게 변경 (#562)
+| | | | * 5cb480bbd (tag: v1.3.0-rc.7, origin/feat/kakaopay-ignore-null-values) fix flyway script, revise toGrpcCardReceipt
+| | | | * 1a77e9f30 (tag: v1.3.0-rc.6) Add JsonInclude non null
+| | | |/
+| | | * 62aff5e43 (tag: v1.3.0-rc.5) 카카오페이 연동 (#547)
+| | | *   c01879404 (tag: v1.3.0-rc.2) Merge branch 'release/20230227' into develop
+| | | |\
+| | | * \   87e3ff06e (tag: v1.3.0-rc.1) Merge branch 'release/20230227' into develop
+| | | |\ \
+| | | * \ \   182eefe77 (tag: v1.2.1-rc.2) Merge branch 'refactoring_base' into develop
+| | | |\ \ \
+| | | * \ \ \   c98e4bc04 (tag: v1.2.1-rc.1) Merge branch 'refactoring_base' into feat/PPG-46
+| | | |\ \ \ \
+| | | * | | | | aa89875fe chore: 인터페이스 버전 변경
+| | | * | | | |   c5cd227e1 Merge branch 'refactoring_base' into feat/PPG-46
+| | | |\ \ \ \ \
+| | | * | | | | | 8b8afcc18 [PPG-46] refactor: TossPaymentsTestHelper에 존재하던 Result 생성함수를 테스트클래스 내부로 이동
+| | | * | | | | | 3b6b911fc [PPG-46] fix: VirtualAccountOption 이름 변경, TossPaymentsClient에서 required로 변경
+| | | * | | | | | 8fec521be [PPG-46] feat: 토스페이먼츠 고정식 가상계좌 연동
+| | | | | | | | | * e3e7e311d (origin/feat/naver-pay-app-presentation) feat: add naverpay logics on application
+| | | | | | | | | * da0030b18 (origin/feat/naver-play-domain-infra) feat: impl delete billing key
+| | | | | | | | | * 27073381c fix: remove unused code style
+| | | | | | | | | * bb310836c fix: lint
+| | | | | | | | | * fc3a4472d feat: impl naverpay history repo for settling difference
+| | | | | | | | | * 701f01ed0 feat: impl inquireHistory, settleDifference on infra
+| | | | | | | | | * a189f323a feat: add cancel, approveBillingKey, payWithBillingKey
+| | | | | | | | | * 6363b1252 feat: define Naverpay entities and infra client
+| | | | | | | | | | * b711bc6ad (feature/PORT-700-nicepay-checkout-refactor) fix: specify name to function to avoid signature clash
+| | | | | | | | | | * d67e2e93c chore: add nicepay shceme via flyway
+| | | | | | | | | | * 6fec91fab (feature/PORT-677-nicepay-cancel-refactor) chore: add DDL about nicepay into docker-local init sql
+| | | | | | | | | | * a6785f06b refactor: checkout nicepay logic with effect
+| |_|_|_|_|_|_|_|_|/
+|/| | | | | | | | |
+* | | | | | | | | | 8d3db41c5 fix: rebase feature/nicepay on release/20230227
+* | | | | | | | | | d9058aebc fix: 잘못된 package 이름 수정
+* | | | | | | | | | 843c787bf fix: 잘못된 package 이름 수정
+* | | | | | | | | | 73b54db92 refactor: `nicepay-common` 브랜치 코드를 `refactoring_base` 위에서 실행되도록 재작성
+| |_|_|_|_|_|_|_|/
+|/| | | | | | | |
+| | | | | | | | | *   5da1ee0e2 (tag: v1.3.0-rc.4, origin/develop-prepare) Merge branch 'feature/PPG-81/prepare' into develop-prepare
+| | | | | | | | | |\
+| | | | | | | | | | * c35b55d79 (origin/feature/PPG-81/prepare) fix: test
+| | | | | | | | | | * 5a1c80ad5 fix: update interface
+| | | | | | | | | |/
+| | | | | | | | | * 453172473 (tag: v1.3.0-rc.3) feat: add default client id, secret for dev test
+| | | | | | | | | * d67296955 fix: lint
+| | | | | | | | | * 4e9bed49d fix: fix test and add infra test
+| | | | | | | | | * 41b108bef fix: lint
+| | | | | | | | | *   197313e79 Merge branch 'feature/paypal' into feature/PPG-81/prepare
+| | | | | | | | | |\
+| | | | | | | | | | * 184447eb9 (origin/feature/paypal) feat: STC 구현 (#542)
+| | | | | | | | | | * bc6e18423 refactor: 덜 수정된 refund_request_id 네이밍 수정 (#557)
