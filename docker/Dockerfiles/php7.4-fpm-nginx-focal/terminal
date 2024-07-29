@@ -1,0 +1,3 @@
+#!/bin/bash
+
+docker exec -it php7.4-fpm-nginx-focal /bin/bash

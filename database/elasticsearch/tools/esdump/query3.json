@@ -1,0 +1,59 @@
+{
+  "sort": [
+    {
+      "timestamp": {
+        "order": "desc",
+        "unmapped_type": "boolean"
+      }
+    }
+  ],
+  "size": 500,
+  "version": true,
+  "_source": [
+    "app.request.http.uri"  
+  ],
+  "query": {
+    "bool": {
+      "must": [],
+      "filter": [
+        {
+          "nested": {
+            "path": "app",
+            "query": {
+              "bool": {
+                "should": [
+                  {
+                    "match_phrase": {
+                      "app._raw": "ready"
+                    }
+                  }
+                ],
+                "minimum_should_match": 1
+              }
+            },
+            "score_mode": "none"
+          }
+        },
+        {
+          "nested": {
+            "path": "app",
+            "query": {
+              "match_phrase": {
+                "app.name": "corepay"
+              }
+            }
+          }
+        },
+        {
+          "range": {
+            "timestamp": {
+              "gte": "2024-01-31T05:20:00.000Z",
+              "lte": "2024-01-31T05:50:00.000Z",
+              "format": "strict_date_optional_time"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

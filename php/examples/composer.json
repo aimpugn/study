@@ -1,0 +1,20 @@
+{
+    "name": "aimpugn/howphpwork",
+    "description": "Learn and record how PHP works",
+    "type": "project",
+    "require-dev": {
+        "phpunit/phpunit": "^11.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Aimpugn\\Howphpwork\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "aimpugn",
+            "email": "aimpugn@gmail.com"
+        }
+    ],
+    "require": {}
+}

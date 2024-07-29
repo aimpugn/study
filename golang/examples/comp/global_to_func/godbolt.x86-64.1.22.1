@@ -1,0 +1,701 @@
+main_init_pc0:
+        TEXT    main.init(SB), PKGINIT|ABIInternal, $8-0
+        CMPQ    SP, 16(R14)
+        PCDATA  $0, $-2
+        JLS     main_init_pc17
+        PCDATA  $0, $-1
+        PUSHQ   BP
+        MOVQ    SP, BP
+        FUNCDATA        $0, gclocals·g2BeySu+wFnoycgXfElmcg==(SB)
+        FUNCDATA        $1, gclocals·g2BeySu+wFnoycgXfElmcg==(SB)
+        PCDATA  $1, $0
+        CALL    main.map.init.0(SB)
+        POPQ    BP
+        RET
+main_init_pc17:
+        NOP
+        PCDATA  $1, $-1
+        PCDATA  $0, $-2
+        CALL    runtime.morestack_noctxt(SB)
+        PCDATA  $0, $-1
+        JMP     main_init_pc0
+main_map_init_0_pc0:
+        TEXT    main.map.init.0(SB), ABIInternal, $56-0
+        CMPQ    SP, 16(R14)
+        PCDATA  $0, $-2
+        JLS     main_map_init_0_pc417
+        PCDATA  $0, $-1
+        PUSHQ   BP
+        MOVQ    SP, BP
+        SUBQ    $48, SP
+        FUNCDATA        $0, gclocals·ykHN0vawYuq1dUW4zEe2gA==(SB)
+        FUNCDATA        $1, gclocals·sQxO+jiYy+d9ldxoWSePwQ==(SB)
+        PCDATA  $1, $0
+        CALL    runtime.makemap_small(SB)
+        MOVQ    AX, main..autotmp_10+40(SP)
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $1
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_11+32(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."001"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name1"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main..autotmp_10+40(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $2
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        JNE     main_map_init_0_pc122
+        MOVQ    main..autotmp_11+32(SP), CX
+        JMP     main_map_init_0_pc142
+main_map_init_0_pc122:
+        CALL    runtime.gcWriteBarrier2(SB)
+        MOVQ    main..autotmp_11+32(SP), CX
+        MOVQ    CX, (R11)
+        MOVQ    (AX), DX
+        MOVQ    DX, 8(R11)
+main_map_init_0_pc142:
+        MOVQ    CX, (AX)
+        PCDATA  $0, $-1
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $1
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_11+32(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."002"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name2"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main..autotmp_10+40(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $2
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        JNE     main_map_init_0_pc239
+        MOVQ    main..autotmp_11+32(SP), CX
+        JMP     main_map_init_0_pc259
+main_map_init_0_pc239:
+        CALL    runtime.gcWriteBarrier2(SB)
+        MOVQ    main..autotmp_11+32(SP), CX
+        MOVQ    CX, (R11)
+        MOVQ    (AX), DX
+        MOVQ    DX, 8(R11)
+main_map_init_0_pc259:
+        MOVQ    CX, (AX)
+        PCDATA  $0, $-1
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $1
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_11+32(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."003"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name3"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main..autotmp_10+40(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $2
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        JNE     main_map_init_0_pc361
+        MOVQ    main..autotmp_11+32(SP), CX
+        MOVQ    main..autotmp_10+40(SP), DX
+        JMP     main_map_init_0_pc401
+main_map_init_0_pc361:
+        CALL    runtime.gcWriteBarrier4(SB)
+        MOVQ    main..autotmp_11+32(SP), CX
+        MOVQ    CX, (R11)
+        MOVQ    (AX), DX
+        MOVQ    DX, 8(R11)
+        MOVQ    main..autotmp_10+40(SP), DX
+        MOVQ    DX, 16(R11)
+        MOVQ    main.globalVar(SB), BX
+        MOVQ    BX, 24(R11)
+main_map_init_0_pc401:
+        MOVQ    CX, (AX)
+        MOVQ    DX, main.globalVar(SB)
+        PCDATA  $0, $-1
+        ADDQ    $48, SP
+        POPQ    BP
+        RET
+main_map_init_0_pc417:
+        NOP
+        PCDATA  $1, $-1
+        PCDATA  $0, $-2
+        CALL    runtime.morestack_noctxt(SB)
+        PCDATA  $0, $-1
+        JMP     main_map_init_0_pc0
+main_main_pc0:
+        TEXT    main.main(SB), ABIInternal, $176-0
+        LEAQ    -48(SP), R12
+        CMPQ    R12, 16(R14)
+        PCDATA  $0, $-2
+        JLS     main_main_pc1523
+        PCDATA  $0, $-1
+        PUSHQ   BP
+        MOVQ    SP, BP
+        SUBQ    $168, SP
+        FUNCDATA        $0, gclocals·VRdgPw/B1qZRso/lfzPG6g==(SB)
+        FUNCDATA        $1, gclocals·56emcpqI0KwuXymdeFaNPw==(SB)
+        FUNCDATA        $2, main.main.stkobj(SB)
+        MOVUPS  X15, main..autotmp_38+152(SP)
+        MOVQ    main.globalVar(SB), DX
+        LEAQ    type:map[string]*main.Simple(SB), R8
+        MOVQ    R8, main..autotmp_38+152(SP)
+        MOVQ    DX, main..autotmp_38+160(SP)
+        MOVQ    os.Stdout(SB), BX
+        NOP
+        LEAQ    go:itab.*os.File,io.Writer(SB), AX
+        LEAQ    main..autotmp_38+152(SP), CX
+        MOVL    $1, DI
+        MOVQ    DI, SI
+        PCDATA  $1, $0
+        NOP
+        CALL    fmt.Fprintln(SB)
+        MOVUPS  X15, main..autotmp_40+136(SP)
+        MOVQ    main.globalVar(SB), DX
+        LEAQ    type:map[string]*main.Simple(SB), R8
+        MOVQ    R8, main..autotmp_40+136(SP)
+        MOVQ    DX, main..autotmp_40+144(SP)
+        MOVQ    os.Stdout(SB), BX
+        NOP
+        LEAQ    go:itab.*os.File,io.Writer(SB), AX
+        LEAQ    main..autotmp_40+136(SP), CX
+        MOVL    $1, DI
+        MOVQ    DI, SI
+        CALL    fmt.Fprintln(SB)
+        MOVUPS  X15, main..autotmp_42+120(SP)
+        MOVQ    main.globalVar(SB), DX
+        LEAQ    type:map[string]*main.Simple(SB), R8
+        MOVQ    R8, main..autotmp_42+120(SP)
+        MOVQ    DX, main..autotmp_42+128(SP)
+        MOVQ    os.Stdout(SB), BX
+        NOP
+        LEAQ    go:itab.*os.File,io.Writer(SB), AX
+        LEAQ    main..autotmp_42+120(SP), CX
+        MOVL    $1, DI
+        MOVQ    DI, SI
+        CALL    fmt.Fprintln(SB)
+        NOP
+        CALL    runtime.makemap_small(SB)
+        MOVQ    AX, main.~r0+56(SP)
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $1
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_94+64(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."001"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name1"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main.~r0+56(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $2
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        JNE     main_main_pc344
+        MOVQ    main..autotmp_94+64(SP), CX
+        JMP     main_main_pc364
+main_main_pc344:
+        CALL    runtime.gcWriteBarrier2(SB)
+        MOVQ    main..autotmp_94+64(SP), CX
+        MOVQ    CX, (R11)
+        MOVQ    (AX), DX
+        MOVQ    DX, 8(R11)
+main_main_pc364:
+        MOVQ    CX, (AX)
+        PCDATA  $0, $-1
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $1
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_94+64(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."002"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name2"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main.~r0+56(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $2
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        JNE     main_main_pc461
+        MOVQ    main..autotmp_94+64(SP), CX
+        JMP     main_main_pc481
+main_main_pc461:
+        CALL    runtime.gcWriteBarrier2(SB)
+        MOVQ    main..autotmp_94+64(SP), CX
+        MOVQ    CX, (R11)
+        MOVQ    (AX), DX
+        MOVQ    DX, 8(R11)
+main_main_pc481:
+        MOVQ    CX, (AX)
+        PCDATA  $0, $-1
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $1
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_94+64(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."003"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name3"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main.~r0+56(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $2
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        JNE     main_main_pc578
+        MOVQ    main..autotmp_94+64(SP), DX
+        JMP     main_main_pc598
+main_main_pc578:
+        CALL    runtime.gcWriteBarrier2(SB)
+        MOVQ    main..autotmp_94+64(SP), DX
+        MOVQ    DX, (R11)
+        MOVQ    (AX), R8
+        MOVQ    R8, 8(R11)
+main_main_pc598:
+        MOVQ    DX, (AX)
+        PCDATA  $0, $-1
+        MOVUPS  X15, main..autotmp_52+104(SP)
+        LEAQ    type:map[string]*main.Simple(SB), DX
+        MOVQ    DX, main..autotmp_52+104(SP)
+        MOVQ    main.~r0+56(SP), R8
+        MOVQ    R8, main..autotmp_52+112(SP)
+        MOVQ    os.Stdout(SB), BX
+        NOP
+        LEAQ    go:itab.*os.File,io.Writer(SB), AX
+        LEAQ    main..autotmp_52+104(SP), CX
+        MOVL    $1, DI
+        MOVQ    DI, SI
+        PCDATA  $1, $0
+        CALL    fmt.Fprintln(SB)
+        NOP
+        CALL    runtime.makemap_small(SB)
+        MOVQ    AX, main.~r0+48(SP)
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $3
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_94+64(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."001"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name1"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main.~r0+48(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $4
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        JNE     main_main_pc768
+        MOVQ    main..autotmp_94+64(SP), CX
+        JMP     main_main_pc788
+        NOP
+main_main_pc768:
+        CALL    runtime.gcWriteBarrier2(SB)
+        MOVQ    main..autotmp_94+64(SP), CX
+        MOVQ    CX, (R11)
+        MOVQ    (AX), DX
+        MOVQ    DX, 8(R11)
+main_main_pc788:
+        MOVQ    CX, (AX)
+        PCDATA  $0, $-1
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $3
+        NOP
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_94+64(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."002"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name2"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main.~r0+48(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $4
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        JNE     main_main_pc887
+        MOVQ    main..autotmp_94+64(SP), CX
+        JMP     main_main_pc907
+main_main_pc887:
+        CALL    runtime.gcWriteBarrier2(SB)
+        MOVQ    main..autotmp_94+64(SP), CX
+        MOVQ    CX, (R11)
+        MOVQ    (AX), DX
+        MOVQ    DX, 8(R11)
+main_main_pc907:
+        MOVQ    CX, (AX)
+        PCDATA  $0, $-1
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $3
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_94+64(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."003"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name3"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main.~r0+48(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $4
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        JNE     main_main_pc1004
+        MOVQ    main..autotmp_94+64(SP), DX
+        JMP     main_main_pc1024
+main_main_pc1004:
+        CALL    runtime.gcWriteBarrier2(SB)
+        MOVQ    main..autotmp_94+64(SP), DX
+        MOVQ    DX, (R11)
+        MOVQ    (AX), R8
+        MOVQ    R8, 8(R11)
+main_main_pc1024:
+        MOVQ    DX, (AX)
+        PCDATA  $0, $-1
+        MOVUPS  X15, main..autotmp_63+88(SP)
+        LEAQ    type:map[string]*main.Simple(SB), DX
+        MOVQ    DX, main..autotmp_63+88(SP)
+        MOVQ    main.~r0+48(SP), R8
+        MOVQ    R8, main..autotmp_63+96(SP)
+        MOVQ    os.Stdout(SB), BX
+        NOP
+        LEAQ    go:itab.*os.File,io.Writer(SB), AX
+        LEAQ    main..autotmp_63+88(SP), CX
+        MOVL    $1, DI
+        MOVQ    DI, SI
+        PCDATA  $1, $0
+        CALL    fmt.Fprintln(SB)
+        NOP
+        NOP
+        CALL    runtime.makemap_small(SB)
+        MOVQ    AX, main.~r0+40(SP)
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $5
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_94+64(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."001"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name1"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main.~r0+40(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $6
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        NOP
+        JNE     main_main_pc1193
+        MOVQ    main..autotmp_94+64(SP), CX
+        JMP     main_main_pc1213
+main_main_pc1193:
+        CALL    runtime.gcWriteBarrier2(SB)
+        MOVQ    main..autotmp_94+64(SP), CX
+        MOVQ    CX, (R11)
+        MOVQ    (AX), DX
+        MOVQ    DX, 8(R11)
+main_main_pc1213:
+        MOVQ    CX, (AX)
+        PCDATA  $0, $-1
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $5
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_94+64(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."002"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name2"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main.~r0+40(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $6
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        JNE     main_main_pc1312
+        MOVQ    main..autotmp_94+64(SP), CX
+        JMP     main_main_pc1332
+        NOP
+main_main_pc1312:
+        CALL    runtime.gcWriteBarrier2(SB)
+        MOVQ    main..autotmp_94+64(SP), CX
+        MOVQ    CX, (R11)
+        MOVQ    (AX), DX
+        MOVQ    DX, 8(R11)
+main_main_pc1332:
+        MOVQ    CX, (AX)
+        PCDATA  $0, $-1
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $5
+        NOP
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_94+64(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."003"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name3"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main.~r0+40(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $6
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        JNE     main_main_pc1431
+        MOVQ    main..autotmp_94+64(SP), DX
+        JMP     main_main_pc1451
+main_main_pc1431:
+        CALL    runtime.gcWriteBarrier2(SB)
+        MOVQ    main..autotmp_94+64(SP), DX
+        MOVQ    DX, (R11)
+        MOVQ    (AX), R8
+        MOVQ    R8, 8(R11)
+main_main_pc1451:
+        MOVQ    DX, (AX)
+        PCDATA  $0, $-1
+        MOVUPS  X15, main..autotmp_74+72(SP)
+        LEAQ    type:map[string]*main.Simple(SB), DX
+        MOVQ    DX, main..autotmp_74+72(SP)
+        MOVQ    main.~r0+40(SP), DX
+        MOVQ    DX, main..autotmp_74+80(SP)
+        MOVQ    os.Stdout(SB), BX
+        NOP
+        LEAQ    go:itab.*os.File,io.Writer(SB), AX
+        LEAQ    main..autotmp_74+72(SP), CX
+        MOVL    $1, DI
+        MOVQ    DI, SI
+        PCDATA  $1, $0
+        CALL    fmt.Fprintln(SB)
+        ADDQ    $168, SP
+        POPQ    BP
+        RET
+main_main_pc1523:
+        NOP
+        PCDATA  $1, $-1
+        PCDATA  $0, $-2
+        CALL    runtime.morestack_noctxt(SB)
+        PCDATA  $0, $-1
+        JMP     main_main_pc0
+main_getGlobalVar_pc0:
+        TEXT    main.getGlobalVar(SB), ABIInternal, $56-0
+        CMPQ    SP, 16(R14)
+        PCDATA  $0, $-2
+        JLS     main_getGlobalVar_pc390
+        PCDATA  $0, $-1
+        PUSHQ   BP
+        MOVQ    SP, BP
+        SUBQ    $48, SP
+        FUNCDATA        $0, gclocals·ykHN0vawYuq1dUW4zEe2gA==(SB)
+        FUNCDATA        $1, gclocals·sQxO+jiYy+d9ldxoWSePwQ==(SB)
+        PCDATA  $1, $0
+        CALL    runtime.makemap_small(SB)
+        MOVQ    AX, main..autotmp_11+40(SP)
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $1
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_12+32(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."001"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name1"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main..autotmp_11+40(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $2
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        JNE     main_getGlobalVar_pc122
+        MOVQ    main..autotmp_12+32(SP), CX
+        JMP     main_getGlobalVar_pc142
+main_getGlobalVar_pc122:
+        CALL    runtime.gcWriteBarrier2(SB)
+        MOVQ    main..autotmp_12+32(SP), CX
+        MOVQ    CX, (R11)
+        MOVQ    (AX), DX
+        MOVQ    DX, 8(R11)
+main_getGlobalVar_pc142:
+        MOVQ    CX, (AX)
+        PCDATA  $0, $-1
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $1
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_12+32(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."002"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name2"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main..autotmp_11+40(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $2
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        JNE     main_getGlobalVar_pc239
+        MOVQ    main..autotmp_12+32(SP), CX
+        JMP     main_getGlobalVar_pc259
+main_getGlobalVar_pc239:
+        CALL    runtime.gcWriteBarrier2(SB)
+        MOVQ    main..autotmp_12+32(SP), CX
+        MOVQ    CX, (R11)
+        MOVQ    (AX), DX
+        MOVQ    DX, 8(R11)
+main_getGlobalVar_pc259:
+        MOVQ    CX, (AX)
+        PCDATA  $0, $-1
+        LEAQ    type:main.Simple(SB), AX
+        PCDATA  $1, $1
+        CALL    runtime.newobject(SB)
+        MOVQ    AX, main..autotmp_12+32(SP)
+        MOVQ    $3, 8(AX)
+        LEAQ    go:string."003"(SB), CX
+        MOVQ    CX, (AX)
+        MOVQ    $10, 24(AX)
+        LEAQ    go:string."Some Name3"(SB), DX
+        MOVQ    DX, 16(AX)
+        MOVQ    main..autotmp_11+40(SP), BX
+        MOVL    $3, DI
+        LEAQ    type:map[string]*main.Simple(SB), AX
+        PCDATA  $1, $2
+        CALL    runtime.mapassign_faststr(SB)
+        TESTB   AL, (AX)
+        CMPL    runtime.writeBarrier(SB), $0
+        PCDATA  $0, $-2
+        JNE     main_getGlobalVar_pc356
+        MOVQ    main..autotmp_12+32(SP), CX
+        JMP     main_getGlobalVar_pc376
+main_getGlobalVar_pc356:
+        CALL    runtime.gcWriteBarrier2(SB)
+        MOVQ    main..autotmp_12+32(SP), CX
+        MOVQ    CX, (R11)
+        MOVQ    (AX), DX
+        MOVQ    DX, 8(R11)
+main_getGlobalVar_pc376:
+        MOVQ    CX, (AX)
+        PCDATA  $0, $-1
+        MOVQ    main..autotmp_11+40(SP), AX
+        ADDQ    $48, SP
+        POPQ    BP
+        RET
+main_getGlobalVar_pc390:
+        NOP
+        PCDATA  $1, $-1
+        PCDATA  $0, $-2
+        CALL    runtime.morestack_noctxt(SB)
+        PCDATA  $0, $-1
+        JMP     main_getGlobalVar_pc0
+type:_eq_main_Simple_pc0:
+        TEXT    type:.eq.main.Simple(SB), DUPOK|ABIInternal, $32-16
+        CMPQ    SP, 16(R14)
+        PCDATA  $0, $-2
+        JLS     type:_eq_main_Simple_pc111
+        PCDATA  $0, $-1
+        PUSHQ   BP
+        MOVQ    SP, BP
+        SUBQ    $24, SP
+        FUNCDATA        $0, gclocals·TjPuuCwdlCpTaRQGRKTrYw==(SB)
+        FUNCDATA        $1, gclocals·J5F+7Qw7O7ve2QcWC7DpeQ==(SB)
+        FUNCDATA        $5, type:.eq.main.Simple.arginfo1(SB)
+        FUNCDATA        $6, type:.eq.main.Simple.argliveinfo(SB)
+        PCDATA  $3, $1
+        MOVQ    8(AX), CX
+        CMPQ    8(BX), CX
+        JNE     type:_eq_main_Simple_pc103
+        MOVQ    24(BX), DX
+        NOP
+        CMPQ    24(AX), DX
+        JNE     type:_eq_main_Simple_pc103
+        MOVQ    AX, main.p+40(SP)
+        MOVQ    BX, main.q+48(SP)
+        PCDATA  $3, $-1
+        MOVQ    (BX), DX
+        MOVQ    (AX), SI
+        MOVQ    SI, AX
+        MOVQ    DX, BX
+        PCDATA  $1, $0
+        NOP
+        CALL    runtime.memequal(SB)
+        TESTB   AL, AL
+        JEQ     type:_eq_main_Simple_pc103
+        MOVQ    main.q+48(SP), DX
+        MOVQ    16(DX), BX
+        MOVQ    main.p+40(SP), DX
+        MOVQ    16(DX), AX
+        MOVQ    24(DX), CX
+        PCDATA  $1, $1
+        NOP
+        CALL    runtime.memequal(SB)
+        JMP     type:_eq_main_Simple_pc105
+type:_eq_main_Simple_pc103:
+        PCDATA  $3, $1
+        XORL    AX, AX
+type:_eq_main_Simple_pc105:
+        ADDQ    $24, SP
+        POPQ    BP
+        RET
+type:_eq_main_Simple_pc111:
+        NOP
+        PCDATA  $1, $-1
+        PCDATA  $0, $-2
+        MOVQ    AX, 8(SP)
+        MOVQ    BX, 16(SP)
+        CALL    runtime.morestack_noctxt(SB)
+        PCDATA  $0, $-1
+        MOVQ    8(SP), AX
+        MOVQ    16(SP), BX
+        JMP     type:_eq_main_Simple_pc0

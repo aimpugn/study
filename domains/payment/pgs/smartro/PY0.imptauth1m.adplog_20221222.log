@@ -1,0 +1,30 @@
+[22-12-22 10:31:28.696] DEBUG <28817> 로그출력 사용
+[22-12-22 10:31:28.701] INFO <28817> Smartro Adaptor Running
+[22-12-22 10:31:28.702] INFO <28817> Adapter Module version : A.0.5.24.sp
+[22-12-22 10:31:28.705] INFO <28817> Request : SMILEPAY_DOMAIN_NAME|211.193.35.215,SMILEPAY_ADAPTOR_LISTEN_PORT|len:[4],SOCKET_SO_TIMEOUT|120000,SMILEPAY_LOG_HOME|len:[48],APP_LOG|1,EVENT_LOG|1,EncFlag|A2,SERVICE_MODE|PY0,CharSet|len:[5],PayMethod|BANK,MID|imptauth1m,TID|imptauth1m02012212221030498964,Amt|1000,BuyerEmail|len:[20],ParentEmail|len:[0],BuyerAuthNum|len:[0],BuyerTel|len:[24],GoodsName|�����,BuyerName|len:[6],BuyerAddr|len:[0],GoodsCnt|len:[1],MallUserID|len:[0],Moid|imp_510648949439,UserIP|14.40.33.3,MallIP|10.0.2.194,TransType|len:[24],Language |len:[2],ChannelType|WEB,EncodeParameters|BuyerTel,EncodeKey|len:[88],BuyerPostNo|len:[0],VbankExpDate|,ReturnURL|len:[97],RetryURL|len:[0],Currency|KRW,EscrowCD|0,DeliveryCode|,DeliveryNumber|len:[0],DeliveryPost|,ReceiverTel|len:[0],SellerPost|,SellerTel|len:[0],SellerId|,DeliveryNumberUseYn|,EscrowAuthType|,EscrowAuthNumber|len:[0],EscrowCl|0,ReceiverName|len:[0],DeliveryAddr1|len:[0],DeliveryAddr2|len:[0],SellerName|len:[0],SellerAddr1|len:[0],SellerAddr2|len:[0],CashReceiptType|0,ReceiptTypeNo|,hd_pi|len:[1496],
+[22-12-22 10:31:28.712] DEBUG <28817> 공통 파라미터 설정
+[22-12-22 10:31:28.714] DEBUG <28817> 결제수단별 파라미터 설정
+[22-12-22 10:31:28.715] DEBUG <28817> 전문 공통부 유효성 체크
+[22-12-22 10:31:28.717] DEBUG <28817> 서비스모드에 따른 Version, ID 설정
+[22-12-22 10:31:28.717] DEBUG <28817> 유효성 체크
+[22-12-22 10:31:28.717] DEBUG <28817> 서비스 모드: PY0
+[22-12-22 10:31:28.718] DEBUG <28817> 1. [PY0] 상품 유효성 체크
+[22-12-22 10:31:28.718] DEBUG <28817> 2. [PY0] 상점 유효성 체크
+[22-12-22 10:31:28.719] DEBUG <28817> 3. [PY0] 구매자 유효성 체크
+[22-12-22 10:31:28.719] DEBUG <28817> 4. [PY0] 데이터 유효성 체크
+[22-12-22 10:31:28.720] DEBUG <28817> 전문 템플릿 생성
+[22-12-22 10:31:28.722] DEBUG <28817> 요청전문버전 : NPG02FBK01
+[22-12-22 10:31:28.782] DEBUG <28817> 요청전문 템플릿 생성 : NPG02FBK01
+[22-12-22 10:31:28.783] DEBUG <28817> 요청전문버전 : NPG01FBK02
+[22-12-22 10:31:28.798] DEBUG <28817> 응답전문 템플릿 생성 : NPG01FBK02
+[22-12-22 10:31:28.798] DEBUG <28817> 서비스클래스 생성
+[22-12-22 10:31:28.798] DEBUG <28817> 데이터 암호화 처리 서비스 모드 [PY0]
+[22-12-22 10:31:28.798] DEBUG <28817> 서비스 실행
+[22-12-22 10:31:28.800] INFO <28817> SecureType :
+[22-12-22 10:31:28.821] DEBUG <28817> doTrx시작
+[22-12-22 10:31:28.821] INFO <28817> SMILEPAY_DOMAIN_NAME:211.193.35.215
+[22-12-22 10:31:28.821] INFO <28817> SMILEPAY_ADAPTOR_LISTEN_PORT:9001
+[22-12-22 10:31:31.044] DEBUG <28817> response size (header): 1553
+[22-12-22 10:31:31.206] DEBUG <28817> response size : 1553
+[22-12-22 10:31:31.209] INFO <28817> response:Version|NPG01,ID|FBK02,EdiDate|20221222103128,Length|001553,TID|imptauth1m02012212221030498964,EncFlag|A2,ErrorCD|,ErrorMsg|,EscrowCD|0,TaxCD|0,SvcAmt|000000000,Tax|000000000,Language|,PayMethod|BANK,GoodsCnt|len:[2],GoodsName|사용자,Amt|000000001000,Moid|imp_510648949439,Currency|KRW,MID|imptauth1m,MallIP|10.0.2.194,UserIP|14.40.33.3,MallReserved|,ReturnURL|len:[97],RetryURL|len:[0],MallUserID|len:[0],BuyerName|len:[9],BuyerAuthNum|len:[0],BuyerTel|len:[11],BuyerEmail|len:[20],ParentEmail|len:[0],BuyerAddr|len:[0],BuyerPostNo|len:[0],SUB_ID|len:[0],AuthDate|000000000000,AuthCode|,ResultCode|4953,ResultMsg|Socket Receive error : timeout,BankCode|,BankName|len:[0],WI|len:[0],]
+[22-12-22 10:31:31.210] INFO <28817> Smartro Adaptor Completed.

@@ -1,0 +1,58 @@
+{
+    "sort": [
+        {
+            "timestamp": {
+                "order": "desc",
+                "unmapped_type": "boolean"
+            }
+        }
+    ],
+    "size": 10000,
+    "query": {
+        "bool": {
+            "filter": [
+                {
+                    "bool": {
+                        "should": [
+                            {
+                                "match": {
+                                    "raw": "some string to match"
+                                }
+                            }
+                        ],
+                        "minimum_should_match": 1
+                    }
+                },
+                {
+                    "nested": {
+                        "path": "app",
+                        "query": {
+                            "match_phrase": {
+                                "app.name": "some app name"
+                            }
+                        }
+                    }
+                },
+                {
+                    "nested": {
+                        "path": "app",
+                        "query": {
+                            "match_phrase": {
+                                "app.message": "some message"
+                            }
+                        }
+                    }
+                },
+                {
+                    "range": {
+                        "timestamp": {
+                            "gte": "2024-03-04T02:48:00.000Z",
+                            "lte": "2024-03-04T03:17:00.000Z",
+                            "format": "strict_date_optional_time"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

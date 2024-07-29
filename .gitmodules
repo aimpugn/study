@@ -1,0 +1,3 @@
+[submodule "computer_architecture/ostep/ostep-homework"]
+	path = computer_architecture/ostep/ostep-homework
+	url = https://github.com/remzi-arpacidusseau/ostep-homework
