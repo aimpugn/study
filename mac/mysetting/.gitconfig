@@ -1,0 +1,36 @@
+# This is Git's per-user configuration file.
+[user]
+    # Please adapt and uncomment the following lines:
+    name = aimpugn
+    email = aimpugn@gmail.com
+
+[core]
+    editor = code --wait --reuse-window
+    pager = delta
+    excludesFile = /Users/rody/.gitexcludes
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+    navigate = true
+    line-numbers = true
+    true-color = always
+    zero-style = dim syntax
+
+[merge]
+    conflictstyle = diff3
+
+[diff]
+    colorMoved = default
+
+[pull]
+    rebase = true
+
+[http]
+    postBuffer = 524288000
+    lowSpeedLimit = 0
+    lowSpeedTime = 999999
+
+[credential]
+    helper = osxkeychain

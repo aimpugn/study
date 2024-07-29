@@ -1,0 +1,57 @@
+{
+    "description": "Left Shift + Space 를 사용하여 입력 소스 변경",
+    "manipulators": [
+        {
+            "conditions": [
+                {
+                    "type": "input_source_if",
+                    "input_sources": [
+                        {
+                            "input_source_id": "^com\\.apple\\.keylayout\\.US$"
+                        }
+                    ]
+                }
+            ],
+            "from": {
+                "key_code": "spacebar",
+                "modifiers": {
+                    "mandatory": ["left_shift"],
+                    "optional": ["caps_lock"]
+                }
+            },
+            "to": [
+                {
+                    "key_code": "spacebar",
+                    "modifiers": ["control"]
+                }
+            ],
+            "type": "basic"
+        },
+        {
+            "conditions": [
+                {
+                    "type": "input_source_if",
+                    "input_sources": [
+                        {
+                            "input_source_id": "^com\\.apple\\.inputmethod\\.Korean\\.2SetKorean$"
+                        }
+                    ]
+                }
+            ],
+            "from": {
+                "key_code": "spacebar",
+                "modifiers": {
+                    "mandatory": ["left_shift"],
+                    "optional": ["caps_lock"]
+                }
+            },
+            "to": [
+                {
+                    "key_code": "spacebar",
+                    "modifiers": ["control"]
+                }
+            ],
+            "type": "basic"
+        }
+    ]
+}

@@ -1,0 +1,15 @@
+version: "3.8"
+
+name: corewebhook
+services:
+    postgres:
+        image: postgres:latest
+        container_name: corewebhook_db
+        ports:
+            - "127.0.0.1:55432:5432"
+        environment:
+            POSTGRES_USER: corewebhook
+            POSTGRES_PASSWORD: corewebhook
+            POSTGRES_DB: corewebhook
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock

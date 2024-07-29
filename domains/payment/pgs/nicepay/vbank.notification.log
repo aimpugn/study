@@ -1,0 +1,47 @@
+{
+    MallReserved1: "4768800525",
+    ServiceCl: "0",
+    MallReserved3: "",
+    MallReserved2: "",
+    RcptAuthCode: "I79881493",
+    FnCd: "003",
+    BuyerEmail: "anony@example.com",
+    MallReserved9: "",
+    MallReserved8: "",
+    MallReserved5: "",
+    MallReserved4: "",
+    MallReserved7: "",
+    MallUserID: "",
+    MallReserved6: "",
+    MallReserved:
+        "imp_uid=imp_123456789012,request_id=req_123456789012,user_code=imp84043725,vbank_due=202303082359",
+    StateCd: "0",
+    BuyerAuthNum: "",
+    VbankName: "기업은행",
+    MOID: "imp_123456789012",
+    VbankNum: "05000711997900",
+    MallReserved10: "",
+    ReceitType: "1",
+    VbankInputName: "홍길동",
+    AuthCode: "",
+    AuthDate: "230307231137",
+    MID: "someMID",
+    Amt: "1000",
+    EtcSvcCl: "0",
+    TID: "someMID03012303072307055719",
+    GoodsName: "홍길동 love natural gold ring (각인)",
+    MerchantKey:
+        "dbW/d3tM72T5TrLeHAm1ph76MOmy1lFZSDH6KCTHlZrMcLHr3AJi9m04AOnv7Fh86ladh52h+wky+LMmP1PbLw==",
+    FnName: "기업은행",
+    RcptTID: "someMID04012303072311372047",
+    CancelMOID: "",
+    name: "홍길동",
+    PayMethod: "VBANK",
+    ResultMsg: "승인",
+    RcptType: "1",
+    ResultCode: "4110",
+};
+
+MallReserved1=4768800525&ServiceCl=0&MallReserved3=&MallReserved2=&RcptAuthCode=I79881493&FnCd=003&BuyerEmail=anony%40example.com&MallReserved9=&MallReserved8=&MallReserved5=&MallReserved4=&MallReserved7=&MallUserID=&MallReserved6=&MallReserved=imp_uid%3Dimp_123456789012%2Crequest_id%3Dreq_123456789012%2Cuser_code%3Dimp84043725%2Cvbank_due%3D202303082359&StateCd=0&BuyerAuthNum=&VbankName=%B1%E2%BE%F7%C0%BA%C7%E0&MOID=imp_123456789012&VbankNum=05000711997900&MallReserved10=&ReceitType=1&VbankInputName=%C8%AB%B1%E6%B5%BF&AuthCode=&AuthDate=230307231137&MID=someMID&Amt=1000&EtcSvcCl=0&TID=someMID03012303072307055719&GoodsName=%C8%AB%B1%E6%B5%BF%20%6C%6F%76%65%20%6E%61%74%75%72%61%6C%20%67%6F%6C%64%20%72%69%6E%67%20%28%B0%A2%C0%CE%29&MerchantKey=dbW%2Fd3tM72T5TrLeHAm1ph76MOmy1lFZSDH6KCTHlZrMcLHr3AJi9m04AOnv7Fh86ladh52h%2Bwky%2BLMmP1PbLw%3D%3D&FnName=%B1%E2%BE%F7%C0%BA%C7%E0&RcptTID=someMID04012303072311372047&CancelMOID=&name=%C8%AB%B1%E6%B5%BF&PayMethod=VBANK&ResultMsg=%BD%C2%C0%CE&RcptType=1&ResultCode=4110
+
+{MallReserved1=[4768800525], ServiceCl=[0], MallReserved3=[], MallReserved2=[], RcptAuthCode=[I79881493], FnCd=[003], BuyerEmail=[anony@example.com], MallReserved9=[], MallReserved8=[], MallReserved5=[], MallReserved4=[], MallReserved7=[], MallUserID=[], MallReserved6=[], MallReserved=[imp_uid=imp_123456789012,request_id=req_123456789012,user_code=imp84043725,vbank_due=202303082359], StateCd=[0], BuyerAuthNum=[], VbankName=[기업은행], MOID=[imp_123456789012], VbankNum=[05000711997900], MallReserved10=[], ReceitType=[1], VbankInputName=[홍길동], AuthCode=[], AuthDate=[230307231137], MID=[someMID], Amt=[1000], EtcSvcCl=[0], TID=[someMID03012303072307055719], GoodsName=[홍길동 love natural gold ring (각인)], MerchantKey=[dbW/d3tM72T5TrLeHAm1ph76MOmy1lFZSDH6KCTHlZrMcLHr3AJi9m04AOnv7Fh86ladh52h+wky+LMmP1PbLw==], FnName=[기업은행], RcptTID=[someMID04012303072311372047], CancelMOID=[], name=[홍길동], PayMethod=[VBANK], ResultMsg=[승인], RcptType=[1], ResultCode=[4110]}

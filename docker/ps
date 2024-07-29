@@ -1,0 +1,6 @@
+/usr/bin/docker ps \
+    --all \
+    --filter id=${container_id} \
+    --filter status=running \
+    --no-trunc \
+    --format "{{.ID}} {{.Status}}"

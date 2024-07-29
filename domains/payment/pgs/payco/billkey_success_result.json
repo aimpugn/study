@@ -1,0 +1,16 @@
+{
+    "result": {
+        "sellerAutoPaymentReferenceKey": "rody@some.domain",
+        "autoPaymentCertifyKey": "88byte...생략..._Mzb7LnQSBZaPuOpXRVCdv96odQ==",
+        "autoPaymentNo": "202405301000121041",
+        "paymentMethodCode": "51",
+        "paymentMethodName": "신용카드{자동결제}",
+        "pinNo": "************3490",
+        "corporationCode": "CCSS",
+        "corporationName": "삼성카드",
+        "registYmdt": "20240530184205",
+        "maskingId": "*****************"
+    },
+    "code": "0",
+    "message": "success"
+}
