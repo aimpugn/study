@@ -1,0 +1,60 @@
+# 개발자들의 각 머신에서 도커 이미지를 빌드할 필요가 없도록 미리 빌드한 이미지를 ghcr.io(GitHub
+# Container Registry)에 올려놓는 액션.
+name: Build docker image
+
+# 개발자용 이미지를 빌드하는 것이므로 너무 빈번히 빌드하지 않고 main branch push 시에만 빌드하도록 합니다.
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    build:
+        strategy:
+            matrix:
+                # Dockerfile이 있는 디렉토리 목록.
+                subdirectory:
+                    - php-fpm
+                    - apache2
+                    - interface-builder
+                    - browser-sdk
+
+        runs-on: ubuntu-20.04
+
+        steps:
+            # 멀티 플랫폼 빌드를 위한 셋업 스텝들
+            - uses: docker/setup-qemu-action@v2
+            - uses: docker/setup-buildx-action@v2
+
+            # build-push-action 스탭에서 이미지를 푸시할 수 있도록 ghcr.io에 로그인합니다.
+            - name: Log in to ghcr.io
+              uses: docker/login-action@v2
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.repository_owner }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - uses: docker/build-push-action@v3
+              with:
+                  # Dockerfile이 루트 디렉토리에 있지 않으므로 별도로 지정이 필요합니다.
+                  context: "{{defaultContext}}:${{ matrix.subdirectory }}"
+
+                  # GitHub Actions runner와 동일한 이미지를 생성하지 않도록 플랫폼을 지정합니다.
+                  # 여기서는 둘을 지정했으므로 두 플랫폼을 위한 이미지가 한 이름으로 저장됩니다.
+                  platforms: linux/amd64,linux/arm64
+
+                  # php-fpm을 위한 플래그. dockerfile에서 이 플래그를 읽어 xdebug를 설치합니다.
+                  #
+                  # apache 빌드에서는 읽히는 곳이 없어 무시됩니다.
+                  # @TODO if로 아예 안 전달하게 할 수는 없는지 검증 필요
+                  #
+                  # 오타가 있는 변수는 Backward compatibility를 위해 제공합니다
+                  build-args: |
+                      XDEBUG_ENABLE=true
+                      XDEBUG_ENALBE=true
+
+                  # 깃헙 액션에서 시간 절약을 할 필요가 크게 없으므로 매번 새로 빌드하도록 합니다.
+                  no-cache: true
+
+                  tags: ghcr.io/${{ github.repository_owner }}/core_${{ matrix.subdirectory }}:latest
+                  push: true

@@ -1,0 +1,532 @@
+rody  ~  ssh -i ~/.ssh/some-dev-pemfile.pem -l ubuntu -L 3308:dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com:3306 3.35.156.78 -vvv
+OpenSSH_9.0p1, LibreSSL 3.3.6
+debug1: Reading configuration data /Users/rody/.ssh/config
+debug1: /Users/rody/.ssh/config line 1: Applying options for *
+debug1: Reading configuration data /etc/ssh/ssh_config
+debug1: /etc/ssh/ssh_config line 21: include /etc/ssh/ssh_config.d/* matched no files
+debug1: /etc/ssh/ssh_config line 54: Applying options for *
+debug2: resolve_canonicalize: hostname 3.35.156.78 is address
+debug3: expanded UserKnownHostsFile '~/.ssh/known_hosts' -> '/Users/rody/.ssh/known_hosts'
+debug3: expanded UserKnownHostsFile '~/.ssh/known_hosts2' -> '/Users/rody/.ssh/known_hosts2'
+debug1: Authenticator provider $SSH_SK_PROVIDER did not resolve; disabling
+debug3: ssh_connect_direct: entering
+debug1: Connecting to 3.35.156.78 [3.35.156.78] port 22.
+debug3: set_sock_tos: set socket 3 IP_TOS 0x48
+debug1: Connection established.
+debug1: identity file /Users/rody/.ssh/some-dev-pemfile.pem type -1
+debug1: identity file /Users/rody/.ssh/some-dev-pemfile.pem-cert type -1
+debug1: Local version string SSH-2.0-OpenSSH_9.0
+debug1: Remote protocol version 2.0, remote software version OpenSSH_7.6p1 Ubuntu-4ubuntu0.5
+debug1: compat_banner: match: OpenSSH_7.6p1 Ubuntu-4ubuntu0.5 pat OpenSSH_7.0*,OpenSSH_7.1*,OpenSSH_7.2*,OpenSSH_7.3*,OpenSSH_7.5*,OpenSSH_7.6*,OpenSSH_7.7* compat 0x04000002
+debug2: fd 3 setting O_NONBLOCK
+debug1: Authenticating to 3.35.156.78:22 as 'ubuntu'
+debug3: record_hostkey: found key type ED25519 in file /Users/rody/.ssh/known_hosts:1
+debug3: record_hostkey: found key type RSA in file /Users/rody/.ssh/known_hosts:2
+debug3: record_hostkey: found key type ECDSA in file /Users/rody/.ssh/known_hosts:3
+debug3: load_hostkeys_file: loaded 3 keys from 3.35.156.78
+debug1: load_hostkeys: fopen /Users/rody/.ssh/known_hosts2: No such file or directory
+debug1: load_hostkeys: fopen /etc/ssh/ssh_known_hosts: No such file or directory
+debug1: load_hostkeys: fopen /etc/ssh/ssh_known_hosts2: No such file or directory
+debug3: order_hostkeyalgs: have matching best-preference key type ssh-ed25519-cert-v01@openssh.com, using HostkeyAlgorithms verbatim
+debug3: send packet: type 20
+debug1: SSH2_MSG_KEXINIT sent
+debug3: receive packet: type 20
+debug1: SSH2_MSG_KEXINIT received
+debug2: local client KEXINIT proposal
+debug2: KEX algorithms: sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256,ext-info-c
+debug2: host key algorithms: ssh-ed25519-cert-v01@openssh.com,ecdsa-sha2-nistp256-cert-v01@openssh.com,ecdsa-sha2-nistp384-cert-v01@openssh.com,ecdsa-sha2-nistp521-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,rsa-sha2-512,rsa-sha2-256
+debug2: ciphers ctos: chacha20-poly1305@openssh.com,aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com
+debug2: ciphers stoc: chacha20-poly1305@openssh.com,aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com
+debug2: MACs ctos: umac-64-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,umac-64@openssh.com,umac-128@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1
+debug2: MACs stoc: umac-64-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,umac-64@openssh.com,umac-128@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1
+debug2: compression ctos: none,zlib@openssh.com,zlib
+debug2: compression stoc: none,zlib@openssh.com,zlib
+debug2: languages ctos:
+debug2: languages stoc:
+debug2: first_kex_follows 0
+debug2: reserved 0
+debug2: peer server KEXINIT proposal
+debug2: KEX algorithms: curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256,diffie-hellman-group14-sha1
+debug2: host key algorithms: ssh-rsa,rsa-sha2-512,rsa-sha2-256,ecdsa-sha2-nistp256,ssh-ed25519
+debug2: ciphers ctos: chacha20-poly1305@openssh.com,aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com
+debug2: ciphers stoc: chacha20-poly1305@openssh.com,aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com
+debug2: MACs ctos: umac-64-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,umac-64@openssh.com,umac-128@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1
+debug2: MACs stoc: umac-64-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha1-etm@openssh.com,umac-64@openssh.com,umac-128@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1
+debug2: compression ctos: none,zlib@openssh.com
+debug2: compression stoc: none,zlib@openssh.com
+debug2: languages ctos:
+debug2: languages stoc:
+debug2: first_kex_follows 0
+debug2: reserved 0
+debug1: kex: algorithm: curve25519-sha256
+debug1: kex: host key algorithm: ssh-ed25519
+debug1: kex: server->client cipher: chacha20-poly1305@openssh.com MAC: <implicit> compression: none
+debug1: kex: client->server cipher: chacha20-poly1305@openssh.com MAC: <implicit> compression: none
+debug3: send packet: type 30
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug3: receive packet: type 31
+debug1: SSH2_MSG_KEX_ECDH_REPLY received
+debug1: Server host key: ssh-ed25519 SHA256:mn/kaKAZSeJjcQF5OPcpIFhQY7U820ZEV6UAWDy+0VQ
+debug3: record_hostkey: found key type ED25519 in file /Users/rody/.ssh/known_hosts:1
+debug3: record_hostkey: found key type RSA in file /Users/rody/.ssh/known_hosts:2
+debug3: record_hostkey: found key type ECDSA in file /Users/rody/.ssh/known_hosts:3
+debug3: load_hostkeys_file: loaded 3 keys from 3.35.156.78
+debug1: load_hostkeys: fopen /Users/rody/.ssh/known_hosts2: No such file or directory
+debug1: load_hostkeys: fopen /etc/ssh/ssh_known_hosts: No such file or directory
+debug1: load_hostkeys: fopen /etc/ssh/ssh_known_hosts2: No such file or directory
+debug1: Host '3.35.156.78' is known and matches the ED25519 host key.
+debug1: Found key in /Users/rody/.ssh/known_hosts:1
+debug3: send packet: type 21
+debug2: ssh_set_newkeys: mode 1
+debug1: rekey out after 134217728 blocks
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug3: receive packet: type 21
+debug1: SSH2_MSG_NEWKEYS received
+debug2: ssh_set_newkeys: mode 0
+debug1: rekey in after 134217728 blocks
+debug1: get_agent_identities: bound agent to hostkey
+debug1: get_agent_identities: ssh_fetch_identitylist: agent contains no identities
+debug1: Will attempt key: /Users/rody/.ssh/some-dev-pemfile.pem  explicit
+debug2: pubkey_prepare: done
+debug3: send packet: type 5
+debug3: receive packet: type 7
+debug1: SSH2_MSG_EXT_INFO received
+debug1: kex_input_ext_info: server-sig-algs=<ssh-ed25519,ssh-rsa,rsa-sha2-256,rsa-sha2-512,ssh-dss,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521>
+debug3: receive packet: type 6
+debug2: service_accept: ssh-userauth
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug3: send packet: type 50
+debug3: receive packet: type 51
+debug1: Authentications that can continue: publickey
+debug3: start over, passed a different list publickey
+debug3: preferred publickey,keyboard-interactive,password
+debug3: authmethod_lookup publickey
+debug3: remaining preferred: keyboard-interactive,password
+debug3: authmethod_is_enabled publickey
+debug1: Next authentication method: publickey
+debug1: Trying private key: /Users/rody/.ssh/some-dev-pemfile.pem
+debug3: sign_and_send_pubkey: using publickey with RSA SHA256:Nq4bCDxQssm+jZlX7iZ9PRK7tPsSVF+wKq/C0HTQMhM
+debug3: sign_and_send_pubkey: signing using rsa-sha2-512 SHA256:Nq4bCDxQssm+jZlX7iZ9PRK7tPsSVF+wKq/C0HTQMhM
+debug3: send packet: type 50
+debug2: we sent a publickey packet, wait for reply
+debug3: receive packet: type 52
+Authenticated to 3.35.156.78 ([3.35.156.78]:22) using "publickey".
+debug1: Local connections to LOCALHOST:3308 forwarded to remote address dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com:3306
+debug3: channel_setup_fwd_listener_tcpip: type 2 wildcard 0 addr NULL
+debug1: Local forwarding listening on 127.0.0.1 port 3308.
+debug2: fd 5 setting O_NONBLOCK
+debug3: fd 5 is O_NONBLOCK
+debug1: channel 0: new [port listener]
+debug3: sock_set_v6only: set socket 6 IPV6_V6ONLY
+debug1: Local forwarding listening on ::1 port 3308.
+debug2: fd 6 setting O_NONBLOCK
+debug3: fd 6 is O_NONBLOCK
+debug1: channel 1: new [port listener]
+debug1: channel 2: new [client-session]
+debug3: ssh_session2_open: channel_new: 2
+debug2: channel 2: send open
+debug3: send packet: type 90
+debug1: Requesting no-more-sessions@openssh.com
+debug3: send packet: type 80
+debug1: Entering interactive session.
+debug1: pledge: filesystem
+debug3: receive packet: type 80
+debug1: client_input_global_request: rtype hostkeys-00@openssh.com want_reply 0
+debug3: client_input_hostkeys: received RSA key SHA256:Mk2440MM00M2/ByBX2xnFZ2c0r+2K+BdaZ4f1ES92To
+debug3: client_input_hostkeys: received ECDSA key SHA256:S9keXpnQ4euVjPRa2MX4qBfHVtyMGf11M5FvHrLYEbA
+debug3: client_input_hostkeys: received ED25519 key SHA256:mn/kaKAZSeJjcQF5OPcpIFhQY7U820ZEV6UAWDy+0VQ
+debug1: client_input_hostkeys: searching /Users/rody/.ssh/known_hosts for 3.35.156.78 / (none)
+debug3: hostkeys_foreach: reading file "/Users/rody/.ssh/known_hosts"
+debug3: hostkeys_find: found ssh-ed25519 key at /Users/rody/.ssh/known_hosts:1
+debug3: hostkeys_find: found ssh-rsa key at /Users/rody/.ssh/known_hosts:2
+debug3: hostkeys_find: found ecdsa-sha2-nistp256 key at /Users/rody/.ssh/known_hosts:3
+debug1: client_input_hostkeys: searching /Users/rody/.ssh/known_hosts2 for 3.35.156.78 / (none)
+debug1: client_input_hostkeys: hostkeys file /Users/rody/.ssh/known_hosts2 does not exist
+debug3: client_input_hostkeys: 3 server keys: 0 new, 3 retained, 0 incomplete match. 0 to remove
+debug1: client_input_hostkeys: no new or deprecated keys from server
+debug3: receive packet: type 91
+debug2: channel_input_open_confirmation: channel 2: callback start
+debug2: fd 3 setting TCP_NODELAY
+debug3: set_sock_tos: set socket 3 IP_TOS 0x48
+debug2: client_session2_setup: id 2
+debug2: channel 2: request pty-req confirm 1
+debug3: send packet: type 98
+debug1: Sending environment.
+debug3: Ignored env TERM_SESSION_ID
+debug3: Ignored env SSH_AUTH_SOCK
+debug1: channel 2: setting env LC_TERMINAL_VERSION = "3.4.18"
+debug2: channel 2: request env confirm 0
+debug3: send packet: type 98
+debug3: Ignored env COLORFGBG
+debug3: Ignored env ITERM_PROFILE
+debug3: Ignored env XPC_FLAGS
+debug3: Ignored env PWD
+debug3: Ignored env SHELL
+debug3: Ignored env __CFBundleIdentifier
+debug3: Ignored env TERM_PROGRAM_VERSION
+debug3: Ignored env TERM_PROGRAM
+debug3: Ignored env PATH
+debug1: channel 2: setting env LC_TERMINAL = "iTerm2"
+debug2: channel 2: request env confirm 0
+debug3: send packet: type 98
+debug3: Ignored env COLORTERM
+debug3: Ignored env COMMAND_MODE
+debug3: Ignored env TERM
+debug3: Ignored env HOME
+debug3: Ignored env TMPDIR
+debug3: Ignored env USER
+debug3: Ignored env XPC_SERVICE_NAME
+debug3: Ignored env LOGNAME
+debug3: Ignored env ITERM_SESSION_ID
+debug3: Ignored env __CF_USER_TEXT_ENCODING
+debug3: Ignored env SHLVL
+debug3: Ignored env OLDPWD
+debug3: Ignored env HOMEBREW_PREFIX
+debug3: Ignored env HOMEBREW_CELLAR
+debug3: Ignored env HOMEBREW_REPOSITORY
+debug3: Ignored env MANPATH
+debug3: Ignored env INFOPATH
+debug3: Ignored env ZSH
+debug3: Ignored env PAGER
+debug3: Ignored env LESS
+debug3: Ignored env LSCOLORS
+debug1: channel 2: setting env LC_CTYPE = "UTF-8"
+debug2: channel 2: request env confirm 0
+debug3: send packet: type 98
+debug3: Ignored env EDITOR
+debug3: Ignored env NVM_DIR
+debug3: Ignored env NVM_CD_FLAGS
+debug3: Ignored env NVM_BIN
+debug3: Ignored env NVM_INC
+debug3: Ignored env SPEEDSCALE_HOME
+debug3: Ignored env CHAI_GPR_USERNAME
+debug3: Ignored env CHAI_GPR_TOKEN
+debug3: Ignored env _
+debug2: channel 2: request shell confirm 1
+debug3: send packet: type 98
+debug2: channel_input_open_confirmation: channel 2: callback done
+debug2: channel 2: open confirm rwindow 0 rmax 32768
+debug3: receive packet: type 99
+debug2: channel_input_status_confirm: type 99 id 2
+debug2: PTY allocation request accepted on channel 2
+debug2: channel 2: rcvd adjust 2097152
+debug3: receive packet: type 99
+debug2: channel_input_status_confirm: type 99 id 2
+debug2: shell request accepted on channel 2
+Welcome to Ubuntu 18.04.5 LTS (GNU/Linux 5.4.0-1051-aws x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+
+  System information as of Thu Dec 29 15:18:59 UTC 2022
+
+  System load:  0.0                Processes:              119
+  Usage of /:   29.8% of 48.41GB   Users logged in:        0
+  Memory usage: 61%                IP address for eth0:    10.0.1.203
+  Swap usage:   23%                IP address for docker0: 172.17.0.1
+
+ * Ubuntu Pro delivers the most comprehensive open source security and
+   compliance features.
+
+   https://ubuntu.com/aws/pro
+
+ * Canonical Livepatch is available for installation.
+   - Reduce system reboots and improve kernel security. Activate at:
+     https://ubuntu.com/livepatch
+
+105 updates can be applied immediately.
+1 of these updates is a standard security update.
+To see these additional updates run: apt list --upgradable
+
+New release '20.04.5 LTS' available.
+Run 'do-release-upgrade' to upgrade to it.
+
+
+*** System restart required ***
+Last login: Thu Dec 29 09:10:15 2022 from 106.240.50.74
+ubuntu@ip-10-0-1-203:~$ debug1: Connection to port 3308 forwarding to dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306 requested.
+debug2: fd 10 setting TCP_NODELAY
+debug3: fd 10 is O_NONBLOCK
+debug3: fd 10 is O_NONBLOCK
+debug1: channel 3: new [direct-tcpip]
+debug3: send packet: type 90
+debug3: receive packet: type 91
+debug2: channel 3: open confirm rwindow 2097152 rmax 32768
+debug2: channel 3: read failed rfd 10 maxlen 32768: Broken pipe
+debug2: channel 3: read failed
+debug2: chan_shutdown_read: channel 3: (i0 o0 sock 10 wfd 10 efd -1 [closed])
+debug2: channel 3: input open -> drain
+debug2: channel 3: ibuf empty
+debug2: channel 3: send eof
+debug3: send packet: type 96
+debug2: channel 3: input drain -> closed
+debug3: receive packet: type 96
+debug2: channel 3: rcvd eof
+debug2: channel 3: output open -> drain
+debug2: channel 3: obuf empty
+debug2: chan_shutdown_write: channel 3: (i3 o1 sock 10 wfd 10 efd -1 [closed])
+debug2: channel 3: output drain -> closed
+debug3: receive packet: type 97
+debug2: channel 3: rcvd close
+debug3: channel 3: will not send data after close
+debug2: channel 3: send close
+debug3: send packet: type 97
+debug2: channel 3: is dead
+debug2: channel 3: garbage collecting
+debug1: channel 3: free: direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 53074 to 127.0.0.1 port 3308, nchannels 4
+debug3: channel 3: status: The following connections are open:
+  #2 client-session (t4 r0 i0/0 o0/0 e[write]/0 fd 7/8/9 sock -1 cc -1 io 0x01/0x00)
+  #3 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 53074 to 127.0.0.1 port 3308 (t4 r1 i3/0 o3/0 e[closed]/0 fd 10/10/-1 sock 10 cc -1 io 0x00/0x00)
+
+debug1: Connection to port 3308 forwarding to dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306 requested.
+debug2: fd 10 setting TCP_NODELAY
+debug3: fd 10 is O_NONBLOCK
+debug3: fd 10 is O_NONBLOCK
+debug1: channel 3: new [direct-tcpip]
+debug3: send packet: type 90
+debug3: receive packet: type 91
+debug2: channel 3: open confirm rwindow 2097152 rmax 32768
+debug2: channel 3: read failed rfd 10 maxlen 32768: Broken pipe
+debug2: channel 3: read failed
+debug2: chan_shutdown_read: channel 3: (i0 o0 sock 10 wfd 10 efd -1 [closed])
+debug2: channel 3: input open -> drain
+debug2: channel 3: ibuf empty
+debug2: channel 3: send eof
+debug3: send packet: type 96
+debug2: channel 3: input drain -> closed
+debug3: receive packet: type 96
+debug2: channel 3: rcvd eof
+debug2: channel 3: output open -> drain
+debug2: channel 3: obuf empty
+debug2: chan_shutdown_write: channel 3: (i3 o1 sock 10 wfd 10 efd -1 [closed])
+debug2: channel 3: output drain -> closed
+debug3: receive packet: type 97
+debug2: channel 3: rcvd close
+debug3: channel 3: will not send data after close
+debug2: channel 3: send close
+debug3: send packet: type 97
+debug2: channel 3: is dead
+debug2: channel 3: garbage collecting
+debug1: channel 3: free: direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 53078 to 127.0.0.1 port 3308, nchannels 4
+debug3: channel 3: status: The following connections are open:
+  #2 client-session (t4 r0 i0/0 o0/0 e[write]/0 fd 7/8/9 sock -1 cc -1 io 0x01/0x00)
+  #3 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 53078 to 127.0.0.1 port 3308 (t4 r1 i3/0 o3/0 e[closed]/0 fd 10/10/-1 sock 10 cc -1 io 0x00/0x00)
+
+debug3: send packet: type 80
+debug3: receive packet: type 82
+debug3: send packet: type 80
+debug3: receive packet: type 82
+debug3: send packet: type 80
+debug3: receive packet: type 82
+debug1: Connection to port 3308 forwarding to dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306 requested.
+debug2: fd 10 setting TCP_NODELAY
+debug3: fd 10 is O_NONBLOCK
+debug3: fd 10 is O_NONBLOCK
+debug1: channel 3: new [direct-tcpip]
+debug3: send packet: type 90
+debug3: receive packet: type 91
+debug2: channel 3: open confirm rwindow 2097152 rmax 32768
+debug2: channel 3: read failed rfd 10 maxlen 32768: Broken pipe
+debug2: channel 3: read failed
+debug2: chan_shutdown_read: channel 3: (i0 o0 sock 10 wfd 10 efd -1 [closed])
+debug2: channel 3: input open -> drain
+debug2: channel 3: ibuf empty
+debug2: channel 3: send eof
+debug3: send packet: type 96
+debug2: channel 3: input drain -> closed
+debug3: receive packet: type 96
+debug2: channel 3: rcvd eof
+debug2: channel 3: output open -> drain
+debug2: channel 3: obuf empty
+debug2: chan_shutdown_write: channel 3: (i3 o1 sock 10 wfd 10 efd -1 [closed])
+debug2: channel 3: output drain -> closed
+debug3: receive packet: type 97
+debug2: channel 3: rcvd close
+debug3: channel 3: will not send data after close
+debug2: channel 3: send close
+debug3: send packet: type 97
+debug2: channel 3: is dead
+debug2: channel 3: garbage collecting
+debug1: channel 3: free: direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 53144 to 127.0.0.1 port 3308, nchannels 4
+debug3: channel 3: status: The following connections are open:
+  #2 client-session (t4 r0 i0/0 o0/0 e[write]/0 fd 7/8/9 sock -1 cc -1 io 0x01/0x00)
+  #3 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 53144 to 127.0.0.1 port 3308 (t4 r1 i3/0 o3/0 e[closed]/0 fd 10/10/-1 sock 10 cc -1 io 0x00/0x00)
+
+debug1: Connection to port 3308 forwarding to dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306 requested.
+debug2: fd 10 setting TCP_NODELAY
+debug3: fd 10 is O_NONBLOCK
+debug3: fd 10 is O_NONBLOCK
+debug1: channel 3: new [direct-tcpip]
+debug3: send packet: type 90
+debug3: receive packet: type 91
+debug2: channel 3: open confirm rwindow 2097152 rmax 32768
+debug2: channel 3: read failed rfd 10 maxlen 32768: Broken pipe
+debug2: channel 3: read failed
+debug2: chan_shutdown_read: channel 3: (i0 o0 sock 10 wfd 10 efd -1 [closed])
+debug2: channel 3: input open -> drain
+debug2: channel 3: ibuf empty
+debug2: channel 3: send eof
+debug3: send packet: type 96
+debug2: channel 3: input drain -> closed
+debug3: receive packet: type 96
+debug2: channel 3: rcvd eof
+debug2: channel 3: output open -> drain
+debug2: channel 3: obuf empty
+debug2: chan_shutdown_write: channel 3: (i3 o1 sock 10 wfd 10 efd -1 [closed])
+debug2: channel 3: output drain -> closed
+debug3: receive packet: type 97
+debug2: channel 3: rcvd close
+debug3: channel 3: will not send data after close
+debug2: channel 3: send close
+debug3: send packet: type 97
+debug2: channel 3: is dead
+debug2: channel 3: garbage collecting
+debug1: channel 3: free: direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 53147 to 127.0.0.1 port 3308, nchannels 4
+debug3: channel 3: status: The following connections are open:
+  #2 client-session (t4 r0 i0/0 o0/0 e[write]/0 fd 7/8/9 sock -1 cc -1 io 0x01/0x00)
+  #3 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 53147 to 127.0.0.1 port 3308 (t4 r1 i3/0 o3/0 e[closed]/0 fd 10/10/-1 sock 10 cc -1 io 0x00/0x00)
+
+debug1: Connection to port 3308 forwarding to dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306 requested.
+debug2: fd 10 setting TCP_NODELAY
+debug3: fd 10 is O_NONBLOCK
+debug3: fd 10 is O_NONBLOCK
+debug1: channel 3: new [direct-tcpip]
+debug3: send packet: type 90
+debug3: receive packet: type 91
+debug2: channel 3: open confirm rwindow 2097152 rmax 32768
+debug2: channel 3: read failed rfd 10 maxlen 32768: Broken pipe
+debug2: channel 3: read failed
+debug2: chan_shutdown_read: channel 3: (i0 o0 sock 10 wfd 10 efd -1 [closed])
+debug2: channel 3: input open -> drain
+debug2: channel 3: ibuf empty
+debug2: channel 3: send eof
+debug3: send packet: type 96
+debug2: channel 3: input drain -> closed
+debug3: receive packet: type 96
+debug2: channel 3: rcvd eof
+debug2: channel 3: output open -> drain
+debug2: channel 3: obuf empty
+debug2: chan_shutdown_write: channel 3: (i3 o1 sock 10 wfd 10 efd -1 [closed])
+debug2: channel 3: output drain -> closed
+debug3: receive packet: type 97
+debug2: channel 3: rcvd close
+debug3: channel 3: will not send data after close
+debug2: channel 3: send close
+debug3: send packet: type 97
+debug2: channel 3: is dead
+debug2: channel 3: garbage collecting
+debug1: channel 3: free: direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 53156 to 127.0.0.1 port 3308, nchannels 4
+debug3: channel 3: status: The following connections are open:
+  #2 client-session (t4 r0 i0/0 o0/0 e[write]/0 fd 7/8/9 sock -1 cc -1 io 0x01/0x00)
+  #3 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 53156 to 127.0.0.1 port 3308 (t4 r1 i3/0 o3/0 e[closed]/0 fd 10/10/-1 sock 10 cc -1 io 0x00/0x00)
+
+debug3: send packet: type 80
+debug3: receive packet: type 82
+debug3: send packet: type 80
+debug3: receive packet: type 82
+debug3: send packet: type 80
+debug3: receive packet: type 82
+debug3: send packet: type 80
+debug3: receive packet: type 82
+debug1: Connection to port 3308 forwarding to dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306 requested.
+debug2: fd 10 setting TCP_NODELAY
+debug3: fd 10 is O_NONBLOCK
+debug3: fd 10 is O_NONBLOCK
+debug1: channel 3: new [direct-tcpip]
+debug3: send packet: type 90
+debug3: receive packet: type 91
+debug2: channel 3: open confirm rwindow 2097152 rmax 32768
+debug1: Connection to port 3308 forwarding to dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306 requested.
+debug2: fd 11 setting TCP_NODELAY
+debug3: fd 11 is O_NONBLOCK
+debug3: fd 11 is O_NONBLOCK
+debug1: channel 4: new [direct-tcpip]
+debug3: send packet: type 90
+debug3: receive packet: type 91
+debug2: channel 4: open confirm rwindow 2097152 rmax 32768
+debug1: Connection to port 3308 forwarding to dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306 requested.
+debug2: fd 12 setting TCP_NODELAY
+debug3: fd 12 is O_NONBLOCK
+debug3: fd 12 is O_NONBLOCK
+debug1: channel 5: new [direct-tcpip]
+debug3: send packet: type 90
+debug3: receive packet: type 91
+debug2: channel 5: open confirm rwindow 2097152 rmax 32768
+debug3: send packet: type 80
+debug3: receive packet: type 82
+debug3: send packet: type 80
+debug3: receive packet: type 82
+debug3: send packet: type 80
+debug3: receive packet: type 82
+debug3: send packet: type 80
+debug3: receive packet: type 82
+debug3: send packet: type 80
+debug3: receive packet: type 82
+debug3: send packet: type 80
+debug3: receive packet: type 82
+^C
+ubuntu@ip-10-0-1-203:~$ exit
+logout
+debug3: receive packet: type 98
+debug1: client_input_channel_req: channel 2 rtype exit-status reply 0
+debug3: receive packet: type 98
+debug1: client_input_channel_req: channel 2 rtype eow@openssh.com reply 0
+debug2: channel 2: rcvd eow
+debug2: chan_shutdown_read: channel 2: (i0 o0 sock -1 wfd 7 efd 9 [write])
+debug2: channel 2: input open -> closed
+debug3: receive packet: type 96
+debug2: channel 2: rcvd eof
+debug2: channel 2: output open -> drain
+debug2: channel 2: obuf empty
+debug2: chan_shutdown_write: channel 2: (i3 o1 sock -1 wfd 8 efd 9 [write])
+debug2: channel 2: output drain -> closed
+debug3: receive packet: type 97
+debug2: channel 2: rcvd close
+debug3: channel 2: will not send data after close
+debug2: channel 2: almost dead
+debug2: channel 2: gc: notify user
+debug2: channel 2: gc: user detached
+debug2: channel 2: send close
+debug3: send packet: type 97
+debug2: channel 2: is dead
+debug2: channel 2: garbage collecting
+debug1: channel 2: free: client-session, nchannels 6
+debug3: channel 2: status: The following connections are open:
+  #2 client-session (t4 r0 i3/0 o3/0 e[write]/0 fd -1/-1/9 sock -1 cc -1 io 0x00/0x00)
+  #3 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54582 to 127.0.0.1 port 3308 (t4 r1 i0/0 o0/0 e[closed]/0 fd 10/10/-1 sock 10 cc -1 io 0x01/0x00)
+  #4 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54583 to 127.0.0.1 port 3308 (t4 r2 i0/0 o0/0 e[closed]/0 fd 11/11/-1 sock 11 cc -1 io 0x01/0x00)
+  #5 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54584 to 127.0.0.1 port 3308 (t4 r3 i0/0 o0/0 e[closed]/0 fd 12/12/-1 sock 12 cc -1 io 0x01/0x00)
+
+
+
+e^Cdebug3: send packet: type 1
+debug1: channel 0: free: port listener, nchannels 5
+debug3: channel 0: status: The following connections are open:
+  #3 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54582 to 127.0.0.1 port 3308 (t4 r1 i0/0 o0/0 e[closed]/0 fd 10/10/-1 sock 10 cc -1 io 0x01/0x00)
+  #4 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54583 to 127.0.0.1 port 3308 (t4 r2 i0/0 o0/0 e[closed]/0 fd 11/11/-1 sock 11 cc -1 io 0x01/0x00)
+  #5 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54584 to 127.0.0.1 port 3308 (t4 r3 i0/0 o0/0 e[closed]/0 fd 12/12/-1 sock 12 cc -1 io 0x01/0x00)
+
+debug1: channel 1: free: port listener, nchannels 4
+debug3: channel 1: status: The following connections are open:
+  #3 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54582 to 127.0.0.1 port 3308 (t4 r1 i0/0 o0/0 e[closed]/0 fd 10/10/-1 sock 10 cc -1 io 0x01/0x00)
+  #4 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54583 to 127.0.0.1 port 3308 (t4 r2 i0/0 o0/0 e[closed]/0 fd 11/11/-1 sock 11 cc -1 io 0x01/0x00)
+  #5 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54584 to 127.0.0.1 port 3308 (t4 r3 i0/0 o0/0 e[closed]/0 fd 12/12/-1 sock 12 cc -1 io 0x01/0x00)
+
+debug1: channel 3: free: direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54582 to 127.0.0.1 port 3308, nchannels 3
+debug3: channel 3: status: The following connections are open:
+  #3 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54582 to 127.0.0.1 port 3308 (t4 r1 i0/0 o0/0 e[closed]/0 fd 10/10/-1 sock 10 cc -1 io 0x01/0x00)
+  #4 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54583 to 127.0.0.1 port 3308 (t4 r2 i0/0 o0/0 e[closed]/0 fd 11/11/-1 sock 11 cc -1 io 0x01/0x00)
+  #5 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54584 to 127.0.0.1 port 3308 (t4 r3 i0/0 o0/0 e[closed]/0 fd 12/12/-1 sock 12 cc -1 io 0x01/0x00)
+
+debug1: channel 4: free: direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54583 to 127.0.0.1 port 3308, nchannels 2
+debug3: channel 4: status: The following connections are open:
+  #4 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54583 to 127.0.0.1 port 3308 (t4 r2 i0/0 o0/0 e[closed]/0 fd 11/11/-1 sock 11 cc -1 io 0x01/0x00)
+  #5 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54584 to 127.0.0.1 port 3308 (t4 r3 i0/0 o0/0 e[closed]/0 fd 12/12/-1 sock 12 cc -1 io 0x01/0x00)
+
+debug1: channel 5: free: direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54584 to 127.0.0.1 port 3308, nchannels 1
+debug3: channel 5: status: The following connections are open:
+  #5 direct-tcpip: listening port 3308 for dev-service-rds.cvig1uayvhfo.ap-northeast-2.rds.amazonaws.com port 3306, connect from 127.0.0.1 port 54584 to 127.0.0.1 port 3308 (t4 r3 i0/0 o0/0 e[closed]/0 fd 12/12/-1 sock 12 cc -1 io 0x01/0x00)
+
+Killed by signal 2.

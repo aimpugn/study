@@ -1,0 +1,13 @@
+version: "3.8"
+
+name: kafka-ui
+services:
+    kafka-ui:
+        image: provectuslabs/kafka-ui
+        container_name: kafka-ui
+        ports:
+            - "8888:8080"
+        restart: always
+        environment:
+            - KAFKA_CLUSTERS_0_NAME=local
+            - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka1.domain.com:9092,kafka2.domain.com:9092,kafka3.domain.com:9092
