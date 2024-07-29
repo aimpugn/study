@@ -1,0 +1,16 @@
+{
+  "type": "token",
+  "token": "o_49ac327a93cca342d6ea5177835b6f0e",
+  "expires_in": "900",
+  "active": "1",
+  "card": {
+    "type": "Mastercard",
+    "last4": "0859",
+    "bin": "536148",
+    "exp_month": "10",
+    "exp_year": "2023",
+    "issuing_country": "KR",
+    "issuing_type": "CREDIT",
+    "issuing_bank": "SAMSUNG CARD CO., LTD."
+  }
+}

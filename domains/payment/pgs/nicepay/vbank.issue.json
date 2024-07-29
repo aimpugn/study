@@ -1,0 +1,13 @@
+{
+    "ResultCode": "4100",
+    "ResultMsg": "가상계좌 발급 성공",
+    "TID": "someMID03012302281241122601",
+    "Moid": "imps_2302281124",
+    "Amt": "000000000100",
+    "AuthDate": "230228124112",
+    "VbankBankCode": "081",
+    "VbankBankName": "하나은행",
+    "VbankNum": "15791851834337",
+    "VbankExpDate": "20230310",
+    "VbankExpTime": "025159"
+}

@@ -1,0 +1,76 @@
+* 900fe8c34 (tag: v1.3.0-qa.7, origin/release/20230227) fix: KSNET 휴대폰결제, 계좌이체 취소 불가능한 버그 수정 (#575)
+| * 53cb5063a (origin/feat/PPG-68_smartro-checkout) feat: add SmartroHttpClientCheckoutTest.card
+| * b03b0ce7d delete: SmartroCard.codetro-checkout) feat: add SmartroHttpClientCheckoutTest.card
+| * dbf3eab37 fix: easypay support, interface version
+| * 3f467ad65 Implement: smartro checkoutTransactionService
+| * e3d2bd3f6 add: smartroPaymentMethod, smartroEasyPay enum, PINPAY in PaymentMethod
+| * c5b813313 feat: add smartroCard enum smartroEasyPay enum, PINPAY in PaymentMethod
+| * c04377f8b (origin/feat/smartro) [PPG-72] feat: 스마트로 가상계좌 발급 연동 (#553)
+| | * 4d34e100b (tag: v1.3.0-rc.9, origin/develop) 카카오페이 디버깅 2 (#573) (#553)
+| | * 1dd32a1c6 (tag: v1.3.0-rc.8) 카카오페이 디버깅 (#572)이 디버깅 2 (#573)
+| | | * a266f1c97 (origin/refactoring_base_phase2) fix: grpc and http error handling
+| | | * c8171a65b refactor: rename from InvalidResponse to UnexpectedResponseandling
+| | | * d44464d49 chore: remove unnecessary `suspend`s from functionsResponse
+| | | * f516b3f66 fix: improve reason of http ResponseStatusException
+| | | * f32dd6420 refactor!: remove SealedExceptions and refactor the entire project without it
+| | | * f67421e85 refactor: remove all runOrThrowIfFails functionsthe entire project without it
+| | | * 1f6396e80 feat: improve error handling functions to log unexpected crashes
+| | | * 6d552a291 refactor: remove ExceptionInterceptors to log unexpected crashes
+| | | * 2b07fbec0 fix: increasing cancel count without runOrThrowIfFails
+| | | * 41087d241 refactor: the entire notificaiton logic with NotificationEffect
+| | | * b52784945 refactor: KsnetCheckoutClient which is called KsnetModule before
+| | | * 866a825fc refactor: all escrow functions with Effectled KsnetModule before
+| | | * a4227e6eb refactor: BillingKeyTranssactionService with ApplicationEffect
+| | | * 7c7003aad fix: remove exception throwing left in the refactored services.
+| | | * c5284cee2 refactor: BillingKeyService with ApplicationEffectred services.
+| | | * 3df328d7f refactor: CancelTransactionService and Transaction with Effect
+| | | * 2199451f3 refactor: CheckoutTransactionService and sugar syntaxes Effect
+| | | * 609e94731 refactor: VirtualAccountTransactionService with ApplicationEffect
+| | | * 0c03bc98f refactor: CashReceiptService with ApplicationEffectlicationEffect
+| | | * 03c505902 refactor: define ApplicationEffect for conveniencet
+| | | * bbc7f388d refactor!: define ApplicationError and refactor card transaction
+| | | * 975fd2581 refactor: improve errors in ChannelRepositoryor card transaction
+| | | * 079f98cbe refactor: DTOs in CancelTransactionServiceory
+| | | * d140a0be7 refactor: remove companion objects wrapping DTOs
+| | | * 305229068 chore: rename from Repository.kt to RepositoryError.kt
+| | | * 602383c37 refactor!: TossPaymentsTransactionRepositoryDTOs
+| | | * 5388c210a refactor!: KsnetTransactionRepositoryepositoryError.kt
+| | | * 5fec51d12 refactor!: add common repository errors and implementations
+| | | * 8f142c088 refactor: ChannelRepositoryRepository
+| | | * 44ec0f16f refactor: BillingKeyRepositoryry errors and implementations
+| | | * 12a208609 chore: remove unused default field value in BillingKey
+| |_|/  44ec0f16f refactor: BillingKeyRepository
+|/| |   12a208609 chore: remove unused default field value in BillingKey
+* | | 6f95d80d0 Ksnet 계좌이체 시 은행코드 내려오지 않는 이슈 수정 + 계좌, 카드 필드 optional interface 반영 (#563)
+* | | e83427b98 (tag: v1.3.0-qa.5) 현금영수증 발급 시 currency 받지 않고 KRW로 고정하게 변경 (#562)
+| | | * 5cb480bbd (tag: v1.3.0-rc.7, origin/feat/kakaopay-ignore-null-values) fix flyway script, revise toGrpcCardReceipt
+| | | * 1a77e9f30 (tag: v1.3.0-rc.6) Add JsonInclude non nully 받지 않고 KRW로 고정하게 변경 (#562)
+| | |/  5cb480bbd (tag: v1.3.0-rc.7, origin/feat/kakaopay-ignore-null-values) fix flyway script, revise toGrpcCardReceipt
+| | * 62aff5e43 (tag: v1.3.0-rc.5) 카카오페이 연동 (#547)null
+| | | * e3e7e311d (origin/feat/naver-pay-app-presentation) feat: add naverpay logics on application
+| | | * da0030b18 (origin/feat/naver-play-domain-infra) feat: impl delete billing key
+| | | * 27073381c fix: remove unused code styleesentation) feat: add naverpay logics on application
+| | | * bb310836c fix: linteat/naver-play-domain-infra) feat: impl delete billing key
+| | | * fc3a4472d feat: impl naverpay history repo for settling difference
+| | | * 701f01ed0 feat: impl inquireHistory, settleDifference on infra
+| | | * a189f323a feat: add cancel, approveBillingKey, payWithBillingKeyce
+| | | * 6363b1252 feat: define Naverpay entities and infra clientinfra
+| | | | * b711bc6ad (HEAD -> feature/PORT-700-nicepay-checkout-refactor, origin/feature/PORT-700-nicepay-checkout-refactor) fix: specify name to function to avoid signature clash
+| | | | * d67e2e93c chore: add nicepay shceme via flyway
+| | | | * 6fec91fab (feature/PORT-677-nicepay-cancel-refactor) chore: add DDL about nicepay into docker-local init sql
+| | | | * a6785f06b refactor: checkout nicepay logic with effect
+| | | | * 8d3db41c5 (origin/feature/nicepay, feature/nicepay) fix: rebase feature/nicepay on release/20230227
+| | | | * d9058aebc fix: 잘못된 package 이름 수정
+| | | | * 843c787bf fix: 잘못된 package 이름 수정
+| | | | * 73b54db92 refactor: `nicepay-common` 브랜치 코드를 `refactoring_base` 위에서 실행되도록 재작성
+| | | |/
+| | | | *   5da1ee0e2 (tag: v1.3.0-rc.4, origin/develop-prepare) Merge branch 'feature/PPG-81/prepare' into develop-prepare
+| | | | |\
+| | | | | * c35b55d79 (origin/feature/PPG-81/prepare) fix: test
+| | | | | * 5a1c80ad5 fix: update interface
+| | | | |/
+| | | | * 453172473 (tag: v1.3.0-rc.3) feat: add default client id, secret for dev test
+| | | | * d67296955 fix: lint
+| | | | * 4e9bed49d fix: fix test and add infra test
+| | | | * 41b108bef fix: lint
+| | | | *   197313e79 Merge branch 'feature/paypal' into feature/PPG-81/prepare

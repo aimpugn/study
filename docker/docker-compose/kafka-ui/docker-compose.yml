@@ -1,0 +1,19 @@
+version: "3.8"
+
+name: kafka-ui
+services:
+    kafka-ui:
+        image: provectuslabs/kafka-ui
+        container_name: kafka-ui
+        ports:
+            - "8888:8080"
+        restart: always
+        environment:
+            - KAFKA_CLUSTERS_0_NAME=dev
+            - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=b-3.portkafka.k7735q.c3.kafka.ap-northeast-2.amazonaws.com:9092,b-1.portkafka.k7735q.c3.kafka.ap-northeast-2.amazonaws.com:9092,b-2.portkafka.k7735q.c3.kafka.ap-northeast-2.amazonaws.com:9092
+            - KAFKA_CLUSTERS_1_NAME=stg
+            - KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS=b-2.portkafka.g5gqf3.c2.kafka.ap-northeast-2.amazonaws.com:9092,b-1.portkafka.g5gqf3.c2.kafka.ap-northeast-2.amazonaws.com:9092
+            - KAFKA_CLUSTERS_2_NAME=prod
+            - KAFKA_CLUSTERS_2_BOOTSTRAPSERVERS=b-1.port-kafka.jbd2ub.c3.kafka.ap-northeast-2.amazonaws.com:9092,b-2.port-kafka.jbd2ub.c3.kafka.ap-northeast-2.amazonaws.com:9092,b-3.port-kafka.jbd2ub.c3.kafka.ap-northeast-2.amazonaws.com:9092
+            # - KAFKA_CLUSTERS_0_NAME=local
+            # - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=localhost:9093

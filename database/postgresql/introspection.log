@@ -1,0 +1,1103 @@
+10:39:53  INTROSPECTION INIT:
+          	Product:                IntelliJ IDEA 2023.2.2
+          	Project:                go  
+          	DBMS:                   PostgreSQL
+          	Accessibility matcher:  presents
+          	Connection bounds:      kind=database +2 rewrite parameters
+10:39:53  Given model is accepted
+10:39:53  Introspection scope is specified explicitly, but it is the same as the data source's one: Pattern:
+            kind: database
+              name: `@`
+                kind: schema
+                  name: `@`
+              name: `corewebhook`
+10:39:53  Introspector version: 0
+10:39:54  Executing query:
+          -- 8< --
+          select current_database() as a, current_schemas(false) as b
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 6 ms
+10:39:54  Attached to database
+          	DBMS:                 PostgreSQL
+          	Server version:       15.0
+          	Driver version:       42.6
+10:39:54  Memory: 1277 M available from allocated 4096 M (max 4096 M)
+10:39:54  Performing query ServerStartupTime from PgIntroQueries.sql:9:1
+10:39:54  Executing query:
+          -- 8< --
+          select round(extract(epoch from pg_postmaster_start_time() at time zone 'UTC')) as startup_time
+          -- >8 --
+10:39:54  execution time: 7 ms
+          fetching time: 21 ms
+10:39:54  Query ServerStartupTime from PgIntroQueries.sql:9:1 completed in 0.03 s.
+10:39:54  Connection-related state is initialized. The parameters map:
+          	V100 = true
+          	V110 = true
+          	V120 = true
+          	V140 = true
+          	V81 = true
+          	V82 = true
+          	V83 = true
+          	V84 = true
+          	V90 = true
+          	V91 = true
+          	V92 = true
+          	V93 = true
+          	V94 = true
+          	V95 = true
+          	V96 = true
+          	V97 = true
+          	V98 = true
+          	V99 = true
+10:39:54  Detaching from DB
+10:39:54  Memory: 1275 M available from allocated 4096 M (max 4096 M)
+10:39:54  Query Performance Statistics:
+          --------------------------------------------------------------------------------------------------------------------------------------------
+          ##  count err    T.min     T.avg     T.max     T.sum   %     rows packs  Query 
+          --------------------------------------------------------------------------------------------------------------------------------------------
+           1     1         0.032     0.032     0.032     0.032 100        1     1  ServerStartupTime from PgIntroQueries.sql:9:1
+          --------------------------------------------------------------------------------------------------------------------------------------------
+          Total duration of all queries:     0.032 s.
+10:39:54  Dropping the info
+10:39:54  Attached to database
+          	DBMS:                 PostgreSQL
+          	Server version:       15.0
+          	Driver version:       42.6
+10:39:54  Memory: 1275 M available from allocated 4096 M (max 4096 M)
+10:39:54  Connection-related state is initialized. The parameters map:
+          	V100 = true
+          	V110 = true
+          	V120 = true
+          	V140 = true
+          	V81 = true
+          	V82 = true
+          	V83 = true
+          	V84 = true
+          	V90 = true
+          	V91 = true
+          	V92 = true
+          	V93 = true
+          	V94 = true
+          	V95 = true
+          	V96 = true
+          	V97 = true
+          	V98 = true
+          	V99 = true
+10:39:54  ==================================================== REQUEST WITH 1 INTROSPECTION TASKS ====================================================
+10:39:54  Requested tasks:
+          	General Introspection
+10:39:54  The model contains 2 databases, 1 of them are with schemas
+          Current database: corewebhook
+          The current database has 3 schemas, 3 of them have inner objects
+          Current schema: public
+10:39:54  =============================================== DOING A TASK [1/1]: GeneralIntrospectionTask ===============================================
+10:39:54  Task description: General Introspection
+10:39:54  Retrieving server info
+10:39:54  Retrieving session info
+10:39:54  Performing query StateNumber from PgIntroQueries.sql:116:1
+10:39:54  Executing query:
+          -- 8< --
+          select L.transactionid::varchar::bigint as transaction_id
+          from pg_catalog.pg_locks L
+          where L.transactionid is not null
+          order by pg_catalog.age(L.transactionid) desc
+          limit 1
+          -- >8 --
+10:39:54  execution time: 16 ms
+          fetching time: 10 ms
+10:39:54  Query StateNumber from PgIntroQueries.sql:116:1 completed in 0.027 s.
+10:39:54  Performing query CurrentXid from PgIntroQueries.sql:125:1
+10:39:54  Executing query:
+          -- 8< --
+          select case
+            when pg_catalog.pg_is_in_recovery()
+              then null
+            else
+              pg_catalog.txid_current()::varchar::bigint
+            end as current_txid
+          -- >8 --
+10:39:54  execution time: 9 ms
+          fetching time: 1 ms
+10:39:54  Query CurrentXid from PgIntroQueries.sql:125:1 completed in 0.011 s.
+10:39:54  Performing query QuerySessionCurrentInfo from PgIntroQueries.sql:2:1
+10:39:54  Executing query:
+          -- 8< --
+          select pg_catalog.current_database(),
+                 pg_catalog.current_schema(),
+                 current_timestamp as current_timestamp
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 3 ms
+10:39:54  Query QuerySessionCurrentInfo from PgIntroQueries.sql:2:1 completed in 0.005 s.
+10:39:54  Listing databases…
+10:39:54  Performing query ListDatabases from PgIntroQueries.sql:31:1
+10:39:54  Executing query:
+          -- 8< --
+          select N.oid::bigint as id,
+                 datname as name,
+                 D.description,
+                 datistemplate as is_template,
+                 datallowconn as allow_connections,
+                 pg_catalog.pg_get_userbyid(N.datdba) as "owner"
+          from pg_catalog.pg_database N
+            left join pg_catalog.pg_shdescription D on N.oid = D.objoid
+          order by case when datname = pg_catalog.current_database() then -1::bigint else N.oid::bigint end
+          -- >8 --
+10:39:54  execution time: 20 ms
+          fetching time: 7 ms
+10:39:54  Fetched 4 rows
+10:39:54  Query ListDatabases from PgIntroQueries.sql:31:1 completed in 0.029 s.
+10:39:54  Listed 2 databases
+10:39:54  Introspecting the server objects
+10:39:54  Performing query RetrieveDateStyle from PgIntroQueries.sql:1353:1
+10:39:54  Executing query:
+          -- 8< --
+          show DateStyle
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 3 ms
+10:39:54  Query RetrieveDateStyle from PgIntroQueries.sql:1353:1 completed in 0.006 s.
+10:39:54  Performing query RetrieveTimeZones from PgIntroQueries.sql:1347:1
+10:39:54  Executing query:
+          -- 8< --
+          select name, is_dst from pg_catalog.pg_timezone_names
+          union distinct
+          select abbrev as name, is_dst from pg_catalog.pg_timezone_abbrevs
+          -- >8 --
+10:39:54  execution time: 76 ms
+          fetching time: 30 ms
+10:39:54  Fetched 1380 rows
+10:39:54  Query RetrieveTimeZones from PgIntroQueries.sql:1347:1 completed in 0.119 s.
+10:39:54  Performing query ListExistentDatabaseComments from PgIntroQueries.sql:206:1
+10:39:54  Executing query:
+          -- 8< --
+          select D.objoid id
+          from pg_catalog.pg_description D
+          where D.classoid in (
+            'pg_catalog.pg_event_trigger'::regclass,
+            'pg_catalog.pg_am'::regclass,
+            'pg_catalog.pg_cast'::regclass,
+            'pg_catalog.pg_foreign_data_wrapper'::regclass,
+            'pg_catalog.pg_foreign_server'::regclass,
+            'pg_catalog.pg_language'::regclass
+            ,
+            'pg_catalog.pg_extension'::regclass
+            
+          )
+          -- >8 --
+10:39:54  execution time: 5 ms
+          fetching time: 2 ms
+10:39:54  Query ListExistentDatabaseComments from PgIntroQueries.sql:206:1 completed in 0.008 s.
+10:39:54  Performing query RetrieveRoles from PgIntroQueries.sql:88:1 by portions of 1000
+10:39:54  Executing query:
+          -- 8< --
+          select R.oid::bigint as role_id, rolname as role_name,
+            rolsuper is_super, rolinherit is_inherit,
+            rolcreaterole can_createrole, rolcreatedb can_createdb,
+            rolcanlogin can_login, rolreplication /* false */ is_replication,
+            rolconnlimit conn_limit, rolvaliduntil valid_until,
+            rolbypassrls /* false */ bypass_rls, rolconfig config,
+            D.description
+          from pg_catalog.pg_roles R
+            left join pg_catalog.pg_shdescription D on D.objoid = R.oid
+          -- >8 --
+10:39:54  execution time: 5 ms
+          fetching time: 6 ms
+10:39:54  Fetched 1 portions with 13 rows
+10:39:54  Query RetrieveRoles from PgIntroQueries.sql:88:1 completed in 0.014 s.
+10:39:54  Executing query:
+          -- 8< --
+          select member id, roleid role_id, admin_option
+                    from pg_catalog.pg_auth_members order by id, roleid::text
+          -- >8 --
+10:39:54  execution time: 4 ms
+          fetching time: 4 ms
+10:39:54  Performing query RetrieveExistentTablespaces from PgIntroQueries.sql:100:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid::bigint from pg_catalog.pg_tablespace
+          -- >8 --
+10:39:54  execution time: 6 ms
+          fetching time: 4 ms
+10:39:54  Query RetrieveExistentTablespaces from PgIntroQueries.sql:100:1 completed in 0.012 s.
+10:39:54  Performing query RetrieveTablespaces from PgIntroQueries.sql:104:1 by portions of 1000
+10:39:54  Executing query:
+          -- 8< --
+          select T.oid::bigint as id, T.spcname as name,
+                 T.xmin as state_number, pg_catalog.pg_get_userbyid(T.spcowner) as owner,
+                 pg_catalog.pg_tablespace_location(T.oid) /* null */ as location,
+                 T.spcoptions /* null */ as options,
+                 D.description as comment
+          from pg_catalog.pg_tablespace T
+            left join pg_catalog.pg_shdescription D on D.objoid = T.oid
+          where pg_catalog.age(T.xmin) <= coalesce(nullif(greatest(pg_catalog.age(?::varchar::xid), -1), -1), 2147483647)
+          -- >8 --
+10:39:54  execution time: 5 ms
+          fetching time: 1 ms
+10:39:54  Fetched 1 portions with 0 rows
+10:39:54  Query RetrieveTablespaces from PgIntroQueries.sql:104:1 completed in 0.01 s.
+10:39:54  Retrieving ACL
+10:39:54  Executing query:
+          -- 8< --
+          select T.oid as object_id,
+                           T.spcacl as acl
+                    from pg_catalog.pg_tablespace T 
+                      where pg_catalog.age(T.xmin) <= pg_catalog.age(?::varchar::xid)
+                    union all
+                    select T.oid as object_id,
+                           T.datacl as acl
+                    from pg_catalog.pg_database T 
+                      where pg_catalog.age(T.xmin) <= pg_catalog.age(?::varchar::xid)
+          -- >8 --
+10:39:54  execution time: 3 ms
+          fetching time: 2 ms
+10:39:54  Performing query ListSchemas from PgIntroQueries.sql:76:1
+10:39:54  Executing query:
+          -- 8< --
+          select N.oid::bigint as id,
+                 N.xmin as state_number,
+                 nspname as name,
+                 D.description,
+                 pg_catalog.pg_get_userbyid(N.nspowner) as "owner"
+          from pg_catalog.pg_namespace N
+            left join pg_catalog.pg_description D on N.oid = D.objoid
+          order by case when nspname = pg_catalog.current_schema() then -1::bigint else N.oid::bigint end
+          -- >8 --
+10:39:54  execution time: 4 ms
+          fetching time: 5 ms
+10:39:54  Fetched 4 rows
+10:39:54  Query ListSchemas from PgIntroQueries.sql:76:1 completed in 0.01 s.
+10:39:54  IntrospectAutoInTran: getting the following 1 databases:
+          	+ corewebhook
+10:39:54  =============================================== INTROSPECTING DATABASE corewebhook (current)  ==============================================
+10:39:54  Performing query ListSchemas from PgIntroQueries.sql:76:1
+10:39:54  Executing query:
+          -- 8< --
+          select N.oid::bigint as id,
+                 N.xmin as state_number,
+                 nspname as name,
+                 D.description,
+                 pg_catalog.pg_get_userbyid(N.nspowner) as "owner"
+          from pg_catalog.pg_namespace N
+            left join pg_catalog.pg_description D on N.oid = D.objoid
+          order by case when nspname = pg_catalog.current_schema() then -1::bigint else N.oid::bigint end
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 3 ms
+10:39:54  Fetched 4 rows
+10:39:54  Query ListSchemas from PgIntroQueries.sql:76:1 completed in 0.007 s.
+10:39:54  Performing query IsSuperUser from PgIntroQueries.sql:14:1
+10:39:54  Executing query:
+          -- 8< --
+          select usesuper
+          from pg_user
+          where usename = current_user
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 2 ms
+10:39:54  Fetched 'true'
+10:39:54  Query IsSuperUser from PgIntroQueries.sql:14:1 completed in 0.006 s.
+10:39:54  Retrieving event triggers
+10:39:54  Performing query RetrieveExistentEventTriggers from PgIntroQueries.sql:64:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid from pg_catalog.pg_event_trigger
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 1 ms
+10:39:54  Query RetrieveExistentEventTriggers from PgIntroQueries.sql:64:1 completed in 0.004 s.
+10:39:54  Performing query RetrieveEventTriggers from PgIntroQueries.sql:68:1 by portions of 1000
+10:39:54  Executing query:
+          -- 8< --
+          select t.oid as id, t.xmin state_number, t.evtname as name, t.evtevent as event,
+                 t.evtfoid routine_id, pg_catalog.pg_get_userbyid(t.evtowner) as "owner",
+                 t.evttags tags
+          from pg_catalog.pg_event_trigger t
+          where pg_catalog.age(t.xmin) <= coalesce(nullif(greatest(pg_catalog.age(?::varchar::xid), -1), -1), 2147483647)
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 1 ms
+10:39:54  Fetched 1 portions with 0 rows
+10:39:54  Query RetrieveEventTriggers from PgIntroQueries.sql:68:1 completed in 0.006 s.
+10:39:54  Retrieving foreign data wrappers
+10:39:54  Performing query RetrieveExistentForeignDataWrappers from PgIntroQueries.sql:1252:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid from pg_catalog.pg_foreign_data_wrapper
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 1 ms
+10:39:54  Query RetrieveExistentForeignDataWrappers from PgIntroQueries.sql:1252:1 completed in 0.004 s.
+10:39:54  Performing query RetrieveForeignDataWrappers from PgIntroQueries.sql:1257:1 by portions of 1000
+10:39:54  Executing query:
+          -- 8< --
+          select fdw.oid as id,
+                 fdw.xmin as state_number,
+                 fdw.fdwname as name,
+                 pr.proname as handler,
+                 nspc.nspname as handler_schema,
+                 pr2.proname as validator,
+                 nspc2.nspname as validator_schema,
+                 fdw.fdwoptions as options,
+                 pg_catalog.pg_get_userbyid(fdw.fdwowner) as "owner"
+          from pg_catalog.pg_foreign_data_wrapper fdw
+               left outer join pg_catalog.pg_proc pr on fdw.fdwhandler = pr.oid
+               left outer join pg_catalog.pg_namespace nspc on pr.pronamespace = nspc.oid
+               left outer join pg_catalog.pg_proc pr2 on fdw.fdwvalidator = pr2.oid
+               left outer join pg_catalog.pg_namespace nspc2 on pr2.pronamespace = nspc2.oid
+            where pg_catalog.age(fdw.xmin) <= coalesce(nullif(greatest(pg_catalog.age(?::varchar::xid), -1), -1), 2147483647)
+          -- >8 --
+10:39:54  execution time: 4 ms
+          fetching time: 1 ms
+10:39:54  Fetched 1 portions with 0 rows
+10:39:54  Query RetrieveForeignDataWrappers from PgIntroQueries.sql:1257:1 completed in 0.007 s.
+10:39:54  Retrieving foreign servers
+10:39:54  Performing query RetrieveExistentForeignServers from PgIntroQueries.sql:1276:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid from pg_catalog.pg_foreign_server
+          -- >8 --
+10:39:54  execution time: 2 ms
+10:39:54  Query RetrieveExistentForeignServers from PgIntroQueries.sql:1276:1 completed in 0.004 s.
+10:39:54  Performing query RetrieveForeignServers from PgIntroQueries.sql:1281:1
+10:39:54  Executing query:
+          -- 8< --
+          select srv.oid as id,
+                 srv.srvfdw as fdw_id,
+                 srv.xmin as state_number,
+                 srv.srvname as name,
+                 srv.srvtype as type,
+                 srv.srvversion as version,
+                 srv.srvoptions as options,
+                 pg_catalog.pg_get_userbyid(srv.srvowner) as "owner"
+          from pg_catalog.pg_foreign_server srv
+            where pg_catalog.age(srv.xmin) <= coalesce(nullif(greatest(pg_catalog.age(?::varchar::xid), -1), -1), 2147483647)
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 1 ms
+10:39:54  Fetched 0 rows
+10:39:54  Query RetrieveForeignServers from PgIntroQueries.sql:1281:1 completed in 0.004 s.
+10:39:54  Retrieving user mappings
+10:39:54  Performing query RetrieveExistentUserMappingsSuperUser from PgIntroQueries.sql:1295:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid from pg_catalog.pg_user_mapping
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 1 ms
+10:39:54  Query RetrieveExistentUserMappingsSuperUser from PgIntroQueries.sql:1295:1 completed in 0.003 s.
+10:39:54  Performing query RetrieveUserMappingsSuperUser from PgIntroQueries.sql:1300:1 by portions of 1000
+10:39:54  Executing query:
+          -- 8< --
+          select oid as id,
+                 umserver as server_id,
+                 case when umuser = 0 then null else pg_catalog.pg_get_userbyid(umuser) end as user,
+                 umoptions as options
+          from pg_catalog.pg_user_mapping
+          where pg_catalog.age(xmin) <= coalesce(nullif(greatest(pg_catalog.age(?::varchar::xid), -1), -1), 2147483647)
+          order by server_id
+          -- >8 --
+10:39:54  execution time: 1 ms
+          fetching time: 1 ms
+10:39:54  Fetched 1 portions with 0 rows
+10:39:54  Query RetrieveUserMappingsSuperUser from PgIntroQueries.sql:1300:1 completed in 0.003 s.
+10:39:54  Retrieving access methods
+10:39:54  Performing query RetrieveExistentAccessMethods from PgIntroQueries.sql:1185:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid from pg_catalog.pg_am
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 2 ms
+10:39:54  Query RetrieveExistentAccessMethods from PgIntroQueries.sql:1185:1 completed in 0.006 s.
+10:39:54  Performing query RetrieveAccessMethods from PgIntroQueries.sql:1189:1 by portions of 1000
+10:39:54  Executing query:
+          -- 8< --
+          select A.oid as access_method_id,
+                 A.xmin as state_number,
+                 A.amname as access_method_name
+                 ,
+                 A.amhandler::oid as handler_id,
+                 pg_catalog.quote_ident(N.nspname) || '.' || pg_catalog.quote_ident(P.proname) as handler_name,
+                 A.amtype as access_method_type
+                 
+          from pg_am A
+            join pg_proc P on A.amhandler::oid = P.oid
+            join pg_namespace N on P.pronamespace = N.oid
+            
+          where pg_catalog.age(A.xmin) <= coalesce(nullif(greatest(pg_catalog.age(?::varchar::xid), -1), -1), 2147483647)
+          -- >8 --
+10:39:54  execution time: 3 ms
+          fetching time: 6 ms
+10:39:54  Fetched 1 portions with 0 rows
+10:39:54  Query RetrieveAccessMethods from PgIntroQueries.sql:1189:1 completed in 0.011 s.
+10:39:54  Retrieving extensions
+10:39:54  Performing query RetrieveExistentExtensions from PgIntroQueries.sql:908:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid from pg_catalog.pg_extension
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 2 ms
+10:39:54  Query RetrieveExistentExtensions from PgIntroQueries.sql:908:1 completed in 0.004 s.
+10:39:54  Performing query RetrieveExtensions from PgIntroQueries.sql:912:1 by portions of 1000
+10:39:54  Executing query:
+          -- 8< --
+          select E.oid        as id,
+                 E.xmin       as state_number,
+                 extname      as name,
+                 extversion   as version,
+                 extnamespace as schema_id,
+                 nspname      as schema_name
+                 ,
+                 array(select unnest
+                       from unnest(available_versions)
+                       where unnest > extversion) as available_updates
+                 
+          from pg_catalog.pg_extension E
+                 join pg_namespace N on E.extnamespace = N.oid
+                 left join (select name, array_agg(version) as available_versions
+                            from pg_available_extension_versions()
+                            group by name) V on E.extname = V.name
+                 
+          where pg_catalog.age(E.xmin) <= coalesce(nullif(greatest(pg_catalog.age(?::varchar::xid), -1), -1), 2147483647)
+          -- >8 --
+10:39:54  execution time: 3 ms
+          fetching time: 1 ms
+10:39:54  Fetched 1 portions with 0 rows
+10:39:54  Query RetrieveExtensions from PgIntroQueries.sql:912:1 completed in 0.006 s.
+10:39:54  Performing query ListExistentLanguages from PgIntroQueries.sql:43:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid from pg_catalog.pg_language
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 1 ms
+10:39:54  Query ListExistentLanguages from PgIntroQueries.sql:43:1 completed in 0.004 s.
+10:39:54  Performing query ListLanguages from PgIntroQueries.sql:47:1 by portions of 1000
+10:39:54  Executing query:
+          -- 8< --
+          select l.oid as id, l.xmin state_number, lanname as name, lanpltrusted as trusted,
+                 h.proname as handler, hs.nspname as handlerSchema,
+                 i.proname as inline, isc.nspname as inlineSchema,
+                 v.proname as validator, vs.nspname as validatorSchema
+          from pg_catalog.pg_language l
+              left join pg_catalog.pg_proc h on h.oid = lanplcallfoid
+              left join pg_catalog.pg_namespace hs on hs.oid = h.pronamespace
+              left join pg_catalog.pg_proc i on i.oid = laninline
+              left join pg_catalog.pg_namespace isc on isc.oid = i.pronamespace
+              left join pg_catalog.pg_proc v on v.oid = lanvalidator
+              left join pg_catalog.pg_namespace vs on vs.oid = v.pronamespace
+          where pg_catalog.age(l.xmin) <= coalesce(nullif(greatest(pg_catalog.age(?::varchar::xid), -1), -1), 2147483647)
+          order by lanname
+          -- >8 --
+10:39:54  execution time: 3 ms
+          fetching time: 1 ms
+10:39:54  Fetched 1 portions with 0 rows
+10:39:54  Query ListLanguages from PgIntroQueries.sql:47:1 completed in 0.006 s.
+10:39:54  Retrieving comments
+10:39:54  Performing query ListExistentDatabaseComments from PgIntroQueries.sql:206:1
+10:39:54  Executing query:
+          -- 8< --
+          select D.objoid id
+          from pg_catalog.pg_description D
+          where D.classoid in (
+            'pg_catalog.pg_event_trigger'::regclass,
+            'pg_catalog.pg_am'::regclass,
+            'pg_catalog.pg_cast'::regclass,
+            'pg_catalog.pg_foreign_data_wrapper'::regclass,
+            'pg_catalog.pg_foreign_server'::regclass,
+            'pg_catalog.pg_language'::regclass
+            ,
+            'pg_catalog.pg_extension'::regclass
+            
+          )
+          -- >8 --
+10:39:54  execution time: 3 ms
+          fetching time: 1 ms
+10:39:54  Query ListExistentDatabaseComments from PgIntroQueries.sql:206:1 completed in 0.005 s.
+10:39:54  Performing query RetrieveDatabaseComments from PgIntroQueries.sql:296:1 by portions of 1000
+10:39:54  Executing query:
+          -- 8< --
+          select D.objoid id, case
+              when 'pg_catalog.pg_event_trigger'::regclass = classoid then 'T'
+              when 'pg_catalog.pg_am'::regclass = classoid then 'A'
+              when 'pg_catalog.pg_cast'::regclass = classoid then 'C'
+              when 'pg_catalog.pg_foreign_data_wrapper'::regclass = classoid then 'W'
+              when 'pg_catalog.pg_foreign_server'::regclass = classoid then 'S'
+              when 'pg_catalog.pg_language'::regclass = classoid then 'L'
+              when 'pg_catalog.pg_extension'::regclass = classoid then 'E'
+              
+            end as kind,
+            D.objsubid sub_id, D.description
+          from pg_catalog.pg_description D
+          where classoid in (
+            'pg_catalog.pg_event_trigger'::regclass,
+            'pg_catalog.pg_am'::regclass,
+            'pg_catalog.pg_cast'::regclass,
+            'pg_catalog.pg_foreign_data_wrapper'::regclass,
+            'pg_catalog.pg_foreign_server'::regclass,
+            'pg_catalog.pg_language'::regclass
+            ,
+            'pg_catalog.pg_extension'::regclass
+            
+          )
+          and pg_catalog.age(D.xmin) <= coalesce(nullif(greatest(pg_catalog.age(?::varchar::xid), -1), -1), 2147483647)
+          -- >8 --
+10:39:54  execution time: 3 ms
+          fetching time: 1 ms
+10:39:54  Fetched 1 portions with 0 rows
+10:39:54  Query RetrieveDatabaseComments from PgIntroQueries.sql:296:1 completed in 0.007 s.
+10:39:54  Retrieving ACL
+10:39:54  Executing query:
+          -- 8< --
+          select T.oid as object_id,
+                           T.fdwacl as acl
+                    from pg_catalog.pg_foreign_data_wrapper T 
+                      where pg_catalog.age(T.xmin) <= pg_catalog.age(?::varchar::xid)
+                    union all
+                    select T.oid as object_id,
+                           T.lanacl as acl
+                    from pg_catalog.pg_language T 
+                      where pg_catalog.age(T.xmin) <= pg_catalog.age(?::varchar::xid)
+                    union all
+                    select T.oid as object_id,
+                           T.nspacl as acl
+                    from pg_catalog.pg_namespace T 
+                      where pg_catalog.age(T.xmin) <= pg_catalog.age(?::varchar::xid)
+                    union all
+                    select T.oid as object_id,
+                           T.srvacl as acl
+                    from pg_catalog.pg_foreign_server T 
+                      where pg_catalog.age(T.xmin) <= pg_catalog.age(?::varchar::xid)
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 1 ms
+10:39:54  Retrieving casts
+10:39:54  Performing query ListExistentCasts from PgIntroQueries.sql:1208:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid from pg_catalog.pg_cast
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 1 ms
+10:39:54  Query ListExistentCasts from PgIntroQueries.sql:1208:1 completed in 0.004 s.
+10:39:54  Performing query ListCasts from PgIntroQueries.sql:1212:1 by portions of 1000
+10:39:54  Executing query:
+          -- 8< --
+          select C.oid,
+                 C.xmin as state_number,
+                 C.castsource as castsource_id,
+                 pg_catalog.quote_ident(SN.nspname) || '.' || pg_catalog.quote_ident(S.typname) as castsource_name,
+                 C.casttarget as casttarget_id,
+                 pg_catalog.quote_ident(TN.nspname) || '.' || pg_catalog.quote_ident(T.typname) as casttarget_name,
+                 C.castfunc as castfunc_id,
+                 pg_catalog.quote_ident(FN.nspname) || '.' || pg_catalog.quote_ident(F.proname) as castfunc_name,
+                 C.castcontext,
+                 C.castmethod
+          from pg_cast C
+               left outer join pg_proc F on C.castfunc::oid = F.oid
+               left outer join pg_namespace FN on F.pronamespace = FN.oid
+               join pg_type S on C.castsource::oid = S.oid
+               join pg_namespace SN on S.typnamespace = SN.oid
+               join pg_type T on C.casttarget::oid = T.oid
+               join pg_namespace TN on T.typnamespace = TN.oid
+          where pg_catalog.age(C.xmin) <= coalesce(nullif(greatest(pg_catalog.age(?::varchar::xid), -1), -1), 2147483647)
+          -- >8 --
+10:39:54  execution time: 3 ms
+          fetching time: 2 ms
+10:39:54  Fetched 1 portions with 0 rows
+10:39:54  Query ListCasts from PgIntroQueries.sql:1212:1 completed in 0.007 s.
+10:39:54  Performing query RetrieveExtensionMembers from PgIntroQueries.sql:935:1 by portions of 1000
+10:39:54  Executing query:
+          -- 8< --
+          select E.oid   as extension_id,
+                 D.objid as member_id
+          from pg_extension E join pg_depend D
+            on E.oid = D.refobjid and
+               D.refclassid = 'pg_extension'::regclass::oid
+          where D.deptype = 'e'
+          order by extension_id
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 2 ms
+10:39:54  Fetched 1 portions with 4 rows
+10:39:54  Query RetrieveExtensionMembers from PgIntroQueries.sql:935:1 completed in 0.006 s.
+10:39:54  --------------------------------------------------------- SCHEMA RETRIEVER: public ---------------------------------------------------------
+10:39:54  Introspection mode was changed from null to INCREMENT
+10:39:54  Schema has children: true
+          Incremental is possible: true
+          Asked mode: null
+          Decided mode: INCREMENT
+10:39:54  Configuration info:
+              - schema id:             2200
+              - schema has children:   yes
+              - last intro timestamp:  2023-10-05 10:30:49.105
+              - mode:                  INCREMENT
+              - with sources:          yes
+10:39:54  Families before introspection:
+              - object-type: 3
+              - table: 2
+10:39:54  Executing query:
+          -- 8< --
+          with saved_age as (select greatest(pg_catalog.age(?::varchar::xid), pg_catalog.age(?::varchar::xid)) as "value")
+               select bool_or(C.last_tx <= SA."value") as has_changes from
+               (
+                 (select min(least(pg_catalog.age(T.xmin), pg_catalog.age(D.xmin))) as last_tx
+              from pg_catalog.pg_type T
+                left join pg_catalog.pg_description D on T.oid = D.objoid
+              where T.typnamespace = ?::oid)
+          union all
+          (select min(least(pg_catalog.age(T.xmin), pg_catalog.age(D.xmin))) as last_tx
+              from pg_catalog.pg_class T
+                left join pg_catalog.pg_description D on T.oid = D.objoid
+              where T.relnamespace = ?::oid)
+          union all
+          (select min(least(pg_catalog.age(T.xmin), pg_catalog.age(D.xmin))) as last_tx
+              from pg_catalog.pg_proc T
+                left join pg_catalog.pg_description D on T.oid = D.objoid
+              where T.pronamespace = ?::oid)
+          union all
+          (select min(least(pg_catalog.age(T.xmin), pg_catalog.age(D.xmin))) as last_tx
+              from pg_catalog.pg_operator T
+                left join pg_catalog.pg_description D on T.oid = D.objoid
+              where T.oprnamespace = ?::oid)
+          union all
+          (select min(least(pg_catalog.age(T.xmin), pg_catalog.age(D.xmin))) as last_tx
+              from pg_catalog.pg_constraint T
+                left join pg_catalog.pg_description D on T.oid = D.objoid
+              where T.connamespace = ?::oid)
+          union all
+          select min(pg_catalog.age(A.xmin)) as last_tx
+                  from pg_catalog.pg_attribute A join pg_catalog.pg_class K on K.oid = A.attrelid
+                  where K.relnamespace = ?::oid
+          union all
+          (select min(pg_catalog.age(IX.xmin)) as last_tx
+                  from pg_catalog.pg_index IX join pg_catalog.pg_class IC on IC.oid = IX.indrelid
+                  where IC.relnamespace = ?::oid)
+          union all
+          (select min(least(pg_catalog.age(RU.xmin), pg_catalog.age(D.xmin))) as last_tx
+                  from pg_catalog.pg_rewrite RU join pg_catalog.pg_class RC on RC.oid = RU.ev_class
+                    left join pg_catalog.pg_description D on D.objoid = RU.oid
+                  where RC.relnamespace = ?::oid)
+          union all
+          (select min(least(pg_catalog.age(TG.xmin), pg_catalog.age(D.xmin))) as last_tx
+                  from pg_catalog.pg_trigger TG join pg_catalog.pg_class TC on TC.oid = TG.tgrelid
+                    left join pg_catalog.pg_description D on D.objoid = TG.oid
+                  where TC.relnamespace = ?::oid)
+          union all
+          (select min(least(pg_catalog.age(T.xmin), pg_catalog.age(D.xmin))) as last_tx
+              from pg_catalog.pg_opclass T
+                left join pg_catalog.pg_description D on T.oid = D.objoid
+              where T.opcnamespace = ?::oid)
+          union all
+          (select min(least(pg_catalog.age(T.xmin), pg_catalog.age(D.xmin))) as last_tx
+              from pg_catalog.pg_opfamily T
+                left join pg_catalog.pg_description D on T.oid = D.objoid
+              where T.opfnamespace = ?::oid)
+          union all
+          (select min(pg_catalog.age(O.xmin)) from pg_catalog.pg_amop O
+                 left join pg_catalog.pg_opfamily F on O.amopfamily = F.oid
+                 left join pg_catalog.pg_depend D on D.classid = 'pg_amop'::regclass and O.oid = D.objid and D.objsubid = 0
+                 left join pg_catalog.pg_opclass C on D.refclassid = 'pg_opclass'::regclass and C.oid = D.refobjid and D.refobjsubid = 0
+                 where C.opcnamespace = ? or C.opcnamespace is null and F.opfnamespace = ?)
+          union all
+          (select min(pg_catalog.age(P.xmin)) from pg_catalog.pg_amproc P
+                 left join pg_catalog.pg_opfamily F on P.amprocfamily = F.oid
+                 where F.opfnamespace = ?)
+          union all
+          (select min(pg_catalog.age(E.xmin)) as last_tx
+                  from pg_catalog.pg_enum E join pg_catalog.pg_type T on T.oid = E.enumtypid
+                  where T.typnamespace = ?::oid)
+          union all
+          (select min(least(pg_catalog.age(T.xmin), pg_catalog.age(D.xmin))) as last_tx
+              from pg_catalog.pg_collation T
+                left join pg_catalog.pg_description D on T.oid = D.objoid
+              where T.collnamespace = ?::oid)
+          union all
+          (select min(least(pg_catalog.age(P.xmin), pg_catalog.age(D.xmin))) as last_tx
+                  from pg_catalog.pg_policy P join pg_catalog.pg_class C on C.oid = P.polrelid
+                    left join pg_catalog.pg_description D on D.objoid = P.oid
+                  where C.relnamespace = ?::oid)
+               ) C, saved_age SA
+               where sa.value >= 0
+          -- >8 --
+10:39:54  execution time: 13 ms
+          fetching time: 1 ms
+10:39:54  Retrieving sequences
+10:39:54  Performing query RetrieveExistentSequences from PgIntroQueries.sql:411:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid
+          from pg_catalog.pg_class
+          where relkind = 'S'
+            and relnamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 1 ms
+10:39:54  Query RetrieveExistentSequences from PgIntroQueries.sql:411:1 completed in 0.004 s.
+10:39:54  Retrieving sequences
+10:39:54  Performing query RetrieveSequenceStates from PgIntroQueries.sql:419:1 by portions of 1000
+10:39:54  Executing query:
+          -- 8< --
+          select sq.seqrelid as sequence_id,
+                 case when has_sequence_privilege(sq.seqrelid, 'select') then pg_catalog.pg_sequence_last_value(sq.seqrelid) else null end as last_value
+          from pg_catalog.pg_sequence sq
+              join pg_class cls on sq.seqrelid = cls.oid
+              where cls.relnamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 2 ms
+10:39:54  Fetched 1 portions with 0 rows
+10:39:54  Query RetrieveSequenceStates from PgIntroQueries.sql:419:1 completed in 0.003 s.
+10:39:54  Retrieving data types
+10:39:54  Performing query RetrieveExistentDataTypes from PgIntroQueries.sql:478:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid
+          from pg_catalog.pg_type
+          where typnamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 2 ms
+10:39:54  Query RetrieveExistentDataTypes from PgIntroQueries.sql:478:1 completed in 0.003 s.
+10:39:54  Performing query RetrieveExistentDataTypeChecks from PgIntroQueries.sql:511:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid
+          from pg_catalog.pg_constraint
+          where contypid != 0 and connamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 2 ms
+10:39:54  Query RetrieveExistentDataTypeChecks from PgIntroQueries.sql:511:1 completed in 0.005 s.
+10:39:54  Performing query RetrieveDataTypeChecks from PgIntroQueries.sql:518:1 by portions of 1000
+10:39:54  Executing query:
+          -- 8< --
+          select T.oid::bigint as type_id,
+                 C.oid::bigint as constraint_id,
+                 C.xmin as constraint_state_number,
+                 C.conname as constraint_name,
+                 pg_catalog.pg_get_expr(C.conbin, 0) /* C.consrc */ as predicate
+          from pg_catalog.pg_type T,
+               pg_catalog.pg_constraint C
+          where T.typnamespace = ?::oid
+            and T.typtype = 'd'::"char"
+            and T.oid = C.contypid
+            and (pg_catalog.age(T.xmin) <= coalesce(nullif(greatest(pg_catalog.age(?::varchar::xid), -1), -1), 2147483647) or pg_catalog.age(C.xmin) <= coalesce(nullif(greatest(pg_catalog.age(?::varchar::xid), -1), -1), 2147483647))
+          order by constraint_name
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 2 ms
+10:39:54  Fetched 1 portions with 0 rows
+10:39:54  Query RetrieveDataTypeChecks from PgIntroQueries.sql:518:1 completed in 0.006 s.
+10:39:54  Retrieving tables and views
+10:39:54  Performing query RetrieveExistentTables from PgIntroQueries.sql:534:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid from pg_catalog.pg_class C
+          where relkind in ('r', 'm', 'v', 'p', 'f')
+            and relnamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 1 ms
+10:39:54  Query RetrieveExistentTables from PgIntroQueries.sql:534:1 completed in 0.004 s.
+10:39:54  Retrieving routines
+10:39:54  Performing query RetrieveExistentRoutines from PgIntroQueries.sql:805:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid
+          from pg_catalog.pg_proc
+          where prokind != 'a'/* not proisagg*/ and pronamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 1 ms
+10:39:54  Query RetrieveExistentRoutines from PgIntroQueries.sql:805:1 completed in 0.005 s.
+10:39:54  Retrieving aggregates
+10:39:54  Performing query RetrieveExistentAggregates from PgIntroQueries.sql:849:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid
+          from pg_catalog.pg_proc
+          where prokind = 'a'/* proisagg*/ and pronamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 2 ms
+10:39:54  Query RetrieveExistentAggregates from PgIntroQueries.sql:849:1 completed in 0.005 s.
+10:39:54  Retrieving operators
+10:39:54  Performing query RetrieveExistentOperators from PgIntroQueries.sql:945:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid
+          from pg_catalog.pg_operator
+          where oprnamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 3 ms
+          fetching time: 1 ms
+10:39:54  Query RetrieveExistentOperators from PgIntroQueries.sql:945:1 completed in 0.006 s.
+10:39:54  Retrieving collations
+10:39:54  Performing query RetrieveExistentCollations from PgIntroQueries.sql:1233:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid from pg_catalog.pg_collation
+          where collnamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 3 ms
+          fetching time: 2 ms
+10:39:54  Query RetrieveExistentCollations from PgIntroQueries.sql:1233:1 completed in 0.008 s.
+10:39:54  Retrieving operator classes
+10:39:54  Performing query RetrieveExistentOperatorClasses from PgIntroQueries.sql:978:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid
+          from pg_catalog.pg_opclass
+          where opcnamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 3 ms
+          fetching time: 2 ms
+10:39:54  Query RetrieveExistentOperatorClasses from PgIntroQueries.sql:978:1 completed in 0.006 s.
+10:39:54  Retrieving operator families
+10:39:54  Performing query RetrieveExistentOperatorFamilies from PgIntroQueries.sql:1056:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid
+          from pg_catalog.pg_opfamily
+          where opfnamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 3 ms
+          fetching time: 2 ms
+10:39:54  Query RetrieveExistentOperatorFamilies from PgIntroQueries.sql:1056:1 completed in 0.006 s.
+10:39:54  Retrieving access method operators
+10:39:54  Performing query RetrieveExistentAmOps from PgIntroQueries.sql:1001:1
+10:39:54  Executing query:
+          -- 8< --
+          select pg_amop.oid
+          from pg_catalog.pg_amop
+                   join pg_catalog.pg_opfamily on pg_opfamily.oid = amopfamily
+          where opfnamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 5 ms
+          fetching time: 2 ms
+10:39:54  Query RetrieveExistentAmOps from PgIntroQueries.sql:1001:1 completed in 0.008 s.
+10:39:54  Retrieving access method procedures
+10:39:54  Performing query RetrieveExistentAmProcs from PgIntroQueries.sql:1029:1
+10:39:54  Executing query:
+          -- 8< --
+          select pg_amproc.oid
+          from pg_catalog.pg_amproc
+                   join pg_catalog.pg_opfamily on pg_opfamily.oid = amprocfamily
+          where opfnamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 3 ms
+10:39:54  Query RetrieveExistentAmProcs from PgIntroQueries.sql:1029:1 completed in 0.004 s.
+10:39:54  Retrieving indices
+10:39:54  Performing query RetrieveExistentIndices from PgIntroQueries.sql:650:1
+10:39:54  Executing query:
+          -- 8< --
+          select IX.indexrelid
+          from pg_catalog.pg_index IX,
+               pg_catalog.pg_class IC
+          where IC.oid = IX.indrelid
+            and IC.relnamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 3 ms
+          fetching time: 3 ms
+10:39:54  Query RetrieveExistentIndices from PgIntroQueries.sql:650:1 completed in 0.007 s.
+10:39:54  Retrieving constraints
+10:39:54  Performing query RetrieveExistentConstraints from PgIntroQueries.sql:718:1
+10:39:54  Executing query:
+          -- 8< --
+          select oid
+          from pg_catalog.pg_constraint
+          where conrelid != 0 and connamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 3 ms
+          fetching time: 1 ms
+10:39:54  Query RetrieveExistentConstraints from PgIntroQueries.sql:718:1 completed in 0.006 s.
+10:39:54  Retrieving rules
+10:39:54  Performing query RetrieveExistentRules from PgIntroQueries.sql:1075:1
+10:39:54  Executing query:
+          -- 8< --
+          select RU.oid
+          from pg_catalog.pg_rewrite RU,
+               pg_catalog.pg_class RC
+          where RC.oid = RU.ev_class
+            and RC.relnamespace = ?::oid
+            and not RU.rulename = '_RETURN'
+          -- >8 --
+10:39:54  execution time: 3 ms
+          fetching time: 2 ms
+10:39:54  Query RetrieveExistentRules from PgIntroQueries.sql:1075:1 completed in 0.005 s.
+10:39:54  Retrieving security policies
+10:39:54  Performing query RetrieveExistentSecurityPolicies from PgIntroQueries.sql:1357:1
+10:39:54  Executing query:
+          -- 8< --
+          select P.oid from pg_catalog.pg_policy P
+            join pg_catalog.pg_class C on polrelid = C.oid
+          where relnamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 2 ms
+          fetching time: 1 ms
+10:39:54  Query RetrieveExistentSecurityPolicies from PgIntroQueries.sql:1357:1 completed in 0.004 s.
+10:39:54  Retrieving triggers
+10:39:54  Performing query RetrieveExistentTriggers from PgIntroQueries.sql:1103:1
+10:39:54  Executing query:
+          -- 8< --
+          select TG.oid
+          from pg_catalog.pg_trigger TG,
+               pg_catalog.pg_class TC
+          where TC.oid = TG.tgrelid
+            and TC.relnamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 3 ms
+10:39:54  Query RetrieveExistentTriggers from PgIntroQueries.sql:1103:1 completed in 0.004 s.
+10:39:54  Retrieving comments
+10:39:54  Performing query ListExistentSchemaComments from PgIntroQueries.sql:135:1
+10:39:54  Executing query:
+          -- 8< --
+          select D.objoid id, pg_catalog.array_agg(D.objsubid) sub_ids
+          from pg_catalog.pg_description D
+            join pg_catalog.pg_class C on D.objoid = C.oid
+          where C.relnamespace = ?::oid and C.relkind != 'c'
+          group by D.objoid
+          union all
+          select T.oid id, pg_catalog.array_agg(D.objsubid)
+          from pg_catalog.pg_description D
+            join pg_catalog.pg_type T on T.oid = D.objoid or T.typrelid = D.objoid
+            left join pg_catalog.pg_class C on T.typrelid = C.oid
+          where T.typnamespace = ?::oid and (C.relkind = 'c' or C.relkind is null)
+          group by T.oid
+          union all
+          select D.objoid id, array[D.objsubid]
+          from pg_catalog.pg_description D
+            join pg_catalog.pg_constraint C on D.objoid = C.oid
+          where C.connamespace = ?::oid
+          union all
+          select D.objoid id, array[D.objsubid]
+          from pg_catalog.pg_description D
+            join pg_catalog.pg_trigger T on T.oid = D.objoid
+            join pg_catalog.pg_class C on C.oid = T.tgrelid
+          where C.relnamespace = ?::oid
+          union all
+          select D.objoid id, array[D.objsubid]
+          from pg_catalog.pg_description D
+            join pg_catalog.pg_rewrite R on R.oid = D.objoid
+            join pg_catalog.pg_class C on C.oid = R.ev_class
+          where C.relnamespace = ?::oid
+          union all
+          select D.objoid id, array[D.objsubid]
+          from pg_catalog.pg_description D
+            join pg_catalog.pg_proc P on P.oid = D.objoid
+          where P.pronamespace = ?::oid
+          union all
+          select D.objoid id, array[D.objsubid]
+          from pg_catalog.pg_description D
+            join pg_catalog.pg_operator O on O.oid = D.objoid
+          where O.oprnamespace = ?::oid
+          union all
+          select D.objoid id, array[D.objsubid]
+          from pg_catalog.pg_description D
+            join pg_catalog.pg_opclass O on O.oid = D.objoid
+          where O.opcnamespace = ?::oid
+          union all
+          select D.objoid id, array[D.objsubid]
+          from pg_catalog.pg_description D
+            join pg_catalog.pg_opfamily O on O.oid = D.objoid
+          where O.opfnamespace = ?::oid
+          union all
+          select D.objoid id, array[D.objsubid]
+          from pg_catalog.pg_description D
+            join pg_catalog.pg_collation C on C.oid = D.objoid
+          where C.collnamespace = ?::oid
+          union all
+          select D.objoid id, array[D.objsubid]
+          from pg_catalog.pg_description D
+            join pg_catalog.pg_policy P on P.oid = D.objoid
+            join pg_catalog.pg_class C on P.polrelid = C.oid
+          where C.relnamespace = ?::oid
+          -- >8 --
+10:39:54  execution time: 4 ms
+          fetching time: 1 ms
+10:39:54  Fetched 0 rows
+10:39:54  Query ListExistentSchemaComments from PgIntroQueries.sql:135:1 completed in 0.006 s.
+10:39:54  Retrieving ACL
+10:39:54  Performing query RetrieveRelations from PgIntroQueries.sql:1331:1 by portions of 1000
+10:39:54  Executing query:
+          -- 8< --
+          select D.objid as dependent_id,
+                 D.refobjid as owner_id,
+                 D.refobjsubid as owner_subobject_id
+          from pg_depend D
+            join pg_class C_SEQ on D.objid    = C_SEQ.oid and D.classid    = 'pg_class'::regclass::oid
+            join pg_class C_TAB on D.refobjid = C_TAB.oid and D.refclassid = 'pg_class'::regclass::oid
+          where C_SEQ.relkind = 'S'
+            and C_TAB.relkind = 'r'
+            and D.refobjsubid <> 0
+            and (D.deptype = 'a' or D.deptype = 'i')
+            and C_TAB.relnamespace = ?::oid
+          order by owner_id
+          -- >8 --
+10:39:54  execution time: 5 ms
+10:39:54  Fetched 1 portions with 0 rows
+10:39:54  Query RetrieveRelations from PgIntroQueries.sql:1331:1 completed in 0.009 s.
+10:39:54  Status details: Finishing retrieving the schema public
+10:39:54  No deferred tasks to process.
+10:39:54  Detaching from DB
+10:39:54  Memory: 1168 M available from allocated 4096 M (max 4096 M)
+10:39:54  Query Performance Statistics:
+          --------------------------------------------------------------------------------------------------------------------------------------------
+          ##  count err    T.min     T.avg     T.max     T.sum   %     rows packs  Query 
+          --------------------------------------------------------------------------------------------------------------------------------------------
+           6     1         0.119     0.119     0.119     0.119  24     1380     1  RetrieveTimeZones from PgIntroQueries.sql:1347:1
+           1     1         0.029     0.029     0.029     0.029   6        1     1  StateNumber from PgIntroQueries.sql:116:1
+           4     1         0.029     0.029     0.029     0.029   6        4     1  ListDatabases from PgIntroQueries.sql:31:1
+          11     2         0.007     0.008     0.010     0.017   3        8     2  ListSchemas from PgIntroQueries.sql:76:1
+           8     1         0.015     0.015     0.015     0.015   3       13     1  RetrieveRoles from PgIntroQueries.sql:88:1
+          10     1         0.013     0.013     0.013     0.013   3              1  RetrieveTablespaces from PgIntroQueries.sql:104:1
+           7     2         0.005     0.006     0.008     0.013   3        2     2  ListExistentDatabaseComments from PgIntroQueries.sql:206:1
+           9     1         0.012     0.012     0.012     0.012   2        1     1  RetrieveExistentTablespaces from PgIntroQueries.sql:100:1
+          22     1         0.012     0.012     0.012     0.012   2              1  RetrieveAccessMethods from PgIntroQueries.sql:1189:1
+           2     1         0.011     0.011     0.011     0.011   2        1     1  CurrentXid from PgIntroQueries.sql:125:1
+          51     1         0.009     0.009     0.009     0.009   2              1  RetrieveRelations from PgIntroQueries.sql:1331:1
+          29     1         0.008     0.008     0.008     0.008   2              1  ListCasts from PgIntroQueries.sql:1212:1
+          40     1         0.008     0.008     0.008     0.008   2        1     1  RetrieveExistentCollations from PgIntroQueries.sql:1233:1
+          43     1         0.008     0.008     0.008     0.008   2        1     1  RetrieveExistentAmOps from PgIntroQueries.sql:1001:1
+          16     1         0.007     0.007     0.007     0.007   1              1  RetrieveForeignDataWrappers from PgIntroQueries.sql:1257:1
+          24     1         0.007     0.007     0.007     0.007   1              1  RetrieveExtensions from PgIntroQueries.sql:912:1
+          26     1         0.007     0.007     0.007     0.007   1              1  ListLanguages from PgIntroQueries.sql:47:1
+          27     1         0.007     0.007     0.007     0.007   1              1  RetrieveDatabaseComments from PgIntroQueries.sql:296:1
+          30     1         0.007     0.007     0.007     0.007   1        4     1  RetrieveExtensionMembers from PgIntroQueries.sql:935:1
+          35     1         0.007     0.007     0.007     0.007   1              1  RetrieveDataTypeChecks from PgIntroQueries.sql:518:1
+          45     1         0.007     0.007     0.007     0.007   1        1     1  RetrieveExistentIndices from PgIntroQueries.sql:650:1
+           5     1         0.006     0.006     0.006     0.006   1        1     1  RetrieveDateStyle from PgIntroQueries.sql:1353:1
+          12     1         0.006     0.006     0.006     0.006   1        1     1  IsSuperUser from PgIntroQueries.sql:14:1
+          14     1         0.006     0.006     0.006     0.006   1              1  RetrieveEventTriggers from PgIntroQueries.sql:68:1
+          21     1         0.006     0.006     0.006     0.006   1        1     1  RetrieveExistentAccessMethods from PgIntroQueries.sql:1185:1
+          39     1         0.006     0.006     0.006     0.006   1        1     1  RetrieveExistentOperators from PgIntroQueries.sql:945:1
+          41     1         0.006     0.006     0.006     0.006   1        1     1  RetrieveExistentOperatorClasses from PgIntroQueries.sql:978:1
+          42     1         0.006     0.006     0.006     0.006   1        1     1  RetrieveExistentOperatorFamilies from PgIntroQueries.sql:1056:1
+          46     1         0.006     0.006     0.006     0.006   1        1     1  RetrieveExistentConstraints from PgIntroQueries.sql:718:1
+          47     1         0.006     0.006     0.006     0.006   1        1     1  RetrieveExistentRules from PgIntroQueries.sql:1075:1
+          50     1         0.006     0.006     0.006     0.006   1              1  ListExistentSchemaComments from PgIntroQueries.sql:135:1
+           3     1         0.005     0.005     0.005     0.005   1        1     1  QuerySessionCurrentInfo from PgIntroQueries.sql:2:1
+          23     1         0.005     0.005     0.005     0.005   1        1     1  RetrieveExistentExtensions from PgIntroQueries.sql:908:1
+          34     1         0.005     0.005     0.005     0.005   1        1     1  RetrieveExistentDataTypeChecks from PgIntroQueries.sql:511:1
+          37     1         0.005     0.005     0.005     0.005   1        1     1  RetrieveExistentRoutines from PgIntroQueries.sql:805:1
+          38     1         0.005     0.005     0.005     0.005   1        1     1  RetrieveExistentAggregates from PgIntroQueries.sql:849:1
+          13     1         0.004     0.004     0.004     0.004   1        1     1  RetrieveExistentEventTriggers from PgIntroQueries.sql:64:1
+          15     1         0.004     0.004     0.004     0.004   1        1     1  RetrieveExistentForeignDataWrappers from PgIntroQueries.sql:1252:1
+          17     1         0.004     0.004     0.004     0.004   1        1     1  RetrieveExistentForeignServers from PgIntroQueries.sql:1276:1
+          18     1         0.004     0.004     0.004     0.004   1              1  RetrieveForeignServers from PgIntroQueries.sql:1281:1
+          20     1         0.004     0.004     0.004     0.004   1              1  RetrieveUserMappingsSuperUser from PgIntroQueries.sql:1300:1
+          25     1         0.004     0.004     0.004     0.004   1        1     1  ListExistentLanguages from PgIntroQueries.sql:43:1
+          28     1         0.004     0.004     0.004     0.004   1        1     1  ListExistentCasts from PgIntroQueries.sql:1208:1
+          31     1         0.004     0.004     0.004     0.004   1        1     1  RetrieveExistentSequences from PgIntroQueries.sql:411:1
+          32     1         0.004     0.004     0.004     0.004   1              1  RetrieveSequenceStates from PgIntroQueries.sql:419:1
+          36     1         0.004     0.004     0.004     0.004   1        1     1  RetrieveExistentTables from PgIntroQueries.sql:534:1
+          44     1         0.004     0.004     0.004     0.004   1        1     1  RetrieveExistentAmProcs from PgIntroQueries.sql:1029:1
+          48     1         0.004     0.004     0.004     0.004   1        1     1  RetrieveExistentSecurityPolicies from PgIntroQueries.sql:1357:1
+          49     1         0.004     0.004     0.004     0.004   1        1     1  RetrieveExistentTriggers from PgIntroQueries.sql:1103:1
+          19     1         0.003     0.003     0.003     0.003   1        1     1  RetrieveExistentUserMappingsSuperUser from PgIntroQueries.sql:1295:1
+          33     1         0.003     0.003     0.003     0.003   1        1     1  RetrieveExistentDataTypes from PgIntroQueries.sql:478:1
+          --------------------------------------------------------------------------------------------------------------------------------------------
+          Total duration of all queries:     0.495 s.
+10:39:54  Dropping the info
