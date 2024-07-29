@@ -1,0 +1,17 @@
+{
+    "ResultCode": "2211",
+    "ResultMsg": "환불 성공",
+    "ErrorCD": "000",
+    "ErrorMsg": "환불 성공",
+    "CancelAmt": "000000000100",
+    "MID": "someMID",
+    "Moid": "imp_746277860481",
+    "PayMethod": "VBANK",
+    "TID": "someMID03012302271421394559",
+    "CancelDate": "20230227",
+    "CancelTime": "143535",
+    "CancelNum": "00000000",
+    "RemainAmt": "000000000000",
+    "Signature": "14a0f62dff282ed51dddd8b4e0dc8152690c88c692f4f8ecee9fdd3008da21a9",
+    "MallReserved": ""
+}

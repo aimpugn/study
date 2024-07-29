@@ -1,0 +1,54 @@
+{
+  "_source": [
+    "app.message"
+  ],
+  "stored_fields": [
+    "*"
+  ],
+  "version": true,
+  "size": 500,
+  "sort": [
+    {
+      "timestamp": {
+        "order": "desc",
+        "unmapped_type": "boolean"
+      }
+    }
+  ],
+  "docvalue_fields": [
+    {
+      "field": "app.timestamp",
+      "format": "date_time"
+    },
+    {
+      "field": "timestamp",
+      "format": "date_time"
+    }
+  ],
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "nested": {
+            "path": "app",
+            "query": {
+              "match_phrase": {
+                "app.name": "istio-proxy"
+              }
+            }
+          }
+        },
+        {
+          "range": {
+            "timestamp": {
+              "gte": "2024-01-22T23:31:39.135Z",
+              "lte": "2024-01-22T23:31:39.339Z",
+              "format": "strict_date_optional_time"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+

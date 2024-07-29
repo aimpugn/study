@@ -1,0 +1,23 @@
+{
+  "object": "charge",
+  "id": "300583321",
+  "created": "1671101881",
+  "amount": 1000.0,
+  "currency": "KRW",
+  "refunded": "",
+  "captured": "1",
+  "risk": "approved",
+  "card": {
+    "last4": "0859",
+    "type": "Mastercard",
+    "exp_month": "10",
+    "exp_year": "2023",
+    "country": "KR",
+    "name": "",
+    "token": "4a6cf0c84dc6b987695d5230427b9d09"
+  },
+  "secure": "",
+  "support_link": "https://api.paymentwall.com/api/account/email-viewer?key=75265cff0ab688b56feee630bdc3eff6&uid=181972419&widget=c1&sign_version=2&flow=payments&sign=bce41fafcf96ec36267c1431d0aa10a3",
+  "amount_paid": 1000.0,
+  "currency_paid": "KRW"
+}

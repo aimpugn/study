@@ -1,0 +1,71 @@
+#!/bin/bash
+###### 잘못된 rebase abort
+# 9088  git rebase --abort
+# 9089  git reflog
+# 9090  git reset --hard "HEAD@{15}"
+# 9091  git reflog
+# 9092  git reset --hard "HEAD@{15}"
+# 9093  git reflog
+# 9094  git reset --hard "HEAD@{18}"
+# 9095  git reflog
+# 9096  git reset --hard "HEAD@{20}"
+# 9097  git reflog
+
+
+# 9098  gloga
+# 9099  git reflog
+# 9100  gloga
+# 9101  cd IdeaProjects/some-A-serivce
+
+###### rebase 정리 시작
+# 9102  gloga
+# 9103  git log --oneline
+# 9104  git log
+# 9105  git log --oneline
+# 9106  git log --oneline --graph
+# 9107  glog
+# 9108  glog --all
+# 9109  glog --reflog
+# 9110  glog --all --reflog
+# 9111  gp!
+# 9112  gp --force-with-lease
+# 9113  gloga
+# 9114  glog
+# 9115  gloga
+# 9116  gloga --reflog
+# 9117* exit
+# 9118  gloga --all
+# 9119  g rebase develop
+# 9120  gst
+# 9121  gd
+# 9122  git rebase --abort
+# 9123  vim ~/.gitconfig
+# 9124  g rebase develop
+# 9125  gst
+# 9126  gd
+# 9127  gloga --all
+# 9128  gd
+# 9129  vim app/Controller/PaymentsController.php
+# 9130  gd
+# 9131  vim app/Controller/PaymentsController.php +565
+# 9132  gst
+# 9133  gd app/Controller/PaymentsController.php
+# 9134  g add app/Controller/PaymentsController.php
+# 9135  gst
+# 9136  gd --staged app/Controller/PaymentsController.php
+# 9137  gst
+# 9138  git rebase --continue
+# 9139  gloga
+# 9140  ggloga
+# 9141  gloga
+# 9142  gp --force-with-lease
+# 9143  gloga
+# 9144  vim
+# 9145  vim ~/.gitconfig
+# 9146  g fetch
+# 9147  gloga
+# 9148  g pr
+# 9149  gloga
+# 9150  vim ~/.gitconfig
+# 9151  git fetch --prune
+# 9152  gloga

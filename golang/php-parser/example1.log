@@ -1,0 +1,210 @@
+&node.Root{
+	Position: &position.Position{
+		StartLine: 3,
+		EndLine: 17,
+		StartPos: 8,
+		EndPos: 239,
+	},
+	Stmts: []node.Node{
+		&stmt.Namespace{
+			Position: &position.Position{
+				StartLine: 3,
+				EndLine: 3,
+				StartPos: 8,
+				EndPos: 21,
+			},
+			NamespaceName: &name.Name{
+				Position: &position.Position{
+					StartLine: 3,
+					EndLine: 3,
+					StartPos: 18,
+					EndPos: 20,
+				},
+				Parts: []node.Node{
+					&name.NamePart{
+						Position: &position.Position{
+							StartLine: 3,
+							EndLine: 3,
+							StartPos: 18,
+							EndPos: 20,
+						},
+						Value: "Foo",
+					},
+				},
+			},
+		},
+		&stmt.Class{
+			Position: &position.Position{
+				StartLine: 5,
+				EndLine: 17,
+				StartPos: 24,
+				EndPos: 239,
+			},
+			PhpDocComment: "",
+			ClassName: &node.Identifier{
+				Position: &position.Position{
+					StartLine: 5,
+					EndLine: 5,
+					StartPos: 39,
+					EndPos: 41,
+				},
+				Value: "Bar",
+			},
+			Modifiers: []node.Node{
+				&node.Identifier{
+					Position: &position.Position{
+						StartLine: 5,
+						EndLine: 5,
+						StartPos: 24,
+						EndPos: 31,
+					},
+					Value: "abstract",
+				},
+			},
+			Extends: &stmt.ClassExtends{
+				Position: &position.Position{
+					StartLine: 5,
+					EndLine: 5,
+					StartPos: 43,
+					EndPos: 53,
+				},
+				ClassName: &name.Name{
+					Position: &position.Position{
+						StartLine: 5,
+						EndLine: 5,
+						StartPos: 51,
+						EndPos: 53,
+					},
+					Parts: []node.Node{
+						&name.NamePart{
+							Position: &position.Position{
+								StartLine: 5,
+								EndLine: 5,
+								StartPos: 51,
+								EndPos: 53,
+							},
+							Value: "Baz",
+						},
+					},
+				},
+			},
+			Stmts: []node.Node{
+				&stmt.ClassMethod{
+					Position: &position.Position{
+						StartLine: 13,
+						EndLine: 16,
+						StartPos: 169,
+						EndPos: 237,
+					},
+					ReturnsRef: false,
+					PhpDocComment: "",
+					MethodName: &node.Identifier{
+						Position: &position.Position{
+							StartLine: 13,
+							EndLine: 13,
+							StartPos: 185,
+							EndPos: 189,
+						},
+						Value: "greet",
+					},
+					Modifiers: []node.Node{
+						&node.Identifier{
+							Position: &position.Position{
+								StartLine: 13,
+								EndLine: 13,
+								StartPos: 169,
+								EndPos: 174,
+							},
+							Value: "public",
+						},
+					},
+					Params: []node.Node{
+						&node.Parameter{
+							Position: &position.Position{
+								StartLine: 13,
+								EndLine: 13,
+								StartPos: 191,
+								EndPos: 198,
+							},
+							ByRef: false,
+							Variadic: false,
+							Variable: &expr.Variable{
+								Position: &position.Position{
+									StartLine: 13,
+									EndLine: 13,
+									StartPos: 191,
+									EndPos: 198,
+								},
+								VarName: &node.Identifier{
+									Position: &position.Position{
+										StartLine: 13,
+										EndLine: 13,
+										StartPos: 191,
+										EndPos: 198,
+									},
+									Value: "message",
+								},
+							},
+						},
+					},
+					Stmt: &stmt.StmtList{
+						Position: &position.Position{
+							StartLine: 14,
+							EndLine: 16,
+							StartPos: 202,
+							EndPos: 237,
+						},
+						Stmts: []node.Node{
+							&stmt.Echo{
+								Position: &position.Position{
+									StartLine: 15,
+									EndLine: 15,
+									StartPos: 206,
+									EndPos: 234,
+								},
+								Exprs: []node.Node{
+									&scalar.Encapsed{
+										Position: &position.Position{
+											StartLine: 15,
+											EndLine: 15,
+											StartPos: 211,
+											EndPos: 233,
+										},
+										Parts: []node.Node{
+											&scalar.EncapsedStringPart{
+												Position: &position.Position{
+													StartLine: 15,
+													EndLine: 15,
+													StartPos: 212,
+													EndPos: 224,
+												},
+												Value: "Hello World, ",
+											},
+											&expr.Variable{
+												Position: &position.Position{
+													StartLine: 15,
+													EndLine: 15,
+													StartPos: 225,
+													EndPos: 232,
+												},
+												VarName: &node.Identifier{
+													Position: &position.Position{
+														StartLine: 15,
+														EndLine: 15,
+														StartPos: 225,
+														EndPos: 232,
+													},
+													Value: "message",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+}
