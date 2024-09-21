@@ -126,7 +126,11 @@ xvda     202:0    0    8G  0 disk
 └─xvda16 259:0    0  913M  0 part /boot
 ```
 
-볼륨 수정이 성공했으며 [`optimizing` 또는 `completed` 상태](https://docs.aws.amazon.com/ko_kr/ebs/latest/userguide/monitoring-volume-modifications.html)인지 확인합니다.
+*EC2 > Elastic Block Store > 볼륨* 메뉴로 이동합니다.
+볼륨 목록에서 원시 블록 용량을 늘리려는 볼륨을 선택하고 볼륨 수정을 선택합니다.
+그리고 원하는 용량으로 수정합니다.
+
+볼륨 수정이 성공했으면 [`optimizing` 또는 `completed` 상태](https://docs.aws.amazon.com/ko_kr/ebs/latest/userguide/monitoring-volume-modifications.html)인지 확인합니다.
 
 `optimizing(0%)`에서 요지부동이어서 [검색](https://repost.aws/knowledge-center/ebs-volume-stuck-optimizing-on-modification)해보니, 몇 분에서 몇 시간 소요될 수 있다고 합니다. 기다리면 `completed` 상태가 됩니다.
 
