@@ -11,6 +11,7 @@
     - [실행 가능한 jar 파일 만들기](#실행-가능한-jar-파일-만들기)
     - [코드 구조화하기](#코드-구조화하기)
     - [Deploying Spring Boot Applications](#deploying-spring-boot-applications)
+        - [systemd 서비스로 관리](#systemd-서비스로-관리)
 
 ## [spring initializer](https://start.spring.io/)
 
@@ -304,3 +305,83 @@ java -jar build/libs/myproject-0.0.1-SNAPSHOT.jar
 ## 코드 구조화하기
 
 ## [Deploying Spring Boot Applications](https://docs.spring.io/spring-boot/how-to/deployment/index.html)
+
+### [systemd 서비스로 관리](https://docs.spring.io/spring-boot/how-to/deployment/installing.html)
+
+`/etc/systemd/system/myapp.service` 파일 생성해서 관리합니다.
+`myapp.service` 기본 예제는 다음과 같습니다.
+
+```ini
+[Unit]
+Description=myapp
+After=syslog.target network.target
+
+[Service]
+User=myapp
+Group=myapp
+
+Environment="JAVA_HOME=/path/to/java/home"
+
+ExecStart=${JAVA_HOME}/bin/java -jar /var/myapp/myapp.jar
+ExecStop=/bin/kill -15 $MAINPID
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target
+```
+
+또는 다음과 같이 `Restart`, `RestartSec`를 설정할 수도 있습니다.
+
+```ini
+[Unit]
+Description=My Spring Boot Application
+After=syslog.target
+
+[Service]
+User=ubuntu
+ExecStart=/usr/bin/java -jar /path/to/backend.jar
+SuccessExitStatus=143
+TimeoutStopSec=10
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`sudo systemctl start myapp` 등을 통해 서비스를 실행할 수 있습니다.
+아래는 graceful shutdown 후 health 체크를 통해 정상적으로 작동하는지 확인하는 스크립트입니다.
+
+```bash
+#!/bin/bash
+
+# 1. 현재 실행 중인 애플리케이션 종료
+if sudo systemctl is-active --quiet myapp.service; then
+    echo "Stopping the current application..."
+    sudo systemctl stop myapp.service
+    sleep 10  # graceful shutdown을 위한 대기
+fi
+
+# 2. 새 버전 JAR 파일 복사
+sudo cp /path/to/new/backend.jar /path/to/production/backend.jar
+
+# 3. 새 버전 시작
+echo "Starting the new application version..."
+sudo systemctl start myapp.service
+
+# 4. 헬스 체크
+max_retries=10
+count=0
+while [ $count -lt $max_retries ]; do
+    if curl -s http://localhost:8080/actuator/health | grep -q "UP"; then
+        echo "Application is healthy"
+        exit 0
+    fi
+    echo "Waiting for application to become healthy..."
+    sleep 5
+    count=$((count+1))
+done
+
+echo "Application failed to start properly"
+exit 1
+```

@@ -6,7 +6,7 @@
 
     node
     go, golangci-lint
-    rust, rustup
+    [rustup](https://github.com/rust-lang/rustup)
 
 - fonts
 
