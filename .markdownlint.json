@@ -11,6 +11,7 @@
         "code_block_line_length": 10000,
         "line_length": 10000
     },
+    "MD014": false,
     "MD024": {
         "siblings_only": true
     },
