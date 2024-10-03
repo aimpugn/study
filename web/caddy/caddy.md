@@ -26,13 +26,13 @@ EOF
 - `caddy run`: Caddy 서버를 실행하는 명령입니다.
 - `--adapter caddyfile`: 이 옵션은 Caddy의 구성 파일 형식을 지정합니다. `caddyfile`은 Caddy의 기본 구성 파일 형식입니다.
 - `--config -`: 이 옵션은 구성을 표준 입력(`-`, stdin)에서 직접 읽어들이라는 의미입니다.
-- `<<'EOF' ... EOF`: heredoc을 사용하여 여러 줄에 걸친 문자열을 입력으로 제공합니다.
+- `<<'EOF' ... EOF`: heredoc을 사용하여 여러 줄에 걸친 문자열을 입력으로 제공합니다.
 
 구성 파일의 내용은 다음과 같습니다:
 - `go.somehost.co`: Caddy가 서비스할 도메인 이름을 지정합니다.
 - `tls cert.pem key.pem`:
 
-    TLS(전송 계층 보안)를 위한 인증서와 키 파일을 지정하여 HTTPS 연결을 위한 암호화 설정을 합니다.
+    TLS(전송 계층 보안)를 위한 인증서와 키 파일을 지정하여 HTTPS 연결을 위한 암호화 설정을 합니다.
 
 - `reverse_proxy http://localhost:8080`:
 

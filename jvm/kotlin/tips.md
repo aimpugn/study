@@ -1,10 +1,10 @@
 # tips
 
 - [tips](#tips)
-  - [블록을 매개변수로 넘기기](#블록을-매개변수로-넘기기)
-  - [reflection](#reflection)
-  - [regex VS Contains. Best Performance?](#regex-vs-contains-best-performance)
-  - [What is the equivalent of Java static final fields in Kotlin?](#what-is-the-equivalent-of-java-static-final-fields-in-kotlin)
+    - [블록을 매개변수로 넘기기](#블록을-매개변수로-넘기기)
+    - [reflection](#reflection)
+    - [regex VS Contains. Best Performance?](#regex-vs-contains-best-performance)
+    - [What is the equivalent of Java static final fields in Kotlin?](#what-is-the-equivalent-of-java-static-final-fields-in-kotlin)
 
 ## 블록을 매개변수로 넘기기
 

@@ -10,7 +10,7 @@ This command should not be confused with the daemon-reload command.
 이 경우 `systemd`의 단위 구성 파일이 아니라 *서비스별 구성을 다시 로드*한다는 점에 유의하세요.
 `systemd`가 단위의 구성 파일을 다시 로드하도록 하려면 `daemon-reload` 명령을 사용합니다.
 
-즉, 예를 들어 Apache의 경우, 이 명령은 Apache의 httpd.conf를 다시 로드하는 것이고,
+즉, 예를 들어 Apache의 경우, 이 명령은 Apache의 httpd.conf를 다시 로드하는 것이고,
 apache.service systemd 유닛 파일을 다시 로즈하지 않습니다.
 
 이 명령을 daemon-reload 명령과 혼동해서는 안 됩니다.
@@ -24,7 +24,7 @@ Reload the systemd manager configuration. This will rerun all generators (see sy
 This command should not be confused with the reload command.
 
 systemd manager의 구성을 다시 로드합니다.
-- 모든 generator가 다시 실행되고(`systemd.generator(7)` 참조)
+- 모든 generator가 다시 실행되고(`systemd.generator(7)` 참조)
 - 모든 단위 파일이 다시 로드되며
 - 전체 종속성 트리가 다시 생성
 

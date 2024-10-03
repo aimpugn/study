@@ -146,7 +146,7 @@ flowchart TD
         WorkforceUser[인력 사용자] -.->|선택적 소속| Group
         WorkforceUser[인력 사용자] --> PermissionSet[권한 세트]
         Group[그룹] --> PermissionSet[권한 세트]
-        PermissionSet[권한 세트] --> |액세스|AWSAccount[AWS 계정]
+        PermissionSet[권한 세트] --> |액세스|AWSAccount[AWS 계정]
 
     end
 
@@ -157,7 +157,7 @@ flowchart TD
         CDApp --> CDDeploymentGroup
     end
 
-    subgraph "EC2"
+    subgraph "EC2"
         EC2[EC2]
         IAMRole --> |설정|EC2
     end
@@ -551,7 +551,7 @@ flowchart TD
         - 경고
         - 롤백: '배포에 실패하는 경우 롤백' 선택
 
-12. 인스턴스에서 배포 사전 작업을 합니다.
+12. 인스턴스에서 배포 사전 작업을 합니다.
 
     EC2에 애플리케이션 파일이 위치할 경로를 미리 생성해 둡니다.
 

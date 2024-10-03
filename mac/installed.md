@@ -7,6 +7,8 @@
     node
     go, golangci-lint
     [rustup](https://github.com/rust-lang/rustup)
+    [kotlin](https://formulae.brew.sh/formula/kotlin)
+    [gradle](https://formulae.brew.sh/formula/gradle)
 
 - fonts
 
@@ -52,7 +54,9 @@
 
 - application
 
-    google-chrome
+    [google-chrome](https://formulae.brew.sh/cask/google-chrome#default)
+    [android-studio](https://formulae.brew.sh/cask/android-studio)
+    [jetbrain fleet](https://formulae.brew.sh/cask/fleet)
 
 ## fisher
 
