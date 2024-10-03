@@ -308,7 +308,7 @@ java -jar build/libs/myproject-0.0.1-SNAPSHOT.jar
 
 ### [systemd 서비스로 관리](https://docs.spring.io/spring-boot/how-to/deployment/installing.html)
 
-`/etc/systemd/system/myapp.service` 파일 생성해서 관리합니다.
+`/etc/systemd/system/myapp.service` 파일 생성해서 관리합니다.
 `myapp.service` 기본 예제는 다음과 같습니다.
 
 ```ini

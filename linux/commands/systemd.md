@@ -28,11 +28,11 @@ generator는 `/usr/lib/systemd/system-generators/` 및 위에 나열된 기타 �
 `systemd`는 generator 출력에 사용할 세 개의 디렉토리 경로로 각 generator를 호출합니다.
 이 세 디렉토리에서 generator는 유닛 파일(일반 파일, 인스턴스, 템플릿), 유닛 파일 `.d/` 드롭인을 동적으로 생성하고 유닛 파일에 대한 심볼릭 링크를 생성하여 추가 종속성을 추가하거나 별칭을 만들거나 기존 템플릿을 인스턴스화할 수 있습니다.
 이러한 디렉토리는 단위 로드 경로(unit load path)에 포함되므로 생성된 구성이 기존 정의를 확장하거나 재정의할 수 있습니다.
-테스트의 경우 하나의 argument로 generator가 호출할 수 있으며, 이 경우 generator는 세 경로가 모두 동일하다고 가정해야 합니다.
+테스트의 경우 하나의 argument로 generator가 호출할 수 있으며, 이 경우 generator는 세 경로가 모두 동일하다고 가정해야 합니다.
 
 generator 출력의 디렉토리 경로는 우선순위에 따라 다릅니다.
 - `.../generator.early`는 `/etc/`의 관리자 구성보다 우선순위가 높고,
-- `.../generator`는 `/etc/`보다 우선순위가 낮지만 `/usr/`의 벤더 구성보다 우선순위가 높으며,
+- `.../generator`는 `/etc/`보다 우선순위가 낮지만 `/usr/`의 벤더 구성보다 우선순위가 높으며,
 - `.../generator.late`는 다른 모든 구성보다 우선순위가 낮습니다.
 
 다음 섹션과 systemd.unit(5)의 단위 로드 경로 및 단위 재정의에 대한 설명을 참조하세요.

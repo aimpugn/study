@@ -103,7 +103,7 @@ fun demo(strs: Source<String>) {
 }
 ```
 
-- `Source`의 타입 파라미터 `T`에 주석을 달아서 `Source<T>`의 멤버로부터 반환(produced) 되기만 하고 소비(consumed) 되지 않는다는 것을 보장할 수 있다. 이떄 `out` 수식어를 사용
+- `Source`의 타입 파라미터 `T`에 주석을 달아서 `Source<T>`의 멤버로부터 반환(produced) 되기만 하고 소비(consumed) 되지 않는다는 것을 보장할 수 있다. 이때 `out` 수식어를 사용
 - `C` 클래스의 타입 파라미터 `T`가 `out`으로 선언되면, `C` 멤버의 out 위치에서만 발생할 수 있지만, 그 대가로(in return) `C<Base>`는 안전하게 `C<Derived>`의 슈퍼타입이 될 수 있다.
 - 다르게 말하면 다음과 같이 말할 수 있다
     - `C` 클래스는 `T` 파라미에서 [공변적(covariant)](https://learn.microsoft.com/ko-kr/dotnet/standard/generics/covariance-and-contravariance)이다
