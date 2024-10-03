@@ -1,9 +1,49 @@
 # gradle
 
 - [gradle](#gradle)
+    - [`init` task](#init-task)
+        - [`--type kotlin-application`](#--type-kotlin-application)
     - [LibrariesForLibs](#librariesforlibs)
     - [Type-safe project accessors](#type-safe-project-accessors)
     - [특정 테스트 케이스만 실행](#특정-테스트-케이스만-실행)
+
+## [`init`](https://docs.gradle.org/current/samples/sample_building_kotlin_applications.html#run_the_init_task) task
+
+### `--type kotlin-application`
+
+```sh
+gradle init --type kotlin-application
+```
+
+```sh
+.
+├── app
+│   ├── build.gradle.kts <---------------- Build script of app project
+│   └── src
+│       ├── test
+│       │   ├── resources
+│       │   └── kotlin <------------------ Default Kotlin test source folder
+│       │       └── org
+│       │           └── example
+│       │               └── AppTest.kt
+│       └── main
+│           ├── resources
+│           └── kotlin <------------------ Default Kotlin source folder
+│               └── org
+│                   └── example
+│                       └── App.kt
+├── gradle <------------------------------ Generated folder for wrapper files
+│   ├── libs.versions.toml <-------------- Generated version catalog
+│   └── wrapper
+│       ├── gradle-wrapper.jar
+│       └── gradle-wrapper.properties
+├── gradlew <----------------------------- Gradle wrapper start scripts
+├── .gitignore
+├── .gitattributes
+├── .gradle
+├── settings.gradle.kts <----------------- Settings file to define build name and subprojects
+└── gradlew.bat
+```
 
 ## LibrariesForLibs
 

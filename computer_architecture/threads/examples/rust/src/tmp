@@ -1,0 +1,152 @@
+use std::thread;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use std::sync::mpsc;
+
+fn main() {
+    // 1. 기본 스레드 생성
+    let handle = thread::spawn(|| {
+        println!("Hello from a thread!");
+    });
+    handle.join().unwrap();
+
+    // 2. 데이터 공유: Arc (Atomic Reference Counting)와 Mutex 사용
+    let counter = Arc::new(Mutex::new(0));
+    let mut handles = vec![];
+
+    for _ in 0..10 {
+        let counter = Arc::clone(&counter);
+        let handle = thread::spawn(move || {
+            let mut num = counter.lock().unwrap();
+            *num += 1;
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("Result: {}", *counter.lock().unwrap());
+
+    // 3. 채널을 통한 스레드 간 통신
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        let vals = vec![
+            String::from("hi"),
+            String::from("from"),
+            String::from("the"),
+            String::from("thread"),
+        ];
+
+        for val in vals {
+            tx.send(val).unwrap();
+            thread::sleep(Duration::from_secs(1));
+        }
+    });
+
+    for received in rx {
+        println!("Got: {}", received);
+    }
+
+    // 4. 다중 생산자 채널
+    let (tx, rx) = mpsc::channel();
+    let tx1 = tx.clone();
+
+    thread::spawn(move || {
+        tx.send("hello from thread 1").unwrap();
+    });
+
+    thread::spawn(move || {
+        tx1.send("hello from thread 2").unwrap();
+    });
+
+    for received in rx {
+        println!("Got: {}", received);
+    }
+
+    // 5. 조건 변수를 사용한 스레드 동기화
+    use std::sync::{Condvar, Mutex};
+
+    let pair = Arc::new((Mutex::new(false), Condvar::new()));
+    let pair2 = Arc::clone(&pair);
+
+    thread::spawn(move || {
+        let (lock, cvar) = &*pair2;
+        let mut started = lock.lock().unwrap();
+        *started = true;
+        cvar.notify_one();
+    });
+
+    let (lock, cvar) = &*pair;
+    let mut started = lock.lock().unwrap();
+    while !*started {
+        started = cvar.wait(started).unwrap();
+    }
+
+    println!("Thread started!");
+
+    // 6. 스레드 풀 구현
+    use std::sync::mpsc::Sender;
+
+    struct ThreadPool {
+        workers: Vec<Worker>,
+        sender: Sender<Job>,
+    }
+
+    type Job = Box<dyn FnOnce() + Send + 'static>;
+
+    impl ThreadPool {
+        fn new(size: usize) -> ThreadPool {
+            let (sender, receiver) = mpsc::channel();
+            let receiver = Arc::new(Mutex::new(receiver));
+
+            let mut workers = Vec::with_capacity(size);
+
+            for id in 0..size {
+                workers.push(Worker::new(id, Arc::clone(&receiver)));
+            }
+
+            ThreadPool { workers, sender }
+        }
+
+        fn execute<F>(&self, f: F)
+        where
+            F: FnOnce() + Send + 'static,
+        {
+            let job = Box::new(f);
+            self.sender.send(job).unwrap();
+        }
+    }
+
+    struct Worker {
+        id: usize,
+        thread: thread::JoinHandle<()>,
+    }
+
+    impl Worker {
+        fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+            let thread = thread::spawn(move || loop {
+                let job = receiver.lock().unwrap().recv().unwrap();
+                println!("Worker {} got a job; executing.", id);
+                job();
+            });
+
+            Worker { id, thread }
+        }
+    }
+
+    // 스레드 풀 사용 예
+    let pool = ThreadPool::new(4);
+
+    for i in 0..8 {
+        pool.execute(move || {
+            println!("Job {} is running", i);
+            thread::sleep(Duration::from_secs(1));
+        });
+    }
+
+    // 메인 스레드가 종료되지 않도록 대기
+    thread::sleep(Duration::from_secs(10));
+}
