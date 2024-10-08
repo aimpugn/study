@@ -1,5 +1,7 @@
 # Kotlin Collections
 
+## [Kotlin Collections](https://kotlinlang.org/docs/collections-overview.html#collection-types)
+
 ## Java와 Kotlin 컬렉션 라이브러리 비교
 
 - `java.util.*`: Java의 표준 컬렉션 라이브러리
