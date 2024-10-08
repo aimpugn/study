@@ -10,7 +10,7 @@ method 주석에 문제를 분석하고, 바로 문제 해결을 시작했습니
 ```java
 public class Main {
 
-    public static void main(String[] args) {
+    public static void p86491.main(String[] args) {
         System.out.println(Main.solution(
                 new int[][] {{60, 50}, {30, 70}, {60, 30}, {80, 40}}) == 400);
 
