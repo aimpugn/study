@@ -1,7 +1,7 @@
 # Package
 
 - [Package](#package)
-  - [`/subproject/` 디렉토리 추가](#subproject-디렉토리-추가)
+    - [`/subproject/` 디렉토리 추가](#subproject-디렉토리-추가)
 
 ## `/subproject/` 디렉토리 추가
 
