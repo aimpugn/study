@@ -208,4 +208,16 @@ fun main() {
             )
         )
     ) // [(one, 1), (two, 2)]: 길이가 더 작은 리스트에 맞춰서 결과가 생성됩니다.
+
+    val args = arrayOf("test", "value")
+    printVararg(*args)
+    printVararg(*arrayOf("test", "value"))
+}
+
+/**
+ * [Variable number of arguments (varargs)﻿](https://kotlinlang.org/docs/functions.html#variable-number-of-arguments-varargs)
+ */
+fun printVararg(vararg args: String) {
+    for (arg in args)
+        println("vararg: $arg")
 }
