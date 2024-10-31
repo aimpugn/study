@@ -1,0 +1,11 @@
+# 최상위 설정 파일임을 지정
+root = true
+
+# 모든 파일에 적용되는 기본 설정
+[*]
+indent_style = space
+indent_size = 4
+charset = utf-8
+end_of_line = lf
+trim_trailing_whitespace = true
+insert_final_newline = true
