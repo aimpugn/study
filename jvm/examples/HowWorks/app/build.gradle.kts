@@ -1,30 +1,28 @@
-/**
- * 버전 관리는 version catalog를 따릅니다.
- * - https://docs.gradle.org/current/userguide/platforms.html#sec:version-catalogs
- * - https://docs.gradle.org/current/userguide/dependency_management_basics.html#version_catalog
- */
 plugins {
-    // Apply the org.jetbrains.kotlin.jvm Plugin to add support for Kotlin.
+    /**
+     * Java 애플리케이션의 진입점(main 클래스)을 지정하고, 실행 가능 JAR 파일을 빌드하거나 애플리케이션을 CLI에서 바로 실행할 수 있도록 돕는 플러그인입니다.
+     * 주로 CLI 애플리케이션을 빌드하고 실행하는 데 사용됩니다.
+     * - `run` 작업이 추가되어 gradle run 명령으로 애플리케이션을 실행할 수 있습니다.
+     * - `application` 블록의 `mainClass` 속성을 통해 애플리케이션의 진입점 클래스를 지정할 수 있습니다.
+     * - `installDist`와 `distZip` 작업이 추가되어 애플리케이션의 실행 가능한 디렉토리 구조를 설정하고, 이를 ZIP 파일로 배포할 수 있습니다.
+     *
+     * `application` 플러그인은 `java` 플러그인을 암시적으로 적용합니다.
+     *
+     * References:
+     * - https://docs.gradle.org/current/javadoc/org/gradle/api/plugins/JavaApplication.html
+     */
+    application
+
+    /**
+     * kotlin("jvm") 플러그인은 Kotlin 코드를 JVM 바이트코드로 컴파일하기 위해 필요한 Kotlin 컴파일러와 관련 설정을 Gradle에 추가합니다.
+     */
     alias(libs.plugins.kotlin.jvm)
+
+    /**
+     * Spring 관련 플러그인
+     */
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
-
-    java
-    // Apply the application plugin to add support for building a CLI application in Java.
-    application
-}
-
-group = "me.aimpugn"
-version = "0.0.1-SNAPSHOT"
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
-
-repositories {
-    mavenCentral()
 }
 
 dependencies {
@@ -49,24 +47,52 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-// tasks.withType<JavaCompile> {
-//     options.fork = true
-//     options.forkOptions.jvmArgs << '-verbose:class'
-// }
-
-// Apply a specific Java toolchain to ease working on different environments.
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
-
-application {
-    // Define the main class for the application.
-    mainClass = "me.aimpugn.backend.BackendApplicationKt"
+tasks.withType<JavaCompile> {
+    options.compilerArgs.add("-verbose")
 }
 
 tasks.named<Test>("test") {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
+}
+
+tasks.register("sourceSets") {
+    val mainSourceSet: SourceSet = sourceSets["main"]!!
+
+    println("App source set names: ${sourceSets.names}") // [main, test]
+    mainSourceSet.java {
+        println(this.displayName)
+        this.asFileTree.forEach { println("- ${it.absolutePath}") }
+    }
+    mainSourceSet.kotlin {
+        println(this.displayName)
+        this.asFileTree.forEach { println("- ${it.absolutePath}") }
+    }
+    println("annotationProcessorPath: ${mainSourceSet.annotationProcessorPath.asPath}")
+    mainSourceSet.annotationProcessorPath.asFileTree.forEach { println("- ${it.absolutePath}") }
+
+    println("runtimeClasspath:")
+    mainSourceSet.runtimeClasspath.asFileTree.forEach { println("- ${it.absolutePath}") }
+}
+
+/**
+ * `application` 블록은 프로젝트가 로드될 때 즉시 평가됩니다.
+ * 즉, 특정 작업 실행 여부와 상관없이 항상 초기화 시점에서 실행됩니다.
+ * - JVM 애플리케이션 실행과 관련된 기능을 제공하므로 Java 코드 컴파일에 필수적인 `java` 플러그인을 암시적으로 적용
+ * - 이떄 `main` 소스 집합(source set)이 실질적으로 소스 코드와 실행할 애플리케이션(응용 프로그램)의 실제 내용
+ *
+ * References:
+ * - https://docs.gradle.org/current/userguide/application_plugin.html
+ */
+application {
+    gradle.taskGraph.whenReady {
+        if (this.hasTask(":app:run")) {
+            // 속성으로 받은 mainClass를 사용하거나, 기본값을 지정
+            val targetMainClass = findProperty("mainClass") as String?
+            check(!targetMainClass.isNullOrBlank()) {
+                "Error: 'mainClass' property is required but was not provided."
+            }
+            mainClass.set(targetMainClass)
+        }
+    }
 }
