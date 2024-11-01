@@ -10,5 +10,29 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
 }
 
-rootProject.name = "kotlin"
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+}
+
+rootProject.name = "howworks"
+/**
+ * 멀티프로젝트 구성에서 하위 프로젝트를 추가합니다.
+ * `app` 디렉토리가 루트 프로젝트의 일부로 포함되며, 일반적인 하위 모듈처럼 취급됩니다.
+ * 하위 프로젝트는 루트 프로젝트와 동일한 빌드 그래프와 설정을 공유하므로 의존성 관리와 빌드 단계에서 연계된 작업이 자동으로 구성됩니다.
+ * 예를 들어,
+ * - allprojects나 subprojects 블록에서 정의한 플러그인은 하위 프로젝트에 적용할 수 있습니다.
+ * - 루트 프로젝트에서 설정한 저장소(repositories)는 하위 프로젝트에서도 공유됩니다.
+ * - 루트 프로젝트에서 version catalog를 통해 관리되는 버전 정보는 하위 프로젝트에서도 참조할 수 있습니다.
+ */
 include("app")
+
+/**
+ * 독립 빌드(include build)를 추가합니다.
+ * includeBuild 사용할 경우 app 디렉토리는 루트 프로젝트와는 별개의 빌드로 취급됩니다.
+ * 즉, 루트 프로젝트와 독립적인 빌드 설정과 의존성을 가질 수 있습니다.
+ * 또한 Gradle의 컴포지션 빌드(composite build) 기능을 사용하여 개별적인 프로젝트가 상호 의존성을 갖도록 할 수 있습니다.
+ * 마치 외부 라이브러리처럼 특정 버전의 의존성을 임포트하거나, 별도의 모듈로 동작해야 할 때 유용합니다.
+ */
+// includeBuild("app")
