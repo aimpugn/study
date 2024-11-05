@@ -37,7 +37,7 @@ dependencies {
     runtimeOnly(libs.kotlin.reflect)
     // Use the Kotlin JUnit 5 integration.
     testImplementation(libs.kotlin.test.junit5)
-
+    
     // Use the JUnit 5 integration.
     testImplementation(libs.junit.jupiter.engine)
 
