@@ -34,10 +34,10 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
 
     // KProperty 객체 정보를 더 자세하게 출력하기 위해 추가(없으면 'Kotlin reflection is not available' 출력)
-    runtimeOnly(libs.kotlin.reflect)
+    implementation(libs.kotlin.reflect)
     // Use the Kotlin JUnit 5 integration.
     testImplementation(libs.kotlin.test.junit5)
-    
+
     // Use the JUnit 5 integration.
     testImplementation(libs.junit.jupiter.engine)
 
