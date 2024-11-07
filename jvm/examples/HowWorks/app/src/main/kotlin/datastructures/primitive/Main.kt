@@ -1,4 +1,4 @@
-package primitive
+package datastructures.primitive
 
 fun main() {
     initArrays()
