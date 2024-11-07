@@ -1,4 +1,4 @@
-package list
+package datastructures.list
 
 fun main() {
     fun printTitle(title: String) = println("${"=".repeat(10)} $title ${"=".repeat(10)}")

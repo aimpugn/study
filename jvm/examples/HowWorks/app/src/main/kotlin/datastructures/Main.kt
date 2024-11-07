@@ -1,6 +1,7 @@
+package datastructures
+
 import java.util.*
 import kotlin.collections.*
-
 
 fun main() {
     setExamples()
@@ -22,8 +23,8 @@ fun setExamples() {
 
     mutableSet.add(6)
     mutableSet.remove(3)
-    val contains = 4 in mutableSet
-    val size = mutableSet.size
+    println("4 in mutableSet: ${4 in mutableSet}")
+    println("mutableSet.size: ${mutableSet.size}")
 
     println("Updated Mutable Set: $mutableSet")
 
@@ -45,10 +46,10 @@ fun mapExamples() {
 
     mutableMap["w"] = 40
     mutableMap.remove("y")
-    val containsKey = "z" in mutableMap
-    val containsValue = 30 in mutableMap.values
-    val size = mutableMap.size
-    val value = mutableMap["x"]
+    println("\"z\" in mutableMap: ${"z" in mutableMap}")
+    println("30 in mutableMap.values: ${30 in mutableMap.values}")
+    println("mutableMap.size: ${mutableMap.size}")
+    println("mutableMap[\"x\"]: ${mutableMap["x"]}")
 
     println("Updated Mutable Map: $mutableMap")
 
