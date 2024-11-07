@@ -76,6 +76,30 @@ tasks.register("sourceSets") {
     println("runtimeClasspath:")
     mainSourceSet.runtimeClasspath.asFileTree.forEach { println("- ${it.absolutePath}") }
 }
+/**
+ * Commands:
+ *
+ *    # packaging jar file
+ *    ./gradlew -Ppkg=tmp pkgJar
+ *    # At project root
+ *    (mkdir -p tmp/TmpKt && cd tmp/TmpKt && jar xvf ../../app/build/libs/tmp-example.jar)
+ */
+tasks.register<Jar>("pkgJar") {
+    val targetPackage = findProperty("pkg") as String?
+    check(!targetPackage.isNullOrBlank()) {
+        "Error: 'pkg' property is required but was not provided.\n" +
+            "Use `-Ppkg=<TARGET_PACKAGE_PATH>`\n" +
+            "Example:\n\n" +
+            "\t./gradlew -Ppkg=safety pkgJar"
+    }
+    archiveBaseName.set("$targetPackage-example")
+    val mainSourceSet = sourceSets.main.get()
+    println("mainSourceSet.output: ${mainSourceSet.output}")
+    from(mainSourceSet.output) {
+        include("$targetPackage/**") // targetPackage 패키지의 클래스 파일만 포함
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
 
 /**
  * `application` 블록은 프로젝트가 로드될 때 즉시 평가됩니다.
@@ -92,7 +116,10 @@ application {
             // 속성으로 받은 mainClass를 사용하거나, 기본값을 지정
             val targetMainClass = findProperty("mainClass") as String?
             check(!targetMainClass.isNullOrBlank()) {
-                "Error: 'mainClass' property is required but was not provided."
+                "Error: 'mainClass' property is required but was not provided." +
+                    "Use `-PmainClass=<QUALIFIED_CLASS_NAME>`" +
+                    "Example:\n\n" +
+                    "\t./gradlew -PmainClass=safety.SafetyExampleKt run"
             }
             mainClass.set(targetMainClass)
         }
@@ -100,18 +127,40 @@ application {
     }
 }
 
-/**
- * Gradle은 주로 자동화된 빌드 도구로 사용되며, 빌드 작업은 대부분 사용자와의 상호작용 없이 실행됩니다.
- * 따라서, 기본적으로 사용자 입력을 필요로 하지 않는 빈 입력 스트림이 기본값입니다.
- * 이를 통해 빌드 프로세스가 중단되지 않고 자동으로 실행될 수 있도록 설계되었다고 합니다.
- *
- * 예를 들어, CI/CD 시스템이나 터미널 환경이 아닌 다른 방식으로 Gradle이 호출될 때 표준 입력이 필요 없는 경우가 있습니다.
- *
- * [readlnOrNull] 등을 사용하려면, 표준 입력이 명시적으로 설정해야 합니다.
- *
- * References:
- * - https://docs.gradle.org/current/dsl/org.gradle.api.tasks.JavaExec.html#org.gradle.api.tasks.JavaExec:standardInput
- */
 tasks.withType<JavaExec> {
+    /**
+     * Gradle은 주로 자동화된 빌드 도구로 사용되며, 빌드 작업은 대부분 사용자와의 상호작용 없이 실행됩니다.
+     * 따라서, 기본적으로 사용자 입력을 필요로 하지 않는 빈 입력 스트림이 기본값입니다.
+     * 이를 통해 빌드 프로세스가 중단되지 않고 자동으로 실행될 수 있도록 설계되었다고 합니다.
+     *
+     * 예를 들어, CI/CD 시스템이나 터미널 환경이 아닌 다른 방식으로 Gradle이 호출될 때 표준 입력이 필요 없는 경우가 있습니다.
+     *
+     * [readlnOrNull] 등을 사용하려면, 표준 입력이 명시적으로 설정해야 합니다.
+     *
+     * References:
+     * - https://docs.gradle.org/current/dsl/org.gradle.api.tasks.JavaExec.html#org.gradle.api.tasks.JavaExec:standardInput
+     */
     standardInput = System.`in`
+    /**
+     * `pkgJar` 작업을 수행하면 `/path/to/project/app/build/libs` 경로에 `<NAME>-example.jar` 아카이브 파일이 생성됩니다.
+     * 해당 `jar` 파일들을 런타임 시에 스캔할 수 있도록 클래스패스에 추가합니다.
+     *
+     * Gradle에서 `compileClasspath`와 `runtimeClasspath`는 서로 다른 목적을 가지고 있습니다.
+     * - `compileClasspath`:
+     *      소스 코드 컴파일 시에만 필요한 의존성을 포함하고, 실행 단계에서 중복될 수 있습니다.
+     * - `runtimeClasspath`:
+     *      애플리케이션이 실행될 때 필요한 필요한 모든 런타임 의존성(클래스와 라이브러리)를 포함합니다.
+     *
+     * 따라서 여기서 [SourceSet.getCompileClasspath] 아닌 [SourceSet.getRuntimeClasspath]만 고려합니다.
+     *
+     * References:
+     * - [Some other simple source set examples](https://docs.gradle.org/current/userguide/java_plugin.html#sec:some_source_set_examples)
+     * - [Understanding dependency configurations](https://docs.gradle.org/current/userguide/dependency_configurations.html#sec:what-are-dependency-configurations)
+     * - [Caching Java projects - Java compilation](https://docs.gradle.org/current/userguide/caching_java_projects.html#java_compilation)
+     * - [Gradle User Home Directory](https://docs.gradle.org/current/userguide/directory_layout.html#dir:gradle_user_home)
+     * - [The Dependency Cache](https://docs.gradle.org/current/userguide/dependency_resolution.html#sec:dependency_cache)
+     * - [Working with Files](https://docs.gradle.org/current/userguide/working_with_files.html)
+     */
+    val newClasspath = sourceSets.main.get().runtimeClasspath + fileTree("build/libs") { include("**/*.jar") }
+    classpath = newClasspath
 }
