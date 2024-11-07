@@ -22,7 +22,7 @@
  * - [제네릭의 공변성(Covariance) 및 반공변성(Contravariance)](https://learn.microsoft.com/ko-kr/dotnet/standard/generics/covariance-and-contravariance)
  * - [타입 시스템에서의 변성(Variance)](https://driip.me/d875a384-3fb9-471b-a53b-b3ca52f8238e)
  */
-package variance
+package datastructures.variance
 
 // `out`: 타입 T를 '생산'하는 메서드만 허용됩니다.
 class CovariantTest<out T : Parent>(private val arg: T) {
