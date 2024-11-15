@@ -3,6 +3,8 @@
  */
 package classes
 
+import util.RunExample
+
 class InitOrderDemo(name: String) {
     val firstProperty = "First property: $name".also(::println)
 
@@ -37,9 +39,18 @@ class Person(
 ) {
     // 주 생성자 파라미터는 initializer block에서 사용될 수 있습니다.
     val firstNameUpper = firstName.uppercase()
+
+    var friends = mutableListOf<String>()
+    var friendsAdded = 0
+        private set
+
+    fun addFriends(vararg newFriends: String) {
+        friendsAdded += newFriends.size
+        friends.addAll(newFriends)
+    }
 }
 
-class PrivateConstructor private constructor(val field: String = "private") {
+class PrivateConstructor private constructor(private val field: String = "private") {
     private constructor() : this("by secondary constructor")
 
     companion object {
@@ -57,11 +68,16 @@ class PrivateConstructor private constructor(val field: String = "private") {
 open class Base(p: Int) // Class is open for inheritance
 class Derived(p: Int) : Base(p)
 
-fun main() {
+@RunExample
+fun classesExample() {
     println(Example() is Any) // true
 
-    println(Person("Kim", "SangHyun").lastName) // SangHyun
-    println(Person("Kim", "SangHyun").firstNameUpper) // KIM
+    val p = Person("Kim", "SangHyun")
+    println(p.lastName) // SangHyun
+    println(p.firstNameUpper) // KIM
+    p.addFriends("add", "new", "friend")
+    // p.friendsAdded = 10 -> Cannot assign to 'friendsAdded': the setter is private in 'Person'
+    println("friends: ${p.friends}, friendsAdded: ${p.friendsAdded}")
 
     InitOrderDemo("hello")
     // Output:
