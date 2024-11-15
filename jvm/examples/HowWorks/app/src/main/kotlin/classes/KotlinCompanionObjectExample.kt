@@ -1,5 +1,7 @@
 package classes
 
+import util.RunExample
+
 /**
  * `companion object`는 정적 필드처럼 보이지만 실제로 객체 인스턴스로 간주되며 더 유연한 기능을 제공합니다.
  * 일반적으로 Java의 `static`과 비교되지만, 실제로는 객체이므로 다형성 및 인터페이스 구현 등 더 유연하게 사용할 수 있습니다.
@@ -130,6 +132,7 @@ class KotlinCompanionObjectExample {
     }
 }
 
-fun main() {
+@RunExample
+fun kotlinCompanionObjectExample() {
     KotlinCompanionObjectExample.Companion.finalVoidMethod()
 }

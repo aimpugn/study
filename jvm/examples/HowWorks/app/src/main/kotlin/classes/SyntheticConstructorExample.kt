@@ -1,8 +1,27 @@
 package classes
 
+import util.RunExample
 
 /**
  * `synthetic constructor`란 컴파일러가 특별한 목적을 가지고 자동으로 만드는 생성자입니다.
+ *
+ * 영어에서 `synthetic`은 "인공적으로 만든", "자연스러운 방식이 아닌, 조합하여 만든"이라는 의미로 사용됩니다.
+ * 여기서는 "컴파일러가 자동으로 생성한" 것을 지칭합니다.
+ * 개발자가 명시적으로 작성하지 않았지만, 컴파일러가 코드를 올바르게 동작하도록 보조하기 위해 생성한 코드나 메서드를 뜻합니다.
+ * - Kotlin의 기본값 처리 ($default 메서드)
+ * - 내부 클래스(inner class)가 컴파일되면, 외부 클래스의 참조를 보관하기 위해 synthetic 필드가 생성됩니다.
+ *   예: `OuterClass.this`는 `synthetic` 필드로 구현됩니다.
+ * - Java의 `enum`에는 `values()`와 `valueOf(String name)` 메서드가 자동으로 생성되며, `synthetic`으로 표시됩니다.
+ * - [Kotlin의 `enum`에서는 `valueOf(value: String)`과 `entries` 메서드가 자동 생성](https://kotlinlang.org/docs/enum-classes.html#working-with-enum-constants)되며, `synthetic`으로 표시됩니다.
+ *    ```
+ *    // access flags 0x101A
+ *    private final static synthetic [Lclasses/Test; $VALUES
+ *
+ *    // access flags 0x101A
+ *    private final static synthetic Lkotlin/enums/EnumEntries; $ENTRIES
+ *    ```
+ * - Java와 Kotlin의 람다 표현식은 `synthetic` 클래스를 생성해 처리합니다.
+ *
  * Kotlin 경우 Java와의 상호 운용성을 위해 다음과 같은 경우 `synthetic constructor`를 생성합니다:
  * - `data class`
  * - `companion object`
@@ -155,7 +174,8 @@ package classes
  */
 class SyntheticConstructorExample(val a: Int = 0, val b: String = "")
 
-fun main() {
+@RunExample
+fun syntheticConstructor() {
     println(SyntheticConstructorExample(10).a)
     // 컴파일러가 생성하는 실제 호출:
     // SyntheticConstructorExample(10, 0, 0b10, null)
