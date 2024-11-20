@@ -2,10 +2,23 @@ package coroutine
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import util.RunExample
 import kotlin.system.measureTimeMillis
 
 class CoroutineExamples {
+    /**
+     * 기본적인 코루틴 예제
+     */
+    suspend fun whereAreSuspensions(param: String) {
+        println("First suspension")
+        delay(1000)  // 첫 번째 중단점
+        println("Second suspension")
+        delay(2000)  // 두 번째 중단점
+        println(param)
+    }
 
     /**
      * 기본적인 코루틴 예제
@@ -188,30 +201,79 @@ class CoroutineExamples {
     }
 }
 
+@RunExample
+suspend fun coroutineExamples() {
+    coroutineScope {
+        withContext(Dispatchers.Default) {
+            val examples = CoroutineExamples()
+
+            println("=== 기본 코루틴 예제 ===")
+            examples.whereAreSuspensions("whereAreSuspensions")
+            examples.basicCoroutines()
+
+            println("\n=== 코루틴 컨텍스트 예제 ===")
+            examples.coroutineContexts()
+
+            println("\n=== 취소와 타임아웃 예제 ===")
+            examples.cancellationAndTimeout()
+
+            println("\n=== Flow 예제 ===")
+            examples.flowExample()
+
+            println("\n=== 채널 예제 ===")
+            examples.channelExample()
+
+            println("\n=== 예외 처리 예제 ===")
+            examples.exceptionHandling()
+
+            println("\n=== 병렬 API 호출 예제 ===")
+            examples.parallelApiCalls()
+        }
+    }
+}
+
 /**
- * 메인 함수에서 예제 실행
+ * ### [Dispatchers.Default]
+ *
+ * CPU 집약적 작업(CPU-intensive tasks)에 최적화된 스레드 풀을 사용합니다.
+ * [DefaultExecutor]라는 공유 스레드 풀에서 코루틴이 실행됩니다.
+ * 작업을 균등하게 분배하여 병렬 처리를 최대화합니다.
+ *
+ * 다음과 같은 작업들에 적합합니다.
+ * - 수학 계산, 데이터 처리, 알고리즘 실행 등 CPU를 많이 사용하는 작업.
+ * - 비동기 작업이 아닌 계속해서 CPU를 사용하는 연산.
+ *
+ * ### [Dispatchers.IO]
+ *
+ * I/O 작업(Input/Output-intensive tasks)에 최적화된 스레드 풀을 사용합니다.
+ * 스레드 개수는 제한적이지 않으며, [Dispatchers.Default]의 스레드 풀보다 더 많은 스레드를 생성할 수 있습니다.
+ * 기본적으로 JVM에게 허용된 CPU 코어 수의 64배([Runtime.availableProcessors] * 64)까지 스레드를 생성할 수 있습니다.
+ *
+ * [DefaultExecutor]와 동일한 스레드 풀을 기반으로 하지만, 추가적으로 더 많은 스레드를 생성할 수 있습니다.
+ *
+ * 다음과 같은 작업들에 적합합니다.
+ * - 네트워크 요청, 파일 읽기/쓰기, 데이터베이스 작업 등 I/O 중심의 비동기 작업.
+ * - 블로킹 시간이 긴 작업.
+ *
  */
-suspend fun main() = coroutineScope {
-    val examples = CoroutineExamples()
+@RunExample
+suspend fun coroutineWithDispatcher() {
+    val jobs = List(100) { // 100,000 코루틴 생성
+        /**
+         * [CoroutineScope]는 코루틴의 생명주기를 관리하고, 코루틴을 구조적으로 실행할 수 있도록 도와줍니다.
+         * 다음을 포함하는 코루틴 컨텍스트(CoroutineContext)를 제공합니다.
+         * - [CoroutineDispatcher]: 코루틴이 실행될 스레드를 결정 ([Dispatchers.IO], [Dispatchers.Default] 등).
+         * - [Job]: 코루틴의 생명주기를 추적.
+         * - 그 외 에러 핸들링, 로그 등의 커스텀 컨텍스트 요소.
+         *
+         * [CoroutineScope]는 생성된 코루틴을 그룹화하고, 상위 [Job]을 통해 모든 하위 코루틴의 생명주기를 일괄적으로 관리합니다.
+         */
+        val coroutineScope = CoroutineScope(Dispatchers.Default)
+        coroutineScope.launch {// Default Dispatcher 사용 (스레드 풀)
+            delay(1000) // Suspend execution
+            println("Coroutine $it is done")
+        }
+    }
 
-    println("=== 기본 코루틴 예제 ===")
-    examples.basicCoroutines()
-
-    println("\n=== 코루틴 컨텍스트 예제 ===")
-    examples.coroutineContexts()
-
-    println("\n=== 취소와 타임아웃 예제 ===")
-    examples.cancellationAndTimeout()
-
-    println("\n=== Flow 예제 ===")
-    examples.flowExample()
-
-    println("\n=== 채널 예제 ===")
-    examples.channelExample()
-
-    println("\n=== 예외 처리 예제 ===")
-    examples.exceptionHandling()
-
-    println("\n=== 병렬 API 호출 예제 ===")
-    examples.parallelApiCalls()
+    jobs.forEach { it.join() } // 모든 코루틴이 완료되길 기다림
 }
