@@ -9,7 +9,9 @@ import java.io.File
 import java.net.URL
 import java.security.SecureClassLoader
 import java.util.jar.JarFile
-import kotlin.reflect.full.callSuspend
+import kotlin.reflect.KParameter
+import kotlin.reflect.full.callSuspendBy
+import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.kotlinFunction
 
 /**
@@ -54,6 +56,92 @@ class RunExampleInvoker {
          * - [PathMatchingResourcePatternResolver.getResources]
          */
         suspend fun invoke(packageName: String) {
+            /**
+             * `public` 멤버는 어떤 패키지나 클래스에서도 접근 가능해야 하지만, 그 말이 리플렉션을 사용하는 경우에도 항상 허용된다는 의미는 아닙니다.
+             * 즉, 클래스 로더를 통해 현재 로딩된 클래스들을 가져온다고 해도 바로 [java.lang.reflect.Method.invoke]할 수 있는 것은 아닙니다.
+             * 리플렉션의 접근성은 다음에 의해 결정됩니다:
+             * 1. 모듈 시스템의 `exports`/`opens` 설정
+             * 2. Java의 기본 접근 제어자
+             * 3. (Java 17부터 deprecated) [SecurityManager]와 [java.security.AccessController]
+             *
+             * ### `exports`/`opens` 설정
+             *
+             * Java 9 이상에서 도입된 모듈 시스템(JPMS)의 경우 `public` 멤버라 하더라도 모듈 간 `exports` 또는 `opens` 설정이 없다면 다른 모듈에서 접근할 수 없습니다.
+             * ```
+             * // module-info.java
+             * module com.example.core {
+             *     // 특정 패키지만 외부로 노출.
+             *     // 다른 모듈에서 해당 패키지의 `public` 멤버에 접근 가능.
+             *     exports com.example.core.api;
+             *
+             *     // 리플렉션 접근 허용
+             *     // 다른 모듈에서 리플렉션을 통해 해당 패키지의 비공개 멤버도 접근 가능.
+             *     opens com.example.core.internal to com.example.test;
+             *
+             *     // 다른 모듈 의존성 선언
+             *     requires java.base;
+             *     requires transitive com.example.common;
+             * }
+             * ```
+             *
+             * 또는 [`--add-opens` JVM 옵션](https://openjdk.org/jeps/261#Breaking-encapsulation)을 사용할 수 있습니다.
+             *
+             * ```
+             * --add-opens <source-module>/<package>=<target-module>(,<target-module>)*
+             * ```
+             *
+             * ### Java의 기본 접근 제어자
+             *
+             * Java의 접근 제어는 클래스 간의 관계와 패키지 구조를 기반으로 동작하며, 접근 제어 규칙은 컴파일 시와 런타임 모두 적용됩니다. [visibility.VisibilityExample]
+             * ```
+             * package com.example;
+             *
+             * public class VisibilityExample {
+             *     private int privateField;           // 같은 클래스만
+             *     int defaultField;                   // 같은 클래스 + 같은 패키지
+             *     protected int protectedField;       // 같은 클래스 + 하위 클래스 + 같은 패키지
+             *     public int publicField;             // 같은 클래스 + 하위 클래스 + 같은 패키지 + 다른 패키지 등 모든 곳
+             *
+             *     // 내부 클래스는 외부 클래스의 private 멤버 접근 가능
+             *     class InnerClass {
+             *         void method() {
+             *             privateField = 1; // OK
+             *         }
+             *     }
+             * }
+             * ```
+             *
+             * ### `setAccessible`
+             *
+             * #### 생성자 경우
+             *
+             * Java에서 [RunExampleInvoker.invoke]를 호출할 때, [RunExample] 어노테이션이 붙은 메서드의 클래스가 `public`이라 해도
+             * 다른 패키지에 있는 경우 [IllegalAccessException] 에러가 발생합니다.
+             * ```
+             * Exception in thread "main" java.lang.IllegalAccessException: class util.RunExampleInvoker$Companion cannot access a member of class patterns.Pizza with modifiers "public"
+             * ```
+             *
+             * 이런 경우 [java.lang.reflect.Constructor.setAccessible]를 `true`로 설정하면 Java의 접근 제어를 무시할 수 있습니다.
+             * `private`, `protected`, 그리고 `package-private` 생성자 경우에도 접근 가능합니다.
+             *
+             * #### 메서드 경우
+             *
+             * 메서드 경우에도 마찬가지로 `public`라 하더라도 다음과 같이 [IllegalAccessException] 에러가 발생할 수 있습니다.
+             * ```
+             * kotlin.reflect.full.IllegalCallableAccessException: java.lang.IllegalAccessException: class kotlin.reflect.jvm.internal.calls.CallerImpl$Method cannot access a member of class patterns.Pizza with modifiers "public"
+             *
+             * ... 생략 ...
+             *
+             * Caused by: java.lang.IllegalAccessException: class kotlin.reflect.jvm.internal.calls.CallerImpl$Method cannot access a member of class patterns.Pizza with modifiers "public"
+             * ```
+             *
+             * KotlinFunction 경우에는 [kotlin.reflect.KFunction.isAccessible]을 `true`로 설정하면 Java의 접근 제어를 무시할 수 있습니다.
+             *
+             * References:
+             * - [JEP 476: Module Import Declarations (Preview)](https://openjdk.org/jeps/476)
+             * - [JEP 494: Module Import Declarations (Second Preview)](https://openjdk.org/jeps/494)
+             */
+            val accessible = true
             var currClassName = ""
             scanTargetClasses(packageName).forEach { clazz ->
                 /**
@@ -200,7 +288,9 @@ class RunExampleInvoker {
                                  */
                                 null  // 패키지 레벨 함수 또는 컴패니언 객체는 인스턴스 생성 없이 null로 호출
                             } else {
-                                clazz.getDeclaredConstructor().newInstance()
+                                val constructor = clazz.getDeclaredConstructor()
+                                constructor.isAccessible = accessible
+                                constructor.newInstance()
                             }
                         }
 
@@ -213,12 +303,55 @@ class RunExampleInvoker {
                         /*method.invoke(instance)*/
                         // Method.invoke 대신 kotlinFunction 을 사용합니다.
                         method.kotlinFunction?.let {
-                            if (it.isSuspend) {
-                                it.callSuspend()
-                                return@methods
-                            }
+                            try {
+                                it.isAccessible = accessible
 
-                            it.call()
+                                /**
+                                 * 참고로 같은 메서드여도, kotlin으로 보느냐 java로 보느냐에 따라 메서드 파라미터의 개수가 상이하게 카운트될 수 있습니다.
+                                 *
+                                 * ```
+                                 * println(method.parameters.size) // java.lang.reflect.Method 타입. 0
+                                 * println(it.parameters.size) // kotlin.reflect.KParameter 타입. 1
+                                 * ```
+                                 *
+                                 * ### [java.lang.reflect.Method] 경우
+                                 *
+                                 * Java 메서드의 실제 파라미터만 포함합니다.
+                                 * 메서드가 받는 명시적 인자만 포함하며, 숨겨진 수신 객체(receiver)나 `this` 참조는 포함되지 않습니다.
+                                 *
+                                 * ### [kotlin.reflect.KFunction] 경우
+                                 *
+                                 * [kotlin.reflect.KFunction]은 Kotlin의 함수 및 메서드 시그니처를 Kotlin 관점에서 모델링한 타입입니다.
+                                 *
+                                 * 따라서 [kotlin.reflect.KFunction.parameters]는 *Kotlin 관점에서 모든 파라미터*를 포함합니다.
+                                 * 이는 함수가 받는 일반적인 파라미터 외에 확장 함수나 클래스 멤버 함수에서 암시적으로 전달되는 수신(receiver) 객체도 포함됩니다.
+                                 * ```
+                                 * // 확장 함수
+                                 * // - receiver: String 객체
+                                 * // - parameters: prefix
+                                 * fun String.prefix(prefix: String)
+                                 *
+                                 * // 멤버 함수
+                                 * // - receiver: Example 객체
+                                 * // - parameters: name
+                                 * class Example { fun greet(name: String) }
+                                 * ```
+                                 */
+                                val parameters: Map<KParameter, Any?> = it.parameters.associateWith { param ->
+                                    when {
+                                        param.kind == KParameter.Kind.INSTANCE -> instance // receiver 객체
+                                        else -> null // 기타 파라미터
+                                    }
+                                }
+
+                                if (it.isSuspend) {
+                                    it.callSuspendBy(parameters)
+                                } else {
+                                    it.callBy(parameters)
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
                         }
                     }
                 }
@@ -234,6 +367,66 @@ class RunExampleInvoker {
             val classes = mutableSetOf<Class<*>>()
             packageName.replace('.', '/')
 
+            /**
+             * Java에서 클래스 로더는 여러 중요한 책임들을 가집니다.
+             * - [생성과 로딩 (Creation and Loading)](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-5.html#jvms-5.3)
+             *    - JVM은 클래스 로더를 사용하여 클래스 또는 인터페이스의 바이너리 표현(binary representation, `.class` 파일 내의 바이트코드)을 찾습니다.
+             *    - 그리고 JVM은 해당 바이너리 표현으로부터 클래스/인터페이스를 도출(derive)합니다.
+             *    - 도출된 클래스나 인터페이스의 내부 표현(implementation-specific internal representation)을 메서드 영역(Method Area)에 생성합니다.
+             * - [링킹 (Linking)](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-5.html#jvms-5.4)
+             *    - 검증(Verification):
+             *        - 바이트코드의 유효성을 확인하고 JVM의 사양과 호환되지 않는 경우 런타임 예외(`VerifyError`)를 던집니다.
+             *    - 준비(Preparation):
+             *        - `static` 필드의 메모리를 할당하고 초기값(기본값)으로 초기화합니다.
+             *        - 이는 필드 선언 시 명시적으로 설정된 값이 아닌, 데이터 타입의 기본값으로 초기화함을 의미합니다. ex: `int`는 0, `bool`은 false, 참조타입은 null 등
+             *        - 클래스 파일에 정의된 필드 정보를 기반으로 메모리 레이아웃을 준비합니다.
+             *    - 해결(Resolution):
+             *        - 동적으로 심볼릭 참조(symbolic references in the run-time constant pool)를 하나 이상의 구체적 값으로 결정(변환)하는 프로세스입니다.
+             *        - 예를 들어, 메서드 호출이나 필드 참조는 실제 메모리 주소 또는 메서드 테이블 엔트리로 변환됩니다.
+             *        - 필요 시점에 수행될 수 있습니다(지연 로딩 가능).
+             * - [초기화 (Initialization)](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-5.html#jvms-5.5)
+             *    - 사용자가 명시한 초기값을 할당하거나, `static` 초기화 블록을 실행합니다.
+             *    - `static` 필드에 초기값이 정의되어 있다면 해당 값으로 설정됩니다.
+             *    - `static` 초기화 블록이 존재하면 해당 블록이 실행됩니다.
+             *
+             *    ```
+             *    class Example {
+             *        static int num = 42;    // 준비 시 0, 초기화 시 42
+             *        static String text;     // 준비 시 "", 초기화 시 "Hello, World!"
+             *        static {
+             *            text = "Hello, World!";
+             *        }
+             *    }
+             *    ```
+             *
+             * Java의 클래스 로더는 기본적으로 부모 위임([parent delegation](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ClassLoader.html)) 방식을 따릅니다.
+             * 이 위임 모델(parent delegation)을 통해 중복 로드를 방지하고, 일관성을 유지합니다.
+             * 클래스 로더 탐색 순서([ClassLoader.loadClass])는 다음과 같습니다:
+             * 1. 이미 로드된 클래스인지 확인
+             * 2. 부모 클래스 로더에 위임 (최상위 클래스 로더 부트스트랩까지 반복)
+             * 3. 부모가 로드 실패시 자신이 로드 시도
+             *
+             * 이러한 클래스 로더는 로드한 클래스들의 네임스페이스를 정의합니다.
+             * - 클래스의 완전한 식별자 = (클래스 이름 + 정의 클래스 로더)
+             *
+             * 서로 다른 클래스 로더가 같은 이름의 클래스를 로드하면 두 클래스는 서로 다른 타입으로 취급됩니다.
+             * 따라서 `instanceof` 체크도 호환되지 않고 직접적인 타입 캐스팅도 불가능합니다.
+             *
+             * ```
+             * ClassLoader loader1 = new CustomClassLoader();
+             * Class<?> class1 = loader1.loadClass("com.example.MyClass");
+             *
+             * ClassLoader loader2 = new CustomClassLoader();
+             * Class<?> class2 = loader2.loadClass("com.example.MyClass");
+             *
+             * System.out.println(class1 == class2); // false (서로 다른 클래스 로더)
+             * ```
+             *
+             * References:
+             * - [Chapter 5. Loading, Linking, and Initializing](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-5.html)
+             * - [Classloaders](https://docs.oracle.com/cd/E19528-01/819-4734/beade/index.html)
+             * - [What is an isolated classloader in Java?](https://stackoverflow.com/a/9588184)
+             */
             val classLoader = Thread.currentThread().contextClassLoader as SecureClassLoader
 
             for (resource in classLoader.getResources(packageName)) {

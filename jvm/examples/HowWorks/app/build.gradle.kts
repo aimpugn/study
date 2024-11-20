@@ -163,4 +163,29 @@ tasks.withType<JavaExec> {
      */
     val newClasspath = sourceSets.main.get().runtimeClasspath + fileTree("build/libs") { include("**/*.jar") }
     classpath = newClasspath
+
+    /**
+     * JPMS는 기본적으로 모듈 간의 내부 구현을 노출하지 않습니다.
+     * 즉, `jdk.internal.net.http` 패키지는 외부 모듈이나 익명 모듈에서 접근할 수 없습니다.
+     * 따라서 리플렉션으로 접근하려고 하면 아래와 같은 에러가 발생합니다.
+     * ```
+     * Unable to make field final jdk.internal.net.http.HttpClientImpl jdk.internal.net.http.HttpClientFacade.impl accessible: module java.net.http does not "opens jdk.internal.net.http" to unnamed module @dbf57b3
+     * ```
+     *
+     * 하지만 `--add-opens`라는 JVM 옵션을 통해 특정 패키지를 open할 수 있습니다.
+     * ```
+     * --add-opens <source-module>/<package>=<target-module>(,<target-module>)*
+     * ```
+     *
+     * `ALL-UNNAMED`를 사용하면 해당 소스 패키지가 모든 익명 모듈에 export 됩니다.
+     * ```
+     * --add-opens java.net.http/jdk.internal.net.http=ALL-UNNAMED
+     * ```
+     *
+     * References:
+     * - [JEP 403: Strongly Encapsulate JDK Internals](https://openjdk.org/jeps/403)
+     * - [JEP 261: Module System - Breaking encapsulation](https://openjdk.org/jeps/261#Breaking-encapsulation)
+     * - [7 Migrating From JDK 8 to Later JDK Releases](https://docs.oracle.com/en/java/javase/17/migrate/migrating-jdk-8-later-jdk-releases.html)
+     */
+    jvmArgs("--add-opens", "java.net.http/jdk.internal.net.http=networks")
 }
