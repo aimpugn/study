@@ -88,9 +88,9 @@ tasks.register<Jar>("pkgJar") {
     val targetPackage = findProperty("pkg") as String?
     check(!targetPackage.isNullOrBlank()) {
         "Error: 'pkg' property is required but was not provided.\n" +
-            "Use `-Ppkg=<TARGET_PACKAGE_PATH>`\n" +
-            "Example:\n\n" +
-            "\t./gradlew -Ppkg=safety pkgJar"
+                "Use `-Ppkg=<TARGET_PACKAGE_PATH>`\n" +
+                "Example:\n\n" +
+                "\t./gradlew -Ppkg=safety pkgJar"
     }
     archiveBaseName.set("$targetPackage-example")
     val mainSourceSet = sourceSets.main.get()
@@ -117,9 +117,9 @@ application {
             val targetMainClass = findProperty("mainClass") as String?
             check(!targetMainClass.isNullOrBlank()) {
                 "Error: 'mainClass' property is required but was not provided." +
-                    "Use `-PmainClass=<QUALIFIED_CLASS_NAME>`" +
-                    "Example:\n\n" +
-                    "\t./gradlew -PmainClass=safety.SafetyExampleKt run"
+                        "Use `-PmainClass=<QUALIFIED_CLASS_NAME>`" +
+                        "Example:\n\n" +
+                        "\t./gradlew -PmainClass=safety.SafetyExampleKt run"
             }
             mainClass.set(targetMainClass)
         }
