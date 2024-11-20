@@ -1,4 +1,6 @@
 plugins {
+    idea
+
     /**
      * Java 애플리케이션의 진입점(main 클래스)을 지정하고, 실행 가능 JAR 파일을 빌드하거나 애플리케이션을 CLI에서 바로 실행할 수 있도록 돕는 플러그인입니다.
      * 주로 CLI 애플리케이션을 빌드하고 실행하는 데 사용됩니다.
@@ -43,6 +45,14 @@ dependencies {
 
     // This dependency is used by the application.
     implementation(libs.guava)
+}
+
+idea {
+    module {
+        // https://discuss.gradle.org/t/how-do-i-force-gradle-to-download-dependency-sources/34726/2
+        isDownloadSources = true
+        isDownloadJavadoc = true
+    }
 }
 
 tasks.withType<Test> {
