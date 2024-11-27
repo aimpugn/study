@@ -95,20 +95,42 @@ tasks.register("sourceSets") {
  *    (mkdir -p tmp/TmpKt && cd tmp/TmpKt && jar xvf ../../app/build/libs/tmp-example.jar)
  */
 tasks.register<Jar>("pkgJar") {
-    val targetPackage = findProperty("pkg") as String?
-    check(!targetPackage.isNullOrBlank()) {
-        "Error: 'pkg' property is required but was not provided.\n" +
-                "Use `-Ppkg=<TARGET_PACKAGE_PATH>`\n" +
-                "Example:\n\n" +
-                "\t./gradlew -Ppkg=safety pkgJar"
+    /**
+     * gradle 빌드 라이프사이클은 세 단계를 거칩니다.
+     * 1. 초기화:
+     *   `settings.gradle(.kts)` 파일을 찾아서 [`Settings`](https://docs.gradle.org/current/dsl/org.gradle.api.initialization.Settings.html) 인스턴스를 생성하고,
+     *   설정을 평가하여 빌드를 구성하는 프로젝트(및 포함된 빌드)를 결정합니다.
+     *   모든 프로젝트에 대해 [`Project`](https://docs.gradle.org/current/dsl/org.gradle.api.Project.html) 인스턴스를 생성합니다.
+     * 2. 구성:
+     *   빌드에 참여하는 모든 프로젝트의 빌드 스크립트 `build.gradle(.kts)`를 평가하고, 요청된 작업들에 대한 작업 그래프를 생성합니다.
+     *   빌드 스크립트의 코드가 실행되면서 작업의 속성을 설정하고 액션을 등록하는 등 작업을 구성하지만, 액션 자체는 실행되지 않습니다.
+     * 3. 실행:
+     *   선택된 작업들을 스케쥴하고 실행합니다. 작업 간의 의존성이 실행 순서를 결정합니다.
+     *   작업들의 실행은 병렬로 이뤄질 수 있습니다.
+     *
+     * 따라서 액션 실행이 아니더라도 구성 단계에서 스크립트의 코드 실행이 이뤄지고, 이에 따라 아직 전달되지 않은 속성으로 인해 익셉션이 발생할 수 있습니다.
+     *
+     * References:
+     * - https://docs.gradle.org/current/userguide/build_lifecycle.html#sec:build_phases
+     * - https://docs.gradle.org/current/userguide/implementing_custom_tasks.html#task_actions
+     * - https://docs.gradle.org/current/userguide/organizing_tasks.html
+     */
+    doFirst {
+        val targetPackage = findProperty("pkg") as String?
+        check(!targetPackage.isNullOrBlank()) {
+            "Error: 'pkg' property is required but was not provided.\n" +
+                    "Use `-Ppkg=<TARGET_PACKAGE_PATH>`\n" +
+                    "Example:\n\n" +
+                    "\t./gradlew -Ppkg=safety pkgJar"
+        }
+        archiveBaseName.set("$targetPackage-example")
+        val mainSourceSet = sourceSets.main.get()
+        println("mainSourceSet.output: ${mainSourceSet.output}")
+        from(mainSourceSet.output) {
+            include("$targetPackage/**") // targetPackage 패키지의 클래스 파일만 포함
+        }
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
-    archiveBaseName.set("$targetPackage-example")
-    val mainSourceSet = sourceSets.main.get()
-    println("mainSourceSet.output: ${mainSourceSet.output}")
-    from(mainSourceSet.output) {
-        include("$targetPackage/**") // targetPackage 패키지의 클래스 파일만 포함
-    }
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 /**
@@ -123,7 +145,7 @@ tasks.register<Jar>("pkgJar") {
 application {
     gradle.taskGraph.whenReady {
         if (this.hasTask(":app:run")) {
-            // 속성으로 받은 mainClass를 사용하거나, 기본값을 지정
+            // mainClass 속성을 사용하도록 합니다.
             val targetMainClass = findProperty("mainClass") as String?
             check(!targetMainClass.isNullOrBlank()) {
                 "Error: 'mainClass' property is required but was not provided." +
@@ -133,7 +155,6 @@ application {
             }
             mainClass.set(targetMainClass)
         }
-
     }
 }
 
