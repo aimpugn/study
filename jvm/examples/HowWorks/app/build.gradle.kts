@@ -155,6 +155,10 @@ application {
             }
             mainClass.set(targetMainClass)
         }
+
+        if (hasTask(":app:bootJar")) {
+            mainClass = "spring.SpringMainKt"
+        }
     }
 }
 
