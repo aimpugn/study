@@ -1,0 +1,19 @@
+spring:
+  main:
+    web-application-type: SERVLET # NONE, SERVLET, REACTIVE
+
+server:
+  tomcat:
+    threads:
+      # 요청 하나를 추적해보기 위해 최소, 최대 exec 스레드 수를 1개로 고정
+      min-spare: 1
+      max: 1
+
+my:
+  test:
+    string-property: "My Test String Property"
+    bool-property: true
+  custom:
+    client-id: "client-id-1234-5678"
+    admin: true
+    application-type: WEB
