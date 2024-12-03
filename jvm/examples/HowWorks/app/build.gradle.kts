@@ -156,7 +156,7 @@ application {
             mainClass.set(targetMainClass)
         }
 
-        if (hasTask(":app:bootJar")) {
+        if (listOf(":app:bootJar", ":app:bootRun").any { hasTask(it) }) {
             mainClass = "spring.SpringMainKt"
         }
     }
