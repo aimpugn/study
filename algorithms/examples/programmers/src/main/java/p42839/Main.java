@@ -1,4 +1,4 @@
-package main.java.p42839;
+package p42839;
 
 import java.util.*;
 
@@ -44,14 +44,13 @@ public class Main {
      *
      * </pre>
      *
-     *
      * @param current 현재까지 만들어진 숫자 문자열
      * @param numbers 원본 숫자 문자열
-     * @param used 각 자리 숫자의 사용 여부를 나타내는 배열
-     * @param primes 발견된 소수들을 저장하는 Set
+     * @param used    각 자리 숫자의 사용 여부를 나타내는 배열
+     * @param primes  발견된 소수들을 저장하는 Set
      */
     private void dfs(String current, String numbers, boolean[] used,
-            Set<Integer> primes) {
+                     Set<Integer> primes) {
         // 현재 만들어진 숫자가 비어있지 않으면 소수인지 확인
         if (!current.isEmpty()) {
             int num = Integer.parseInt(current);
@@ -84,9 +83,8 @@ public class Main {
      *
      * @param number
      * @return
-     *
      * @see <a href=
-     *      "https://ko.wikipedia.org/wiki/%EC%86%8C%EC%88%98_(%EC%88%98%EB%A1%A0)">소수</a>
+     * "https://ko.wikipedia.org/wiki/%EC%86%8C%EC%88%98_(%EC%88%98%EB%A1%A0)">소수</a>
      */
     private boolean isPrime(int number) {
         if (number < 2) {
