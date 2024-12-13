@@ -1,27 +1,27 @@
-package main.java.p258712;
+package p258712;
 
 import java.util.*;
 
 /**
  * @see <a href=
- *      "https://school.programmers.co.kr/learn/courses/30/lessons/258712"> 가장
- *      많이 받은 선물 </a>
+ * "https://school.programmers.co.kr/learn/courses/30/lessons/258712"> 가장
+ * 많이 받은 선물 </a>
  */
 public class Main {
 
     public static void main(String[] args) {
         System.out.println(
-                Main.solution(new String[] {"muzi", "ryan", "frodo", "neo"},
-                        new String[] {"muzi frodo", "muzi frodo", "ryan muzi",
+                Main.solution(new String[]{"muzi", "ryan", "frodo", "neo"},
+                        new String[]{"muzi frodo", "muzi frodo", "ryan muzi",
                                 "ryan muzi", "ryan muzi", "frodo muzi",
                                 "frodo ryan", "neo muzi"}));
         System.out.println(Main.solution(
-                new String[] {"joy", "brad", "alessandro", "conan", "david"},
-                new String[] {"alessandro brad", "alessandro joy",
+                new String[]{"joy", "brad", "alessandro", "conan", "david"},
+                new String[]{"alessandro brad", "alessandro joy",
                         "alessandro conan", "david alessandro",
                         "alessandro david"}));
-        System.out.println(Main.solution(new String[] {"a", "b", "c"},
-                new String[] {"a b", "b a", "c a", "a c", "a c", "c a"}));
+        System.out.println(Main.solution(new String[]{"a", "b", "c"},
+                new String[]{"a b", "b a", "c a", "a c", "a c", "c a"}));
     }
 
     public static int solution(String[] friends, String[] gifts) {
@@ -47,8 +47,8 @@ public class Main {
     }
 
     private static void processGifts(String[] gifts,
-            Map<String, Integer> friendIndices, int[][] giftExchanges,
-            int[] giftIndices) {
+                                     Map<String, Integer> friendIndices, int[][] giftExchanges,
+                                     int[] giftIndices) {
         for (String gift : gifts) {
             String[] names = gift.split(" ");
             int giverIndex = friendIndices.get(names[0]);
@@ -61,8 +61,8 @@ public class Main {
     }
 
     private static int predictNextMonthGifts(String[] friends,
-            Map<String, Integer> friendIndices, int[][] giftExchanges,
-            int[] giftIndices) {
+                                             Map<String, Integer> friendIndices, int[][] giftExchanges,
+                                             int[] giftIndices) {
         int[] nextMonthGifts = new int[friends.length];
 
         for (int i = 0; i < friends.length; i++) {
@@ -107,9 +107,9 @@ public class Main {
      * </pre>
      *
      * @param friends 2 ≤ friends의 길이 = 친구들의 수 ≤ 50. 알파벳 소문자로 이루어진 길이가 10 이하인
-     *        문자열. 이름이 같은 친구는 없습니다.
-     * @param gifts 1 ≤ gifts의 길이 ≤ 10,000. gifts의 원소는 "A B"형태의 문자열입니다. A는 선물을 준
-     *        친구의 이름을 B는 선물을 받은 친구의 이름을 의미하며 공백 하나로 구분됩니다.
+     *                문자열. 이름이 같은 친구는 없습니다.
+     * @param gifts   1 ≤ gifts의 길이 ≤ 10,000. gifts의 원소는 "A B"형태의 문자열입니다. A는 선물을 준
+     *                친구의 이름을 B는 선물을 받은 친구의 이름을 의미하며 공백 하나로 구분됩니다.
      * @return 다음달에 가장 많은 선물을 받는 친구가 받을 선물의 수
      */
     public static int solution_1st(String[] friends, String[] gifts) {

@@ -1,50 +1,50 @@
-package main.java.p42586;
+package p42586;
 
 import java.util.*;
 
 /**
  * @see <a href=
- *      "https://school.programmers.co.kr/learn/courses/30/lessons/42586">
- *      가능개발</a>
+ * "https://school.programmers.co.kr/learn/courses/30/lessons/42586">
+ * 가능개발</a>
  */
 public class Main {
 
     public static void main(String[] args) {
         Main main = new Main();
         System.out.println(Arrays.toString(
-                main.solution(new int[] {93, 30, 55}, new int[] {1, 30, 5}))
+                        main.solution(new int[]{93, 30, 55}, new int[]{1, 30, 5}))
                 .equals("[2, 1]"));
         System.out.println(
-                Arrays.toString(main.solution(new int[] {93}, new int[] {1}))
+                Arrays.toString(main.solution(new int[]{93}, new int[]{1}))
                         .equals("[1]"));
         System.out.println(Arrays
-                .toString(main.solution(new int[] {93, 93}, new int[] {5, 2}))
+                .toString(main.solution(new int[]{93, 93}, new int[]{5, 2}))
                 .equals("[1, 1]"));
         System.out.println(Arrays
-                .toString(main.solution(new int[] {95, 90, 99, 99, 80, 99},
-                        new int[] {1, 1, 1, 1, 1, 1}))
+                .toString(main.solution(new int[]{95, 90, 99, 99, 80, 99},
+                        new int[]{1, 1, 1, 1, 1, 1}))
                 .equals("[1, 3, 2]"));
         System.out.println(Arrays
-                .toString(main.solution(new int[] {95, 90, 99, 99, 99, 80},
-                        new int[] {1, 1, 1, 1, 1, 1}))
+                .toString(main.solution(new int[]{95, 90, 99, 99, 99, 80},
+                        new int[]{1, 1, 1, 1, 1, 1}))
                 .equals("[1, 4, 1]"));
         System.out.println(Arrays
-                .toString(main.solution(new int[] {95, 95, 90, 99, 80, 99, 80},
-                        new int[] {1, 1, 1, 1, 1, 1, 1}))
+                .toString(main.solution(new int[]{95, 95, 90, 99, 80, 99, 80},
+                        new int[]{1, 1, 1, 1, 1, 1, 1}))
                 .equals("[2, 2, 3]"));
         System.out.println(Arrays
                 .toString(main.solution(
-                        new int[] {95, 95, 90, 99, 99, 80, 99, 80},
-                        new int[] {1, 1, 1, 100, 1, 1, 1, 1}))
+                        new int[]{95, 95, 90, 99, 99, 80, 99, 80},
+                        new int[]{1, 1, 1, 100, 1, 1, 1, 1}))
                 .equals("[2, 3, 3]"));
         System.out.println(Arrays
                 .toString(main.solution(
-                        new int[] {95, 95, 90, 99, 99, 90, 99, 80},
-                        new int[] {1, 1, 1, 1, 1, 1, 1, 1}))
+                        new int[]{95, 95, 90, 99, 99, 90, 99, 80},
+                        new int[]{1, 1, 1, 1, 1, 1, 1, 1}))
                 .equals("[2, 5, 1]"));
         System.out.println(Arrays
-                .toString(main.solution(new int[] {99, 90, 93, 95, 95, 90, 90},
-                        new int[] {1, 1, 1, 1, 1, 1, 1}))
+                .toString(main.solution(new int[]{99, 90, 93, 95, 95, 90, 90},
+                        new int[]{1, 1, 1, 1, 1, 1, 1}))
                 .equals("[1, 6]"));
 
     }
@@ -75,10 +75,9 @@ public class Main {
      * </pre>
      *
      * @param progresses 순서: 먼저 배포되어야 하는 순서. 1 <= 요소: 각 작업의 진도 < 100. 1 <=
-     *        progresses.length <= 100.
-     *
-     * @param speeds 1 <= 요소: 각 작업의 개발 속도 <= 100 ("이하"임에 주의). 1 <= speeds.length
-     *        <= 100.
+     *                   progresses.length <= 100.
+     * @param speeds     1 <= 요소: 각 작업의 개발 속도 <= 100 ("이하"임에 주의). 1 <= speeds.length
+     *                   <= 100.
      */
     public int[] solution(int[] progresses, int[] speeds) {
         // progresses.length와 speeds.length는 같습니다.
@@ -107,7 +106,7 @@ public class Main {
         //              1          5
         // 현재 배포 그룹을 lead하는 기능, 그 peek 값을 기준으로 비교합니다.
         if (progresses.length == 1) {
-            return new int[] {1};
+            return new int[]{1};
         }
 
         ArrayList<Integer> deploymentsCounter = new ArrayList<>();
@@ -147,7 +146,7 @@ public class Main {
 
     public int[] solution_1st(int[] progresses, int[] speeds) {
         if (progresses.length == 1) {
-            return new int[] {1};
+            return new int[]{1};
         }
 
         Stack<Integer> stack = new Stack<>();

@@ -1,22 +1,22 @@
-package main.java.p1845;
+package p1845;
 
 import java.util.*;
 
 /**
  * @see <a href=
- *      "https://school.programmers.co.kr/learn/courses/30/lessons/1845">
- *      포켓몬</a>
+ * "https://school.programmers.co.kr/learn/courses/30/lessons/1845">
+ * 포켓몬</a>
  */
 public class Main {
 
     public static void main(String[] args) {
-        assert Main.solution(new int[] {3, 1, 2, 3}) == 2 : "Wrong when 1st";
+        assert Main.solution(new int[]{3, 1, 2, 3}) == 2 : "Wrong when 1st";
         assert Main
-                .solution(new int[] {3, 3, 3, 2, 2, 4}) == 2 : "Wrong when 2nd";
+                .solution(new int[]{3, 3, 3, 2, 2, 4}) == 2 : "Wrong when 2nd";
         assert Main
-                .solution(new int[] {3, 3, 3, 2, 2, 2}) == 3 : "Wrong when 3rd";
+                .solution(new int[]{3, 3, 3, 2, 2, 2}) == 3 : "Wrong when 3rd";
         assert Main
-                .solution(new int[] {1, 2, 3, 3, 4, 5}) == 3 : "Wrong when 4th";
+                .solution(new int[]{1, 2, 3, 3, 4, 5}) == 3 : "Wrong when 4th";
         System.out.println("Success");
     }
 

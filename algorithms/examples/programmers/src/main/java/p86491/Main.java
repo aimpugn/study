@@ -1,10 +1,10 @@
-package main.java.p86491;
+package p86491;
 
 public class Main {
 
     public static void main(String[] args) {
         System.out.println(Main.solution(
-                new int[][] {{60, 50}, {30, 70}, {60, 30}, {80, 40}}) == 4000);
+                new int[][]{{60, 50}, {30, 70}, {60, 30}, {80, 40}}) == 4000);
 
     }
 
@@ -29,11 +29,11 @@ public class Main {
      * </pre>
      *
      * @param sizes 모든 명함의 가로 x 세로 길이 나타내는 배열. [{width, height},..] 형식. 1 <=
-     *        sizes.length <= 10,000
-     * @see <a href=
-     *      "https://school.programmers.co.kr/learn/courses/30/lessons/86491">최소
-     *      직사각형</a>
+     *              sizes.length <= 10,000
      * @return int 지갑의 크기
+     * @see <a href=
+     * "https://school.programmers.co.kr/learn/courses/30/lessons/86491">최소
+     * 직사각형</a>
      */
     public static int solution(int[][] sizes) {
         if (sizes.length == 1) {

@@ -1,18 +1,18 @@
-package main.java.p12906;
+package p12906;
 
 import java.util.*;
 
 /**
  * @see <a href=
- *      "https://school.programmers.co.kr/learn/courses/30/lessons/1845">
- *      포켓몬</a>
+ * "https://school.programmers.co.kr/learn/courses/30/lessons/1845">
+ * 포켓몬</a>
  */
 public class Main {
 
     public static void main(String[] args) {
         Main main = new Main();
         System.out.println(
-                Arrays.toString(main.solution(new int[] {1, 1, 3, 3, 0, 1})));
+                Arrays.toString(main.solution(new int[]{1, 1, 3, 3, 0, 1})));
     }
 
     /**
