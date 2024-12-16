@@ -9,6 +9,7 @@ plugins {
     // Defined at gradle/libs.versions.toml
     alias(libs.plugins.kotlin.jvm)
 
+    idea
     application
 }
 
@@ -17,8 +18,22 @@ repositories {
     mavenCentral()
 }
 
+dependencies {
+    implementation("org.jetbrains.kotlin:kotlin-stdlib")
+}
+
+
+idea {
+    module {
+        // https://discuss.gradle.org/t/how-do-i-force-gradle-to-download-dependency-sources/34726/2
+        isDownloadSources = true
+        isDownloadJavadoc = true
+    }
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
 }
+
