@@ -1,0 +1,44 @@
+{
+  //   "compilerOptions": {
+  //     "lib": ["DOM", "ESNext"],
+  //     /* Type Checking: https://www.typescriptlang.org/tsconfig/#Type_Checking_6248 */
+  //     "strict": true,
+  //     "noImplicitAny": true,
+  //     "alwaysStrict": true,
+  //     "strictBindCallApply": true,
+  //     "strictFunctionTypes": true,
+  //     "strictNullChecks": true,
+  //     "strictPropertyInitialization": true,
+  //     "allowUnusedLabels": false,
+  //     "allowUnreachableCode": false,
+  //     "exactOptionalPropertyTypes": true,
+  //     "noFallthroughCasesInSwitch": true,
+  //     "noImplicitOverride": true,
+  //     "noImplicitReturns": true,
+  //     "noImplicitThis": true,
+  //     "noPropertyAccessFromIndexSignature": true,
+  //     "noUncheckedIndexedAccess": true,
+  //     "noUnusedLocals": true,
+  //     "noUnusedParameters": true,
+  //     "strictBuiltinIteratorReturn": true,
+  //     "useUnknownInCatchVariables": true,
+
+  //     /* Modules: https://www.typescriptlang.org/tsconfig/#Modules_6244 */
+  //     "module": "ESNext",
+
+  //     /* Emit: https://www.typescriptlang.org/tsconfig/#Emit_6246 */
+  //     "outDir": "./dist",
+  //     "rootDir": "./src",
+
+  //     /* Interop Constraints: https://www.typescriptlang.org/tsconfig/#Interop_Constraints_6252 */
+  //     "esModuleInterop": true,
+
+  //     /* Language and Environment: https://www.typescriptlang.org/tsconfig/#Language_and_Environment_6254 */
+  //     "target": "ES6"
+  //   },
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
