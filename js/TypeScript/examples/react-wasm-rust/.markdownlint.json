@@ -1,0 +1,24 @@
+{
+  "default": true,
+  "MD005": true,
+  "MD007": {
+    "indent": 4,
+    "start_indent": 4
+  },
+  "MD010": {
+    "spaces_per_tab": 4
+  },
+  "MD013": {
+    "code_block_line_length": 10000,
+    "line_length": 10000
+  },
+  "MD014": false,
+  "MD024": {
+    "siblings_only": true
+  },
+  "MD025": false,
+  "MD032": false,
+  "MD033": {
+    "allowed_elements": ["details", "summary"]
+  }
+}
