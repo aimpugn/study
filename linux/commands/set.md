@@ -99,6 +99,60 @@ set -euo pipefail; IFS=$'\n\t'; set -x
      done
      ```
 
+    `IFS=$'\n\t'`에서 `$'string'`는 문자열 내의 이스케이프 시퀀스를 해석하기 위해 사용되는 Bash 구문([ANSI-C Quoting](https://www.gnu.org/software/bash/manual/bash.html#ANSI_002dC-Quoting))입니다.
+    `$'string'` 문법에서 백슬래시로 이스케이프 된 문자들은 ANSI-C 표준으로 치환됩니다.
+    `$'...'` 구문으로 사용할 수 있는 주요 이스케이프 시퀀스는 다음과 같습니다:
+    - `$'\n'`: 새 줄(newline)
+
+        ```sh
+        ❯ echo $'Hello\nWorld'
+        Hello
+        World
+        ```
+
+    - `$'\r'`: 캐리지 리턴(carriage return)
+
+        ```sh
+        ❯ echo $'Hello\rWorld'
+        World
+        ```
+
+    - `$'\t'`: 탭(tab)
+
+        ```sh
+        ❯ echo $'Hello\tWorld'
+        Hello    World
+        ```
+
+    - `$'\0'`: 널 문자(null character)
+    - `$'\a'`: 경고음(alert, bell)
+
+        ```sh
+        ❯ echo $'Hello\0World'; echo $'Hello\0World' | wc -c
+        HelloWorld
+              12
+        ❯ echo $'HelloWorld'; echo $'HelloWorld' | wc -c
+        HelloWorld
+              11
+        ```
+
+    - `$'\b'`: 백스페이스(backspace)
+
+        ```sh
+        ❯ echo $'Hello\bWorld'
+        # 문자 'o' 삭제
+        HellWorld
+        ```
+
+    - `$'\f'`: 폼 피드(form feed)
+    - `$'\v'`: 수직 탭(vertical tab)
+
+        ```sh
+        ❯ echo $'Hello\vWorld'
+        Hello
+            World
+        ```
+
 5. `set -x`
 
    - 의미: "xtrace" 옵션을 활성화합니다.
