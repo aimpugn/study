@@ -6,9 +6,10 @@
 guava = "33.2.1-jre"
 junit-jupiter-engine = "5.10.3"
 kotlin-jvm = "2.0.0"
-spring-boot = "3.3.4"
+spring-boot = "3.4.1"
 spring-dependency-management = "1.1.6"
 kotlinx-coroutines = "1.9.0"
+aspectjrt = "1.9.22.1"
 
 # To define the libraries used in the build files.
 [libraries]
@@ -17,10 +18,12 @@ junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", vers
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin-jvm" }
-spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter" }
-spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
-spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
+spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring-boot" }
+spring-boot-starter-aop = { module = "org.springframework.boot:spring-boot-starter-aop", version.ref = "spring-boot" }
+aspectj-aspectjrt = { module = "org.aspectj:aspectjrt", version.ref = "aspectjrt" }
 
 # To define plugins.
 [plugins]
