@@ -1,11 +1,13 @@
 package spring
 
+import main.spring.AppConfig
 import main.spring.MyTestProperty
 import org.springframework.boot.*
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.bind.Bindable
 import org.springframework.boot.context.properties.bind.Binder
 import org.springframework.context.annotation.Description
+import org.springframework.context.annotation.Import
 
 /**
  * `open` 이어야 합니다.
@@ -15,7 +17,8 @@ import org.springframework.context.annotation.Description
  */
 @SpringBootApplication
 @Description(value = "Spring Main Class to Learn Spring")
-open class SpringMain
+@Import(AppConfig::class)
+class SpringMain
 
 /**
  * 스프링 부트의 실행 과정([SpringApplication.run])은 다음 과정을 거칩니다:
@@ -705,4 +708,12 @@ fun main() {
     // IDE 경우: /path/to/project
     // gradle 경우: /path/to/project/app
     // jar(app/build/libs 이동): /path/to/project/app/build/libs
+
+    val aopExampleComponent = ctx.getBean("aopExample")
+    println("loggingAspectComponent: $aopExampleComponent")
+    println("\tcanonicalName: ${aopExampleComponent.javaClass.canonicalName}")
+
+    val homeController = ctx.getBean("homeController")
+    println("homeController: $homeController")
+    println("\tcanonicalName: ${homeController.javaClass.canonicalName}")
 }

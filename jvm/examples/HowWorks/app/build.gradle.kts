@@ -30,6 +30,8 @@ plugins {
 dependencies {
     implementation(libs.spring.boot.starter)
     implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.aop)
+    implementation(libs.aspectj.aspectjrt)
     implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.spring.boot.starter.test)
 
