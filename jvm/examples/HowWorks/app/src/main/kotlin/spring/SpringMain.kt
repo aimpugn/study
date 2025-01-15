@@ -1,7 +1,5 @@
 package spring
 
-import main.spring.AppConfig
-import main.spring.MyTestProperty
 import org.springframework.boot.*
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.bind.Bindable

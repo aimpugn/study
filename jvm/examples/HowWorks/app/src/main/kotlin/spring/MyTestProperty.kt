@@ -1,4 +1,4 @@
-package main.spring
+package spring
 
 data class MyTestProperty(
     var stringProperty: String = "",
