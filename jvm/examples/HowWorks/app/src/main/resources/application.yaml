@@ -1,6 +1,57 @@
 spring:
   main:
     web-application-type: SERVLET # NONE, SERVLET, REACTIVE
+  # 하이버네이트 속성을 통해서 커넥션 프로바이더 및 데이터 소스를 설정합니다.
+  # datasource:
+  #   url: jdbc:h2:mem:testdb
+  #   driver-class-name: org.h2.Driver
+  #   username: test
+  #   password: test
+  jpa:
+    hibernate:
+      # https://docs.spring.io/spring-boot/how-to/data-initialization.html#howto.data-initialization.using-hibernate
+      # [hibernate.hbm2ddl.auto](https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html#settings-hibernate.hbm2ddl.auto)
+      ddl-auto: create-drop # 하이버네이트 경우 루트 클래스패스의 `import.sql`와 함께 사용하여 시작 시 처음부터 스키마 생성 가능합니다.
+      # [SQL 스크립트로 데이터베이스를 초기화할 수도 있습니다.](https://docs.spring.io/spring-boot/how-to/data-initialization.html#howto.data-initialization.using-basic-sql-scripts)
+    properties:
+      # 하이버네이트가 커넥션 풀을 직접 만들도록 합니다.
+      # https://docs.jboss.org/hibernate/orm/current/introduction/html_single/Hibernate_Introduction.html#configuration-properties
+      hibernate:
+        # 컨테이너 환경에서는 보통 Hibernate 통해서 커넥션 풀을 구성할 필요가 없습니다.
+        # - https://docs.jboss.org/hibernate/orm/7.0/introduction/html_single/Hibernate_Introduction.html#basic-configuration-settings
+        connection:
+          # 커넥션 프로바이더는 하이버네이트에 정의된 추상화 계층으로,
+          # JDBC 연결을 얻거나 커넥션을 풀링하기 위한 계약을 정의합니다.
+          # - https://docs.jboss.org/hibernate/orm/current/javadocs/org/hibernate/engine/jdbc/connections/spi/ConnectionProvider.html
+          provider_class: org.hibernate.agroal.internal.AgroalConnectionProvider
+          driver_class: org.h2.Driver
+          # `DEFAULT CURRENT_TIMESTAMP` 정의했음에도 제대로 동작하지 않아서, 호환성 모드를 설정
+          # - https://www.h2database.com/html/features.html#compatibility
+          # - https://www.h2database.com/javadoc/org/h2/engine/Mode.ModeEnum.html?highlight=ModeEnum&search=%3BMODE
+          url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
+          username: test
+          password: test
+        agroal:
+          maxSize: 10
+          minSize: 5
+          initialSize: 5
+          validationQuery: SELECT 1
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+        show_sql: true
+        hbm2ddl:
+          # 기본값은 한 줄로 작성된 SQL을 파싱하는 클래스 `SingleLineSqlScriptExtractor`를 사용하도록 되어 있습니다.
+          # 여러 줄의 `import.sql` 사용 위해 `MultiLineSqlScriptExtractor`로 수정합니다.
+          # - https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#settings-hibernate.hbm2ddl.import_files_sql_extractor
+          import_files_sql_extractor: org.hibernate.tool.schema.internal.script.MultiLineSqlScriptExtractor
+
+logging:
+  level:
+    # - https://docs.jboss.org/hibernate/orm/current/userguide/html_single/Hibernate_User_Guide.html#best-practices-logging
+    # org.hibernate.type.descriptor.sql: TRACE # 5 버전
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.orm.jdbc.extract: TRACE
 
 server:
   tomcat:

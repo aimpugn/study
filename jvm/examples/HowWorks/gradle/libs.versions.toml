@@ -5,11 +5,18 @@
 [versions]
 guava = "33.2.1-jre"
 junit-jupiter-engine = "5.10.3"
-kotlin-jvm = "2.0.0"
+kotlin-jvm = "2.1.0"
 spring-boot = "3.4.1"
 spring-dependency-management = "1.1.6"
 kotlinx-coroutines = "1.9.0"
 aspectjrt = "1.9.22.1"
+db-h2 = "2.3.232"
+db-hibernate = "6.6.4.Final"
+db-hibernate-validator = "8.0.0.Final"
+agroal = "2.5"
+jakarta = "6.0.1"
+# `hibernate-jpamodelgel`과 함께 사용하려다 호환되지 않지만, 다른 곳에 사용하게 될지도 몰라서 주석 처리.
+# ksp = "2.1.0-1.0.29"
 
 # To define the libraries used in the build files.
 [libraries]
@@ -23,13 +30,31 @@ spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter",
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring-boot" }
 spring-boot-starter-aop = { module = "org.springframework.boot:spring-boot-starter-aop", version.ref = "spring-boot" }
+spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa", version.ref = "spring-boot" }
 aspectj-aspectjrt = { module = "org.aspectj:aspectjrt", version.ref = "aspectjrt" }
+db-h2 = { module = "com.h2database:h2", version.ref = "db-h2" }
+db-hibernate = { module = "org.hibernate.orm:hibernate-core", version.ref = "db-hibernate" }
+db-hibernate-agroal = { module = "org.hibernate.orm:hibernate-agroal", version.ref = "db-hibernate" }
+# Kotlin 코드와 함께 사용하기가 어려워서 주석 처리하고 TODO: 다른 대안을 찾으면 그때 완전히 삭제.
+# db-hibernate-jpamodelgen = { module = "org.hibernate.orm:hibernate-jpamodelgen", version.ref = "db-hibernate" }
+# Hibernate Validator는 Jakarta Bean Validation의 참조 구현(Reference Implementation)
+db-hibernate-validator = { module = "org.hibernate.validator:hibernate-validator", version.ref = "db-hibernate-validator" }
+jakarta-el-api = { module = "jakarta.el:jakarta.el-api", version.ref = "jakarta" }
+db-agroal-pool = { module = "io.agroal:agroal-pool", version.ref = "agroal" }
 
 # To define plugins.
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-jvm" }
+kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin-jvm" }
+# kapt는 Kotlin Gradle Plugin(org.jetbrains.kotlin.jvm)에 포함되어 있으므로 별도의 버전을 명시하면 클래스패스 충돌이 발생할 수 있습니다.
+# > The request for this plugin could not be satisfied because the plugin is already on the classpath with an unknown version, so compatibility cannot be checked.
+# 다른 어노테이션 처리 시 사용하기 위해 주석 처리.
+# kotlin-kapt = { id = "org.jetbrains.kotlin.kapt" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin-jvm" }
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+# `hibernate-jpamodelgen`과 호환되지 않아서 사용하지 않지만, 다른 곳에 사용하게 될지도 몰라서 주석 처리.
+# devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 
 # To define a set of dependencies.
 [bundles]
