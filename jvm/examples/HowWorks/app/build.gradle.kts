@@ -19,12 +19,60 @@ plugins {
      * kotlin("jvm") 플러그인은 Kotlin 코드를 JVM 바이트코드로 컴파일하기 위해 필요한 Kotlin 컴파일러와 관련 설정을 Gradle에 추가합니다.
      */
     alias(libs.plugins.kotlin.jvm)
+    /**
+     * 코틀린은 기본적으로 `final class`이고, 필요한 경우에 `open`으로 지정해야 합니다.
+     * `plugin.allopen` 플러그인을 기반으로 하여 Spring 프레임워크에서 클래스와 메서드가 `open` 상태로 동작하도록 만들어줍니다.
+     * 이를 통해 Spring AOP(Aspect-Oriented Programming) 및 프록시 기반 기능을 사용할 수 있습니다.
+     * - 클래스 레벨 어노테이션
+     *    - `@Component`
+     *    - `@Configuration`
+     *    - `@Controller`
+     *    - `@RestController`
+     *    - `@Service`
+     *    - `@Repository`
+     * - 메서드 레벨 어노테이션:
+     *    - `@Async
+     *    - `@Transactional`
+     *    - `@Cacheable`
+     *
+     * References:
+     * - https://plugins.gradle.org/plugin/org.jetbrains.kotlin.plugin.spring
+     * - https://kotlinlang.org/docs/all-open-plugin.html#spring-support
+     */
+    alias(libs.plugins.kotlin.spring)
+    /**
+     * kotlin("plugin.jpa")은 Kotlin에서 JPA(Java Persistence API)를 사용할 때 필요한 설정을 간편하게 처리해주는 컴파일러 플러그인입니다.
+     * Kotlin은 기본적으로 이러한 생성자를 제공하지 않는데 JPA는 리플렉션을 통해 엔티티를 생성하기 때문에 기본 생성자가 필요합니다.
+     * JPA 엔티티 클래스에 기본 생성자(no-arg constructor)를 자동으로 생성하여 JPA와 Kotlin 간의 호환성을 높여줍니다.
+     * - `plugin.spring` 및 `plugin.allopen`과 함께 사용됩니다.
+     * - `no-arg` 플러그인을 기반으로 하며, 특정 어노테이션이 붙은 클래스에 대해 컴파일러가 바이트코드에 기본 생성자를 삽입합니다.
+     * - `@Entity`, `@Embeddable`, 그리고 `@MappedSuperclass` 어노테이션이 붙은 클래스에
+     *   `no-arg` 어노테이션을 지정하여 컴파일 시점에 기본 생성자를 추가됩니다.
+     *
+     * References:
+     * - https://plugins.gradle.org/plugin/org.jetbrains.kotlin.plugin.jpa
+     * - https://kotlinlang.org/docs/no-arg-plugin.html#jpa-support
+     */
+    alias(libs.plugins.kotlin.jpa)
 
     /**
      * Spring 관련 플러그인
      */
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
+
+    /**
+     * KSP는 직접 코틀린 코드를 분석하며, [KAPT 대비 최대 2배 이상 빠르다](https://android-developers.googleblog.com/2021/09/accelerated-kotlin-build-times-with.html)고 합니다.
+     * KAPT는 Java 어노테이션 처리 인프라를 통해 동작하는데, 이 때문에 Java 어노테이션 프로세서에서 관심을 갖는 정보를
+     * 제공하기 위해 Kotlin 코드를 Java 스텁(stub)으로 컴파일합니다.
+     * 이러한 스텁 생성은 비용이 많이 들고, 컴파일러는 프로그램의 모든 심볼을 여러 번 확인(resolve)해야 합니다.
+     *
+     * References:
+     * - https://kotlinlang.org/docs/ksp-quickstart.html
+     * - https://developer.android.com/build/migrate-to-ksp
+     */
+    // alias(libs.plugins.devtools.ksp)
+    // alias(libs.plugins.kotlin.kapt)
 }
 
 dependencies {
@@ -33,6 +81,47 @@ dependencies {
     implementation(libs.spring.boot.starter.aop)
     implementation(libs.aspectj.aspectjrt)
     implementation(libs.kotlinx.coroutines.core)
+    /* DB */
+    // Spring Data JPA는 Spring 프레임워크 위에서 동작하는 모듈로, JPA를 더 쉽게 사용할 수 있도록 도와줍니다.
+    // - 기본적인 CRUD 메서드(예: `save`, `findById`, `delete`)를 자동으로 생성.
+    // - 메서드 이름 기반 쿼리 생성(예: `findByNameAndAge`).
+    // - JPQL이나 Native Query를 간단히 정의할 수 있는 기능 제공.
+    implementation(libs.spring.boot.starter.data.jpa)
+    runtimeOnly(libs.db.h2)
+    // [Hibernate](https://docs.jboss.org/hibernate/orm/current/introduction/html_single/Hibernate_Introduction.html#hello-hibernate)
+    // - JPA의 구현체 중 하나로, JPA 스펙을 따르면서 캐싱, 지연 로딩(Lazy Loading), 배치 처리 등 추가적인 기능과 최적화를 제공합니다.
+    implementation(libs.db.hibernate)
+    implementation(libs.db.hibernate.agroal) // connection pool
+    implementation(libs.db.agroal.pool) // connection pool
+    // JPA Metamodel Generator: 정적 메타모델(static metamodel)을 생성해주는 어노테이션 프로세서입니다.
+    // - https://docs.jboss.org/hibernate/orm/6.6/introduction/html_single/Hibernate_Introduction.html#generator
+    // 단, 다음과 같은 이유로 사용하지 않습니다:
+    // `kapt`는 코틀린 코드를 스캔하여 어노테이션 프로세서를 돌려야 할 부분을 찾고,
+    // 어노테이션 프로세서가 처리하는 데 필요한 정보는 갖는 자바 스텁(stub) 파일을 생성합니다. 이 스텁은 아직 완전한 Java 클래스가 아닙니다.
+    // 그 후 `jpamodelgen`가 메타 모델 클래스(ex: ItemKey_.java)를 생성되고, 그 후 Java 컴파일러에 의해 '.class'로 컴파일 됩니다.
+    // 마지막으로 Kotlin 컴파일러는 Kotlin 코드와 앞서 생성된 '.class' 파일을 함께 사용하여 최종 바이트코드를 생성합니다.
+    // 이 과정에서 Kotlin 코드가 메타모델 클래스의 상수(예: `ItemKey_.CREATED`)를 참조하려고 합니다.
+    // 그러나 메타모델 클래스(`ItemKey_`)가 생성되고 컴파일되는 시점과 Kotlin 코드가 이를 참조하는 시점이 앞서 설명한 것처럼
+    // 완전히 순차적으로 이뤄지는 게 아니라, "동일한 빌드 사이클 안에서 처리"되어서 이를 컴파일 타임 상수로 인식하지 못하는 것으로 보입니다.
+    // ```
+    // @Column(name = ItemValue_.MODIFIED, nullable = false)
+    // var modified: Instant? = null,
+    // ```
+    //
+    // 위와 같이 사용하는 상태에서 다시 `./gradlew app:build`를 싱행하면 아래와 같은 에러가 발생합니다.
+    //
+    // ```
+    // error: element value must be a constant expression
+    // @jakarta.persistence.Column(name = null, nullable = false)
+    //                                    ^
+    // ```
+    // 이미 완전히 빌드된 라이브러리(JAR 등)의 `public static final` 필드는 문제없이 컴파일 타임 상수로 간주됩니다.
+    // 그런데 이 경우 `null`이 되는 것을 보면, 코틀린 컴파일러가 메타 모델의 상수를 컴파일 타임 상수로 처리하지 못하는 것으로 보입니다.
+    // 따라서 메타 모델 생성하여 사용하지 않도록 주석 처리합니다.
+    // kapt(libs.db.hibernate.jpamodelgen)
+    implementation(libs.db.hibernate.validator) // validator
+    implementation(libs.jakarta.el.api) // validator
+
     testImplementation(libs.spring.boot.starter.test)
 
     testRuntimeOnly(libs.junit.platform.launcher)
@@ -57,12 +146,22 @@ idea {
     }
 }
 
+// 어노테이션 프로세서가 필요한 경우 설정합니다.
+// kapt {
+//     correctErrorTypes = true
+//     generateStubs = true
+// }
+
 tasks.withType<Test> {
     useJUnitPlatform()
 }
 
 tasks.withType<JavaCompile> {
     options.compilerArgs.add("-verbose")
+    // 어노테이션 프로세서로 생성된 소스 파일들이 위치할 디렉토리를 설정합니다.
+    // 생성된 소스 파일을 저장하고 이를 컴파일 경로에 포함시킵니다.
+    // - https://docs.gradle.org/current/dsl/org.gradle.api.tasks.compile.CompileOptions.html#org.gradle.api.tasks.compile.CompileOptions:generatedSourceOutputDirectory
+    // options.generatedSourceOutputDirectory.set(file("${layout.buildDirectory}/generated"))
 }
 
 tasks.named<Test>("test") {
