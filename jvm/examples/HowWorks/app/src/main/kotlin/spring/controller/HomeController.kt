@@ -1,17 +1,17 @@
 package spring.controller
 
 import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import spring.aop.LoggingBefore
 
 @RestController
-open class HomeController {
-    @GetMapping("/")
-    open fun home() = "Hello, World!"
+class HomeController {
+    @GetMapping("/home")
+    fun home() = "Hello, World!"
 
 
     @LoggingBefore
-    @GetMapping("/{name}")
-    open fun printName(@PathVariable name: String) = "Hello, $name"
+    @GetMapping("/printName")
+    fun printName(@RequestParam("name") name: String) = "Hello, $name"
 }
