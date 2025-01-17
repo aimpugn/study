@@ -16,6 +16,12 @@ data class ItemValueDTO(
             modified = itemValue.modified ?: Instant.now(),
         )
 
+        fun of(itemValue: String, created: Instant, modified: Instant): ItemValueDTO = ItemValueDTO(
+            itemValue = itemValue,
+            created = created,
+            modified = modified,
+        )
+
         fun setFrom(itemKey: ItemKey): Set<ItemValueDTO> {
             return itemKey.itemValues.map { of(it) }.toSet()
         }

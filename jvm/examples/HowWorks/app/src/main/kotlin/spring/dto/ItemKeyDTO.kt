@@ -13,6 +13,13 @@ data class ItemKeyDTO(
                 itemValues = ItemValueDTO.setFrom(itemKey)
             )
         }
+
+        fun of(key: String): ItemKeyDTO {
+            return ItemKeyDTO(
+                itemKey = key,
+                itemValues = mutableSetOf()
+            )
+        }
     }
 }
 
