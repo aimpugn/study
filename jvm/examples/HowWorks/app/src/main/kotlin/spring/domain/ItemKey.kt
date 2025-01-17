@@ -2,6 +2,7 @@ package spring.domain
 
 import com.fasterxml.jackson.annotation.JsonManagedReference
 import jakarta.persistence.*
+import spring.dto.ItemKeyWithValuesDTO
 import java.time.Instant
 
 /**
@@ -33,6 +34,30 @@ import java.time.Instant
  */
 @Entity
 @Table(name = "item_keys")
+@SqlResultSetMapping( // JPA 컨텍스트에 매핑 정보가 로드되도록, JPA 엔티티 클래스에 정의해야 합니다.
+    name = ItemKeyWithValuesDTO.MAPPING_NAME,
+    // 데이터베이스의 결과를 JPA 엔티티 인스턴스로 매핑하는 데 사용합니다.
+    // JPA 엔티티 관계 유지, 영속 상태 관리, 데이터 변경 등이 필요할 때 사용합니다.
+    entities = [],
+    columns = [],
+    // 네이티브 쿼리 결과를 DTO 인스턴스로 매핑하는 데 사용합니다.
+    // JPA 엔티티로서의 기능이 필요없고 단순 데이터가 필요할 때 사용합니다.
+    classes = [
+        ConstructorResult(
+            targetClass = ItemKeyWithValuesDTO::class,
+            columns = [
+                ColumnResult(name = "id", type = Long::class),
+                ColumnResult(name = "itemKey", type = String::class),
+                ColumnResult(name = "created", type = Instant::class),
+                ColumnResult(name = "modified", type = Instant::class),
+                ColumnResult(name = "itemValueId", type = Long::class),
+                ColumnResult(name = "itemValue", type = String::class),
+                ColumnResult(name = "itemValueCreated", type = Instant::class),
+                ColumnResult(name = "itemValueModified", type = Instant::class),
+            ]
+        )
+    ]
+)
 class ItemKey(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -102,7 +127,7 @@ class ItemKey(
      * 일반 클래스로 선언하고 [toString], [hashCode], [equals]를 직접 구현합니다.
      *
      * 그리고 'N+1' 문제가 있으므로 Fetch Join, [EntityGraph], [NamedEntityGraphs]를 사용합니다.
-     * - Fetch Join: [spring.repository.ItemRepository.findAllFetchJoin] 참고
+     * - Fetch Join: [spring.repository.ItemRepositoryCustom.findAllFetchJoin] 참고
      * - [SpringData N+1 solution with [NamedEntityGraph]](https://medium.com/jpa-java-persistence-api-guide/springdata-n-1-solution-with-namedentitygraph-8b101292261a)
      *
      *

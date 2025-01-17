@@ -11,6 +11,12 @@ class ItemController(
     @GetMapping("items")
     fun items() = itemService.findAllItems()
 
-    @GetMapping("items-fetch-join")
+    @GetMapping("items/fetch-join")
     fun itemsByFetchJoin() = itemService.findAllItemsByFetchJoin()
+
+    @GetMapping("em/items/fetch-join")
+    fun itemsByFetchJoinWithEntityManager() = itemService.findAllItemsUsingEntityManager()
+
+    @GetMapping("em/items/native-query")
+    fun itemsByNativeQuery() = itemService.findAllItemsByNativeQuery()
 }
