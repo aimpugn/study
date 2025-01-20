@@ -2,6 +2,7 @@ package spring
 
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.EnableAspectJAutoProxy
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing
 
 @Configuration
 // https://docs.spring.io/spring-boot/reference/features/aop.html#page-title
@@ -9,4 +10,5 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy
 // `@EnableAspectJAutoProxy`를 추가하지 않아도 됩니다.
 // 단, 여기서는 구성 테스트 및 `exposeProxy` 설정을 추가하여 오버라이드하기 위해 직접 명시합니다.
 @EnableAspectJAutoProxy(exposeProxy = true)
+@EnableJpaAuditing
 class AppConfig
