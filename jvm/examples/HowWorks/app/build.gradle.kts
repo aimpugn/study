@@ -81,6 +81,15 @@ dependencies {
     implementation(libs.spring.boot.starter.aop)
     implementation(libs.aspectj.aspectjrt)
     implementation(libs.kotlinx.coroutines.core)
+    // 단순 MVC 경우라 하더라도 coroutines-reactor 패키지가 필요합니다.
+    // `CoroutinesUtils.invokeSuspendingFunction`를 사용하는데, 이때 `org.reactivestreams.Publisher`를 사용합니다.
+    // ```
+    // java.lang.ClassNotFoundException: org.reactivestreams.Publisher
+    // ... 생략...
+    // 	at org.springframework.web.method.support.InvocableHandlerMethod.invokeSuspendingFunction(InvocableHandlerMethod.java:293) ~[spring-web-6.2.1.jar:6.2.1]
+    // ```
+    // - https://docs.spring.io/spring-framework/reference/languages/kotlin/coroutines.html#dependencies
+    implementation(libs.kotlinx.coroutines.reactor)
     /* DB */
     // Spring Data JPA는 Spring 프레임워크 위에서 동작하는 모듈로, JPA를 더 쉽게 사용할 수 있도록 도와줍니다.
     // - 기본적인 CRUD 메서드(예: `save`, `findById`, `delete`)를 자동으로 생성.
