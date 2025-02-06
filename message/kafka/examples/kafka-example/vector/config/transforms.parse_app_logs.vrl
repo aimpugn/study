@@ -1,0 +1,2 @@
+# https://vector.dev/docs/reference/vrl/
+. = parse_json!(string!(.message))
