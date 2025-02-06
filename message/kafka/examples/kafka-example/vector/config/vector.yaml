@@ -1,0 +1,50 @@
+# 벡터의 컴포넌트는 이벤트를 수집(ingest), 변환(transform), 라우팅(route) 합니다.
+# 컴포넌트는 `sources`, `transforms`, `sinks`를 통틀어 부르는 용어입니다.
+
+sources:
+  # https://vector.dev/docs/reference/configuration/sources/docker_logs/
+  kafka-vector-example:
+    # 관측 가능성 데이터를 수집할 대상입니다. `journald`, `aws_sqs`, `file`, `http_client` 등 다양한 타겟을 지원합니다.
+    # 별도의 소스가 없는 경우 [`demo_logs`](https://vector.dev/docs/reference/configuration/sources/demo_logs/)를 통해 테스트해볼 수 있습니다.
+    type: docker_logs
+    # 부분 이벤트를 자동으로 병합 활성화
+    # - default: true
+    auto_partial_merge: true
+    # 연결할 도커 호스트입니다.
+    # - 생략시 `DOCKER_HOST` 환경 변수가 사용됩니다.
+    # - `DOCKER_HOST` 없으면 기본 도커 소켓을 사용합니다.
+    #   - 리눅스: `/var/run/docker.sock`
+    #   - 윈도우: `//./pipe/docker_engine`
+    # docker_host: "http://localhost:2375"
+    exclude_containers:
+      - "vector" # 벡터 자신의 로그는 명시적으로 제외합니다.
+    include_containers:
+      - "producer"
+
+transforms:
+  parse_app_logs:
+    # https://vector.dev/docs/reference/configuration/transforms/remap/
+    # VRL(Vector Remap Language)를 사용하여 토폴로지(데이터가 시스템을 통해 흐르는 경로와 구조)를 흘러가는
+    # 관측 가능한 데이터를 수정합니다.
+    type: remap
+    # VRL 프로그램이 명시적으로 `abort`되는 경우 원천 데이터는 드랍됩니다.
+    # - default: true
+    drop_on_abort: true
+    # 업스트림 `source` 목록 또는 `transform` ID 목록입니다.
+    inputs:
+      - "kafka-vector-example"
+    # 이벤트마다 실행될 VRL 프로그램 파일 경로입니다.
+    file: "/transforms.parse_app_logs.vrl"
+    # `file` 속성이 없는 경우 필수입니다.
+    # source: ". = parse_json!(string!(.message))"
+
+sinks:
+  kafka-vector-example-sink:
+    # https://vector.dev/docs/reference/configuration/sinks/kafka/
+    type: kafka
+    inputs:
+      - "parse_app_logs"
+    bootstrap_servers: "kafka1:9092,kafka2:9092,kafka3:9092"  # docker compose 네트워크상의 Kafka 브로커 주소
+    topic: "app-logs"  # 전송할 토픽 이름
+    encoding:
+      codec: json
