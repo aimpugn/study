@@ -16,6 +16,7 @@
     [kotlin](https://formulae.brew.sh/formula/kotlin), gradle
     [gradle](https://formulae.brew.sh/formula/gradle)
     node, pnpm
+    [nasm](https://formulae.brew.sh/formula/nasm)
 
 - fonts
 
