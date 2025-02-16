@@ -5,6 +5,7 @@
     - [예시](#예시)
     - [Options](#options)
         - [`-t`, `--tag` stringArray](#-t---tag-stringarray)
+        - [`--progress`](#--progress)
         - [`--platform` 옵션](#--platform-옵션)
             - [x86 (32비트) 아키텍처로 빌드하기](#x86-32비트-아키텍처로-빌드하기)
             - [x64 (64비트) 아키텍처로 빌드하기](#x64-64비트-아키텍처로-빌드하기)
@@ -23,7 +24,7 @@ Docker 빌드 컨텍스트는 `docker build` 명령어의 마지막 인자로 �
 다음과 같은 디렉토리 구조가 있다고 가정해봅시다.
 
 ```bash
-❯ tree . -d                       
+❯ tree . -d
 .
 ├── subdir
 │   ├── docker-commands/
@@ -62,10 +63,10 @@ docker build -f subdir/Dockerfile .
 ------
 Dockerfile:48
 --------------------
-  46 |     
+  46 |
   47 |     COPY plugins /workspace/plugins
   48 | >>> COPY docker-commands /workspace/bin
-  49 |     
+  49 |
   50 |     WORKDIR /workspace
 --------------------
 ```
@@ -116,6 +117,44 @@ docker run \
 ### `-t`, `--tag` stringArray
 
 > Name and optionally a tag (format: "name:tag")
+
+### [`--progress`](https://docs.docker.com/reference/cli/docker/buildx/build/#progress)
+
+기본값은 `--progress=tty`입니다.
+
+하지만 `tty`인 경우 보기 좋게 출력되는 대신 일부 출력이 생략되거나 동적으로 갱신될 수 있습니다.
+가령 `RUN ls -la`를 실행하면 다음과 같이 아무것도 보여주지 않습니다.
+
+```log
+ => CACHED [5/8] RUN ls -la                                                                         0.0s
+ => [6/8] RUN groupadd asm
+```
+
+하지만 `--progress=plain` 옵션을 사용하면 장황하지만 모든 로그가 그대로 출력됩니다.
+
+```log
+#7 [4/7] RUN wget https://flatassembler.net/fasm-1.73.27.tgz     && tar -xzvf fasm-1.73.27.tgz     && ls -la fasm
+#7 0.091 --2025-02-16 13:06:05--  https://flatassembler.net/fasm-1.73.27.tgz
+#7 0.104 Resolving flatassembler.net (flatassembler.net)... 208.99.203.253
+#7 0.390 Connecting to flatassembler.net (flatassembler.net)|208.99.203.253|:443... connected.
+#7 0.918 HTTP request sent, awaiting response... 200 She'll be apples
+#7 1.257 Length: 350739 (343K) [application/octet-stream]
+#7 1.271 Saving to: 'fasm-1.73.27.tgz'
+#7 1.271
+#7 1.271      0K .......... .......... .......... .......... .......... 14%  325K 1s
+#7 1.425     50K .......... .......... .......... .......... .......... 29%  295K 1s
+#7 1.595    100K .......... .......... .......... .......... .......... 43% 63.0M 0s
+#7 1.595    150K .......... .......... .......... .......... .......... 58%  299K 0s
+#7 1.762    200K .......... .......... .......... .......... .......... 72%  127M 0s
+#7 1.762    250K .......... .......... .......... .......... .......... 87% 22.0M 0s
+#7 1.765    300K .......... .......... .......... .......... ..        100% 38.9M=0.5s
+#7 1.766
+#7 1.766 2025-02-16 13:06:06 (692 KB/s) - 'fasm-1.73.27.tgz' saved [350739/350739]
+#7 1.766
+#7 1.774 fasm/
+#7 1.774 fasm/examples/
+... 생략 ...
+```
 
 ### `--platform` 옵션
 
