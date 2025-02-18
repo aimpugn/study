@@ -21,6 +21,11 @@
         - [문제](#문제-4)
         - [원인](#원인-4)
         - [해결](#해결-4)
+    - [Failed to create /init.scope control group: Read-only file system](#failed-to-create-initscope-control-group-read-only-file-system)
+        - [문제](#문제-5)
+        - [원인](#원인-5)
+        - [해결](#해결-5)
+        - [참고](#참고)
 
 ## 이미지를 깃헙 패키지에서 가져오지 못하는 이슈
 
@@ -234,3 +239,188 @@ ERROR: failed to solve: process "/bin/sh -c apt update -y     && apt-get install
 ```Dockerfile
 FROM ubuntu:24.04
 ```
+
+## Failed to create /init.scope control group: Read-only file system
+
+### 문제
+
+MacOS에서 systemd로 초기화되는 이미지를 생성합니다.
+
+<details>
+<summary>Dockerfile</summary>
+
+```Dockerfile
+FROM ubuntu:latest
+
+USER root
+
+RUN apt-get update
+RUN yes | unminimize
+RUN DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y \
+    init systemd systemd-sysv sudo locales \
+    man-db \
+    build-essential glibc-doc \
+    wget curl git zsh vim \
+    && apt-get autoremove
+
+RUN locale-gen --no-archive ko_KR.UTF-8
+
+ENV LANG=ko_KR.UTF-8 LC_ALL=ko_KR.UTF-8
+
+ENV USER=ubuntu
+ENV HOME="/home/${USER}"
+
+RUN usermod -aG sudo ${USER} \
+    && echo "${USER} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu
+
+USER ${USER}
+WORKDIR ${HOME}
+RUN rm -rf ~/.oh-my-zsh
+RUN yes | sh -c "$(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O -)"
+
+USER root
+STOPSIGNAL SIGRTMIN+3
+CMD ["/lib/systemd/systemd"]
+```
+
+</details>
+
+그리고 `--privileged` 옵션 없이 실행하려고 하면 다음과 같은 에러가 발생합니다.
+
+```log
+systemd 255.4-1ubuntu8.5 running in system mode (+PAM +AUDIT +SELINUX +APPARMOR +IMA +SMACK +SECCOMP +GCRYPT -GNUTLS +OPENSSL +ACL +BLKID +CURL +ELFUTILS +FIDO2 +IDN2 -IDN +IPTC +KMOD +LIBCRYPTSETUP +LIBFDISK +PCRE2 -PWQUALITY +P11KIT +QRENCODE +TPM2 +BZIP2 +LZ4 +XZ +ZLIB +ZSTD -BPF_FRAMEWORK -XKBCOMMON +UTMP +SYSVINIT default-hierarchy=unified)
+Detected virtualization docker.
+Detected architecture arm64.
+
+Welcome to Ubuntu 24.04.2 LTS!
+
+Failed to create /init.scope control group: Read-only file system
+Failed to allocate manager object: Read-only file system
+[!!!!!!] Failed to allocate manager object.
+Exiting PID 1...
+```
+
+### 원인
+
+`init.scope`가 무엇인지 알기 위해서는 우선 `systemd`에서 유닛이 무엇인지 알아야 합니다.
+- 유닛은 `systemd`가 관리하는 개별적인 객체를 의미합니다.
+- 유닛의 종류
+    - 서비스 유닛(`.service`): `nginx.service`, `ssh.service` 등 데몬 실행
+    - 타겟 유닛(`.target`): `multi-user.target`, `graphical.target` 등 부팅 레벨 설정
+    - 마운트 유닛(`.mount`): `/var.mount` 등 파일 시스템 마운트
+    - 스왑 유닛(`.swap`): `swapfile.swap` 등 스왑 설정
+    - 디바이스 유닛(`.device`): `/dev/sda1.device` 등 디바이스 관리
+    - 스코프 유닛(`.scope`): `init.scope`(시스템의 최상위 cgroup을 관리하는 스코프), `user-1000.scope`(특정 사용자의 세션 프로세스를 관리하는 스코프) 등 외부에서 생성된 프로세스 그룹 관리
+
+서비스(`.service`)는 `systemd`가 직접 생성하는 프로세스를 관리하지만, [스코프(`.scope`)](https://www.freedesktop.org/software/systemd/man/latest/systemd.scope.html)는 외부에서 생성된 프로세스를 그룹화하는 역할을 합니다.
+
+`init.scope`는 `systemd` 자체가 실행되는 최상위 컨트롤 그룹으로, 시스템 초기화와 관련된 프로세스들을 관리하기 위한 특별한 scope unit입니다. [이 scope unit은 시스템과 서비스 관리자(PID 1)가 상주하는 곳](https://man7.org/linux/man-pages/man7/systemd.special.7.html)입니다. 시스템이 실행되는 동안 활성화되어 있습니다.
+
+`systemd`는 각 프로세스를 `cgroup`을 통해 관리하며, 이를 통해 프로세스의 자원 사용을 추적하고 제어합니다.
+`init.scope`는 시스템 초기화와 관련된 프로세스들을 포함하는 `cgroup`으로, 시스템 부팅 시 `systemd`에 의해 생성됩니다.
+일반적으로 `/sys/fs/cgroup` 디렉토리에 마운트되며, 각 프로세스는 해당 디렉토리 내의 특정 서브디렉토리에 위치하게 됩니다.
+
+따라서 컨테이너 환경에서 `systemd`를 실행할 때 컨테이너 내부에서 `cgroup` 파일 시스템에 쓰기 권한이 필요하므로, 다음과 같은 경우 `systemd`는 `cgroup`을 생성하지 못합니다.
+- 컨테이너의 파일 시스템이 읽기 전용으로 마운트되어 있는 경우
+- `/sys/fs/cgroup` 디렉토리에 대한 쓰기 권한이 제한되어 있는 경우
+
+현재 `systemd`로 초기화되는 컨테이너를 테스트하는 환경은 MacOS & OrbStack 입니다.
+MacOS는 Linux 커널을 제공하지 않으며, [OrbStack은 WSL 2와 비슷한 Linux VM을 사용](https://docs.orbstack.dev/architecture)한다고 합니다. 문제가 발생한 `/init.scope`는 Linux VM의 `/sys/fs/cgroup`입니다.
+
+### 해결
+
+앞서 확인했듯이, `systemd`는 PID 1로 실행될 때 자체 `cgroup` 네임스페이스를 생성하려 시도합니다.
+
+```log
+Failed to create /init.scope control group: Read-only file system
+```
+
+이를 위해서는 `cgroup`에 대한 쓰기가 가능해야 하는데, [`--privileged` 옵션](https://docs.docker.com/reference/cli/docker/container/run/#privileged)을 사용하거나 [Running systemd in a non-privileged container](https://developers.redhat.com/blog/2016/09/13/running-systemd-in-a-non-privileged-container#) 설명처럼 `--privileged` 옵션 없이 `--volume`과 `--tmpfs` 옵션 등을 사용할 수 있습니다.
+
+`--privileged` 옵션을 사용하면 컨테이너가 호스트와 거의 동일한 권한을 가지기 때문에, 컨테이너 내부의 프로세스가 호스트 시스템을 변경할 가능성이 있습니다.
+- 모든 리눅스 커널 기능 활성화
+- 기본 [`seccomp`(secure computing mode)](https://man7.org/linux/man-pages/man2/seccomp.2.html) profile 비활성화
+- 기본 [AppArmor](https://ubuntu.com/server/docs/apparmor) profile 비활성화
+- SELinux process label 비활성화
+- 모든 호스트 장치에 대한 액세스 권한 부여
+- `/sys` 읽고 쓰기 가능
+- cgroups 마운트 읽고 쓰기 가능
+
+컨테이너 격리가 약해지고, 악의적인 코드가 실행될 경우 호스트 시스템까지 영향을 줄 가능성이 있습니다. 따라서 보안상의 이유로 권장되지 않습니다.
+
+`--privileged` 옵션 없는 방식을 따르려 하는데, 맥북에서 OrbStack을 사용해서인지 가이드대로 동작하지 않습니다.
+대신 다음 옵션들을 사용합니다.
+- `--tmpfs /sys/fs/cgroup:rw`
+    - 컨테이너 내의 `/sys/fs/cgroup`을 메모리 기반 파일 시스템(`tmpfs`)으로 마운트합니다.
+    - `systemd`가 사용하는 `/sys/fs/cgroup/systemd`를 `cgroup2`로 마운트하는 것은 [docker-entrypoint.sh](../docker/Dockerfiles/ubuntu/docker-entrypoint.sh)에서 수행합니다.
+- `--cap-add SYS_ADMIN`: 시스템 관리자 권한을 부여합니다. 권한을 부여하지 않으면 `systemd-resolved.service` 시작에 실패합니다.
+
+    ```log
+    ➜  ~ systemctl status systemd-resolved.service
+    × systemd-resolved.service - Network Name Resolution
+         Loaded: loaded (/usr/lib/systemd/system/systemd-resolved.service; enabled; preset: enabled)
+         Active: failed (Result: exit-code) since Tue 2025-02-18 14:56:53 UTC; 1s ago
+           Docs: man:systemd-resolved.service(8)
+                 man:org.freedesktop.resolve1(5)
+                 https://www.freedesktop.org/wiki/Software/systemd/    writing-network-configuration-managers
+                 https://www.freedesktop.org/wiki/Software/systemd/writing-resolver-clients
+        Process: 78 ExecStart=/usr/lib/systemd/systemd-resolved (code=exited, status=217/USER)
+       Main PID: 78 (code=exited, status=217/USER)
+            CPU: 1ms
+
+     2월 18 14:56:53 8ec7c9848d0a systemd[1]: systemd-resolved.service: Scheduled restart job, restart counter is at 5.
+     2월 18 14:56:53 8ec7c9848d0a systemd[1]: systemd-resolved.service: Start request repeated too quickly.
+     2월 18 14:56:53 8ec7c9848d0a systemd[1]: systemd-resolved.service: Failed with result 'exit-code'.
+     2월 18 14:56:53 8ec7c9848d0a systemd[1]: Failed to start systemd-resolved.service - Network Name Resolution.
+    ```
+
+    반면, `SYS_ADMIN` 권한을 부여하면 다음과 같이 정상적으로 실행됩니다.
+
+    ```log
+    ➜  ~ systemctl status systemd-resolved.service
+    ● systemd-resolved.service - Network Name Resolution
+         Loaded: loaded (/usr/lib/systemd/system/systemd-resolved.service; enabled; preset: enabled)
+         Active: active (running) since Tue 2025-02-18 15:21:03 UTC; 6s ago
+           Docs: man:systemd-resolved.service(8)
+                 man:org.freedesktop.resolve1(5)
+                 https://www.freedesktop.org/wiki/Software/systemd/writing-network-configuration-managers
+                 https://www.freedesktop.org/wiki/Software/systemd/writing-resolver-clients
+       Main PID: 63 (systemd-resolve)
+         Status: "Processing requests..."
+            CPU: 33ms
+         CGroup: /docker/7e199e73ef26bf4112269b96b501f01d42c65554d8d907ec38ab551b7bcc1784/system.slice/    systemd-resolved.service
+                 └─63 /usr/lib/systemd/systemd-resolved
+
+     2월 18 15:21:03 7e199e73ef26 systemd[1]: Starting systemd-resolved.service - Network Name Resolution...
+     2월 18 15:21:03 7e199e73ef26 systemd-resolved[63]: Positive Trust Anchors:
+     2월 18 15:21:03 7e199e73ef26 systemd-resolved[63]: . IN DS 20326 8 2 e06d44b80b8f1d39a95c0b0d7c65d08458e880409bbc683457104237c7f8ec8d
+     2월 18 15:21:03 7e199e73ef26 systemd-resolved[63]: Negative trust anchors: home.arpa 10.in-addr.arpa 16.172.in-addr.arpa 17.172.in-a>
+     2월 18 15:21:03 7e199e73ef26 systemd-resolved[63]: Using system hostname '7e199e73ef26'.
+     2월 18 15:21:03 7e199e73ef26 systemd[1]: Started systemd-resolved.service - Network Name Resolution.
+    ```
+
+최종적으로는 다음과 같이 백그라운드에서 컨테이너를 실행하고 `docker exec -u ubuntu -it ubuntu-env /bin/zsh`으로 컨테이너에 진입합니다. (자세한 내용은 [Dockerfile](../docker/Dockerfiles/ubuntu/Dockerfile), [run.sh](../docker/Dockerfiles/ubuntu/run.sh), [docker-entrypoint.sh](../docker/Dockerfiles/ubuntu/docker-entrypoint.sh) 등 참고)
+
+```sh
+docker run \
+    --name ubuntu-env \
+    --tmpfs /run \
+    --tmpfs /sys/fs/cgroup:rw \
+    --cap-add SYS_ADMIN \
+    -d
+    ubuntu-env
+```
+
+실행되는 순서는 다음과 같습니다:
+1. `docker run` 실행 시 `--tmpfs /sys/fs/cgroup`과 같은 마운트 옵션이 적용됩니다.
+2. 컨테이너 내의 `/sys/fs/cgroup`을 메모리 기반 파일 시스템(`tmpfs`)으로 마운트됩니다.
+3. `ENTRYPOINT`에서 지정한 실행 파일(예: `docker-entrypoint.sh`)이 실행되며, 이 프로세스가 1번 프로세스가 됩니다.
+4. `docker-entrypoint.sh`에서 `/sys/fs/cgroup/systemd` 디렉토리를 생성하고 `cgroup2` 파일 시스템을 마운트합니다.
+5. `exec "$@"`를 실행하여 `CMD`에 지정된 `/lib/systemd/systemd`이 실행되고, `/lib/systemd/systemd` 프로세스가 1번 프로세스가 됩니다.
+
+### 참고
+
+- [Container 격리 기술 이해하기](https://mokpolar.tistory.com/60)
+- [Running systemd in a non-privileged container](https://developers.redhat.com/blog/2016/09/13/running-systemd-in-a-non-privileged-container#)
+- [The New Control Group Interfaces](https://systemd.io/CONTROL_GROUP_INTERFACE/)
