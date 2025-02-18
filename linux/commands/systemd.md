@@ -1,10 +1,10 @@
 # systemd
 
 - [systemd](#systemd)
-    - [Synopsis](#synopsis)
     - [systemd.generator](#systemdgenerator)
+    - [기타](#기타)
 
-## Synopsis
+## [systemd.generator](https://www.freedesktop.org/software/systemd/man/latest/systemd.generator.html)
 
 ```plaintext
 /path/to/generator normal-dir [early-dir] [late-dir]
@@ -18,8 +18,6 @@
 /usr/local/lib/systemd/user-generators/*
 /usr/lib/systemd/user-generators/*
 ```
-
-## [systemd.generator](https://www.freedesktop.org/software/systemd/man/latest/systemd.generator.html)
 
 generator는 `/usr/lib/systemd/system-generators/` 및 위에 나열된 기타 디렉토리에 있는 작은 실행 파일입니다.
 [`systemd(1)`](https://www.freedesktop.org/software/systemd/man/latest/systemd.html#)는 부팅 시와 구성 리로드 시 유닛 파일이 로드되기 전에 이러한 바이너리를 매우 일찍 실행합니다.
@@ -65,3 +63,7 @@ generator는 위에 나열된 대로 컴파일 중에 결정된 경로 집합에
 > 이 방식은 다음과 같은 장점이 있습니다:
 > - `.d/` 드롭인은 유닛 파일을 직접 수정하지 않기 때문에, 시스템 업데이트나 패키지 업데이트로 인한 유닛 파일 변경 시에도 사용자의 설정이 유지되는 장점이 있습니다.
 > - 또한, 여러 개의 드롭인 파일을 추가할 수 있기 때문에, 복잡한 설정을 여러 파일로 나누어 관리할 수도 있습니다.
+
+## 기타
+
+- [24.4. cgroup의 systemd 계층 구조 개요](https://docs.redhat.com/ko/documentation/red_hat_enterprise_linux/9/html/managing_monitoring_and_updating_the_kernel/con_overview-of-systemd-hierarchy-for-cgroups_assembly_using-systemd-to-manage-resources-used-by-applications#con_overview-of-systemd-hierarchy-for-cgroups_assembly_using-systemd-to-manage-resources-used-by-applications)
