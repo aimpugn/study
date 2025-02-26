@@ -8,12 +8,12 @@
 
 ## brew
 
-- languages & rel``ated
+- languages & related
 
     node
     go, golangci-lint
     [rustup](https://github.com/rust-lang/rustup)
-    [kotlin](https://formulae.brew.sh/formula/kotlin), gradle
+    [kotlin](https://formulae.brew.sh/formula/kotlin), gradle, maven
     [gradle](https://formulae.brew.sh/formula/gradle)
     node, pnpm
     [nasm](https://formulae.brew.sh/formula/nasm)
