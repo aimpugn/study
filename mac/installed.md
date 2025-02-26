@@ -65,6 +65,10 @@
     [android-studio](https://formulae.brew.sh/cask/android-studio)
     [jetbrain fleet](https://formulae.brew.sh/cask/fleet)
 
+- privacy
+
+    gnupg
+
 ## 삭제
 
 ### fisher
