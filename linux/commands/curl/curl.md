@@ -1,21 +1,24 @@
 # curl
 
 - [curl](#curl)
-    - [`curl --version`](#curl---version)
-    - [`--resolve`](#--resolve)
-    - [`--connected-to`](#--connected-to)
-        - [예제](#예제)
-    - [`--location`](#--location)
-        - [예제](#예제-1)
-    - [`--cookie-jar` \&\& POST 로그인 하기](#--cookie-jar--post-로그인-하기)
-    - [POST JSON body](#post-json-body)
-    - [리모트 서버의 SSL/TLS 버전 확인하기](#리모트-서버의-ssltls-버전-확인하기)
-    - [`Access-Control-Allow-Origin` 헤더 확인하기](#access-control-allow-origin-헤더-확인하기)
-        - [Sending a preflight request using cUrl](#sending-a-preflight-request-using-curl)
+    - [옵션](#옵션)
+        - [`curl --version`](#curl---version)
+        - [`--resolve`](#--resolve)
+        - [`--connected-to`](#--connected-to)
+            - [예제](#예제)
+        - [`--location`](#--location)
+            - [예제](#예제-1)
+        - [`--cookie-jar` \&\& POST 로그인 하기](#--cookie-jar--post-로그인-하기)
+        - [POST JSON body](#post-json-body)
+        - [리모트 서버의 SSL/TLS 버전 확인하기](#리모트-서버의-ssltls-버전-확인하기)
+        - [`Access-Control-Allow-Origin` 헤더 확인하기](#access-control-allow-origin-헤더-확인하기)
     - [예제](#예제-2)
         - [액세스 토큰 발급 받고 API 호출하기](#액세스-토큰-발급-받고-api-호출하기)
+        - [Sending a preflight request using cUrl](#sending-a-preflight-request-using-curl)
 
-## `curl --version`
+## 옵션
+
+### `curl --version`
 
 ```shell
 curl --version
@@ -37,7 +40,7 @@ Features: AsynchDNS IDN IPv6 Largefile GSS-API Kerberos SPNEGO NTLM NTLM_WB SSL 
     - 예를 들어 `SSL`, `TLS-SRP`, `IPv6`, `AsynchDNS` 등이 있다.
     - 이 중 `SSL`은 SSL 프로토콜을 지원함을 의미하고, `TLS-SRP`는 TLS-Secure Remote Password 프로토콜을 지원한다는 것을 나타낸다
 
-## `--resolve`
+### `--resolve`
 
 - 특정 도메인을 특정 IP 주소로 해석하도록 curl에 지시한다
 
@@ -83,7 +86,7 @@ See also `--connect-to` and `--alt-svc`.
 curl: (49) Couldn't parse CURLOPT_RESOLVE entry 'api.server.com:443:xxx:443'
 ```
 
-## `--connected-to`
+### `--connected-to`
 
 > --connect-to 'HOST1:PORT1:HOST2:PORT2'
 
@@ -98,7 +101,7 @@ A "host" specified to this option is compared as a string, so it needs to match 
 
 --connect-to can be used several times in a command line
 
-### 예제
+#### 예제
 
 ```bash
 curl --connect-to example.com:443:example.net:8443 https://example.com
@@ -108,7 +111,7 @@ curl --connect-to example.com:443:10.0.6.xxx:443 https://example.com
 
 See also --resolve and -H, --header.
 
-## `--location`
+### `--location`
 
 HTTP 리다이렉션을 따르도록 지시한다. 즉, 서버가 요청을 다른 URL로 리다이렉트하더라도 `curl`은 그 위치로 이동하여 요청을 계속 진행한다.
 서버가 리다이렉트를 시도하면 `curl`은 그 위치로 이동하여 요청을 계속 진행하고, 원래 요청된 URL이 아닌 리다이렉트된 URL에 대한 응답을 받게 된다.
@@ -119,7 +122,7 @@ HTTP 리다이렉션을 따르도록 지시한다. 즉, 서버가 요청을 다�
 > 일반적으로 웹 사이트의 구조를 변경하거나, 리소스를 다른 서버로 이동하는 등의 상황에서 사용된다.
 > 리다이렉션은 3xx HTTP 상태 코드를 사용하여 표시된다.
 
-### 예제
+#### 예제
 
 ```bash
 # `http://example.com/redirect` URL이 `http://example.com/new-location`로 리다이렉트되도록 설정되어 있다면,
@@ -127,7 +130,7 @@ HTTP 리다이렉션을 따르도록 지시한다. 즉, 서버가 요청을 다�
 curl --location http://example.com/redirect
 ```
 
-## `--cookie-jar` && POST 로그인 하기
+### `--cookie-jar` && POST 로그인 하기
 
 - [쿠키를 사용할 경우](https://stackoverflow.com/a/45755598/8562273)
 
@@ -151,7 +154,7 @@ classic-admin.some-qwerty-org.io    FALSE    /    TRUE    1679768661    AWSALBCO
 classic-admin.some-qwerty-org.io    FALSE    /    FALSE    1679768661    AWSALB    0r/CCpIzQDKRPV3rjIfeY2c/CZAqiLe+nt2deDrToKb42u4AghIfWCPWN9wcOHnH89obCCnlgdziCElnBofH3iNXzAa2wtK44pNvZmMqjtqUk/tD/8h6hS3GnCxx
 ```
 
-## POST JSON body
+### POST JSON body
 
 ```shell
 curl -X POST \
@@ -161,7 +164,7 @@ curl -X POST \
     https://host.com/api/end/point
 ```
 
-## 리모트 서버의 SSL/TLS 버전 확인하기
+### 리모트 서버의 SSL/TLS 버전 확인하기
 
 ```shell
 # TLS 1.0 사용
@@ -177,23 +180,13 @@ curl -v --tls-max 1.2 https://yourserver.com
 curl -v --tls-max 1.3 https://yourserver.com
 ```
 
-## `Access-Control-Allow-Origin` 헤더 확인하기
+### `Access-Control-Allow-Origin` 헤더 확인하기
 
 ```bash
 curl -I -H "Origin: http://example.com" \
      --verbose \
     -H "Access-Control-Request-Method: GET" \
     'https://cdn.some_name.kr/path/to/sdk.js'
-```
-
-### [Sending a preflight request using cUrl](https://stackoverflow.com/a/12179364)
-
-```bash
-curl -H "Origin: http://example.com" \
-  -H "Access-Control-Request-Method: POST" \
-  -H "Access-Control-Request-Headers: X-Requested-With" \
-  -X OPTIONS --verbose \
-  https://www.googleapis.com/discovery/v1/apis?fields=
 ```
 
 ## 예제
@@ -212,4 +205,14 @@ echo "access_token: $ACCESS_TOKEN"
 curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
   'https://core-api.dev.some_name.co/path/to/api?from=1704034800&to=1706713200&page=1&limit=100' |
   jq
+```
+
+### [Sending a preflight request using cUrl](https://stackoverflow.com/a/12179364)
+
+```bash
+curl -H "Origin: http://example.com" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: X-Requested-With" \
+  -X OPTIONS --verbose \
+  https://www.googleapis.com/discovery/v1/apis?fields=
 ```
