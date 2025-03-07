@@ -1,8 +1,9 @@
 package craftsmanship.a;
 
-import org.junit.Test;
 
-import static org.junit.Assert.*;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class StackTest {
     /**
@@ -449,10 +450,10 @@ public class StackTest {
      *
      * @throws Exception
      */
-    @Test(expected = Stack_11_18.Underflow.class)
+    @Test
     public void popEmptyStack_11_18_throwsUnderflow_success() throws Exception {
         Stack_11_18 stack = new Stack_11_18();
-        stack.pop();
+        assertThrows(Stack_11_18.Underflow.class, stack::pop);
     }
 
     /**
