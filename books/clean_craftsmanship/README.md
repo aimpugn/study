@@ -36,6 +36,7 @@
             - [TDD 기초](#tdd-기초)
                 - [단순한 예제](#단순한-예제)
                 - [스택](#스택)
+                - [소인수(prime factor) 분해](#소인수prime-factor-분해)
 
 ## 간략 정리
 
@@ -641,3 +642,117 @@ TDD 개발의 리듬과 기법은 적용 범위, 즉 규모와 무관하다고 �
     - 그리고 부수적인 세부 사항으로부터 나오는 **코드 단순화 기회 역시 놓치기 쉽기 때문**입니다.
 
 예제 [`Stack` 클래스의 구현 과정](./example/app/src/main/java/craftsmanship/a/)과 [테스트 코드의 실패 -> 성공 -> 리팩토링 주기 적용 과정](./example/app/src/test/java/craftsmanship/a/StackTest.java)을 통해 조금 더 구체적으로 'TDD의 네 가지 법칙'과 여기서 정리한 '세 가지 규칙'이 적용되는 과정을 확인할 수 있습니다.
+
+##### 소인수(prime factor) 분해
+
+- 규칙 4:
+
+    > 실패하는 가장 간단하고, 가장 구체적이며, 가장 퇴화한(degenerate) 테스트를 쓰라.
+
+    여기서 '퇴화한'은 *황당할 정도로 제일 단순한 시작 지점*을 나태내기 위한 표현입니다.
+
+- 규칙 5:
+
+    > 가능하면 일반화하라.
+
+    일반화 주문:
+
+    > 테스트가 더 구체적으로 바뀔수록 제품 코드는 더 일반적으로 바뀐다.
+
+    새로운 테스트를 추가할 때마다 테스트 묶음은 더 구체적으로 바뀝니다.
+    규칙 5를 적용할 때마다 해답 코드는 더 일반적으로 바뀝니다.
+    이 주문은 '테스트 설계' 및 '깨지기 쉬운(fragile) 테스트를 예방'하는 데 중요한 역할을 합니다.
+
+저자는 처음에 "소인수 분해"를 하기 위해서 "에라토스테네스의 체"를 이용하여 "소수 목록"을 만든 다음, "소인수 분해할 수를 소수로 나누는 방식"을 염두에 뒀습니다.
+
+하지만 TDD 과정을 거쳐서 최종적으로 완성한 코드는 다음과 같습니다:
+
+```java
+private List<Integer> factorsOf(int i) {
+    List<Integer> factors = new ArrayList<>();
+    for (int divisor = 2; i > 1; divisor++) {
+        for (; i % divisor == 0; i /= divisor) {
+            factors.add(divisor);
+        }
+    }
+
+    return factors;
+}
+```
+
+이 반복문에서는 모든 정수로 인수 여부를 확인하는데, 여기에는 합성수도 포함됩니다.
+예를 들어, `i=12`라면, `divisor++`는 4도 인수인지 확인할 겁니다.
+하지만 실제로는 "실행 순서" 때문에 4가 결과에 포함되지는 않습니다.
+`divisor=2`일 때 이미 2의 배수가 모두 제거되었기 때문입니다.
+
+그리고 익히 아는 형태와 다를 뿐, 이 코드가 바로 "에라토스테네스의 체"라는 것을 알 수 있습니다.
+
+`factorsOf`에서 "`divisor`의 배수를 제거"하는 방식과,
+`sieveOfEratosthenes`에서, "`i`의 배수를 제거"하는 방식은 마찬가지이기 때문입니다.
+
+```java
+/**
+ *
+ * - https://ko.wikipedia.org/wiki/%EC%97%90%EB%9D%BC%ED%86%A0%EC%8A%A4%ED%85%8C%EB%84%A4%EC%8A%A4%EC%9D%98_%EC%B2%B4#%EC%97%90%EB%9D%BC%ED%86%A0%EC%8A%A4%ED%85%8C%EB%84%A4%EC%8A%A4%EC%9D%98_%EC%B2%B4%EB%A5%BC_%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%98%EB%B0%8D_%EC%96%B8%EC%96%B4%EB%A1%9C_%EA%B5%AC%ED%98%84
+ */
+public List<Boolean> sieveOfEratosthenes(int size) {
+    List<Boolean> primeList = new ArrayList<>(Collections.nCopies(size + 1, true));
+    // 0번째와 1번째를 '소수 아님' 처리합니다.
+    primeList.set(0, false);
+    primeList.set(1, false);
+
+    // 2부터 i*i <= size 까지 반복하며 각각의 배수들을 '소수 아님' 처리합니다.
+    for (int i = 2; (i * i) <= size; i++) {
+        if (primeList.get(i)) {
+            // - i = 2
+            //   - j = 4
+            //   - j = 6
+            //   - j = 8
+            //   ...
+            // - i = 3
+            //   - j = 9
+            //   - j = 12
+            //   - j = 15
+            //   ...
+            // ... 반복 ...
+            for (int j = i * i; j <= size; j += i) {
+                primeList.set(j, false);
+            }
+        }
+    }
+
+    // size = 10
+    // [false, false, true, true, false, true, false, true, false, false, false]
+    return primeList;
+}
+```
+
+[PrimeFactorsTest](./example/app/src/test/java/craftsmanship/b/PrimeFactorsTest.java) 예제의 요점은, "테스트 케이스를 하나씩 추가하면서 알고리즘을 유도"했다는 것입니다.
+
+이를 통해 저자는 "TDD는 단계적으로 알고리즘을 유도하는 일반적인 기법"일지도 모른다고 말합니다.
+'적절한 순서의 테스트 묶음'이 주어진다면, TDD 개발을 사용하여 한 단계씩 결정짓는 방식으로 어떤 프로그램이든 유도할 수 있을지도 모릅니다.
+
+> 1936년 앨런 튜링과 알론조 처치는 각각 '임의의 문제에 대해서 그 문제를 해결할 수 있는 프로그램이 존재하는지 여부를 결정할 수 있는 일반적인 절차는 없다'고 증명했습니다.
+>
+> 이것을 힐베트르의 '결정 가능성(decidability) 문제'라고 합니다.
+> > 어떤 수학적 명제에 대해 그것이 참인지 거짓인지 결정할 수 있는 일반적인 알고리즘이 존재하는지
+>
+> 그리고 이 결론을 '결정 불가능성(Undecidability)' 이라고 부르며, 컴퓨터 과학의 근본적인 한계를 제시했습니다.
+>
+> 힐베르트의 문제는 "주어진 디오판토스 방정식(Diophantine equation)에 해가 있음을 증명하는 일반적인 방법이 있는지"였습니다.
+>
+> 여기서 '디오판토스 방정식'은 오직 정수 입출력을 갖는 수학 함수입니다.
+> 예를 들어, 피타고라스 방정식이 이에 해당합니다.
+> $$
+> x^{2} + y^{2} = z^{2}
+> $$
+>
+> 그리고 '컴퓨터 프로그램'도 정수 입출력을 갖는 수학 함수입니다.
+> 따라서 힐베르트의 문제는 컴퓨터 프로그램에 대한 것이라 설명할 수 있습니다.
+>
+> References:
+> - [정지 문제](https://namu.wiki/w/%EC%A0%95%EC%A7%80%20%EB%AC%B8%EC%A0%9C)
+>
+>    > 임의의 프로그램에 대해 그것이 종료하는지(halting) 여부를 결정짓는 알고리즘은 존재할 수 없다.
+>
+>    즉, 프로그램이 무한히 루프에 빠질지, 아니면 종료할지를 사전에 알 수 있는 일반화된 방법은 없습니다.
