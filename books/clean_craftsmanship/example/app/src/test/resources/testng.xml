@@ -1,0 +1,15 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd" >
+
+<suite name="TDD_Craftsmanship" verbose="0">
+    <test name="StackTest">
+        <packages>
+            <package name="craftsmanship.a"/>
+        </packages>
+    </test>
+
+    <test name="PrimeFactorsTest">
+        <packages>
+            <package name="craftsmanship.b"/>
+        </packages>
+    </test>
+</suite>
