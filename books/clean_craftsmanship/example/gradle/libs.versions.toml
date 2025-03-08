@@ -5,8 +5,10 @@
 guava = "33.3.1-jre"
 testng = "7.9.0"
 logback = "1.5.13"
+assertj = "3.27.3"
 
 [libraries]
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 testng = { module = "org.testng:testng", version.ref = "testng" }
 logback = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
