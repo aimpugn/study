@@ -18,25 +18,35 @@ repositories {
 }
 
 dependencies {
-    // JUnit BOM && Version catalog
-    // `platform`은 버전 관리를 위한 BOM(Bill of Materials)을 적용할 때 사용합니다.
-    // BOM(Bill of Materials)는 '라이브러리의 버전을 중앙에서 관리하여 일관성 있게 유지'하도록 돕습니다.
-    // - 여러 모듈 간의 버전을 일치시켜서 버전 충돌 예방
-    // - 다수의 모듈이 공유하는 의존성 라이브러리 간 충돌 최소화
-    // - 의존성 그룹을 한번에 관리
-    // 복잡한 프로젝트 경우 하위 모듈 간 버전 충돌이 찾아서 BOM을 많이 사용한다고 합니다.
+    // TestNG
+    // JUnit 더 다양한 기능들 제공 및 병렬 실행 등을 지원하여 TestNG로 테스팅 라이브러리를 교체합니다.
+    //
+    // - https://testng.org/#_download
+    // - https://mkyong.com/unittest/junit-4-vs-testng-comparison/
+    // - https://medium.com/@abhaykhs/testng-vs-junit-an-unbiased-comparison-between-both-testing-frameworks-d2200b5361d0
+    testImplementation(libs.testng)
+
+    // TestNG 의존성을 추가하고 수정 후 테스트를 실행하면 다음과 같은 경고가 발생합니다.
+    //
+    // ```
+    // SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+    // SLF4J: Defaulting to no-operation (NOP) logger implementation
+    // SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+    // ```
+    //
+    // 여기서 SLF4J(Simple Logging Facade for Java)는 Java의 로깅 프레임워크입니다.
+    // 로깅의 구현이 아닌, 로깅 인터페이스를 제공하는 추상화 레이어로, 개발자가 특정 로깅 구현체(Logback, Log4j, java.util.logging(JUL) 등)에
+    // 의존하지 않고 추상화된 로깅 인터페이스를 사용할 수 있도록 합니다.
+    // 즉, SLF4J는 인터페이스만 정의하고, 실제 로그 출력 구현체는 포함하지 않으므로 반드시 별도의 구현체가 있어야 합니다.
+    //
+    // 위의 경고는 로깅 구현체를 찾지 못해 기본적으로 아무 작업도 수행하지 않는(no-operation, NOP) 로거를 사용하겠다는 의미입니다.
+    // 실제 로그 출력을 위해 Logback 의존성을 추가합니다.
+    // 현재는 테스트 런타임 시에만 사용하므로 testRuntimeOnly로 추가합니다.
     //
     // References:
-    // - https://github.com/junit-team/junit5-samples/blob/46384d00dd3c8f7c1fa8634346c4ea9de7c69f68/junit5-jupiter-starter-gradle-kotlin/build.gradle.kts#L12-L16
-    // - https://docs.gradle.org/current/userguide/platforms.html#sec:using-platform-to-control-transitive-deps
-    testImplementation(platform(libs.junit.bom))
-    // BOM 임포트 후에 버전 없이 의존성을 정의합니다.
-    // - https://stackoverflow.com/a/67485811
-    testImplementation(libs.junit.jupiter)
-    testRuntimeOnly(libs.junit.platform.launcher)
-    // - https://junit.org/junit5/docs/current/user-guide/#running-tests-ide-intellij-idea
-    testRuntimeOnly(libs.junit.jupiter.engine)
-    testRuntimeOnly(libs.junit.vintage.engine)
+    // - https://logback.qos.ch/manual/architecture.html
+    // - https://logback.qos.ch/reasonsToSwitch.html
+    testRuntimeOnly(libs.logback)
 
     // This dependency is used by the application.
     implementation(libs.guava)
@@ -46,7 +56,7 @@ dependencies {
 // - https://junit.org/junit5/docs/current/user-guide/#running-tests-build-gradle
 // - https://docs.gradle.org/current/userguide/java_testing.html#using_junit5
 tasks.test {
-    useJUnitPlatform()
+    useTestNG()
     testLogging {
         events("passed", "skipped", "failed")
     }

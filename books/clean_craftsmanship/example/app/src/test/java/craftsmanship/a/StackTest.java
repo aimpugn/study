@@ -1,9 +1,9 @@
 package craftsmanship.a;
 
 
-import org.junit.jupiter.api.Test;
+import static org.testng.Assert.*;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.testng.annotations.Test;
 
 public class StackTest {
     /**
@@ -72,7 +72,7 @@ public class StackTest {
     /**
      * 단정문(assertion) 테스트를 추가합니다.
      * <p>
-     * 01:49에는 이 파일 가장 상단에 `import static org.junit.Assert.assertTrue;`를 추가합니다.
+     * 01:49에는 이 파일 가장 상단에 `import static org.testng.Assert.*;`를 추가합니다.
      *
      * @throws Exception
      */
@@ -167,8 +167,6 @@ public class StackTest {
      * <p>
      * `push` 후에는 스택이 비어있지 않아야 하므로, `isEmpty()` 여부를 단정문으로 추가합니다.
      * 하지만 `isEmpty()`는 항상 `true`를 리턴하므로 테스트는 실패해야 합니다.
-     * <p>
-     * 02:50에는 이 파일 가장 상단에 `import static org.junit.Assert.assertFalse;`를 추가합니다.
      *
      * @throws Exception
      */
@@ -281,12 +279,12 @@ public class StackTest {
         Stack_06_06 stack = new Stack_06_06();
         stack.push(0);
         stack.push(0);
-        // assertEquals(2, stack.getSize()); // 다음 코드 진행 위해 주석 처리
+        // assertEquals(stack.getSize(), 2); // 다음 코드 진행 위해 주석 처리
 
         // 아직 `getSize()` 메서드가 구현되지 않았으므로, 다음과 같은 컴파일 타임 에러가 발생합니다.
         //
         // /path/to/app/src/test/java/craftsmanship/a/StackTest.java:277: error: cannot find symbol
-        // assertEquals(2, stack.getSize());
+        // assertEquals(stack.getSize(), 2);
         //                      ^
         // symbol:   method getSize()
         // location: variable stack of type Stack_06_06
@@ -306,7 +304,7 @@ public class StackTest {
         Stack_07_23 stack = new Stack_07_23();
         stack.push(0);
         stack.push(0);
-        // assertEquals(2, stack.getSize()); // 다음 코드 진행 위해 주석 처리
+        // assertEquals(stack.getSize(), 2); // 다음 코드 진행 위해 주석 처리
 
         // Expected :2
         // Actual   :0
@@ -328,7 +326,7 @@ public class StackTest {
         Stack_07_32 stack = new Stack_07_32();
         stack.push(0);
         stack.push(0);
-        assertEquals(2, stack.getSize());
+        assertEquals(stack.getSize(), 2);
     }
 
     /**
@@ -344,7 +342,7 @@ public class StackTest {
         stack.pop();
         assertTrue(stack.isEmpty());
         // 이 시점에서는 `getSize`는 항상 2를 리턴하므로 테스트는 실패해야 합니다.
-        // assertEquals(1, stack.getSize()); // 다음 코드 진행 위해 주석 처리
+        // assertEquals(stack.getSize(), 1); // 다음 코드 진행 위해 주석 처리
 
         // Expected :1
         // Actual   :2
@@ -368,7 +366,7 @@ public class StackTest {
         stack.pop();
         assertTrue(stack.isEmpty());
         // 원래는 0과 비교해야 하는데, 실수로 1과 비교하여 테스트가 실패합니다.
-        // assertEquals(1, stack.getSize()); // 다음 코드 진행 위해 주석 처리
+        // assertEquals(stack.getSize(), 1); // 다음 코드 진행 위해 주석 처리
 
         // Expected :1
         // Actual   :0
@@ -389,7 +387,7 @@ public class StackTest {
         stack.push(0);
         stack.pop();
         assertTrue(stack.isEmpty());
-        assertEquals(0, stack.getSize());
+        assertEquals(stack.getSize(), 0);
     }
 
     /**
@@ -402,7 +400,7 @@ public class StackTest {
         Stack_08_56 stack = new Stack_08_56();
         stack.push(0);
         assertFalse(stack.isEmpty());
-        assertEquals(1, stack.getSize());
+        assertEquals(stack.getSize(), 1);
     }
 
     /**
@@ -414,7 +412,7 @@ public class StackTest {
      *
      * @throws Exception
      */
-    // @Test(expected = Stack_08_56.Underflow.class) // 다음 코드 진행 위해 주석 처리
+    // @Test(expectedExceptions = Stack_08_56.Underflow.class) // 다음 코드 진행 위해 주석 처리
     public void popEmptyStack_10_27_throwsUnderflow_compile_error() throws Exception {
         // /path/to/app/src/test/java/craftsmanship/a/StackTest.java:415: error: cannot find symbol
         // @Test(expected = Stack_08_56.Underflow.class)
@@ -470,7 +468,7 @@ public class StackTest {
         Stack_11_18 stack = new Stack_11_18();
         stack.push(99);
         // 이 시점에서는 `pop`이 항상 -1을 리턴하므로 테스트는 실패해야 합니다.
-        // assertEquals(99, stack.pop()); // 다음 코드 진행 위해 주석 처리
+        // assertEquals(stack.pop(), 99); // 다음 코드 진행 위해 주석 처리
     }
 
     /**
@@ -487,7 +485,7 @@ public class StackTest {
     public void afterPushXThenWillPopX_11_57_success() throws Exception {
         Stack_11_57 stack = new Stack_11_57();
         stack.push(99);
-        assertEquals(99, stack.pop());
+        assertEquals(stack.pop(), 99);
     }
 
     /**
@@ -507,10 +505,10 @@ public class StackTest {
     public void afterPushXThenWillPopX_12_18_fail() throws Exception {
         Stack_11_57 stack = new Stack_11_57();
         stack.push(99);
-        assertEquals(99, stack.pop());
+        assertEquals(stack.pop(), 99);
         stack.push(88);
         // 이 시점에서는 `pop`이 항상 99를 리턴하므로 테스트는 실패해야 합니다.
-        // assertEquals(88, stack.pop()); // 다음 코드 진행 위해 주석 처리
+        // assertEquals(stack.pop(), 88); // 다음 코드 진행 위해 주석 처리
 
         // Expected :88
         // Actual   :99
@@ -536,9 +534,9 @@ public class StackTest {
     public void afterPushXThenWillPopX_12_50_success() throws Exception {
         Stack_12_50 stack = new Stack_12_50();
         stack.push(99);
-        assertEquals(99, stack.pop());
+        assertEquals(stack.pop(), 99);
         stack.push(88);
-        assertEquals(88, stack.pop());
+        assertEquals(stack.pop(), 88);
     }
 
     /**
@@ -554,9 +552,9 @@ public class StackTest {
         Stack_12_50 stack = new Stack_12_50();
         stack.push(99);
         stack.push(88);
-        assertEquals(88, stack.pop());
+        assertEquals(stack.pop(), 88);
         // 이 시점에서는 `pop`이 항상 마지막에 푸시한 88을 리턴하므로 테스트는 실패해야 합니다.
-        // assertEquals(99, stack.pop()); // 다음 코드 진행 위해 주석 처리
+        // assertEquals(stack.pop(), 99); // 다음 코드 진행 위해 주석 처리
 
         // Expected :99
         // Actual   :88
@@ -581,8 +579,8 @@ public class StackTest {
         Stack_14_13 stack = new Stack_14_13();
         stack.push(99);
         stack.push(88);
-        assertEquals(88, stack.pop());
-        assertEquals(99, stack.pop());
+        assertEquals(stack.pop(), 88);
+        assertEquals(stack.pop(), 99);
     }
 }
 
