@@ -12,4 +12,10 @@
             <package name="craftsmanship.b"/>
         </packages>
     </test>
+
+    <test name="BowlingTest">
+        <packages>
+            <package name="craftsmanship.c"/>
+        </packages>
+    </test>
 </suite>
