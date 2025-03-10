@@ -3,6 +3,8 @@ package craftsmanship.c;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
+import java.util.stream.IntStream;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class BowlingTest {
@@ -447,4 +449,230 @@ public class BowlingTest {
     }
 
     // 간단한 스페어 테스트가 끝났으므로, 그 다음에는 간단한 스트라이크 테스트를 추가합니다.
+
+    /**
+     * 세 번째 법칙 "테스트가 통과하면 테스트를 더 추가하라."를 따릅니다.
+     * 첫 번째 법칙 "프로덕션 코드 작성 전, 실패하는 테스트를 작성하라."를 따릅니다.
+     * <p>
+     * 이 테스트는 실패합니다.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void oneStrike_25_32_fail() throws Exception {
+        Game_24_55 game = new Game_24_55();
+        // 스트라이크
+        game.roll(10);
+        game.roll(2);
+        game.roll(3);
+        IntStream.range(0, 16)
+                .forEach(num -> game.roll(0));
+
+        // 1. 프레임: 다음 프레임 진행 전에는 계산 불가 -> '2.1'과 '2.2'에서 5점 + 10점 = 15점(총 15점)
+        //    1. 10개의 핀 쓰러뜨림(스트라이크)
+        // 2. 프레임: 5점(총 20점)
+        //    1. 2개의 핀 쓰러뜨림
+        //    2. 3개의 핀 쓰러뜨림
+        // 나머지는 모두 도랑에 빠집니다.
+        // assertThat(game.score()).isEqualTo(20); // 다음 코드 진행 위해 주석 처리
+        //Expected :20
+        //Actual   :15
+    }
+
+    /**
+     * 두 번째 법칙 "실패하는 테스트가 통과하는 데 필요한 최소한의 프로덕션 코드만 작성한다."를 따릅니다.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void oneStrike_26_02_success() throws Exception {
+        Game_26_02 game = new Game_26_02();
+        game.roll(10);
+        game.roll(2);
+        game.roll(3);
+        IntStream.range(0, 16).forEach(num -> game.roll(0));
+
+        // 1. 프레임: 다음 프레임 진행 전에는 계산 불가 -> '2.1'과 '2.2'에서 5점 + 10점 = 15점(총 15점)
+        //    1. 10개의 핀 쓰러뜨림(스트라이크)
+        // 2. 프레임: 5점(총 20점)
+        //    1. 2개의 핀 쓰러뜨림
+        //    2. 3개의 핀 쓰러뜨림
+        // 나머지는 모두 도랑에 빠집니다.
+        assertThat(game.score()).isEqualTo(20);
+    }
+
+    /**
+     * 네 번째 법칙 리팩토링, "먼저 돌아가게 만들라. 그 다음 제대로 만들라."를 따릅니다.
+     * 리팩토링은 "동작에는 영향이 없으면서 더 나은 구조의 코드로 변경하는 것"입니다.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void gutterGame_26_15_refactoring_success() throws Exception {
+        Game_26_15 game = new Game_26_15();
+        IntStream.range(0, 20).forEach(idx -> game.roll(0));
+        assertThat(game.score()).isEqualTo(0);
+    }
+
+    /**
+     * 네 번째 법칙 리팩토링, "먼저 돌아가게 만들라. 그 다음 제대로 만들라."를 따릅니다.
+     * 리팩토링은 "동작에는 영향이 없으면서 더 나은 구조의 코드로 변경하는 것"입니다.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void allOnes_26_15_refactoring_success() throws Exception {
+        Game_26_15 game = new Game_26_15();
+        IntStream.range(0, 20).forEach(idx -> game.roll(1));
+        assertThat(game.score()).isEqualTo(20);
+    }
+
+    /**
+     * 네 번째 법칙 리팩토링, "먼저 돌아가게 만들라. 그 다음 제대로 만들라."를 따릅니다.
+     * 리팩토링은 "동작에는 영향이 없으면서 더 나은 구조의 코드로 변경하는 것"입니다.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void oneSpare_26_15_refactoring_success() throws Exception {
+        Game_26_15 game = new Game_26_15();
+
+        // 두 번 투구하여 10개의 핀을 쓰러뜨리므로, 스페어가 됩니다.
+        IntStream.range(0, 2).forEach(idx -> game.roll(5));
+        // 그 다음 투구 하나: 7개의 핀을 쓰러뜨립니다.
+        game.roll(7);
+        IntStream.range(0, 17).forEach(idx -> game.roll(0));
+
+        // 1. 프레임: 다음 프레임 진행 전에는 계산 불가 -> '2.1'에서 7점 + 10점 = 17점(총 17점)
+        //    1. 5개의 핀 쓰러뜨림
+        //    2. 5개의 핀 쓰러뜨림(스페어)
+        // 2. 프레임: 7점(총 24점)
+        //    1. 7개의 핀 쓰러뜨림
+        //    2. 0개의 핀 쓰러뜨림
+        // 나머지 모두 0점이므로, 총 24점이 예상됩니다.
+        assertThat(game.score()).isEqualTo(24);
+    }
+
+    /**
+     * 네 번째 법칙 리팩토링, "먼저 돌아가게 만들라. 그 다음 제대로 만들라."를 따릅니다.
+     * 리팩토링은 "동작에는 영향이 없으면서 더 나은 구조의 코드로 변경하는 것"입니다.
+     */
+    @Test
+    public void oneStrike_26_15_refactoring_success() {
+        Game_26_15 game = new Game_26_15();
+        game.roll(10);
+        game.roll(2);
+        game.roll(3);
+        IntStream.range(0, 16).forEach(num -> game.roll(0));
+
+        // 1. 프레임: 다음 프레임 진행 전에는 계산 불가 -> '2.1'과 '2.2'에서 5점 + 10점 = 15점(총 15점)
+        //    1. 10개의 핀 쓰러뜨림(스트라이크)
+        // 2. 프레임: 5점(총 20점)
+        //    1. 2개의 핀 쓰러뜨림
+        //    2. 3개의 핀 쓰러뜨림
+        // 나머지는 모두 도랑에 빠집니다.
+        assertThat(game.score()).isEqualTo(20);
+    }
+
+    // 아직 10 프레임을 테스트하지 않았으므로, 이제 10 프레임 테스트를 시도합니다.
+
+    /**
+     * 세 번째 법칙 "테스트가 통과하면 테스트를 더 추가하라."를 따릅니다.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void perfectGame_26_35() throws Exception {
+        Game_26_15 game = new Game_26_15();
+
+        // 1. 프레임: 다음 프레임 진행 전에는 계산 불가 -> '2.1'와 '3.1'에서 20점 + 10점 = 30점(총 30점)
+        //   1. 10개의 핀 쓰러뜨림
+        // 2. 프레임: 다음 프레임 진행 전에는 계산 불가 -> '3.1'과 '4.1'에서 20점 + 10점 = 30점(총 60점)
+        //   1. 10개의 핀 쓰러뜨림
+        // 3. 프레임: 다음 프레임 진행 전에는 계산 불가 -> '4.1'과 '5.1'에서 20점 + 10점 = 30점(총 90점)
+        //   1. 10개의 핀 쓰러뜨림
+        // 4. 프레임: 다음 프레임 진행 전에는 계산 불가 -> '5.1'과 '6.1'에서 20점 + 10점 = 30점(총 120점)
+        //   1. 10개의 핀 쓰러뜨림
+        // ...
+        // 10. 프레임: 마지막 두 번의 투구 진행 전에는 계산 불가 -> '10.2'와 '10.3'에서 20점 + 10점 = 30점(총 300점)
+        //   1. 10개의 핀 쓰러뜨림
+        //   2. 10개의 핀 쓰러뜨림
+        //   3. 10개의 핀 쓰러뜨림
+        IntStream.range(0, 12).forEach(idx -> game.roll(10));
+
+        assertThat(game.score()).isEqualTo(300);
+    }
+
+    /**
+     * 책에 소개된 일반적인 볼링 게임 시나리오에 대해 테스트합니다.
+     *
+     * <pre>
+     * {@code
+     * 1. 프레임: 5점
+     *     1. 1개의 핀 쓰러뜨림
+     *     2. 4개의 핀 쓰러뜨림
+     * 2. 프레임: 9점(총 14점)
+     *     1. 4개의 핀 쓰러뜨림
+     *     2. 5개의 핀 쓰러뜨림
+     * 3. 프레임: 다음 프레임 진행 전에는 계산 불가 -> '4.1'에서 5점 + 10점 = 15점(총 29점)
+     *     1. 6개의 핀 쓰러뜨림
+     *     2. 4개의 핀 쓰러뜨림(스페어)
+     * 4. 프레임: 다음 프레임 진행 전에는 계산 불가 -> '5.1'에서 10점 + 10점 = 20점(총 49점)
+     *     1. 5개의 핀 쓰러뜨림
+     *     2. 5개의 핀 쓰러뜨림(스페어)
+     * 5. 프레임: 다음 프레임 진행 전에는 계산 불가 -> '6.1'과 '6.2'에서 1점 + 10점 = 11점(총 60점)
+     *     1. 10개의 핀 쓰러뜨림(스트라이크)
+     * 6. 프레임: 1점(총 61점)
+     *     1. 0개의 핀 쓰러뜨림
+     *     2. 1개의 핀 쓰러뜨림
+     * 7. 프레임: 다음 프레임 진행 전에는 계산 불가 -> '8.1'에서 6점 + 10점 = 16점(총 77점)
+     *     1. 7개의 핀 쓰러뜨림
+     *     2. 3개의 핀 쓰러뜨림(스페어)
+     * 8. 프레임: 다음 프레임 진행 전에는 계산 불가 -> '9.1'에서 10점 + 10점 = 20점(총 97점)
+     *     1. 6개의 핀 쓰러뜨림
+     *     2. 4개의 핀 쓰러뜨림(스페어)
+     * 9. 프레임: 다음 프레임 진행 저에는 계산 불가 -> '10.1'과 '10.2'에서 10점 + 10점 = 20점(총 117점)
+     *     1. 10개의 핀 쓰러뜨림(스트라이크)
+     * 10. 프레임: 다음 투구 진행 저에는 계산 불가 -> '10.3'에서 6점 + 10점 = 16점(총 133점)
+     *     1. 2개의 핀 쓰러뜨림
+     *     2. 8개의 핀 쓰러뜨림(스페어)
+     *     3. (스페어 점수 계산 위해 투구) 6개의 핀 쓰러뜨림
+     * }
+     * </pre>
+     */
+    @Test
+    public void typicalGame() {
+        Game_26_15 game = new Game_26_15();
+        // 1. 프레임
+        game.roll(1);
+        game.roll(4);
+        // 2. 프레임
+        game.roll(4);
+        game.roll(5);
+        // 3. 프레임(스페어)
+        game.roll(6);
+        game.roll(4);
+        // 4. 프레임(스페어)
+        game.roll(5);
+        game.roll(5);
+        // 5. 프레임(스트라이크)
+        game.roll(10);
+        // 6. 프레임
+        game.roll(0);
+        game.roll(1);
+        // 7. 프레임(스페어)
+        game.roll(7);
+        game.roll(3);
+        // 8. 프레임(스페어)
+        game.roll(6);
+        game.roll(4);
+        // 9. 프레임(스트라이크)
+        game.roll(10);
+        // 10. 프레임(스페어)
+        game.roll(2);
+        game.roll(8);
+        game.roll(6);
+
+        assertThat(game.score()).isEqualTo(133);
+    }
 }

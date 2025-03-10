@@ -50,6 +50,13 @@
 - 네 번째 법칙: 리팩토링
     - 먼저 돌아가게 만들라. 그 다음 제대로 만들라.
 - 목표는 빠른 피드팩 주기: 작은 실패 -> 바로 수정 -> 다시 작은 실패 -> 수정
+- 규칙(이자 조언)
+    - 규칙 1 "작성하고 싶은 코드를 작성하게 만드는 테스트를 쓰라."
+    - 규칙 2 "실패시켜라. 통과시켜라. 그리고 정리하라."
+    - 규칙 3 "최상의 결과를 추구하지 말라."
+    - 규칙 4 "실패하는 가장 간단하고, 가장 구체적이며, 가장 퇴화한(degenerate) 테스트를 쓰라."
+    - 규칙 5 "가능하면 일반화하라."
+    - 규칙 6 "코드가 틀렸다고 느껴지면 잠시 멈춰서 설계를 고친다."
 
 ## 목차
 
@@ -852,7 +859,7 @@ classDiagram
 > 이런 테스트들은 나중에 추가한 좀 더 포괄적인 테스트로 대신할 수 있어서 지워도 안전한 경우가 많은데, 이런 종류의 테스트를 '계단 테스트'라고 부릅니다.
 > '복잡도를 필요한 수준까지 점진적으로 증가시킬 수 있게 도와주는 계단' 역할을 하기 때문입니다.
 
-[BowlingTest](./example/app/src/main/java/craftsmanship/c/Game_24_14.java)를 보면 TDD 개발 과정중 설계 결함이 생기는 경우를 확인할 수 있습니다.
+[Game_24_14](./example/app/src/main/java/craftsmanship/c/Game_24_14.java)를 보면 TDD 개발 과정중 설계 결함이 생기는 경우를 확인할 수 있습니다.
 
 함수의 이름상 `score()` 함수가 점수를 계산해야 하는데, `roll(pins: int)` 함수에서 점수를 계산하고 있습니다.
 이를 '책임 배치 오류'(misplaced responsibility)라고 합니다.
@@ -871,6 +878,102 @@ classDiagram
 
 - 규칙 6:
 
-    > 코드가 틀렸다고 느껴지면 잠시 멈춰서 설계를 고치라.
+    > 코드가 틀렸다고 느껴지면 잠시 멈춰서 설계를 고친다.
     >
     > When the code feels wrong, fix the design before proceeding.
+
+올바른 설계를 만들면, 코드는 알아서 제자리를 찾아가기 시작합니다.
+일찍부터 올바르게 설계하면, 시간을 엄청나게 절약할 수 있습니다.
+
+최종적으로 구현된 점수를 계산하는 `score` 함수를 보면 다음과 같습니다([Game_26_15](./example/app/src/main/java/craftsmanship/c/Game_26_15.java))
+
+```java
+public int score() {
+    int score = 0;
+
+    // 스트라이크 여부를 테스트하는 `Predicate`으로 추출합니다.
+    Predicate<Integer> isStrike = frameIdx -> rolls[frameIdx] == 10;
+    // 스트라이크 점수 계산식을 `UnaryOperator`로 추출합니다: 10점 + 스트라이크 보너스(다음 두 개의 공)
+    UnaryOperator<Integer> strikeBonus = frameIdx -> 10 + rolls[frameIdx + 1] + rolls[frameIdx + 2];
+
+    // 스페어 여부를 테스트하는 `Predicate`으로 추출합니다.
+    Predicate<Integer> isSpare = frameIdx -> rolls[frameIdx] + rolls[frameIdx + 1] == 10;
+    // 스페어 점수 계산식을 `UnaryOperator`로 추출합니다: 10점 + 스페어 보너스(다음 한 개의 공)
+    UnaryOperator<Integer> spareBonus = frameIdx -> 10 + rolls[frameIdx + 2];
+
+    // 기본 "프레임당 투구 두 번 전략" 경우 점수 계산식을 `UnaryOperator`로 추출합니다: 공 두 개의 점수
+    UnaryOperator<Integer> twoBallsInFrame = frameIdx -> rolls[frameIdx] + rolls[frameIdx + 1];
+
+    int frameIdx = 0;
+    for (int frame = 0; frame < 10; frame++) {
+        if (isStrike.test(frameIdx)) {
+            score += strikeBonus.apply(frameIdx);
+            // 스트라이크 경우 해당 프레임은 투구가 한 번밖에 없으므로, "투구 한 번 전략"을 따릅니다.
+            frameIdx++;
+        } else if (isSpare.test(frameIdx)) {
+            score += spareBonus.apply(frameIdx);
+            // 스페어 경우에도 "프레임당 투구 두 번 전략"을 따릅니다.
+            frameIdx += 2;
+        } else {
+            score += twoBallsInFrame.apply(frameIdx);
+            // 기본적으로 "프레임당 투구 두 번 전략"을 따릅니다.
+            frameIdx += 2;
+        }
+    }
+
+    return score;
+}
+```
+
+저자는 [BowlingTest](./example/app/src/test/java/craftsmanship/c/BowlingTest.java)처럼 TDD 방식으로 개발을 하니 위와 같은 결과를 얻을 수 있었다고 합니다.
+
+하지만 앞서 UML을 그릴 때 `TenthFrame`가 필요할 것이라 생각했던 것과 달리, `score` 함수에서는 10 프레임에 대해 특별한 처리를 하고 있지 않습니다.(다만, 테스트 코드를 보면 알 수 있듯이, 총 몇 번을 `roll`할 것인지 고려해서 호출하긴 합니다.)
+
+이를 통해 알 수 있는 것은, 처음 생각과 다리 사실은 "10 프레임이 전혀 특별하지 않았다는 것"입니다.
+
+UML대로 구현하기로 하고 만약 서너 명이 나누어서 개발했다면, 400줄의 코드를 작성했을 수도 있습니다.
+(저자는 실제로 그렇게 개발했기 때문에 400줄이나 된다는 것을 안다고 합니다.)
+
+하지만 [Game_26_15](./example/app/src/main/java/craftsmanship/c/Game_26_15.java) 코드를 보면 총 52줄의 코드로 원하는 결과를 달성할 수 있습니다.(책에서는 `score` 함수만 14줄이라 하지만, 그냥 전체 코드 길이로 비교합니다.)
+
+완성한 후에는 다음과 같은 생각들이 떠오를 수 있습니다.
+- 하나의 `for` 반복문과 두 개의 `if`문으로 문제를 해결할 수 있다는 것을 떠올릴 수 있었는가?
+- 테스트 중 하나가 결국 `Frame` 클래스를 작성하도록 만들 것이라 예상했는가?
+- 10 프레임에 대한 처리가 나오길 기다렸는가? 그리고 거기서 엄청 복잡한 경우가 발생할 것이라 예상했는가?
+- 10 프레임 테스트 실행 전에 사실 개발이 완료됐다는 것을 알고 있었는가? 아니면 뭔가 더 할 것이 있다고 생각했는가?
+- 테스트를 작성할 때 더 많은 작업이 남아 있을 것이라 예상했지만, 놀랍게도, 이미 작업이 끝났다는 것을 알았는가?
+
+누군가는 앞서 작성한 UML 도표에 따라 개발했다면 변경이나 유지보수가 더 쉬운 코드를 개발할 수 있었을 것이라고 말할 수 있습니다.
+하지만, 400줄 이상의 코드와 52줄의 코드 중 후자가 더 관리하기 좋을 것입니다.
+
+> ***<생각>***
+>
+> 처음에는 TDD가 `Game`의 인터페이스를 설계하는 데 도움을 주지는 않는다고 생각했습니다.
+> 앞서 `Game` 클래스의 `score` 또는 `roll` 함수는 당연하다는 듯이 정의하고 넘어갔기 때문입니다.
+>
+> 하지만, UML을 그리기 전, 컴파일도 안 되는 테스트를 작성하면서 어떤 인터페이스를 사용할지 테스트해볼 수 있습니다.
+>
+> 실행은 안 되지만, 애초에 실행이 목적이 아니므로 IDE의 에러는 무시합니다.
+> 그리고 어떤 인터페이스를 정의할 것인지를 작성하면서 첫 번째 법칙 "프로덕션 코드 작성 전, 실패하는 테스트를 작성하라."를 따릅니다.
+>
+> ```java
+> // 이 시점 Game 클래스는 비어있는 클래스입니다.
+> // public class Game {}
+>
+> // 하지만 일단 여러 함수를 고려해 봅니다.
+> Game game = new Game();
+> game.roll(5);
+> game.rolls(5, 2, 1); // vargs 지원?
+> game.ball(5);
+>
+> game.score();
+> game.getScore();
+> game.totalScore();
+> game.getTotalScore();
+> game.calculate();
+> game.calculateScore();
+> game.result();
+> ```
+>
+> 물론 컴파일 성공을 위해 삭제하기 때문에 어딘가에 이런 고민에 대한 기록을 남지는 않습니다.
+> 하지만 TDD를 통해 클래스가 어떤 역할을 하고, 어떤 인터페이스 갖는지 등을 고민할 수 있습니다.
