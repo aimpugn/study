@@ -18,4 +18,10 @@
             <package name="craftsmanship.c"/>
         </packages>
     </test>
+
+    <test name="SortTest">
+        <packages>
+            <package name="craftsmanship.d"/>
+        </packages>
+    </test>
 </suite>
