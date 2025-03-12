@@ -24,4 +24,10 @@
             <package name="craftsmanship.d"/>
         </packages>
     </test>
+
+    <test name="WrapTest">
+        <packages>
+            <package name="craftsmanship.e"/>
+        </packages>
+    </test>
 </suite>
