@@ -42,6 +42,18 @@
             - [정렬 1](#정렬-1)
             - [정렬 2](#정렬-2)
             - [막다른 길: 줄 바꿈 문제](#막다른-길-줄-바꿈-문제)
+            - [준비, 행동, 확인](#준비-행동-확인)
+                - [동작 주도 개발 도입](#동작-주도-개발-도입)
+                - [유한 상태 기계](#유한-상태-기계)
+                - [다시 BDD](#다시-bdd)
+            - [테스트 대역](#테스트-대역)
+                - [더미](#더미)
+                - [스텁](#스텁)
+                - [스파이](#스파이)
+                - [모의 객체](#모의-객체)
+                - [가짜](#가짜)
+                - [모의 객체 사용 시점이 문제가 되는 이유](#모의-객체-사용-시점이-문제가-되는-이유)
+                - [TDD 불확정성 원리](#tdd-불확정성-원리)
 
 ## 간략 정리
 
@@ -63,6 +75,9 @@
     - 규칙 6 "코드가 틀렸다고 느껴지면 잠시 멈춰서 설계를 고친다."
     - 규칙 7 "더 복잡한 경우로 넘어가기 전에, 현재의 더 단순한 경우를 철저히 테스트하라."
     - 규칙 8 "현재 테스트를 통과시키기 위해 너무 많은 구현을 해야 한다면, 지우고 더 쉽게 통과할 수 있는 더 단순한 테스트를 작성하라."
+    - 규칙 9 "테스트 공간을 전부 포괄하는 신중하고 점진적인 패턴을 따르라."
+    - 규칙 10 "필요 없는 것을 테스트에 넣지 말라"
+    - 규칙 11 "테스트에 실제 서비스 데이터를 사용하지 말라."
 
 ## 목차
 
@@ -1127,3 +1142,641 @@ private String wrap_9(String s, int width) {
     > Follow a deliberate and incremental pattern that covers the test space.
 
 구체적인 과정은 [WrapTest](./example/app/src/test/java/craftsmanship/e/WrapTest.java)를 참고합니다.
+
+#### 준비, 행동, 확인
+
+오래전 빌, 웨이크(Bill Wake)라는 사람이 모든 테스트의 근본적인 패턴을 발견했다고 합니다.
+이를 3A 또는 AAA 패턴이라고 하는데 '준비(Arrange) - 행동(Act) - 확인(Assert)'를 의미합니다.
+
+- 준비(Arrange):
+
+    준비는 보통 `setup` 메서드 또는 테스트 함수 가장 첫 부분에서 이뤄집니다.
+    테스트 수행 전, 시스템을 필요한 상태로 만들어 놓는 것이 목적입니다.
+
+- 행동(Act):
+
+    테스트가 함수를 호출하거나, 동작을 수행하거나, 또는 테스트의 대상이 되는 절차를 작동시키는 것을 의미합니다.
+
+- 확인(Assert):
+
+    시스템이 원하는 상태로 바뀌었는지 확인하기 위해 행동의 결과를 살펴보는 과정입니다.
+
+```java
+@Test
+public void gutterGame_26_15_refactoring_success() throws Exception {
+    // 준비(Arrange)
+    Game_26_15 game = new Game_26_15();
+    IntStream.range(0, 20).forEach(idx -> game.roll(0));
+    // 행동(Act)
+    var actual = game.score();
+    // 확인(Assert)
+    assertThat(actual).isEqualTo(0);
+}
+```
+
+##### 동작 주도 개발 도입
+
+2003년 댄 노스는 크리스 스티븐슨, 크리스 마츠와 함께 TDD를 실천하고 가르치다 GWT라는 패턴을 발견했습니다. GWT는 '조건(given) - 만일(when) - 그러면(then)'을 의미합니다.
+이것이 동작 주도 개발(Behavior driven development, BDD)의 시작이라고 합니다.
+
+처음에 BDD는 개선된 테스트 작성 방법으로 여겨졌다고 합니다.
+그리고 'JBehave' 또는 'RSpec' 같은 테스트 도구 안에 GWT 용어들이 추가됐습니다.
+
+예를 들어, `gutterGame_26_15_refactoring_success`를 BDD 용어로 다시 작성하면 다음과 같습니다.
+
+```plaintext
+조건 볼링 게임에서 공을 20번 도랑에 빠뜨렸을 때,
+만일 게임의 점수를 요청하면,
+그러면 총점은 0점이다.
+```
+
+이 문장들을 실행할 수 있는 테스트로 번역하기 위해 'JBehave'와 'RSpec'은 어포던스(affordance)를 제공합니다.
+
+> 어포던스(affordance)?
+>
+> 올바른 행동을 유도하는 디자인이나 성질 등을 의미합니다.
+>
+> 예를 들어, 'JBehave'가 제공하는 문장 분석 도구를 사용하면 자연스럽게 동작 주도 개발 구조에 맞는 테스트를 작성하게 됩니다.
+
+또한 TDD의 테스트와 BDD의 테스트가 아주 비슷하다는 것도 명확합니다.
+
+시간이 흐름에 따라 BDD 용어들은 테스트에서 '시스템 명세의 문제'로 자리를 옮겼다고 합니다.
+BDD 지지자들은 GWT 문장이 테스트로서 전혀 실행되지 않더라도 '동작의 명세'로서 여전히 가치가 있다는 점을 깨달았습니다.
+
+2013년 리즈 쿄(Liz Keogh)는 BDD에 대해 다음과 같이 말했다고 합니다.
+
+> 예제를 사용하여 애플리케이션이 어떻게 동작하는지 설명한다.
+> ...
+> 그리고 그 예제에 대해 대화한다.
+
+하지만 GWT는 테스트와 완전히 떼어 놓기 힘듭니다.
+다음 문장을 보면 앞서 언급한 AAA(3A) 패턴과 연결됨을 알 수 있습니다.
+- '조건' 테스트 데이터가 '준비'됐을 때
+- '만일' 내가 테스트대로 '행동'한다면
+- '그러면' 결과가 예상대로인지 '확인'한다
+
+##### 유한 상태 기계
+
+소프트웨어에서 자주 마주치는, 세 가지 요소로 이루어진 유명한 용어가 있는데, '유한 상태 기계(finite state machine)'의 '상태 이행(transition)'이라고 합니다.
+
+```mermaid
+stateDiagram
+    direction LR
+    Alarming: 경보 신호
+    Locked: 닫힘
+    Unlocked: 열림
+    Refunding: 반환중
+
+    Alarming --> Locked: 초기화
+    Locked --> Unlocked: 탑승권
+    Unlocked --> Refunding: 탑승권
+
+    Refunding --> Unlocked: 반환됨
+    Unlocked --> Locked: 통과
+    Locked --> Alarming: 통과
+```
+
+- 개찰구는 '닫힘' 상태에서 시작합니다.
+- '탑승권'을 내면 '열림' 상태로 바뀝니다.
+- 누군가가 통과하면 개찰구는 '닫힘' 상태로 돌아갑니다.
+- '탑승권'을 내지 않고 지나가면 '경보'가 울립니다.
+- 누군가 '탑승권'을 두 장 내면 남은 한 장이 환불됩니다.
+
+| 현재 상태 | 이벤트 | 다음 상태 |
+| :-------: | :----: | :-------: |
+|   닫힘    | 탑승권 |   열림    |
+|   닫힘    |  통과  | 경보 신호 |
+|   열림    | 탑승권 |  반환 중  |
+|   열림    |  통과  |   닫힘    |
+|  반환 중  | 반환됨 |   닫힘    |
+| 경보 신호 | 초기화 |   닫힘    |
+
+각 행에는 GWT나 AAA와 마찬가지로 세 가지 요소가 있습니다.
+더 중요한 것은 이런 '상태 이행의 세 가지 요소'가 GWT나 AAA의 대응되는 세 요소와 뜻이 동일하다는 점입니다.
+
+> '조건' 닫힘 상태일 때
+> '만일' 탑승권 이벤트를 받으면
+> '그러면' 열림 상태로 이행한다.
+
+이를 바탕으로, "'모든 테스트'는 시스템의 동작을 기술하는 '유한 상태 기계의 상태 이행'이다."라고 추론할 수 있습니다.
+"'모든 테스트'는 여러분이 프로그램에서 만들려고 하는 '유한 상태 기계의 상태 이행'"입니다.
+
+모든 프로그램은 '유한 상태 기계'고, 컴퓨터는 그저 '유한 상태 기계 처리기'(processor)일 뿐입니다.
+컴퓨터 자체는 명령어(instruction)를 실행할 때마다 하나의 상태에서 다음 상태로 이행합니다.
+
+따라서 다음은 모두 '유한 상태 기계의 상태 이행'일 뿐입니다.
+- TDD를 실천할 때 작성하는 테스트
+- BDD를 실천할 때 기술하는 동작
+
+테스트 묶음이 완벽하다면, 그 테스트 묶음이 바로 그 유한 상태 기계입니다.
+
+그렇다면, 다음과 같은 의문들이 들 수 있습니다.
+- 상태 기계에서 '처리하고 싶은 상태 이행을 모두 빠짐없이 테스트에 넣었는지' 어떻게 확인할 수 있을까?
+- '테스트가 나타내는 상태 기계가 프로그램이 구현해야 하는 상태 기계 전체인지' 어떻게 확인할 수 있을까?
+- 필요한 상태 이행을 테스트로 먼저 작성하고, 그 다음에 상태 이행을 구현하는 프로덕션 코드를 작성하는 방법보다 더 나은 방법이 있을까?
+
+##### 다시 BDD
+
+BDD 지지자들은 '시스템의 동작'을 설명하는 최고의 방법은 '유한 상태 기계'로 나타내는 것이라는 결론에 도달했습니다.
+
+#### 테스트 대역
+
+2000년 스티브 프리먼, 팀 매키넌, 필립 크레이그는 '[Endo-Testing: Unit Testing with Mock Objects](https://www2.ccs.neu.edu/research/demeter/related-work/extreme-programming/MockObjectsFinal.PDF)'라는 논문을 발표했습니다.
+
+> Endo-Testing? 내부 테스트
+
+이 논문의 영향으로 'mock'이 널리 쓰이게 됐고, 이후 동사가 됐습니다.
+그리고 무언가를 '모의 객체'로 대신하기 위해, 즉 목(mock)하기 위해 모킹(mocking) 프레임워크를 사용합니다.
+
+> 'mock'이라는 단어에는 여러 뜻이 있는데, 가짜라는 의미일 때는 원래 주로 형용사로 쓰인다고 합니다.
+> 테스트 대역 사용을 돕는 라이브러리나 프레임워크는 대부분 이름에 'mock'이 들어 있습니다.
+
+아직 TDD 발상이 스프트웨어 커뮤니티에 퍼지기 시작하던 초기, 대부분은 테스트 코드에 OOP를 적용해 본 경험이 없었다고 합니다. 사실 테스트 코드에 어떤 종류의 설계도 적용해본 적이 없었고, 이로 인해 테스트를 작성하다 보면 온갖 종류의 문제가 발생했다고 합니다.
+- 단위 테스트에서 입출력 장치에 진짜로 오류가 발생시킬 수 없는데, 입출력 오류에 반응하는 코드는 어떻게 테스트할까?
+- 외부 서비스와 상호 작용하는 코드는 어떻게 테스트할까?
+- 테스트를 위해 외부 서비스를 연결해야 할까?
+- 외부 서비스에서 발생하는 오류를 다루는 코드는 어떻게 테스트할까?
+
+저자가 자바의 모의 객체 아이디어를 설명했을 때 메커니즘이 너무 많다는 피드백을 받았지만, 현재 이 기법은 주류가 됐습니다.
+
+모의 객체 기법을 탐구하기에 앞서 용어를 먼저 정리합니다.
+제라드 메스자로스는 ['xUnit Test Patterns'](http://xunitpatterns.com/)(2007)에서 오늘날 사용하는 엄밀한 의미의 용어들을 정의했습니다.
+
+메스자로스는 보통 모의 객체라고 통칭하는 것들을 크게 다섯 종류로 나누고, 이를 묶어서 테스트 대역(test double)이라고 합니다.
+- 더미(dummy)
+- 스텁(stub)
+- 스파이(spy)
+- 모의 객체(mock)
+- 가짜(fake)
+
+스턴트 대역은 배우를 대신하고, 손 대역은 클로즈업 장면에서 배우의 손을 대신하고, 화면에 몸만 나올 경우 몸 대역이 배우를 대신하기도 합니다.
+이와 마찬가지로 테스트 대역은 테스트가 실행될 때 다른 객체를 대신합니다.
+
+테스트 대역들은 일종의 타입 계층 구조를 형성합니다.
+
+```mermaid
+classDiagram
+    TestDouble: 테스트 대역
+    Dummy: 더미
+    Stub: 스텁
+    Spy: 스파이
+    Mock: 모의 객체
+    Fake: 가짜
+
+    %% 화살표는 자식 클래스에서 부모 클래스를 향합니다.
+    Spy <|-- Mock
+    Stub <|-- Spy
+    Dummy <|-- Stub
+    TestDouble <|-- Dummy
+    TestDouble <|-- Fake
+```
+
+- 더미가 가장 간단합니다.
+- 스텁은 더미이기도 하고,
+- 스파이는 스텁이기도 하며,
+- 모의 객체는 스파이이기도 합니다.
+
+모든 테스트 대역이 사용하는 메커니즘은 단순한 다형성(polymorphism)입니다.
+예를 들어, 외부 서비스를 관리하는 코드를 테스트하고 싶다면, '외부 서비스를 다형성을 위한 인터페이스' 뒤로 떼어 놓은 뒤, 서비스 대신 사용할 '이 인터페이스의 구현체'를 만들면 됩니다.
+그리고 이 구현체가 바로 테스트 대역입니다.
+
+##### 더미
+
+테스트 대역은 일반적으로 메서드 구현이 없는 추상 클래스인 인터페이스로 시작합니다.
+
+```java
+public interface Authenticator {
+    public Boolean authenticate(String username, String password);
+}
+```
+
+이때, 사용자가 `LoginDialog` 대화 상자에서 사용자명과 비밀번호를 입력하기 전에 닫기 아이콘을 누르면 취소되는지를 테스트한다고 할 때, 테스트는 아마 다음과 같을 겁니다.
+
+```java
+@Test
+public void whenClosed_loginIsCancelled() throws Exception  {
+    Authenticator authenticator = new ???;
+    LoginDialog dialog = new LoginDialog(authenticator);
+    dialog.show();
+    Boolean success = dialog.sendEvent(Event.CLOSE);
+    assertTrue(success);
+}
+```
+
+`LoginDialog` 생성 시 `Authenticator`가 필요하지만, `Authenticator`가 테스트에서 호출될 일은 없습니다.
+
+그렇다면 `LoginDialog` 생성 시 인자로 무엇을 전달해야 할지 고민이 됩니다.
+그리고 여기서 더 나아가서 다음과 같은 상황을 가정해 봅니다.
+- 만약 진짜 인증 기능을 수행하는 `RealAuthenticator`라는 클래스가 존재합니다.
+- `RealAuthenticator` 인스턴스 생성 시 인자로 `DatabaseConnection` 인스턴스를 전달해야 합니다.
+- `DatabaseConnection` 인스턴스 생성 시 `databaseUser`, `databaseAuthCode`에 유효한 UID(고유 식별자)를 넘겨야 합니다.
+
+```java
+public class RealAuthenticator implements Authenticator {
+    public RealAuthenticator(DatabaseConnection conn) {
+        // ...
+    }
+    // ...
+}
+
+public class DatabaseConnection {
+    public DatabaseConnection(UID databaseUser, UID databaseAuthCode) {
+        // ...
+    }
+}
+```
+
+만약 테스트에서 `RealAuthenticator`를 사용하려면 다음과 같이 끔찍한 코드를 작성해야 합니다.
+
+```java
+@Test
+public void whenClosed_loginIsCancelled() throws Exception {
+    UID dbUser = SecretCodes.databaseUserUID;
+    UID daAuth = SecretCodes.databaseAuthCode;
+    DatabaseConnection connection = new DatabaseConnection(dbUser, dbAuth);
+    Authenticator authenticator = new RealAuthenticator(connection);
+    LoginDialog dialog = new LoginDialog(authenticator);
+    dialog.show();
+    Boolean success = dialog.sendEvent(Event.CLOSE);
+    assertTrue(success);
+}
+```
+
+사용하지도 않은 `Authenticator`를 생성하기 위해 테스트에 불필요한 코드(terrible load of cruft)가 너무 많고, 테스트에 필요하지도 않은 의존성 두 개(`DatabaseConnection`, `Authenticator`)나 추가합니다.
+
+> 'cruft'란?
+>
+> 'cruft'는 본래 UNIX/Linux 시스템 관리에서 오래된 파일이나 더 이상 사용하지 않는 파일 조각을 뜻하는 용어로 시작되었습니다.
+>
+> 불필요하고 더 이상 사용되지 않으며, 코드베이스에서 아무런 역할을 수행하지 않는 쓸모없는 코드, 데이터, 또는 기타 요소를 의미합니다.
+
+이러한 의존성은 컴파일이나 로딩 시점에 테스트를 깨뜨릴 수도 있습니다.
+
+> 불필요한 코드(cruft)와 불필요한 의존성(dependencies)
+>
+> 처음 예제를 봤을 때는 '불필요한 코드'와 '불필요한 의존성' 모두 그냥 '불필요한 코드' 아닌가라는 생각을 했습니다.
+> 하지만 책에서는 'terrible load of cruft'와 'dependencies which the test does not need' 두 개를 구분하여 설명합니다.
+>
+> 이렇게 나눠서 설명하는 이유는 미묘하지만 둘이 각각 미치는 영향이 다르기 때문인 것으로 보입니다.
+>
+> - 불필요한 코드:
+>     - 사용되지 않은, 의미가 없는 코드를 말합니다.
+>     - 해당 코드가 어디서 사용되는지, 로직에 어떤 영향을 끼치는지 등을 매번 확인하는 등 복잡성이 증가하고 유지보수성이 떨어지게 됩니다.
+>
+> - 불필요한 의존성:
+>     - 본래 테스트하려는 것과 무관하게, 필요 이상으로 끌어들인 외부의 클래스나 모듈을 말합니다.
+>     - 코드의 크기와 복잡도가 증가하고, 특히 의존하는 코드 수정이 이뤄졌을 때 불필요하게 테스트에도 영향을 끼칠 가능성이 높습니다.
+>
+> 즉, '불필요한 코드'는 정말로 사용되지 않는 dead code에 가깝다면, '불필요한 의존성'는 해당 코드에서 사용은 되지만 리팩토링을 통해 제거할 수 있는 코드라고 이해되며, 책에서는 이 둘을 구분하여 설명하고 있는 것으로 보입니다.
+
+- 규칙 10
+
+    > 필요 없는 것을 테스트에 넣지 말라.
+
+그 대신 아무 일도 하지 않는 구현체, 더미를 사용합니다.
+인터페이스의 모든 메서드를 아무 일도 하지 않도록 구현합니다.
+메서드가 무언가 값을 반환해야 한다면 되도록 `null`, `0`, 또는 그와 비슷한 값을 반환하도록 구현합니다.
+
+```java
+// 아무 일도 하지 않도록 인터페이스를 구현하는 테스트 대역
+public class AuthenticatorDummy implements Authenticator {
+    public Boolean authenticate(String username, String password) {
+        return null;
+    }
+}
+
+@Test
+public void whenClosed_loginIsCancelled() throws Exception {
+    Authenticator authenticator = new AuthenticatorDummy();
+    LoginDialog dialog = new LoginDialog(authenticator);
+    dialog.show();
+    Boolean success = dialog.sendEvent(Event.CLOSE);
+    assertTrue(success);
+}
+```
+
+이러한 더미 구현체를 사용하면 불필요한 코드나 나쁜 의존성 없이도 테스트를 작성할 수 있습니다.
+테스트하려는 함수가 객체를 인자로 받지만, 테스트의 논리(logic)상 실제로는 그 객체가 필요하지 않을 때 사용합니다.
+
+하지만 저자의 경우 두 가지 이유로 자주 사용하지 않는다고 합니다:
+1. 함수의 인자로 전달되었으나, 실제로 함수 내에서 사용되지 않는 코드 경로가 있는 것을 좋아하지 않고,
+2. 'LoginDialog -> Authenticator -> DatabaseConnection -> UID'처럼 연쇄적인 의존성을 갖는 객체를 좋아하지 않기 때문입니다. 이런 연쇄는 나중에 꼭 문제가 됩니다.
+
+하지만 이런 문제를 피할 수 없는 경우도 있고, 그런 상황이라면 복잡한 객체들과 악전고투하느니 더미가 훨씬 낫습니다.
+
+##### 스텁
+
+스텁은 더미이므로, 아무 일도 하지 않도록 구현합니다.
+하지만 `0`이나 `null`을 반환한느 대신, 스텁의 함수는 우리가 원하는 대로 테스트를 실행할 수 있는 값을 반환합니다.
+
+예를 들어, `Authenticator`가 `username`과 `password`를 거부하는 경우 로그인 시도가 실패하는지 확인하는 시나리오를 테스트 해봅니다.
+
+```java
+public void whenAuthenticatorRejects_loginFails() throws Exception {
+    Authenticator authenticator = new ???;
+    LoginDialog dialog = new LoginDialog(authenticator);
+    dialog.show();
+    Boolean success = dialog.submit("bad username", "bad password");
+    assertFalse(success);
+}
+```
+
+우선 앞서 본 것처럼, 여기서 `RealAuthenticator`를 사용한다면 `DatabaseConnection`과 `UID`와 관련된 코드 뭉치를 추가해서 `RealAuthenticator`를 초기화해야 하는 문제가 있습니다.
+그리고 로그인 실패하는 시나리오를 위해 어떤 `username`과 `password`를 사용해야 할지 결정해야 하는 문제가 있습니다.
+
+사용자 인증 데이터베이스 내용을 안다면 존재하지 않는 `username`과 `password`를 적절히 고를 수 있습니다.
+하지만 이는 테스트와 실제 서비스 데이터 사이에 의존성을 만드는 끔찍한 행위입니다.
+서비스 데이터가 바뀌면 테스트도 깨질 수 있기 때문입니다.
+
+- 규칙 11
+
+    > 테스트에 실제 서비스 데이터를 사용하지 말라.
+
+이 경우 스텁을 사용합니다.
+
+```java
+// 항상 로그인이 실패하는 경우
+public class RejectingAuthenticator implements Authenticator {
+    public Boolean authenticate(String username, String password) {
+        return false;
+    }
+}
+
+public void whenAuthenticatorRejects_loginFails() throws Exception {
+    Authenticator authenticator = new RejectingAuthenticator();
+    LoginDialog dialog = new LoginDialog(authenticator);
+    dialog.show();
+    Boolean success = dialog.submit("bad username", "bad password");
+    assertFalse(success);
+}
+
+// 항상 로그인이 성공하는 경우
+// - promiscuous: 무차별적인, 마음 내키는 대로 하는
+public class PromiscuousAuthenticator implements Authenticator {
+    public Boolean authenticate(String username, String password) {
+        return true;
+    }
+}
+
+@Test
+public void whenAuthenticatorAccepts_loginSuccess() throws Exception {
+    Authenticator authenticator = new PromiscuousAuthenticator();
+    LoginDialog dialog = new LoginDialog(authenticator);
+    dialog.show();
+    Boolean success = dialog.submit("good username", "good password");
+    assertTrue(success);
+}
+```
+
+정리하자면, 스텁은 "테스트 대상 시스템(system under test)을 '테스트하고자 하는 경로로 유도'하기 위해 '특정 값을 반환'하는 더미"입니다.
+
+##### 스파이
+
+스파이는 스텁이므로, 테스트 대상 시스템(system under test)을 '테스트하고자 하는 경로로 유도'하기 위해 '특정 값을 반환'하는 더미입니다.
+하지만, 함수 호출 횟수, 인자값, 호출 순서 등 자신에게 수행된 작업을 기억하고, 테스트에서 이를 조회할 수 있다는 점이 스텁과 다릅니다.
+
+> 초기 소프트웨어 테스트에서는 함수의 반환값과 상태 변경을 통해서만 테스트를 수행했다고 합니다.
+> 하지만 GUI 애플리케이션, 네트워크 호출, 비동기 작업 등 더 복잡한 시스템이 등장하면서, 함수의 동작 과정 중 중요한 인터페이스나 함수 호출 순서까지도 검증할 필요가 생겼습니다.
+> 이에 따라 spy 개념이 보편화되었다고 합니다.
+
+스파이는 테스트하는 '알고리즘이 정확하게 통작하는지 확인'할 때 유용합니다.
+하지만 '테스트와 테스트 대상 함수의 구현을 결합'하기 때문에 위험하기도 합니다.
+
+> '테스트와 테스트 대상 함수의 구현을 결합'하기 때문에 위험하다?
+>
+> 테스트는 본래 함수의 '외부에서 보이는 동작(Behavior)을 테스트'해야 합니다.
+> 예를 들어, `LoginDialog`가 올바른 데이터를 입력받았을 때, 인증이 성공하는가를 테스트합니다.
+>
+> 하지만 스파이를 사용하는 순간부터 테스트는 내부의 구현 세부 사항까지 관찰할 수 있게 됩니다.
+> 가령, 함수 내부에서 어떤 메서드를 몇 번 호출했는지, 어떤 인자값이 전달됐는지 등 내부 구현이 외부로 노출됩니다.
+>
+> 따라서, 스파이를 사용하면 자연스럽게 테스트는 함수 내부 구현을 알고 테스트하게 되고, 테스트와 구현의 결합도가 높아집니다.
+
+예를 들어, `LoginDialog`에서 올바르게 `Authenticator`를 호출했는지 확인하는 테스트를 작성합니다.
+
+```java
+public class AuthenticatorSpy implements Authenticator {
+    // 호출한 횟수 기록
+    private int count = 0;
+    private Boolean result = false;
+    // 마지막 호출 시 받은 사용자명 기록
+    private String lastUsername = "";
+    // 마지막 호출 시 받은 비밀번호 기록
+    private String lastPassword = "";
+
+    public Boolean authenticate(String username, String password) {
+        count++;
+        lastUsername = username;
+        lastPassword = password;
+
+        return result;
+    }
+
+    // `authenticate`가 반환하는 `result` 값을 설정할 수 있습니다.
+    // 이 때문에 이 클래스는 프로그래밍 가능한 스텁이기도 합니다.
+    public void setResult(Boolean result) {
+        this.result = result;
+    }
+
+    public int getCount() {
+        return count;
+    }
+
+    public getLastUsername() {
+        return lastUsername;
+    }
+
+    public getLastPassword() {
+        return lastPassword;
+    }
+}
+
+@Test
+public void loginDialog_correctlyInvokesAuthenticator() throws Exception {
+    Authenticator spy = new AuthenticatorSpy();
+    spy.setResult(true);
+
+    LoginDialog dialog = new LoginDialog(spy);
+    dialog.show();
+
+    Boolean success = dialog.submit("username", "password");
+    assertTrue(success);
+    assertEquals(1, spy.getCount());
+    assertEquals("username", spy.getLastUsername());
+    assertEquals("password", spy.getLastPassword());
+}
+```
+
+스파이는 단순하게는 특정 메서드의 호출 여부를 기록하는 `Boolean` 값 하나일 수도 있고, 모든 함수 호출을 호출별로 인자까지 모두 기록하는 복잡한 객체일 수 있습니다.
+
+##### 모의 객체
+
+매키넌, 프리먼, 크레이그가 'Endo-Testing' 논문에서 설명했던 모의 객체입니다.
+
+모의 객체는 스파이입니다.
+따라서 테스트 대상 시스템(system under test)을 '테스트하고자 하는 경로로 유도'하기 위해 '특정 값을 반환'하는 더미입니다.
+그리고 자신에게 수행된 작업을 기억하고, 테스트에서 이를 조회할 수 있습니다.
+
+여기서 더 나아가, 모의 객체는 어떤 작업이 일어날지도 알고, 이 예상에 따라 테스트의 성공과 실패를 가름합니다.
+
+```java
+// 프로그래밍할 수 있는 모의 객체입니다.
+public class AuthenticatorMock extends AuthenticatorSpy {
+                            // ^^^^^^^^^^^^^^^^^^^^^^^^ 스파이 코드를 재사용합니다.
+    private String expectedUsername;
+    private String expectedPassword;
+    private int expectedCount;
+
+    public AuthenticatorMock(String username, String password, int count) {
+        expectedUsername = username;
+        expectedPassword = password;
+        expectedCount = count;
+    }
+
+
+    public boolean validate() {
+        return getCount() == expectedCount &&
+            getLastUsername().equals(expectedUsername) &&
+            getLastPassword().equals(expectedPassword);
+    }
+}
+
+@Test
+public void loginDialogCallToAuthenticator_validated() throws Exception {
+    Authenticator mock = new AuthenticatorMock("username", "password", 1);
+    mock.setResult(true);
+
+    LoginDialog dialog = new LoginDialog(mock);
+    dialog.show();
+
+    Boolean success = dialog.submit("username", "password");
+    assertTrue(success);
+    assertTrue(mock.validate());
+}
+```
+
+모의 객체는 아주 복잡해질 수 있습니다.
+가령, 함수 `f`가 세 번 부리는데, 매번 다른 인자로 불리고 매번 다른 값을 반환할 수 있습니다.
+또한, 함수 `g`는 함수 `f`의 첫 번째 호출과 두 번째 호출 사이에 불려야 할 수도 있습니다.
+이런 경우, 모의 객체 자체에 대한 단위 테스트 없이 모의 객체를 작성하는 것은 매우 큰 도전일 수 있습니다.
+
+저자는 모의 객체에 크게 관심이 없다고 합니다.
+모의 객체는 '스파이의 동작에 테스트 단정문을 묶어 놓은 것'인데, 이게 마음에 들지 않는다고 합니다.
+저자 생각에, '테스트 검증 작업이 매우 직접적으로 이루어져야 하고, 검증을 다른 복잡한 메커니즘에 떠넘겨서는 안 된다'고 합니다.
+
+##### 가짜
+
+가짜는 더미, 스텁, 스파이, 모의 객체가 아닙니다.
+가짜는 완전히 다른 종류의 테스트 대역이며, '시뮬레이터'입니다.
+
+책에서는 '전화선을 검사하는 시스템'에 대한 사례를 보여줍니다.
+
+1970년대 말, 전화 회사 설비에 설치해서 전화선을 검사하는 시스템을 만들었다고 합니다.
+중앙국에 있는 '중앙 컴퓨터'(SAC, Service Area Computer)는 '교환국에 설치한 컴퓨터'(COLT, Central Office Line Tester)와 모뎀 연결로 통신했다고 합니다.
+
+COLT는 교환기에 접속하여 '해당 교환국으로부터 이어지는 임의의 전화선'과 'COLT가 제어하는 측정 기기' 사이를 전기적으로 연결할 수 있었습니다.
+전화선의 전기적 특성을 측정한 다음 측정치 원본을 SAC에 보고합니다.
+SAC는 원본 데이터로 각종 분석을 수행한 다음 고장이 발생했는지, 발생했다면 위치가 어디인지 밝혀냅니다.
+
+이 시스템을 테스트하기 위해 가짜를 만들었다고 합니다.
+
+가짜 COLT는 교환기와 상호작용을 시뮬레이터로 대체합니다.
+이 시뮬레이터는 전화선에 접속해서 '측정을 수행하는 척'합니다.
+그런 다음 검사 대상 전화번호별로 '미리 정해 둔 측정치 원본을 그대로 보고'합니다.
+
+가짜 덕분에 실제 COLT를 진짜 전화 회사의 교환국에 설치할 필요 없이, 진짜 교환기나 진짜 전화선을 설치할 필요 없이 SAC의 통신과 제어, 분석 소프트웨어를 테스트할 수 있습니다.
+
+가짜는 아주 기초적인 비즈니스 규칙들을 구현하는 테스트 대역입니다.
+그래서 가짜를 사용하는 테스트가 가짜가 어떻게 동작해야 하는지 고를 수 있습니다.
+
+```java
+public class FakeAuthenticator implements Authenticator {
+    public Boolean authenticate(String username, String passowrd) {
+        return username.equals("username") &&
+            password.equals("good password");
+    }
+}
+
+@Test
+public void badPasswordAttempt_loginFails() throws Exception {
+    Authenticator authenticator = new FakeAuthenticator();
+    LoginDialog dialog = new LoginDialog(authenticator);
+    dialog.show();
+    Boolean success = dialog.submit("username", "bad password");
+    assertFalse(success);
+}
+
+@Test
+public void goodPasswordAttempt_loginSucceeds() throws Exception {
+    Authenticator authenticator = new FakeAuthenticator();
+    LoginDialog dialog = new LoginDialog(authenticator);
+    dialog.show();
+    Boolean success = dialog.submit("username", "good password");
+    assertTrue(success);
+}
+```
+
+두 테스트 모두 똑같이 `FakeAuthenticator`를 사용하지만, "bad password" 사용 시 실패하고, "good password" 사용 시 성공을 예상합니다.
+
+가짜의 문제는 애플리케이션이 커짐에 따라 테스트해야 하는 조건도 늘어난다는 것입니다.
+그 결과 새로운 테스트 조건을 추가할 때마다 가짜도 커지는 경향이 있습니다.
+결국 너무 크고 복잡해져서 가짜 자체를 위한 테스트가 필요해집니다.
+
+저자는 가짜를 거의 사용하지 않는다고 하는데, 가짜가 커지지 않을 리 없다고 보기 때문입니다.
+
+##### 모의 객체 사용 시점이 문제가 되는 이유
+
+"모의 객체를 쓸 것인지 쓰지 않을 것인지"는 문제가 아니고,
+정말 던져야 하는 질문은 "'언제' 모의 객체를 쓰는지"이라고 합니다.
+그 이유는 'TDD 불확정성 원리'(TDD uncertainty principle) 때문이라고 합니다.
+
+예를 들어, TDD를 사용해서 라디안(radian) 단위의 각도에 대해 삼각 함수 사인(sine) 값을 계산하는 함수를 작성한다고 가정합니다.
+
+가장 퇴화한 테스트로 시작하기 위해서, '0의 사인값을 계산할 수 있는지' 테스트 합니다.
+구체적인 과정은 [SineTest](./example/app/src/test/java/craftsmanship/f/SineTest.java)를 참고합니다.
+
+##### TDD 불확정성 원리
+
+[SineTest](./example/app/src/test/java/craftsmanship/f/SineTest.java)에서 아무리 많은 값을 시도해 보더라도, 어떤 값은 틀린 출력값을 리턴할 거 같은 불확실함이 계속 남아 있습니다.
+
+대부분의 함수의 경우에는 마지막 테스트를 작성하고 나면 잘 동작할 것이 분명한 높은 품질에 도달합니다.
+하지만 `SineTest`처럼 실패할 어떤 값이 있지는 않을지 계속 신경 쓰이는 함수들이 존재합니다.
+
+이전까지 작성해 본 종류의 테스트로 이 문제를 해결하려면, 가능한 값을 전부 테스트하는 방법밖에 없다고 합니다.
+그리고 `double` 숫자는 64비트에 저장하므로 대략 $2 \times 10^{19}$개의 테스트를 작성해야 합니다.
+
+> 자바의 `double`은 IEEE 754 64비트 부동소수점 표준을 따릅니다.
+> - 1비트:
+>     - 부호 비트.
+>     - 양수(0), 음수(1) 여부를 결정합니다.
+>     - 2개의 경우의 수가 가능합니다.
+> - 11비트:
+>     - 지수(Exponent)
+>     - 2의 거듭제곱을 통해 숫자의 크기를 조절합니다.
+>     - $2^{11} = 2,048$개의 경우의 수가 가능합니다. 단, 지수가 0(denormalized, 비정규화)인 경우와 2,047(Inf, NaN)인 경우는 따로 다루므로, 실제로 유효한 지수 값 개수는 2,046개입니다.
+> - 52비트:
+>     - 가수(Mantissa).
+>     - 숫자의 정밀도를 결정하는 실제 값입니다.
+>     - $2^{52}$개의 경우의 수가 가능합니다.
+>
+> 따라서 가능한 전체 개수는 다음과 같습니다:
+> $$
+> {2}\times{(2^{11} - 2)}\times{2^{52}}
+> $$
+>
+> 이를 계산하면 대략 $1.84 \times{10^{19}}$이 됩니다.
+
+그렇다면 `sin` 함수에 대해 믿을 수 있는 부분은 무엇인지 확인이 필요합니다.
+우선 수학적으로 증명된 '테일러 급수를 이용해 주어진 라디안 각도의 사인값을 계산할 수 있다'고 믿을 수 있습니다.
+
+그렇다면 이런 '테일러 급수에 대한 믿음'을 어떻게 '테일러 급수 계산의 정확성을 증명하는 일련의 테스트'로 바꿀 수 있는지 궁금합니다.
+책에서는 각 항을 조사하는 가능성도 제시합니다.
+예를 들어, $\sin(\pi)$을 계산할 때 테일러 급수 각 항의 값은 다음과 같습니다:
+- 3.14592653589793
+- -2.0261201264601763
+- 0.5240439134171688
+- −0.07522061590362306
+- 0.006925270707505149 등
+
+하지만 이런 테스트는 이미 [SineTest](./example/app/src/test/java/craftsmanship/f/SineTest.java)에서 이뤄진 테스트와 크게 다를 바가 없습니다.
+결국, 딱 하나의 테스트에만 적용할 수 있고, '다른 값에 대해서는 각 항의 값이 제대로 계산되는지' 전혀 알려주지 않기 때문입니다.

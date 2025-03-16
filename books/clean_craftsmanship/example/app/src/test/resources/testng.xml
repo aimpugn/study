@@ -30,4 +30,10 @@
             <package name="craftsmanship.e"/>
         </packages>
     </test>
+
+    <test name="SineTest">
+        <packages>
+            <package name="craftsmanship.f"/>
+        </packages>
+    </test>
 </suite>
