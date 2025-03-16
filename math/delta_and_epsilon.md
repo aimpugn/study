@@ -13,12 +13,10 @@
             - [비용 함수와 도함수](#비용-함수와-도함수)
             - [도함수의 유도](#도함수의-유도)
         - [함수 정의에서의 활용](#함수-정의에서의-활용)
-    - [기타](#기타)
 
 ## 수학에서의 Epsilon과 Delta
 
-Epsilon(ε)과 Delta(δ)는 주로 **해석학**(Analysis)이라는 수학 분야에서 사용되는 개념입니다.
-특히 **미적분학**과 **실해석학**에서 중요하게 다루어집니다.
+Epsilon($\epsilon$)과 Delta($\delta$)는 미적분학 및 해석학(Analysis)에서 함수의 극한과 연속성 정의를 엄밀히 표현하는 데서 비롯되었습니다.
 
 Epsilon-Delta 방법은 19세기 수학자 Karl Weierstrass에 의해 공식화되었습니다.
 이 방법은 이전의 직관적이고 기하학적인 접근 방식을 대체하여, 수학적 해석을 더욱 엄밀하게 만들었습니다
@@ -34,11 +32,11 @@ Epsilon-Delta 방법은 19세기 수학자 Karl Weierstrass에 의해 공식화�
 > 수학에서 "함수의 행동"이라는 표현은 주어진 함수가 특정 조건이나 범위 내에서 어떤 식으로 동작하는지를 분석하는 데 사용됩니다.
 
 델타와 엡실론은 함수의 연속성이나 극한을 정의할 때 "임의로 작은 양"을 표현하는 데 사용됩니다.
-- **Epsilon (ε)**:
+- **Epsilon ($\epsilon$)**: 함수 값의 오차 범위
 
     함수의 출력값(y축)에서 허용되는 아주 작은 오차 또는 근사값을 나타냅니다.
 
-- **Delta (δ)**:
+- **Delta ($\delta$)**: 입력 값의 오차 범위
 
     함수의 입력값(x축)에서 허용되는 아주 작은 변화량을 나타냅니다.
 
@@ -209,6 +207,30 @@ $|x - 2| < \delta$일 때, $|f(x) - 4| < 0.01$여야 합니다.
 이를 통해 $x^2$ 함수가 $x = 2$에서 연속임을 확인할 수 있습니다.
 
 ## Epsilon-Delta의 개발에서의 의미
+
+$\epsilon$은 '매우 작은 값' 또는 '함수 출력 오차 허용 범위'로 사용됩니다.
+$\delta$는 '입력 또는 값의 변화량'을 표현할 때 주로 사용되지만, '허용 오차 범위'라는 의미로도 혼용됩니다.
+
+사실 엄밀하게 말하면 '출력 값 오차의 허용 범위'라는 의미의 경우 $\epsilon$ 기호를 사용해야 합니다.
+하지만 개발의 경우 $\delta$를 사용하기도 합니다.
+
+```java
+package org.testng;
+
+... 생략 ...
+
+/**
+ * Asserts that two doubles are equal concerning a delta. If they are not, an AssertionError is
+ * thrown. If the expected value is infinity then the delta value is ignored.
+ *
+ * @param actual the actual value
+ * @param expected the expected value
+ * @param delta the absolute tolerable difference between the actual and expected values
+ */
+public static void assertEquals(double actual, double expected, double delta) {
+assertEquals(actual, expected, delta, null);
+}
+```
 
 Epsilon ($\epsilon$)과 Delta ($\delta$) 개념은 다음과 같은 상황에 활용됩니다.
 - **부동소수점 연산**과 **정밀도 요구**가 있는 경우
@@ -485,6 +507,7 @@ $\delta$ 값은 입력 값의 작은 변화에 대해 결과가 얼마나 민감
 
 가령 아래의 선형 회귀 모델을 최적화하는 예제는 비용 함수(손실 함수, CostFunction)를 최소화하기 위해 도함수(Gradient)를 사용합니다.
 이 과정은 주로 경사하강법(Gradient Descent)을 통해 이루어지며, 이는 모델 매개변수에 따라 비용 함수의 기울기를 계산하고, 이를 바탕으로 매개변수의 값을 조정합니다:
+
 - 비용 함수:
 
     모델이 예측한 값과 실제 값 사이의 오차를 측정하는 함수입니다.
@@ -604,10 +627,7 @@ func main() {
 }
 ```
 
-- **성능 평가**: 비용 함수는 모델의 성능을 평가하는 데 사용되며, 이를 통해 모델이 얼마나 잘 학습되었는지를 알 수 있습니다.
-- **최적화 과정**: 도함수를 사용하여 모델의 매개변수를 조정함으로써 최적의 매개변수를 찾아가는 과정입니다. 이 과정에서 `delta`를 통해 알고리즘의 수렴을 조절하고, 효율적으로 학습이 이루어지도록 합니다.
+비용 함수는 모델의 성능을 평가하는 데 사용되며, 이를 통해 모델이 얼마나 잘 학습되었는지를 알 수 있습니다.
 
-## 기타
-
-- Rudin, W. (1976). Principles of mathematical analysis (Vol. 3). New York: McGraw-hill.
-- Grabiner, J. V. (1983). Who gave you the epsilon? Cauchy and the origins of rigorous calculus.
+도함수를 사용하여 모델의 매개변수를 조정함으로써 최적의 매개변수를 찾아가는 과정입니다.
+이 과정에서 `delta`를 통해 알고리즘의 수렴을 조절하고, 효율적으로 학습이 이루어지도록 합니다.
