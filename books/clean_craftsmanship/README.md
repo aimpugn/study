@@ -54,6 +54,10 @@
                 - [가짜](#가짜)
                 - [모의 객체 사용 시점이 문제가 되는 이유](#모의-객체-사용-시점이-문제가-되는-이유)
                 - [TDD 불확정성 원리](#tdd-불확정성-원리)
+                - [(다시) TDD 불확정성 원리](#다시-tdd-불확정성-원리)
+                - [런던 대 시카고](#런던-대-시카고)
+                    - [깨지기 쉬운 테스트 문제](#깨지기-쉬운-테스트-문제)
+                - [확실성 문제](#확실성-문제)
 
 ## 간략 정리
 
@@ -1780,3 +1784,184 @@ public void goodPasswordAttempt_loginSucceeds() throws Exception {
 
 하지만 이런 테스트는 이미 [SineTest](./example/app/src/test/java/craftsmanship/f/SineTest.java)에서 이뤄진 테스트와 크게 다를 바가 없습니다.
 결국, 딱 하나의 테스트에만 적용할 수 있고, '다른 값에 대해서는 각 항의 값이 제대로 계산되는지' 전혀 알려주지 않기 때문입니다.
+
+더 결정적인 것, 알고리즘이 테일러 급수를 알맞게 실행하고 있다고 증명하는 무언가가 필요합니다.
+
+테일러 급수란 $x$의 홀수 거듭제곱을 홀수 계승(factorial)으로 나눈 항을 무한히 교대로 더하고 뺀 값입니다.
+
+$$
+\sum_{n=1}^{\infty}(-1)^{n-1} = \frac{x^{2n-1}}{(2n-1)!}
+$$
+
+이를 다르게 표현하면 다음과 같습니다.
+
+$$
+x - \frac{x^3}{3!} + \frac{x^5}{5!} - \frac{x^7}{7!} + \frac{x^9}{9!} - \dotsb
+$$
+
+'스파이를 사용해서 테일러 급수의 각 항이 어떻게 계산되는지' 알려 줄 수 있도록, 다음과 같은 테스트를 작성할 수 있습니다.
+
+```java
+@Test
+public void taylorTerms() throws Exception {
+    SineTaylorCalculatorSpy spy = new SineTaylorCalculatorSpy();
+    // 무작위 숫자와 적절한 n 값들을 사용하기 때문에, 특정한 값을 사용하지 않아도 됩니다.
+    double r = Math.random() * PI;
+    for(int n = 1; n <= 10; n++) {
+        c.calculateTerm(r, n);
+        // 여기서 실제 계산 함수들을 테스트하지는 않습니다.
+        // 실제 계산 함수들의 코드는 꽤 간단하고, 어쩌면 테스트가 필요 없을 수도 있습니다.
+        assertEquals(n - 1, c.getSignPower());
+        assertEquals(r, c.getR(), EPSILON);
+        assertEquals(2 * n - 1, c.getRPower());
+        assertEquals(2 * n - 1, c.getFac());
+    }
+}
+
+class SineTaylorCalculator {
+    public double sin(double r) {
+        double sin = 0;
+        for (int i = 1; i < 10; i++) {
+            sin += calculateTerm(r, i);
+        }
+
+        return sin;
+    }
+
+    public double calculateTerm(double r, int n) {
+        int sign = calcSign(n - 1);
+        double power = calcPower(r, 2 * n -1);
+        double factorial = calcFactorial(2 * n - 1);
+
+        return sign * power / factorial;
+    }
+
+    protected int calcSign(int n) {
+        int sign = 1;
+        for (int i = 0; i < n; i++) {
+            sign *= -1;
+        }
+        return sign;
+    }
+
+    protected double calcPower(double r, int n) {
+        double power = 1;
+        for (int i = 0; i < n ; i++){
+            power *= r;
+        }
+        return power;
+    }
+
+    protected double calcFactorial(int n) {
+        double fac = 1;
+        for (int i = 1; i <= n; i++) {
+            fac *= i;
+        }
+        return fac;
+    }
+}
+
+class SineTaylorCalculatorSpy extends SineTaylorCalculator {
+    private int fac_n;
+    private double power_r;
+    private int power_n;
+    private int sing_n;
+
+    public double getR() {
+        return power_r;
+    }
+
+    public int getRPower() {
+        return power_n;
+    }
+
+    public int getFac() {
+        return fac_n;
+    }
+
+    public int getSignPower() {
+        return sing_n;
+    }
+
+    @Override
+    protected double calcFactorial(int n ) {
+        fac_n = n;
+        return super.calcFactorial(n);
+    }
+
+    @Override
+    protected double calcPower(double r, int n) {
+        power_r = r;
+        power_n = n;
+        return super.calcPower(r, n);
+    }
+
+    @Override
+    protected int calcSign(int n) {
+        sing_n = n;
+        return super.calcSign(n);
+    }
+
+    @Override
+    public double calculateTerm(double r, int n) {
+        return super.calculateTerm(r, n);
+    }
+}
+```
+
+여기서 주요 관심사는 '특정한 r(`Math.random() * PI`)과 n(`1..10`)을 사용했을 때, 적절한 숫자가 적절한 함수에 넘어가는지'입니다.
+테스트가 성공한다면 부호(sign), 거듭제곱(power), 계승(factorial)을 계산하는 곳에 올바른 값이 입력됐음을 알 수 있습니다.
+
+더 상세한 내용은 [SineTaylorCalculatorTest.java](./example/app/src/test/java/craftsmanship/f/SineTaylorCalculatorTest.java)를 참고합니다.
+
+##### (다시) TDD 불확정성 원리
+
+> '확실함'을 요구하는 만큼, 테스트는 '유연'해지지 않게 됩니다.
+> '유연'성을 요구하는 만큼, '확실함'은 줄어듭니다.
+
+사인 계산 시, 테일러 급수가 아닌 [CORDIC](https://infossm.github.io/blog/2021/05/18/CORDIC/)이라는 더 좋은 알고리즘이 있다고 합니다.
+
+이 알고리즘을 사용하도록 수정할 경우, 스파이 테스트는 깨집니다.
+스파이 테스트는 깨지기 쉽고, 알고리즘을 바꾸면 사실상 모든 테스트가 깨집니다.
+
+테일러 급수 알고리즘을 위해 `SineTaylorCalculator`와 `SineTaylorCalculatorSpy` 두 개의 클래스를 작성했는데, 이를 모두 버리고 새로운 알고리즘에 맞는 새로운 테스트 전략을 만들어야 하고, 깨지는 테스트를 고치고, 심지어는 새로 작성해야 할 수도 있습니다.
+
+하지만 만약 '값 기반 테스트'([SineTest](./example/app/src/test/java/craftsmanship/f/SineTest.java))를 계속 사용했다면, 새로운 CORDIC 알고리즘으로도 계속 통과했을 것이고, 새로운 테스트를 작성할 필요도 없습니다.
+
+테스트에서 '확실함'을 구하고 싶다면, 결국 테스트를 구현에 결합(couple)할 수밖에 없을 것이고, 테스트는 깨지기 쉬워집니다.
+
+##### 런던 대 시카고
+
+TDD 불확정성 원리 때문에 테스트가 가망이 없어 보이는 행위처럼 보일 수 있지만, 전혀 그렇지 않고, 그저 '테스트의 유용성에 어느 정도 제한'이 생길 뿐이라고 합니다.
+
+융통성 없고 깨지기 쉬운 테스트를 원하지 않고, 최대한 확신을 많이 얻고 싶습니다.
+
+###### 깨지기 쉬운 테스트 문제
+
+TDD 초보들은 깨지기 쉬운 테스트 문제를 자주 경험하는데, 이느 TDD를 주의 깊게 설계하지 않아서라고 합니다.
+테스트를 부차적인 요소로 여기고, '결합'과 '응집성 규칙'을 모두 어겼기 때문입니다.
+
+실패한 테스트를 고치려고 테스트 코드를 상당 부분 다시 작성하다 보면, TDD를 쉽게 포기해버릴 수 있습니다.
+'테스트 역시 프로덕션 코드만큼이나 잘 설계되어야 한다'는 사실을 깨달아야 합니다.
+
+테스트를 프로덕션 코드와 더 많이 결합할수록, 테스트는 더 깨지기 쉬워집니다.
+스파이(또는 모의 객체)는 알고리즘 중심부까지 깊이 살피고, 테스트와 알고리즘은 강하게 결합됩니다.
+이러한 이유로 저자는 모의 객체 도구르 좋아하지 않는다고 합니다.
+
+모의 객체 도구는 모의 객체와 스파이를 자주 작성하도록 하며, 이는 깨지기 쉬운 테스트로 이어진다고 합니다.
+
+##### 확실성 문제
+
+스파이 작성을 꺼린다면, '값 테스트'와 '속성 테스트'만 남습니다.
+
+'값 테스트'는 [SineTest](./example/app/src/test/java/craftsmanship/f/SineTest.java)처럼 입력과 출력을 짝지어 나열하는 방식입니다.
+
+'속성 테스트'는 [SineTaylorCalculatorTest](./example/app/src/test/java/craftsmanship/f/SineTaylorCalculatorTest.java)의 `testSineInRange` 또는 `PythagoreanIdentity`(삼각 함수 제곱 공식) 같이, '다양한 입력에 대해 불변식이 성립하는지' 검사하는 방식입니다.
+
+'값 테스트' 또는 '속성 테스트'는 구현에 사용한 알고리즘과 분리되어 있으므로 알고리즘을 바꾸거나 리팩토링을 하더라도 영향을 받지 않습니다.
+
+유연성보다 '확실성'을 중요시한다면, '스파이'를 많이 사용하고 '테스트의 연약함'을 감수할 것입니다.
+확실성보다 '유연성'을 중요시한다면, '값 테스트' 또는 '속성 테스트'를 선호하고 '찜찜함 불확실함'을 감수할 것입니다.
+
+이러한 두 가지 마음 자세가 TDD 사상의 두 학파(런던과 시카고)로 이어졌습니다.
+'유연성'과 '확실성' 중 어느 쪽을 중시하는지가 프로덕션 코드를 '설계하는 과정', 때로는 '실제 설계 자체'에까지 변화를 불러온다는 사실이 밝혀졌습니다.
