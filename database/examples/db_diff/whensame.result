@@ -1,0 +1,17 @@
+Reference Database: prod_user@192.168.97.1 @ jdbc:mysql://localhost:3308/some_service (Default Schema: some_service)
+Comparison Database: dev_user@192.168.97.1 @ jdbc:mysql://localhost:3307/some_service (Default Schema: some_service)
+Compared Schemas: some_service
+Product Name: EQUAL
+Product Version: EQUAL
+Missing Column(s): NONE
+Unexpected Column(s): NONE
+Changed Column(s): NONE
+Missing Index(s): NONE
+Unexpected Index(s): NONE
+Changed Index(s): NONE
+Missing Table(s): NONE
+Unexpected Table(s): NONE
+Changed Table(s): NONE
+Missing View(s): NONE
+Unexpected View(s): NONE
+Changed View(s): NONE
