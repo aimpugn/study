@@ -1,0 +1,31 @@
+Reference Database: prod_user@192.168.97.1 @ jdbc:mysql://localhost:3308/some_service (Default Schema: some_service)
+Comparison Database: dev_user@192.168.97.1 @ jdbc:mysql://localhost:3307/some_service (Default Schema: some_service)
+Compared Schemas: some_service
+Product Name: EQUAL
+Product Version: EQUAL
+Missing Column(s): 
+     some_service.posts.only_at_prod
+Unexpected Column(s): 
+     some_service.only_at_dev.created_at
+     some_service.users.email
+     some_service.only_at_dev.extra
+     some_service.only_at_dev.id
+     some_service.only_at_dev.ref_id
+     some_service.comments.updated_at
+     some_service.posts.updated_at
+Changed Column(s): 
+     some_service.posts.created_at
+          order changed from '6' to '5'
+     some_service.users.created_at
+          order changed from '4' to '5'
+Missing Index(s): NONE
+Unexpected Index(s): 
+     PRIMARY UNIQUE  ON some_service.only_at_dev(id)
+Changed Index(s): NONE
+Missing Table(s): NONE
+Unexpected Table(s): 
+     only_at_dev
+Changed Table(s): NONE
+Missing View(s): NONE
+Unexpected View(s): NONE
+Changed View(s): NONE
