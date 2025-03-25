@@ -1,0 +1,46 @@
+name: db_diff
+services:
+    dev:
+        image: mysql:latest
+        container_name: dev_db
+        ports:
+            - "127.0.0.1:3307:3306"
+        environment:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_USER: dev_user
+          MYSQL_PASSWORD: dev
+          MYSQL_DATABASE: some_service
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - ./whendiff/dev:/docker-entrypoint-initdb.d
+        networks:
+            - db_network
+        healthcheck:
+            test: ["CMD", "mysqladmin", "-uroot", "-proot", "ping", "-h", "localhost"]
+            interval: 3s
+            timeout: 3s
+            retries: 30
+    prod:
+        image: mysql:latest
+        container_name: prod_db
+        ports:
+            - "127.0.0.1:3308:3306"
+        environment:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_USER: prod_user
+          MYSQL_PASSWORD: prod
+          MYSQL_DATABASE: some_service
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - ./whendiff/prod:/docker-entrypoint-initdb.d
+        networks:
+            - db_network
+        healthcheck:
+            test: ["CMD", "mysqladmin", "-uroot", "-proot", "ping", "-h", "localhost"]
+            interval: 3s
+            timeout: 3s
+            retries: 30
+
+networks:
+  db_network:
+    driver: bridge
