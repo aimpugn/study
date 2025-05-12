@@ -1,6 +1,0 @@
-com/example/testing/model/User.class
-com/example/testing/mapper/UserMapper.class
-com/example/testing/controller/UserController.class
-com/example/testing/App.class
-com/example/testing/AppConfig.class
-com/example/testing/services/UserService.class
