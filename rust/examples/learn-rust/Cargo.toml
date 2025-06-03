@@ -1,0 +1,19 @@
+# 루트는 순수한 워크스페이스로만 두고, 실제 코드는 하위 패키지로 실행합니다.
+# 루트는 관리 전용 프로젝트가 되고, 실제로 빌드할 대상은 `workspace.members`의 패키지들이 됩니다.
+#
+# [package]
+# name = "learn-rust"
+# version = "0.1.0"
+# edition = "2024"
+#
+# [dependencies]
+
+# https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html
+#
+# ```sh
+# cargo run -p ch01_ownership
+# ```
+[workspace]
+# https://doc.rust-lang.org/cargo/reference/resolver.html#resolver-versions
+resolver = "3"
+members = ["ch01_ownership"]
