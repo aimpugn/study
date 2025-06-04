@@ -40,6 +40,36 @@ fn main() {
     println!("n1 = {n1}, n2 = {n2}");
     // Output:
     //  n1 = 42, n2 = 42
+    let n3 = n1;
+    println!("n3 = {n3}");
+
+    // Copy와 Clone의 차이점은 다음과 같습니다.
+    // - Copy: 이동처럼 사용해도 자동으로 복사
+    // - Clone: 복사를 호출해야 함
+    // 그래서 앞서 봤듯이 Copy 구현이 된 스칼라형은 자동으로, 암묵적으로 복사가 이뤄지며,
+    // 원래 변수와 새로 복사가 이뤄진 변수 모두 유효합니다.
+    let n1: u32 = 5; // 스택에 4바이트
+    let n2 = n1; // 이동이 아니라 "복사"가 이뤄집니다.
+    println!("n1 = {n1}, n2 = {n2}"); // 둘 다 살아있습니다.
+
+    let heap1 = String::from("clone demo");
+    // let heap2 = heap1; // 이 경우 메타데이터의 이동이 이뤄집니다.
+    let heap2 = heap1.clone(); // 이 경우 깊은 복사(Clone)가 이뤄집니다.
+    println!("heap1: {heap1}, heap2: {heap2}");
+    let heap3 = heap1; // heap1의 lifetime은 여기까지 연장됩니다.
+    println!("heap3: {heap3}");
+
+    // heap3에서 이동이 이뤄졌기 때문에 이제 컴파일 에러가 발생합니다.
+    // println!("heap1 again: {heap1}");
+    // ```
+    // let heap1 = String::from("clone demo");
+    //     ----- move occurs because `heap1` has type `String`, which does not implement the `Copy` trait
+    // let heap3 = heap1; // heap1의 lifetime은 여기까지 연장됩니다.
+    //             ----- value moved here
+    // println!("heap3: {heap3}");
+    // println!("heap1 again: {heap1}");
+    //                        ^^^^^^^ value borrowed here after move
+    // ```
 
     // `String` 타입을 인자로 받는 함수의 경우:
     // 호출 시점에 러스트는 세 필드(주소, 길이, 용량)를 통째로 복사해 새 스택 프레임으로 옮겨 두고,
@@ -156,8 +186,51 @@ fn main() {
     let text = String::from("ownership");
     let first = first_word(&text); // &str은 text의 '부분 빌림'입니다.
     println!("first word: {first}");
-} // 여기서 스코프 종료하며,
+
+    let _d1 = ShowDrop("_d1");
+    {
+        let _d2 = ShowDrop("_d2");
+        println!("inner scope about to end");
+    } // `d2::drop`이 호출됩니다.
+
+    let _d3 = ShowDrop("_d3");
+    // `_d3.drop()`처럼 직접 호출하는 것은 금지되어 있으며, 호출하려고 하면 컴파일 에러가 발생합니다.
+    // ```
+    // _d3.drop();
+    //     ^^^^ explicit destructor calls not allowed
+    // ```
+    //
+    // 이를 허용하면, c에서 처럼 이중으로 free하여 문제가 발생할 수 있기 때문입니다.
+    // - [What does "double free" mean?](https://stackoverflow.com/a/21057524)
+    // - [double-free 취약점](https://showx123.tistory.com/59)
+    //
+    // 이러한 위험을 차단하기 위해 `std::mem::drop`, `ptr::drop_in_place` 등을
+    // 사용하여 drop하는 것만 허용됩니다.
+    // - [Running Code on Cleanup with the Drop Trait](https://doc.rust-lang.org/book/ch15-03-drop.html?utm_source=chatgpt.com#:~:text=Rust%20doesn%E2%80%99t%20let%20you%20call%20the%20Drop%20trait%E2%80%99s%20drop%20method%20manually%3B%20instead%2C%20you%20have%20to%20call%20the%20std%3A%3Amem%3A%3Adrop%20function%20provided%20by%20the%20standard%20library%20if%20you%20want%20to%20force%20a%20value%20to%20be%20dropped%20before%20the%20end%20of%20its%20scope.)
+    std::mem::drop(_d3);
+    println!("main about to end");
+    // Output:
+    // inner scope about to end
+    //  >> drop(): '_d2' 해제
+    //  >> drop(): '_d3' 해제
+    // main about to end
+    //  >> drop(): '_d1' 해제
+} // 여기서 main 스코프가 종료됩니다.
   // `s2`, `s3`, `text`에 대해 `drop()`가 호출되어 힙 메모리를 자동 해제합니다.
+
+struct ShowDrop(&'static str);
+
+impl std::fmt::Display for ShowDrop {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Drop for ShowDrop {
+    fn drop(&mut self) {
+        println!(" >> drop(): '{}' 해제", self.0);
+    }
+}
 
 /// `String`을 인자로 받아서 그 길이를 리턴하는 함수입니다.
 fn get_length(s: String) -> usize {
