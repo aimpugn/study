@@ -62,6 +62,10 @@
         - [문제](#문제-13)
         - [원인](#원인-13)
         - [해결](#해결-12)
+    - [파일명에 아스키 제어문제가 들어간 경우](#파일명에-아스키-제어문제가-들어간-경우)
+        - [문제](#문제-14)
+        - [원인](#원인-14)
+        - [해결](#해결-13)
 
 ## `develop -> develop (non-fast-forward)`
 
@@ -1059,3 +1063,143 @@ Git과 GitHub의 동작 원리 기반하여 분석하면 다음과 같습니다.
 4. 새로운 PR의 의미:
    - 새로운 PR을 생성함으로써, GitHub는 새롭게 정리된 커밋 히스토리만을 비교 대상으로 삼게 됩니다.
    - 이전의 복잡한 Revert 히스토리는 이 새로운 PR에서 완전히 배제됩니다.
+
+## 파일명에 아스키 제어문제가 들어간 경우
+
+### 문제
+
+```log
+Cloning into 'study'...
+remote: Enumerating objects: 3394, done.
+remote: Counting objects: 100% (503/503), done.
+remote: Compressing objects: 100% (307/307), done.
+remote: Total 3394 (delta 197), reused 338 (delta 196), pack-reused 2891 (from 1)Receiving objects: 100% (3394Receiving objects: 100% (3394/3394), 38.88 MiB | 17.58 MiB/s, done.
+
+Resolving deltas: 100% (703/703), done.
+error: invalid path 'rust/snippets/?form_urlencoded_as_json.md'
+fatal: unable to checkout working tree
+warning: Clone succeeded, but checkout failed.
+You can inspect what was checked out with 'git status'
+and retry with 'git restore --source=HEAD :/'
+```
+
+### 원인
+
+mac에서 한영 전환을 하다 보면 가끔 백스페이스가 잘못 입력되는 경우가 있습니다.
+문서에 눈에 안 보이는 제어문자가 들어간 경우 포맷팅으로 저장 시에 자동으로 제거하고 있는 반면,
+디렉토리 또는 파일명 등에 잘못 추가된 경우 눈에 보이지 않아서 깃허브에 푸쉬되고,
+윈도우 등에서 풀을 받을 때 문제가 발생합니다.
+
+### 해결
+
+단순히 현재 파일명을 다시 변경하는 것으로는 해결되지 않습니다.
+과거 커밋 내역에 해당 파일명이 포함되어 있다면 같은 에러가 발생합니다.
+
+과거의 모든 설계도(커밋 이력)를 가져온 후, 그 설계도에 따라 현재 시점의 결과물을 조립하는데, 그 "조립 과정"에서 여전히 문제가 발생하기 때문입니다.
+
+Blob, Tree, Commit은 Git의 3가지 핵심 구성 요소입니다.
+
+1. Blob (Binary Large Object):
+    - 파일의 내용(content) 그 자체입니다.
+    - 파일 이름이나 경로는 전혀 모르며, 오직 데이터만 담고 있습니다.
+
+2. Tree:
+    - 디렉토리 구조를 나타내며, 이 Tree 객체 안에 파일 이름이 저장됩니다.
+    - 특정 Tree 객체는 "어떤 디렉토리에 어떤 파일(Blob)과 어떤 하위 디렉토리(다른 Tree)가 있다" 정보를 갖고 있습니다.
+
+3. Commit:
+    - 특정 시점의 스냅샷입니다.
+    - Commit 객체는 하나의 최상위 Tree 객체를 가리키고, 그 외에 작성자, 커밋 메시지, 그리고 부모 커밋에 대한 포인터를 가집니다.
+
+```sh
+[Commit B] ---> [Tree B] --+--> [Blob: "form_urlencoded_as_json.md"] # 정상으로 수정한 커밋
+   |                       |
+(parent)                   +--> [Tree: "subfolder"]
+   |
+   |
+[Commit A] ---> [Tree A] --+--> [Blob: "?form_urlencoded_as_json.md"] # 기존에 문제가 됐던 커밋
+                           |
+                           +--> [Tree: "subfolder"]
+```
+
+`git clone`은 먼저 원격 저장소에 있는 모든 객체(모든 Commit, Tree, Blob)를 로컬의 `.git` 폴터 내로 다운로드합니다.
+이때 파일 시스템에 실제 파일을 생성되지 않고, 단순히 Git의 압축된 데이터베이스를 복사합니다.
+따라서 문제가 됐던 "?form_urlencoded_as_json.md" 파일명 정보를 갖는 'Tree A'도 다운로드는 됩니다.
+
+데이터베이스 복사가 끝나면 기본 브랜치(`main`, `master` 등)의 최신 커밋(e.g. `Commit B`)을 기준으로 실제 파일들을 디스크에 생성하기 시작합니다(체크아웃).
+
+이때 `Commit B`가 가리키는 `Tree B`를 읽는데, `Tree B`에는 정상적인 파일명("form_urlencoded_as_json.md")이 기록되어 있습니다.
+
+그런데 단순히 `Tree B`의 내용만 보고 파일을 만들지 않습니다.
+효율적인 저장소 관리를 위해 packfile이라는 압축된 파일에 객체들을 저장하며, 종종 변경된 내용만 저장(델타 압축)합니다.
+
+최신 상태를 재구성하기 위해 Git의 내부 로직은 때때로 이전 Tree 객체(`Tree A`)를 참조하여 "무엇이 바뀌었는가"를 계산해야 할 수 있습니다.
+
+작업 트리를 생성할 때 현재 브랜치의 전체 이력을 기반으로 파일 상태를 계산하는 과정에서 실제 문제가 발생합니다. 체크아웃 메커니즘이 이력을 처리하다가 `Commit A`에 도달했을 때, 해당 커밋이 참조하는 `Tree A` 객체를 읽게 됩니다. 그리고 `Tree A`는 `?form_urlencoded_as_json.md` 라는 경로 정보를 담고 있습니다.
+
+git은 이 경로 정보에 대해 Windows의 파일 시스템 API를 호출하지만, 당연히 백스페이스 문자가 포함된 파일명을 지원하지 않으므로 "유효하지 않은 경로(Invalid Path)" 오류가 발생합니다.
+
+따라서 git rebase를 사용하여 과거 이력으로 돌아가서 근본적으로 해당 파일이 없던 것처럼 만들고,
+force push를 사용하여 해당 파일이 없었던 것처럼 만들어야 합니다.
+
+우선 백스페이스 제어문자가 들어간 파일들을 찾습니다.
+
+```sh
+find . -type f -print0 | xargs -0 basename | rg $'\b'
+```
+
+[explain shell](https://explainshell.com/explain?cmd=find%20.%20-type%20f%20-print0)
+
+- `-print0`:
+
+    각 파일 경로의 끝을 일반적인 줄바꿈 문자(`\n`) 대신 NULL 문자(`\0`)로 구분하여 출력합니다.
+    파일명에 공백, 줄바꿈, 기타 특수 문자가 포함되어 있을 때 발생할 수 있는 오류를 방지하기 위한 옵션입니다.
+
+    기본은 `-print` 옵션이며, 이 경우 개행 문자로 구분하여 출력합니다.
+
+    ```sh
+    $ find . -type f
+    ./my important file.txt
+    ```
+
+    가령 이와 같은 경우 파이프(`|`)를 통해 `xargs` 같은 다른 명령어로 전달하면 문제가 발생합니다.
+
+    ```sh
+    $ find . -type f | xargs rm
+    ```
+
+    `xargs`는 기본적으로 공백, 탭, 줄바꿈을 기준으로 입력 데이터를 구분하기 때문에,
+    다음과 같이 인식하게 됩니다.
+    - `./my`
+    - `important`
+    - `file.txt`
+
+    따라서 다음과 같이 실행되게 됩니다.
+
+    ```sh
+    rm ./my
+    rm important
+    rm file.txt
+    ```
+
+    이러한 문제를 해결하기 위해 각 파일 경로의 끝에 NULL 문자(`\0`)를 붙여서 출력합니다.
+    NULL 문자는 파일 이름에 포함될 수 없으므로, 어떤 파일 이름이 오더라도 안저하게 경로를 구분할 수 있는 구분자가 됩니다.
+
+- `-0`:
+
+    `xargs`에게 NULL 문자(`\0`)로 항목들을 구분하라고 지시합니다.
+    `-print0`와 함께 사용됩니다.
+
+그리고 문제가 되는 파일과 관련된 가장 최초의 커밋을 찾습니다.
+
+```sh
+# 파일명을 수정하여 커밋하고 그 다음에 수정된 파일명으로 찾았습니다.
+# 하지만 git log --follow *form_urlencoded_as_json.md 도 가능할 거 같긴 합니다.
+
+git mv *form_urlencoded_as_json.md form_urlencoded_as_json.md
+git add -u
+git commit -m 'squash me'
+git log --follow form_urlencoded_as_json.md
+```
+
+그리고 `git rebase -i 커밋~1`로 해당 커밋을 수정하고, 파일명을 변경하고, 리베이스를 마치고, force push 합니다.
