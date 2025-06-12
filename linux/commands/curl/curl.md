@@ -15,6 +15,7 @@
     - [예제](#예제-2)
         - [액세스 토큰 발급 받고 API 호출하기](#액세스-토큰-발급-받고-api-호출하기)
         - [Sending a preflight request using cUrl](#sending-a-preflight-request-using-curl)
+        - [`.json` 파일로 요청하기](#json-파일로-요청하기)
 
 ## 옵션
 
@@ -215,4 +216,41 @@ curl -H "Origin: http://example.com" \
   -H "Access-Control-Request-Headers: X-Requested-With" \
   -X OPTIONS --verbose \
   https://www.googleapis.com/discovery/v1/apis?fields=
+```
+
+### `.json` 파일로 요청하기
+
+참고:
+- [How do you POST a JSON file with curl??](https://gist.github.com/ungoldman/11282441)
+- [How can I wrap an existing JSON file's contents as part of an object?](https://stackoverflow.com/a/57438049)
+
+```sh
+curl -H 'Content-Type: application/json' \
+    --data-raw "$(cat ~/.json/payload-2022-03-03.json | grep -v '^\s*//')" \
+    <URL>
+```
+
+`jq`를 사용하여 입력으로 전달할 수 있습니다.
+
+```sh
+# jq '{"data": .}' <./test.json | curl ...
+curl -H 'Content-Type: application/json' \
+    -d @<(jq . ~/.json/payload-2022-03-03.json) \
+    <URL>
+
+curl -H 'Content-Type: application/json' \
+    -d @<(jq '{"payload": .}' < ~/.json/payload-2022-03-03.json) \
+    <URL>
+```
+
+`-d` 옵션은 `POST` 요청을 함의합니다.
+
+```sh
+curl -H "Content-Type: application/json" -d @FILENAME DESTINATION
+```
+
+curl(> 7.82.x) 경우 `--json` 옵션을 사용할 수 있습니다.
+
+```sh
+curl --json @FILENAME DESTINATION
 ```
