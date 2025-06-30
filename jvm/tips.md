@@ -1,5 +1,9 @@
 # Tips
 
+- [Tips](#tips)
+    - [\*-sources.jar 파일 내부 검색](#-sourcesjar-파일-내부-검색)
+    - [`jar` 명령어로 특정 파일만 해제하여 보기](#jar-명령어로-특정-파일만-해제하여-보기)
+
 ## *-sources.jar 파일 내부 검색
 
 ```sh
@@ -79,4 +83,22 @@ search_jar() {
         | rg --color always "$pattern" \
         | awk -v jar="$jarFile" '{print jar ":\n" $0 "\n"}'
 }
+```
+
+## `jar` 명령어로 특정 파일만 해제하여 보기
+
+jar 파일 내부 구조를 확인합니다.
+
+```sh
+jar tf my-app.jar
+```
+
+- `-t`, `--list`: List the table of contents for the archive
+- `-f`, `--file=FILE`: The archive file name. When omitted, either stdin or stdout is used based on the operation
+
+그리고 원하는 경로의 파일을 해제합니다.
+
+```sh
+# my-app.jar에서 META-INF/MANIFEST.MF 파일만 추출
+jar xf my-app.jar META-INF/MANIFEST.MF
 ```
