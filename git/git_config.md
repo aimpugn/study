@@ -10,6 +10,8 @@
     - [git pull 시 rebase 하도록 설정](#git-pull-시-rebase-하도록-설정)
     - [`user` 및 `credential.helper` 설정](#user-및-credentialhelper-설정)
     - [에디터 설정](#에디터-설정)
+    - [gitlab 인증 설정](#gitlab-인증-설정)
+        - [윈도우](#윈도우)
     - [기타](#기타)
         - [설정 파일 위치](#설정-파일-위치)
         - [오류의 원인](#오류의-원인)
@@ -149,6 +151,46 @@ git config --global user.name "your-username"
 ```bash
 git config --global core.editor "code --wait"
 ```
+
+## gitlab 인증 설정
+
+### 윈도우
+
+1. gitlab 홈페이지에서 PAT(Personal Access Token)을 발급 받습니다.
+2. `자격 증명 관리자 -> Windows 자격 증명 -> 일반 자격 증명`에 일반 자격 증명을 추가합니다.
+
+    ```sh
+    git:https://github.com
+
+    # 또는 별도의 gitlab 경우
+    git:https://gitlab.example.co.kr
+    ```
+
+    인터넷 또는 네트워크 주소, 사용자 이름, 암호(PAT)를 설정합니다.
+
+3. `.gitconfig`에 다음과 같이 설정합니다.
+
+    ```.gitconfig
+    [credential]
+        helper = manager
+    ```
+
+4. `git clone https:// ...` 으로 테스트 합니다.
+
+만약 다음과 같은 에러가 발생할 경우,
+
+```log
+fatal: unable to access 'https://path.to.gitlab/something/some-service.git/': schannel: next InitializeSecurityContext failed: CRYPT_E_REVOCATION_OFFLINE (0x80092013)
+```
+
+[`http.sslVerify = false`로 설정](https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpsslVerify)합니다.
+
+```.gitconfig
+[http]
+    sslVerify = false
+```
+
+또는 [time을 manual에서 auto로 수정](https://stackoverflow.com/a/78768248)하면 된다는 글도 있습니다.
 
 ## 기타
 
