@@ -112,20 +112,20 @@ HEAD is now at a299135ee php-cs-fixer 업그레이드 (v3.18 → v3.52) (#675)
 그런데 여기서 `origin/develop`은 원격 저장소 `origin`의 `develop` 브랜치를 가리키는 레퍼런스입니다.
 일반적으로 `git checkout` 명령으로 로컬 브랜치를 체크아웃할 때는 해당 브랜치의 최신 커밋을 가리키는 HEAD가 그 브랜치를 추적합니다. 그러나 `origin/develop`과 같은 *원격 브랜치 레퍼런스를 직접 체크아웃할 경우, Git은 이를 'detached HEAD' 모드로 처리*합니다. 이는 *원격 브랜치가 로컬에서 직접적으로 추적되지 않기 때문*입니다.
 
-1. **Detached HEAD 상태**:
+1. Detached HEAD 상태:
 
     "You are in 'detached HEAD' state"라는 메시지는 현재 'detached HEAD' 상태에 있음을 나타냅니다.
     이는 특정 브랜치의 최신 커밋을 가리키는 것이 아니라, 개별 커밋을 직접 체크아웃한 상태를 의미합니다.
     이 상태에서는 변화를 시험해 보거나 임시 조치를 취할 수 있지만, 이러한 변경사항은 어떤 브랜치에도 속하지 않게 됩니다.
 
-2. **브랜치 생성 권장**:
+2. 브랜치 생성 권장:
 
    만약 이 상태에서 변경사항을 보존하고 싶다면, 새로운 브랜치를 생성하여 커밋을 할 수 있습니다. 예를 들어, `git switch -c <new-branch-name>`을 사용하여 새로운 브랜치로 전환하고 그곳에 커밋할 수 있습니다.
 
-3. **원래 브랜치로 돌아가기**:
+3. 원래 브랜치로 돌아가기:
    - 만약 이 변경사항을 원치 않거나 실험만 하고 싶다면, `git switch -` 명령을 사용하여 이전 브랜치로 돌아갈 수 있습니다. 이는 detached HEAD 상태를 벗어나 원래 브랜치의 최신 상태로 돌아가는 것을 의미합니다.
 
-4. **Detached HEAD 상태의 조언 비활성화**:
+4. Detached HEAD 상태의 조언 비활성화:
    - 만약 detached HEAD에 대한 조언이 불필요하다고 생각된다면, `git config --global advice.detachedHead false`를 실행하여 이 조언을 비활성화할 수 있습니다.
 
 `git status` 명령을 사용하여 현재 브랜치와 상태를 확인할 수 있습니다.
@@ -144,7 +144,7 @@ nothing added to commit but untracked files present (use "git add" to track)
 
 원격 브랜치의 최신 변경사항을 로컬 브랜치로 가져오고자 할 때, 일반적으로 다음과 같은 절차를 따릅니다:
 
-1. **로컬 브랜치 체크아웃**:
+1. 로컬 브랜치 체크아웃:
 
    ```bash
    git checkout develop
@@ -152,7 +152,7 @@ nothing added to commit but untracked files present (use "git add" to track)
 
    이 명령은 로컬의 `develop` 브랜치로 전환합니다.
 
-2. **원격 브랜치의 변경 사항 가져오기**:
+2. 원격 브랜치의 변경 사항 가져오기:
 
    ```bash
    git pull origin develop
@@ -187,7 +187,7 @@ nothing added to commit but untracked files present (use "git add" to track)
 ![tree_is_commit_is_snapshotfolder](./resources/commit_is_snapshot.webp)
 ![blob_in_detail](./resources/blob_in_detail.webp)
 
-- **Check in** = Doing a Commit
+- Check in = Doing a Commit
 
 ![commits_history_1](./resources/commits_history_1.webp)
 ![commits_history_2](./resources/commits_history_2.webp)
@@ -209,10 +209,35 @@ nothing added to commit but untracked files present (use "git add" to track)
 
 ## What is the check in and check out git?
 
-- **Check in** = Doing a Commit
+- Check in = Doing a Commit
 - `Checking-in code`: to upload code to main branch repository so that its administrator can review the code and finally update the project version.
 
 ## 특정 디렉터리만을 체크아웃(Sparse checkout)
+
+GitLab 전체 리포지토리를 `clone`하는 대신 특정 파일만 선택적으로 다운로드하고 싶은 경우 `curl`을 이용하여 직접 다운로드받거나 일부만 체크아웃할 수 있습니다.
+
+```bash
+# Project ID: 1234
+# File Path: docs/config/settings.yml
+# Branch: main
+# Token: glpat-xxxxxxxxxxxx
+
+curl -L --header "PRIVATE-TOKEN: glpat-xxxxxxxxxxxx" \
+    "https://gitlab.com/api/v4/projects/1234/repository/files/docs%2Fconfig%2Fsettings.yml/raw?ref=main" \
+    -o "settings.yml"
+```
+
+하지만 API 사용이 막혀있을 수 있습니다.
+
+```json
+{"message":"403 Forbidden"}
+```
+
+`curl`로 다운로드하는 게 불가능하다면, 일부만 체크아웃하는 방법도 가능합니다.
+`clone`과 유사하게 `.git` 디렉토리를 생성하지만, 전체 리포지토리 대신 지정된 디렉토리의 내용만 가져와 효율적입니다.
+
+`sparse-checkout`은 Git이 워킹 디렉토리(working directory)에 채워 넣을 파일과 디렉토리를 제한하는 기능입니다.
+이를 활성화하면 `pull`이나 `checkout` 시 지정된 경로의 파일들만 디스크에 기록됩니다.
 
 ```shell
 #  --no-checkout 옵션을 사용하여 아무 파일도 체크아웃하지 않는다
@@ -224,6 +249,37 @@ git sparse-checkout init
 
 git sparse-checkout set rio
 ```
+
+1. 빈 디렉토리를 만들고 Git 리포지토리로 초기화합니다.
+
+    ```bash
+    mkdir my-project && cd my-project
+    git init
+    ```
+
+2. 다운로드할 원격 리포지토리를 추가합니다. `-f` 옵션은 즉시 모든 브랜치 정보를 가져옵니다.
+
+    ```bash
+    git remote add -f origin
+    ```
+
+3. `sparse-checkout` 기능을 활성화합니다.
+
+    ```bash
+    git config core.sparsecheckout true
+    ```
+
+4. 다운로드할 디렉토리 경로를 `.git/info/sparse-checkout` 파일에 지정합니다.
+
+    ```bash
+    echo "path/to/your/directory/" >> .git/info/sparse-checkout
+    ```
+
+5. 원하는 브랜치의 내용을 `pull`하여 지정된 디렉토리만 다운로드합니다.
+
+    ```bash
+    git pull origin main
+    ```
 
 ## 에러 통해 배우기
 
@@ -242,17 +298,17 @@ git sparse-checkout set rio
 
 - Detached HEAD 상태가 발생하는 경우
 
-    1. **특정 커밋 체크아웃**: 사용자가 브랜치 이름 대신 커밋 해시를 사용하여 직접 체크아웃할 때 발생합니다. 예를 들어, `git checkout 1a2b3c4d`와 같이 실행하면, HEAD는 이제 그 특정 커밋에 "고정"됩니다.
+    1. 특정 커밋 체크아웃: 사용자가 브랜치 이름 대신 커밋 해시를 사용하여 직접 체크아웃할 때 발생합니다. 예를 들어, `git checkout 1a2b3c4d`와 같이 실행하면, HEAD는 이제 그 특정 커밋에 "고정"됩니다.
 
-    2. **태그 체크아웃**: 태그로 체크아웃할 때도 비슷한 상황이 발생할 수 있습니다. 태그는 특정 커밋을 가리키므로, 태그를 체크아웃하면 HEAD는 그 태그가 가리키는 커밋에 고정됩니다.
+    2. 태그 체크아웃: 태그로 체크아웃할 때도 비슷한 상황이 발생할 수 있습니다. 태그는 특정 커밋을 가리키므로, 태그를 체크아웃하면 HEAD는 그 태그가 가리키는 커밋에 고정됩니다.
 
 - Detached HEAD 상태의 특징과 주의사항
 
-    - **변경 사항**: 이 상태에서 코드 변경 사항을 커밋하면, 이 커밋들은 현재 어떤 브랜치에도 속하지 않게 됩니다. 따라서, 나중에 다른 브랜치로 체크아웃하면, 이러한 커밋들에 대한 참조가 없어져 접근할 수 없게 됩니다.
-  
-    - **브랜치 생성**: 만약 `detached HEAD` 상태에서 작업을 계속하고 싶다면, 새로운 브랜치를 만들고 그곳에서 작업을 계속하는 것이 좋습니다. 예: `git switch -c new-branch-name` 또는 `git checkout -b new-branch-name`.
-  
-    - **원래 브랜치로 복귀**: 작업을 마치고 원래의 브랜치 상태로 돌아가려면, 해당 브랜치로 다시 체크아웃하면 됩니다. 예: `git checkout main`.
+    - 변경 사항: 이 상태에서 코드 변경 사항을 커밋하면, 이 커밋들은 현재 어떤 브랜치에도 속하지 않게 됩니다. 따라서, 나중에 다른 브랜치로 체크아웃하면, 이러한 커밋들에 대한 참조가 없어져 접근할 수 없게 됩니다.
+
+    - 브랜치 생성: 만약 `detached HEAD` 상태에서 작업을 계속하고 싶다면, 새로운 브랜치를 만들고 그곳에서 작업을 계속하는 것이 좋습니다. 예: `git switch -c new-branch-name` 또는 `git checkout -b new-branch-name`.
+
+    - 원래 브랜치로 복귀: 작업을 마치고 원래의 브랜치 상태로 돌아가려면, 해당 브랜치로 다시 체크아웃하면 됩니다. 예: `git checkout main`.
 
 - 사용례
 
