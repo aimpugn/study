@@ -2,10 +2,18 @@
 
 - [Note](#note)
     - [xv6와 riscv](#xv6와-riscv)
+    - [riscv64-elf tools](#riscv64-elf-tools)
+        - [riscv64-elf-gcc](#riscv64-elf-gcc)
+        - [riscv64-elf-readelf](#riscv64-elf-readelf)
+        - [riscv64-elf-objdump](#riscv64-elf-objdump)
+        - [riscv64-elf-nm](#riscv64-elf-nm)
     - [asm](#asm)
     - [qemu](#qemu)
     - [The following two regions overlap (in the memory address space)](#the-following-two-regions-overlap-in-the-memory-address-space)
     - [relocation truncated to fit: R\_RISCV\_HI20](#relocation-truncated-to-fit-r_riscv_hi20)
+    - [CFLAGS](#cflags)
+    - [qemu 종료 방법](#qemu-종료-방법)
+    - ['a'가 아니라 'aaa'로 출력되는 이유](#a가-아니라-aaa로-출력되는-이유)
 
 ## xv6와 riscv
 
@@ -33,6 +41,55 @@
             - [CICS vs RISC](https://jwprogramming.tistory.com/20)
             - [RISC, CISC, and EPIC difference?](https://www.reddit.com/r/cpudesign/comments/9j9zvd/risc_cisc_and_epic_difference)
     - `V`: 5번째 RISC 아키텍처(Version 5)
+
+## riscv64-elf tools
+
+### riscv64-elf-gcc
+
+```sh
+❯ riscv64-elf-gcc -v
+Using built-in specs.
+COLLECT_GCC=riscv64-elf-gcc
+COLLECT_LTO_WRAPPER=/opt/homebrew/Cellar/riscv64-elf-gcc/15.1.0/libexec/gcc/riscv64-elf/15.1.0/lto-wrapper
+Target: riscv64-elf
+Configured with: ../configure --target=riscv64-elf --prefix=/opt/homebrew/Cellar/riscv64-elf-gcc/15.1.0 --infodir=/opt/homebrew/Cellar/riscv64-elf-gcc/15.1.0/share/info/riscv64-elf --disable-nls --without-isl --without-headers --with-as=/opt/homebrew/opt/riscv64-elf-binutils/bin/riscv64-elf-as --with-ld=/opt/homebrew/opt/riscv64-elf-binutils/bin/riscv64-elf-ld --with-system-zlib --enable-languages=c,c++
+Thread model: single
+Supported LTO compression algorithms: zlib zstd
+gcc version 15.1.0 (GCC)
+```
+
+### riscv64-elf-readelf
+
+```sh
+❯ riscv64-elf-readelf -v
+GNU readelf (GNU Binutils) 2.45
+Copyright (C) 2025 Free Software Foundation, Inc.
+This program is free software; you may redistribute it under the terms of
+the GNU General Public License version 3 or (at your option) any later version.
+This program has absolutely no warranty.
+```
+
+### riscv64-elf-objdump
+
+```sh
+❯ riscv64-elf-objdump -v
+GNU objdump (GNU Binutils) 2.45
+Copyright (C) 2025 Free Software Foundation, Inc.
+This program is free software; you may redistribute it under the terms of
+the GNU General Public License version 3 or (at your option) any later version.
+This program has absolutely no warranty.
+```
+
+### riscv64-elf-nm
+
+```sh
+❯ riscv64-elf-nm --version
+GNU nm (GNU Binutils) 2.45
+Copyright (C) 2025 Free Software Foundation, Inc.
+This program is free software; you may redistribute it under the terms of
+the GNU General Public License version 3 or (at your option) any later version.
+This program has absolutely no warranty.
+```
 
 ## asm
 
@@ -194,3 +251,100 @@ RV64 Address Space
 이 문제를 해결하려면 `medany` 코드 모델로 변경하면 된다고 합니다.
 `medany`는 PC-relative 주소 계산(`auipc` + `addi`)을 사용하여 주소를 만들기 때문에,
 현재 PC로부터 ±2 GiB 범위 안의 어떤 위치든 접근 가능합니다.
+
+> `AUIPC`는 현재 PC를 기준으로 상위 20비트를 더합니다.
+> `ADDI`는 즉시값을 더한다.
+> 둘을 이어서 64비트 주소를 PC 기준으로 만듭니다.
+>
+> 즉, PC-relative는 절대주소 대신 현재 명령의 주소(PC)를 기준으로 오프셋을 더해 목표 주소를 만듭니다.
+
+## CFLAGS
+
+```Makefile
+CFLAGS = -march=rv64gc # 타겟 ISA: 64비트 RISC-V. 기본 ISA + 압축 명령어 + 원자적 연산 등 지원.
+CFLAGS += -mabi=lp64 # ABI: 64비트 long, pointer
+CFLAGS += -Wall -O2 # 경고 활성화, 최적화 레벨 2
+CFLAGS += -mcmodel=medany # 코드 모델을 medany로 설정하여 PC-relative 주소 생성
+CFLAGS += -ffreestanding # 표준 라이브러리 환경이 아니라 임베디드, 커널 환경이라는 표시
+CFLAGS += -nostdlib # 표준 C 런타임(ctr0.o 등)과 라이브러리를 링크하지 않음
+CFLAGS += -nostartfiles # crt0 등 시작파일 생략(드라이버 링크에 영향)
+CFLAGS += -fno-builtin
+```
+
+- `-march=rv64gc`
+    - CPU가 어떤 명령어 집합(ISA)을 이해하는지 지정하지 않으면, 컴파일러는 잘못된 명령어를 생성해 실행 시 illegal instruction 예외가 발생할 수 있습니다.
+    - `rv64gc`
+        - `rv64`: 64비트 주소 공간
+        - `g`: 기본 확장 세트(IMAFD + Zicsr + Zifencei)
+            - `IMAFD`: 정수(I), 곱셈/나눗셈(M), 원자적 연산(A), 단정도 부동소수점(F), 배정도 부동소수점(D)
+            - Zicsr: CSR 접근
+            - `Zifencei`: instruction fence.
+        - `c`: compressed(압축) 명령어
+
+        즉, 정수 연산, 부동소수점, 원자적 연산, CSR 접근, fence, 압축 인스트럭션까지 포함된 코드만 생성하라는 의미입니다.
+
+- `-mabi=lp64`
+    - ISA가 정해져도 함수 호출 규약(ABI)을 맞추지 않으면, 함수 인자와 반환값이 엉뚱한 레지스터나 스택에 실려 런타임 오류가 발생합니다.
+    - `lp64`
+        - long과 pointer가 64비트, int는 32비트. 리눅스 RISC-V에서 표준 ABI입니다.
+        - 컴파일러는 이 규약에 따라 레지스터를 배치하고 스택 프레임을 만듭니다.
+
+- `-Wall -O2`
+    - 대부분의 경고를 활성화합니다.
+    - 초기화되지 않은 변수, 사용되지 않는 값 등을 잡아냅니다.
+    - `-O2`는 루프 언롤링, 상수 전파, 데드 코드 제거 등 주요 최적화를 적용합니다.
+
+- `-mcmodel=medany`
+    - RISC-V는 PC-relative 주소계산을 사용합니다.
+    - 코드와 데이터가 2GB 이상 떨어진 위치에 있을 수 있으므로 코드 모델을 지정해야 합니다.
+    - `medany`는 데이터/코드가 현재 PC에서 ±2GB 범위 어디든 있을 수 있다고 가정합니다.
+    - 커널은 물리 메모리 상의 높은 주소에 로드되므로 이 설정이 필요합니다.
+    - 기본 `medlow` 모델은 낮은 2GB 영역만 유효하므로, 고주소 영역 커널이 링크/실행되지 않습니다.
+
+- `-ffreestanding`
+    - `freestanding` 환경은 표준 C 환경(libc, `main`, `exit`)이 없음을 의미합니다. 따라서 커널은 스스로 초기화 코드를 제공해야 합니다.
+    - 컴파일러는 표준 라이브러리 함수 존재를 가정하지 않고, 내장함수 최적화를 일부 비활성화합니다. 예컨대 `main` 함수가 없어도 에러를 내지 않습니다.
+
+- `-nostdlib`
+    - `freestanding`를 넘어서 아예 표준 라이브러리를 링크하지 않겠다는 옵션입니다.
+    - `crt0.o`, `libc.a`, `libm.a` 등을 링크 단계에서 제외합니다. 커널은 자체 부트스트랩 코드를 제공해야 합니다.
+    - 이 옵션이 없다면 리눅스 사용자 공간용 라이브러리가 커널에 끌려 들어와 링킹 충돌이 발생할 수 있습니다. (예: `_start` 심볼 중복)
+
+- `-nostartfiles`
+    - `crt0` 같은 시작 파일은 사용자 공간 프로그램 진입점(`_start`)을 초기화합니다.
+    - 커널은 자체 어셈블리 진입 코드를 갖습니다.
+    - GCC는 `crt0.o`, `crtbegin.o` 같은 시작 오브젝트 파일을 자동 포함하지 않습니다.
+    - 이 옵션이 없다면 `_start` 심볼 중복 정의 충돌이 발생하여 링커가 어떤 진입점을 선택할지 알 수 없어 부트 실패합니다.
+
+- `-fno-builtin`
+    - 커널은 종종 표준 함수(`memcpy`, `strlen`)를 자체 구현합니다. 컴파일러가 이를 내부적으로 최적화해 다른 코드로 치환하면 위험합니다.
+    - "표준 라이브러리 함수를 내장 함수로 간주하지 말라"고 지시합니다.
+        - `memcpy` 호출이 그대로 남아 자체 구현 심볼에 연결됩니다.
+        - 가령 `memcpy()`가 내부적으로 `__builtin_memcpy()`로 바뀌는 것을 방지합니다.
+
+## [qemu 종료 방법](https://superuser.com/a/1211516)
+
+```sh
+Ctrl-A x
+```
+
+## 'a'가 아니라 'aaa'로 출력되는 이유
+
+```c
+void main(void) {
+    uart_puts_sync('a');
+}
+```
+
+분명 'a'가 한번만 출력되어야 하는데, 아래와 같이 세 번 'a'가 출력됩니다.
+
+```sh
+❯ make qemu
+riscv64-elf-gcc -march=rv64gc  -mabi=lp64  -Wall  -mcmodel=medany  -ffreestanding  -nostartfiles  -c -o kernel/printf.o kernel/printf.c
+riscv64-elf-ld -z max-page-size=4096  -T kernel/kernel.ld -o kernel/kernel.elf kernel/entry.o kernel/printf.o kernel/start.o kernel/main.o
+qemu-system-riscv64 -machine virt  -bios none  -kernel kernel/kernel.elf  -m 128M -smp 3  -nographic
+aaa
+```
+
+이는 `-smp 3`이라서 hart 3개가 같은 엔트리로 동시에 부팅했고,
+각 hart가 `main()`을 실행해 `uart_puts_sync('a')`를 한 번씩 호출하기 때문입니다.

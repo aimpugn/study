@@ -16,16 +16,17 @@ LD = $(TOOL_PREFIX)ld
 
 CFLAGS = -march=rv64gc # 타겟 ISA: 64비트 RISC-V. 기본 ISA + 압축 명령어 + 원자적 연산 등 지원.
 CFLAGS += -mabi=lp64 # ABI: 64비트 long, pointer
-CFLAGS += -Wall -O2 # 경고 활성화, 최적화 레벨 2
+CFLAGS += -Wall # 경고 활성화
 CFLAGS += -mcmodel=medany # 코드 모델을 medany로 설정하여 PC-relative 주소 생성
 CFLAGS += -ffreestanding # 표준 라이브러리 환경이 아니라 임베디드, 커널 환경이라는 표시
-CFLAGS += -nostdlib # 표준 C 런타임(ctr0.o 등)과 라이브러리를 링크하지 않음
+# CFLAGS += -nostdlib # 표준 C 런타임(ctr0.o 등)과 라이브러리를 링크하지 않음
 CFLAGS += -nostartfiles # crt0 등 시작파일 생략(드라이버 링크에 영향)
 
 # 빌드 경로 포함한 타깃 ELF를 구성하는 오브젝트 목록.
 # 최종적으로 kernel.elf 파일을 만들게 합니다.
 # 그러기 위해서 모든 오브젝트를 kernel.ld 스크립트로 링크합니다.
 OBJS = $K/entry.o \
+	$K/printf.o \
 	$K/start.o \
 	$K/main.o
 
