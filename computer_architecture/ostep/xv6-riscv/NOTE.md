@@ -14,6 +14,7 @@
     - [CFLAGS](#cflags)
     - [qemu 종료 방법](#qemu-종료-방법)
     - ['a'가 아니라 'aaa'로 출력되는 이유](#a가-아니라-aaa로-출력되는-이유)
+    - [DTB(Device Tree Blob)와 `dtc`(Device Tree Compiler)](#dtbdevice-tree-blob와-dtcdevice-tree-compiler)
 
 ## xv6와 riscv
 
@@ -348,3 +349,366 @@ aaa
 
 이는 `-smp 3`이라서 hart 3개가 같은 엔트리로 동시에 부팅했고,
 각 hart가 `main()`을 실행해 `uart_puts_sync('a')`를 한 번씩 호출하기 때문입니다.
+
+## DTB(Device Tree Blob)와 `dtc`(Device Tree Compiler)
+
+RISC-V virt 보드는 전원을 넣자마자 어떤 레지스터가 어디에 있고 IRQ가 몇 번인지,
+클럭 주파수가 얼마인지 CPU에게 일일이 말해 주지 않습니다.
+
+대신 QEMU는 가상 SoC 전체를 한눈에 서술한 구조체(DTB, Device-Tree Blob)를 부팅 직전에 메모리에 만들어 둡니다.
+커널이 DTB를 아직 파싱하기 전에 이 하드웨어 지도를 보고싶을 때 `dumpdtb=` 옵션을 사용합니다.
+
+```Makefile
+QEMU_DTB_OPTS = -machine virt,dumpdtb=virt.dtb
+QEMU_DTB_OPTS += -bios none
+QEMU_DTB_OPTS += -kernel $K/kernel.elf
+QEMU_DTB_OPTS += -m 128M
+QEMU_DTB_OPTS += -smp $(CPUS)
+QEMU_DTB_OPTS += -nographic
+```
+
+DTB 파일은 바이너리인데 `dts`를 사용하면 사람이 읽을 수 있는 파일로 변환할 수 있습니다.
+
+```sh
+dtc -I dtb -O dts virt.dtb > virt.dts
+```
+
+<details>
+<summary>vrit.dts</summary>
+
+```arduino
+/dts-v1/;
+
+/ {
+    #address-cells = <0x02>;
+    #size-cells = <0x02>;
+    compatible = "riscv-virtio";
+    model = "riscv-virtio,qemu";
+
+    poweroff {
+        value = <0x5555>;
+        offset = <0x00>;
+        regmap = <0x08>;
+        compatible = "syscon-poweroff";
+    };
+
+    reboot {
+        value = <0x7777>;
+        offset = <0x00>;
+        regmap = <0x08>;
+        compatible = "syscon-reboot";
+    };
+
+    platform-bus@4000000 {
+        interrupt-parent = <0x07>;
+        ranges = <0x00 0x00 0x4000000 0x2000000>;
+        #address-cells = <0x01>;
+        #size-cells = <0x01>;
+        compatible = "qemu,platform", "simple-bus";
+    };
+
+    /*
+     * memory@80000000의 부모는 루트이며 루트의 주소 셀 수와 크기 셀 수는 `<0x02>`입니다.
+     * - #address-cells = <0x02>;
+     * - #size-cells = <0x02>;
+     *
+     * 이는 주소가 반드시 2셀, 크기가 반드시 2셀을 사용해야 함을 의미합니다.
+     * reg는 32비트 셀 4개 `[addr_hi, addr_lo, size_hi, size_lo]`가 됩니다.
+     * 각 셀은 big-endian 32비트 단위 값입니다.
+     */
+    memory@80000000 {
+        device_type = "memory";
+        reg = <0x00 0x80000000 0x00 0x8000000>;
+        /*     └─addr_hi │     └─size_hi │
+         *       (32비트) │       (32비트) └─size_lo(8 * 16^6 = 2^27 = 134,217,728 의 hex값)
+         *               │                 (32비트)
+         *               └─addr_lo(8 * 16^7 = 2^31 = 2,147,483,648 의 hex값)
+         *                 (32비트)
+         *
+         * 1 MiB = 1024 × 1024 = 2^20
+         * 2^27 / 2^20 = 2^7 = 128 MiB
+         */
+    };
+
+    cpus {
+        #address-cells = <0x01>;
+        #size-cells = <0x00>;
+        timebase-frequency = <0x989680>;
+
+        cpu@0 {
+            phandle = <0x05>;
+            device_type = "cpu";
+            reg = <0x00>;
+            status = "okay";
+            compatible = "riscv";
+            riscv,cbop-block-size = <0x40>;
+            riscv,cboz-block-size = <0x40>;
+            riscv,cbom-block-size = <0x40>;
+            riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "h", "zic64b", "zicbom", "zicbop", "zicboz", "ziccamoa", "ziccif", "zicclsm", "ziccrse", "zicntr", "zicsr", "zifencei", "zihintntl", "zihintpause", "zihpm", "zmmul", "za64rs", "zaamo", "zalrsc", "zawrs", "zfa", "zca", "zcd", "zba", "zbb", "zbc", "zbs", "shcounterenw", "shgatpa", "shtvala", "shvsatpa", "shvstvala", "shvstvecd", "ssccptr", "sscounterenw", "sstc", "sstvala", "sstvecd", "ssu64xl", "svadu", "svvptc";
+            riscv,isa-base = "rv64i";
+            riscv,isa = "rv64imafdch_zic64b_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_zmmul_za64rs_zaamo_zalrsc_zawrs_zfa_zca_zcd_zba_zbb_zbc_zbs_shcounterenw_shgatpa_shtvala_shvsatpa_shvstvala_shvstvecd_ssccptr_sscounterenw_sstc_sstvala_sstvecd_ssu64xl_svadu_svvptc";
+            mmu-type = "riscv,sv57";
+
+            interrupt-controller {
+                #interrupt-cells = <0x01>;
+                interrupt-controller;
+                compatible = "riscv,cpu-intc";
+                phandle = <0x06>;
+            };
+        };
+
+        cpu@1 {
+            phandle = <0x03>;
+            device_type = "cpu";
+            reg = <0x01>;
+            status = "okay";
+            compatible = "riscv";
+            riscv,cbop-block-size = <0x40>;
+            riscv,cboz-block-size = <0x40>;
+            riscv,cbom-block-size = <0x40>;
+            riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "h", "zic64b", "zicbom", "zicbop", "zicboz", "ziccamoa", "ziccif", "zicclsm", "ziccrse", "zicntr", "zicsr", "zifencei", "zihintntl", "zihintpause", "zihpm", "zmmul", "za64rs", "zaamo", "zalrsc", "zawrs", "zfa", "zca", "zcd", "zba", "zbb", "zbc", "zbs", "shcounterenw", "shgatpa", "shtvala", "shvsatpa", "shvstvala", "shvstvecd", "ssccptr", "sscounterenw", "sstc", "sstvala", "sstvecd", "ssu64xl", "svadu", "svvptc";
+            riscv,isa-base = "rv64i";
+            riscv,isa = "rv64imafdch_zic64b_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_zmmul_za64rs_zaamo_zalrsc_zawrs_zfa_zca_zcd_zba_zbb_zbc_zbs_shcounterenw_shgatpa_shtvala_shvsatpa_shvstvala_shvstvecd_ssccptr_sscounterenw_sstc_sstvala_sstvecd_ssu64xl_svadu_svvptc";
+            mmu-type = "riscv,sv57";
+
+            interrupt-controller {
+                #interrupt-cells = <0x01>;
+                interrupt-controller;
+                compatible = "riscv,cpu-intc";
+                phandle = <0x04>;
+            };
+        };
+
+        cpu@2 {
+            phandle = <0x01>;
+            device_type = "cpu";
+            reg = <0x02>;
+            status = "okay";
+            compatible = "riscv";
+            riscv,cbop-block-size = <0x40>;
+            riscv,cboz-block-size = <0x40>;
+            riscv,cbom-block-size = <0x40>;
+            riscv,isa-extensions = "i", "m", "a", "f", "d", "c", "h", "zic64b", "zicbom", "zicbop", "zicboz", "ziccamoa", "ziccif", "zicclsm", "ziccrse", "zicntr", "zicsr", "zifencei", "zihintntl", "zihintpause", "zihpm", "zmmul", "za64rs", "zaamo", "zalrsc", "zawrs", "zfa", "zca", "zcd", "zba", "zbb", "zbc", "zbs", "shcounterenw", "shgatpa", "shtvala", "shvsatpa", "shvstvala", "shvstvecd", "ssccptr", "sscounterenw", "sstc", "sstvala", "sstvecd", "ssu64xl", "svadu", "svvptc";
+            riscv,isa-base = "rv64i";
+            riscv,isa = "rv64imafdch_zic64b_zicbom_zicbop_zicboz_ziccamoa_ziccif_zicclsm_ziccrse_zicntr_zicsr_zifencei_zihintntl_zihintpause_zihpm_zmmul_za64rs_zaamo_zalrsc_zawrs_zfa_zca_zcd_zba_zbb_zbc_zbs_shcounterenw_shgatpa_shtvala_shvsatpa_shvstvala_shvstvecd_ssccptr_sscounterenw_sstc_sstvala_sstvecd_ssu64xl_svadu_svvptc";
+            mmu-type = "riscv,sv57";
+
+            interrupt-controller {
+                #interrupt-cells = <0x01>;
+                interrupt-controller;
+                compatible = "riscv,cpu-intc";
+                phandle = <0x02>;
+            };
+        };
+
+        cpu-map {
+
+            cluster0 {
+
+                core0 {
+                    cpu = <0x05>;
+                };
+
+                core1 {
+                    cpu = <0x03>;
+                };
+
+                core2 {
+                    cpu = <0x01>;
+                };
+            };
+        };
+    };
+
+    pmu {
+        riscv,event-to-mhpmcounters = <0x01 0x01 0x7fff9 0x02 0x02 0x7fffc 0x10019 0x10019 0x7fff8 0x1001b 0x1001b 0x7fff8 0x10021 0x10021 0x7fff8>;
+        compatible = "riscv,pmu";
+    };
+
+    fw-cfg@10100000 {
+        dma-coherent;
+        reg = <0x00 0x10100000 0x00 0x18>;
+        compatible = "qemu,fw-cfg-mmio";
+    };
+
+    flash@20000000 {
+        bank-width = <0x04>;
+        reg = <0x00 0x20000000 0x00 0x2000000 0x00 0x22000000 0x00 0x2000000>;
+        compatible = "cfi-flash";
+    };
+
+    aliases {
+        serial0 = "/soc/serial@10000000";
+    };
+
+    /* 루트 노드와 고정 포인터 */
+    chosen {
+        /* 콘솔 장치 경로. soc 블록의 serial@10000000에 있다는 의미입니다. */
+        stdout-path = "/soc/serial@10000000";
+        rng-seed = <0xb6d3a50e 0xc5fc791b 0x6ba6be2c 0x4c8c65aa 0x73755381 0x97c947d6 0xaf2277e9 0x58c82dfa>;
+    };
+
+    soc {
+        #address-cells = <0x02>;
+        #size-cells = <0x02>;
+        compatible = "simple-bus";
+        ranges;
+
+        rtc@101000 {
+            interrupts = <0x0b>;
+            interrupt-parent = <0x07>;
+            reg = <0x00 0x101000 0x00 0x1000>;
+            compatible = "google,goldfish-rtc";
+        };
+
+        /*
+         * UART 장치 노드를 해독. 베이스 주소가 0x10000000 임을 의미합니다.
+         *
+         * 부모는 soc라서 마찬가지로 주소 셀 수(<0x02>), 크기 셀 수(<0x02>)를 따릅니다
+         */
+        serial@10000000 {
+            /* <10>. PLIC에서 UART가 쓰는 인터럽트 번호 */
+            interrupts = <0x0a>;
+
+            /*
+             * PLIC 노드의 phandle 값입니다.
+             * - `interrupt-parent = <0x07>;`: 인터럽트 라우팅은 phandle=7번(PIC=PLIC)으로 간다는 의미
+             * - #interrupt-cells = <0x01>;`: PLIC 안에서 소스 번호 10번을 배정받았다는 의미
+             *
+             * 커널은 이걸 읽고 PLIC의 소스 10을 UART 드라이버에 연결하도록 세팅합니다.
+             */
+            interrupt-parent = <0x07>;
+
+            /* UART가 사용할 클럭 주파수 */
+            clock-frequency = "", "8@";
+
+            /* MMIO 영역 주소와 크기 */
+            reg = <0x00 0x10000000 0x00 0x100>;
+            /*     └─addr_hi │     └─size_hi │
+             *       (32비트) │       (32비트) └─size_lo(1 * 16^2 = 2^8 = 256 바이트)
+             *               │                 (32비트)
+             *               └─addr_lo
+             *                 (32비트)
+             *
+             * UART 같은 메모리 매핑 장치는 내부 레지스터가 수십 개뿐입니다.
+             * 예를 들어 16550A UART는 송신 버퍼, 수신 버퍼, 상태 레지스터, 제어 레지스터 등 합쳐야 수십 바이트 크기입니다.
+             * 따라서 레지스터 뭉치 크기를 256바이트 정도로 잡습니다.
+             * 이 범위 안에서만 접근해야 정상 동작하고,
+             * 커널은 이 정보를 그대로 매핑해 장치 드라이버가 MMIO를 할 수 있게 합니다.
+             */
+
+            /* 어떤 드라이버가 이 장치를 다룰 수 있는지 알려줍니다. 표준 16550 드라이버가 붙습니다. */
+            compatible = "ns16550a";
+        };
+
+        test@100000 {
+            phandle = <0x08>;
+            reg = <0x00 0x100000 0x00 0x1000>;
+            compatible = "sifive,test1", "sifive,test0", "syscon";
+        };
+
+        virtio_mmio@10008000 {
+            interrupts = <0x08>;
+            interrupt-parent = <0x07>;
+            reg = <0x00 0x10008000 0x00 0x1000>;
+            compatible = "virtio,mmio";
+        };
+
+        virtio_mmio@10007000 {
+            interrupts = <0x07>;
+            interrupt-parent = <0x07>;
+            reg = <0x00 0x10007000 0x00 0x1000>;
+            compatible = "virtio,mmio";
+        };
+
+        virtio_mmio@10006000 {
+            interrupts = <0x06>;
+            interrupt-parent = <0x07>;
+            reg = <0x00 0x10006000 0x00 0x1000>;
+            compatible = "virtio,mmio";
+        };
+
+        virtio_mmio@10005000 {
+            interrupts = <0x05>;
+            interrupt-parent = <0x07>;
+            reg = <0x00 0x10005000 0x00 0x1000>;
+            compatible = "virtio,mmio";
+        };
+
+        virtio_mmio@10004000 {
+            interrupts = <0x04>;
+            interrupt-parent = <0x07>;
+            reg = <0x00 0x10004000 0x00 0x1000>;
+            compatible = "virtio,mmio";
+        };
+
+        virtio_mmio@10003000 {
+            interrupts = <0x03>;
+            interrupt-parent = <0x07>;
+            reg = <0x00 0x10003000 0x00 0x1000>;
+            compatible = "virtio,mmio";
+        };
+
+        virtio_mmio@10002000 {
+            interrupts = <0x02>;
+            interrupt-parent = <0x07>;
+            reg = <0x00 0x10002000 0x00 0x1000>;
+            compatible = "virtio,mmio";
+        };
+
+        virtio_mmio@10001000 {
+            interrupts = <0x01>;
+            interrupt-parent = <0x07>;
+            reg = <0x00 0x10001000 0x00 0x1000>;
+            compatible = "virtio,mmio";
+        };
+
+        plic@c000000 {
+            phandle = <0x07>;
+            riscv,ndev = <0x5f>;
+            reg = <0x00 0xc000000 0x00 0x600000>;
+            interrupts-extended = <0x06 0x0b 0x06 0x09 0x04 0x0b 0x04 0x09 0x02 0x0b 0x02 0x09>;
+            interrupt-controller;
+            compatible = "sifive,plic-1.0.0", "riscv,plic0";
+            #address-cells = <0x00>;
+            #interrupt-cells = <0x01>;
+        };
+
+        clint@2000000 {
+            interrupts-extended = <0x06 0x03 0x06 0x07 0x04 0x03 0x04 0x07 0x02 0x03 0x02 0x07>;
+            reg = <0x00 0x2000000 0x00 0x10000>;
+            compatible = "sifive,clint0", "riscv,clint0";
+        };
+
+        pci@30000000 {
+            interrupt-map-mask = <0x1800 0x00 0x00 0x07>;
+            interrupt-map = <0x00 0x00 0x00 0x01 0x07 0x20 0x00 0x00 0x00 0x02 0x07 0x21 0x00 0x00 0x00 0x03 0x07 0x22 0x00 0x00 0x00 0x04 0x07 0x23 0x800 0x00 0x00 0x01 0x07 0x21 0x800 0x00 0x00 0x02 0x07 0x22 0x800 0x00 0x00 0x03 0x07 0x23 0x800 0x00 0x00 0x04 0x07 0x20 0x1000 0x00 0x00 0x01 0x07 0x22 0x1000 0x00 0x00 0x02 0x07 0x23 0x1000 0x00 0x00 0x03 0x07 0x20 0x1000 0x00 0x00 0x04 0x07 0x21 0x1800 0x00 0x00 0x01 0x07 0x23 0x1800 0x00 0x00 0x02 0x07 0x20 0x1800 0x00 0x00 0x03 0x07 0x21 0x1800 0x00 0x00 0x04 0x07 0x22>;
+            ranges = <0x1000000 0x00 0x00 0x00 0x3000000 0x00 0x10000 0x2000000 0x00 0x40000000 0x00 0x40000000 0x00 0x40000000 0x3000000 0x04 0x00 0x04 0x00 0x04 0x00>;
+            reg = <0x00 0x30000000 0x00 0x10000000>;
+            dma-coherent;
+            bus-range = <0x00 0xff>;
+            linux,pci-domain = <0x00>;
+            device_type = "pci";
+            compatible = "pci-host-ecam-generic";
+            #size-cells = <0x02>;
+            #interrupt-cells = <0x01>;
+            #address-cells = <0x03>;
+        };
+    };
+};
+```
+
+</details>
+
+커널은 DTB에서 `serial@10000000`, `plic@c000000`처럼 그 안에 적힌 계층적 노드/프로퍼티를 파싱합니다.
+그리고 그 파싱된 결과로 CPU, 메모리, 장치가 어느 주소에 있고 어떤 인터럽트를 쓰는가를 결정합니다.
+
+문제는 장치마다 주소 폭(address width) 이 다르다는 겁니다.
+어떤 버스는 32비트 주소만 쓰고, 어떤 버스는 64비트 주소까지 씁니다.
+만약 통일된 규칙 없이 숫자 하나만 써버리면, 0x10000000이 "32비트 주소 0x10000000"인지, "상위 32비트=0x1, 하위 32비트=0x0000000"인지 구분할 방법이 없어집니다.
+
+그래서 디바이스 트리는 각 부모 버스가 "내 자식들의 주소와 크기를 몇 개의 32비트 셀(cell)로 표현할 것인가"를 명시합니다.
+- `#address-cells = <0x02>;`: 주소를 표현할 때 32비트 셀 2개(총 64비트 폭)를 사용
+- `#size-cells = <0x02>;`: 크기(메모리 범위)도 2셀(64비트 폭)로 사용
+
+이렇게 정하면 자식 노드의 `reg` 속성은 `[addr_hi, addr_lo, size_hi, size_lo]` 네 개의 셀로 고정됩니다.

@@ -64,6 +64,18 @@ QEMU_OPTS += -nographic # 그래픽 끄고 stdio로 콘솔 사용(Ctrl-a x로 �
 qemu: $K/kernel.elf
 	$(QEMU) $(QEMU_OPTS)
 
+# - dumpdtb: QEMU가 가상 보드를 만들 때 내부에서 동적으로 생성하는 DTB(Device Tree Blob)를 파일로 출력할 것을 지시
+# - 가상 보드: DRAM=0x80000000, UART/PLIC/CLINT 등 제공
+QEMU_DTB_OPTS = -machine virt,dumpdtb=virt.dtb
+QEMU_DTB_OPTS += -bios none # 펌웨어 없이 `-kernel`로 준 바이너리를 DRAM 시작에 로드하여 실행
+QEMU_DTB_OPTS += -kernel $K/kernel.elf # 앞서 생성한 ELF를 커널로 사용
+QEMU_DTB_OPTS += -m 128M
+QEMU_DTB_OPTS += -smp $(CPUS) # vCPU 개수. 현재 기본값은 3이고, make CPUS=1로 재정의 가능
+QEMU_DTB_OPTS += -nographic # 그래픽 끄고 stdio로 콘솔 사용(Ctrl-a x로 종료)
+
+qemu-dtb: $K/kernel.elf
+	$(QEMU) $(QEMU_DTB_OPTS)
+
 clean:
 	rm -f $K/kernel.elf \
 		$K/*.o
