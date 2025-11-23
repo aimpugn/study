@@ -15,6 +15,7 @@
     - [qemu 종료 방법](#qemu-종료-방법)
     - ['a'가 아니라 'aaa'로 출력되는 이유](#a가-아니라-aaa로-출력되는-이유)
     - [DTB(Device Tree Blob)와 `dtc`(Device Tree Compiler)](#dtbdevice-tree-blob와-dtcdevice-tree-compiler)
+    - [GDB로 디버깅](#gdb로-디버깅)
 
 ## xv6와 riscv
 
@@ -180,7 +181,7 @@ make: *** [kernel/kernel.elf] Error 1
 레딧 답변을 보면 기본 [코드 모델](https://github.com/riscv-non-isa/riscv-elf-psabi-doc/blob/master/riscv-elf.adoc#code-models)이 [`medlow`라서 발생](https://www.reddit.com/r/RISCV/comments/1autmk1/r_riscv_hi20_error)합니다.
 
 ```sh
-The default code model, and the only one that uses absolute addressing (which HI20 is for) is medlow, which requires your code to live in low memory (first ~2 GiB, and technically also the last ~2 GiB counts too), but you’re presumably linking at an address outside that range. You’ll need to either change your link address to be within that range or switch to the medany code model. See https://github.com/riscv-non-isa/riscv-elf-psabi-doc/blob/master/riscv-elf.adoc#code-models if you want the details.
+The default code model, and the only one that uses absolute addressing (which HI20 is for) is medlow, which requires your code to live in low memory (first ~2 GiB, and technically also the last ~2 GiB counts too), but you're presumably linking at an address outside that range. You'll need to either change your link address to be within that range or switch to the medany code model. See https://github.com/riscv-non-isa/riscv-elf-psabi-doc/blob/master/riscv-elf.adoc#code-models if you want the details.
 ```
 
 링커가 HI20/LO12를 맞추는 과정에서 주소가 표현 범위를 넘으면
@@ -207,7 +208,7 @@ addi a0, a0, %lo(symbol)
 qemu virt 보드에서 DRAM은 0x80000000에 매핑됩니다.
 0x7FFF_FFFF(= 2 GiB – 1)보다 크기 때문에 `medlow` 범위를 벗어납니다.
 
-> The ranges on RV64 are not `0x0` ~ `0x000000007FFFFFFF` and `0xFFFFFFFF80000000` ~ `0xFFFFFFFFFFFFFFFF` due to RISC-V’s sign-extension of immediates; the following code fragments show where the ranges come from:
+> The ranges on RV64 are not `0x0` ~ `0x000000007FFFFFFF` and `0xFFFFFFFF80000000` ~ `0xFFFFFFFFFFFFFFFF` due to RISC-V's sign-extension of immediates; the following code fragments show where the ranges come from:
 
 ```asm
 # Largest postive number:
@@ -712,3 +713,491 @@ dtc -I dtb -O dts virt.dtb > virt.dts
 - `#size-cells = <0x02>;`: 크기(메모리 범위)도 2셀(64비트 폭)로 사용
 
 이렇게 정하면 자식 노드의 `reg` 속성은 `[addr_hi, addr_lo, size_hi, size_lo]` 네 개의 셀로 고정됩니다.
+
+## GDB로 디버깅
+
+- `make qemu CPUS=1 QEMU_OPTS+=" -S -s"` 실행하여 완전히 멈춘 상태로 둡니다
+
+    ```sh
+    ❯ make qemu CPUS=1 QEMU_OPTS+=" -S -s"
+    riscv64-elf-gcc -march=rv64gc  -mabi=lp64  -Wall  -mcmodel=medany  -ffreestanding  -nostartfiles  -c -o kernel/printf.o kernel/printf.c
+    riscv64-elf-ld -z max-page-size=4096  -T kernel/kernel.ld -o kernel/kernel.elf kernel/entry.o kernel/printf.o kernel/start.o kernel/main.o
+    qemu-system-riscv64 -S -s
+    ```
+
+    - `-S`: CPU를 리셋 직후, 첫 명령을 실행하기 전 상태에 멈춰 둡니다.
+    - `-s`: `-gdb tcp::1234`와 동일합니다. QEMU가 1234 포트에서 GDB 접속을 대기합니다.
+    - `CPUS=1`: 관찰하기 쉽도록 하나의 hart만 켭니다.
+
+- 별도의 터미널에서 `riscv64-elf-gdb kernel/kernel.elf` 실행
+
+    ```sh
+    ❯ riscv64-elf-gdb kernel/kernel.elf
+    GNU gdb (GDB) 16.3
+    Copyright (C) 2024 Free Software Foundation, Inc.
+    License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+    This is free software: you are free to change and redistribute it.
+    There is NO WARRANTY, to the extent permitted by law.
+    Type "show copying" and "show warranty" for details.
+    This GDB was configured as "--host=aarch64-apple-darwin24.4.0 --target=riscv64-elf".
+    Type "show configuration" for configuration details.
+    For bug reporting instructions, please see:
+    <https://www.gnu.org/software/gdb/bugs/>.
+    Find the GDB manual and other documentation resources online at:
+        <http://www.gnu.org/software/gdb/documentation/>.
+
+    For help, type "help".
+    Type "apropos word" to search for commands related to "word"...
+    Reading symbols from kernel/kernel.elf...
+    (No debugging symbols found in kernel/kernel.elf)
+    (gdb) set pagination off
+    (gdb) target remote :1234
+    Remote debugging using :1234
+    0x00000000800004f0 in ?? ()
+    ```
+
+```sh
+(gdb) monitor xp /1bx 0x10000005
+```
+
+- `xp`는 "physical address를 x (hex) 형태로 출력"하는 QEMU 모니터 명령입니다.
+- `/1b`는 1바이트를 16진수로 보겠다는 뜻입니다.
+- 결과가 0x20 또는 0x60처럼 나오면 THR Empty 비트가 1이라는 의미입니다.
+
+  make qemu CPUS=1 QEMU_OPTS+=" -S -s -monitor telnet:127.0.0.1:4444,server,nowait"
+
+```sh
+❯ make qemu-gdb CPUS=1
+qemu-system-riscv64 -machine virt  -bios none  -kernel kernel/kernel.elf  -m 128M -smp 1  -nographic  -S -s -monitor telnet:127.0.0.1:4444,server,nowait
+```
+
+- 기존 `-S -s`로 CPU를 정지시키고 gdbstub를 열어 둔 상태 그대로 유지하면서,
+- 추가로 QEMU 모니터를 127.0.0.1:4444 텔넷 포트에 붙여 놓습니다. 다른 포트를 사용할 수도 있습니다.
+
+    `telnet 127.0.0.1 4444` 또는 `nc 127.0.0.1 4444` 등으로 접속하면
+    모니터 프롬프트(`(qemu)`)를 바로 받을 수 있습니다.
+
+- UNIX 소켓을 사용할 수도 있습니다: `-monitor unix:/tmp/qemu-monitor,server,nowait`
+
+1. `nc 127.0.0.1 4444`: QEMU 모니터(HMP, 텔넷으로 붙는 창)
+
+    QEMU 자체(에뮬레이터)가 대상입니다. 게스트 OS가 아니라 '에뮬레이터 내부 상태와 장치'를 다룹니다.
+
+    QEMU가 에뮬레이터 자신에게 요청하여 장치의 물리 메모리(MMIO)를 읽어 주기 때문에 MMIO가 잘 보입니다.
+    `xp /1bx 0x10000005`로 UART LSR 같은 장치 레지스터를 바로 볼 수 있습니다.
+
+    ```sh
+    (gdb) xp /1bx 0x10000005
+    ```
+
+    그래서 장치 상태 관찰에 사용합니다.
+    `xp`(물리 메모리 읽기), `info mtree`(장치 맵), `help` 등의 명령어가 가능합니다.
+
+2. `riscv64-elf-gdb`: QEMU gdbstub(원격 GDB)
+
+    GDB는 게스트 CPU/프로세스가 대상으로, QEMU `gdbstub`에 붙어 "게스트 CPU/코드"를 조종합니다.
+    한 줄씩 실행하고 함수 경계에서 멈추고, 레지스터 전달값을 확인하는 데 최적입니다.
+    명령 단위 스텝, 브레이크포인트, 함수 호출 등 '코드 디버깅이 목적'입니다.
+
+    반대로, `gdbstub`은 보통 MMIO를 직접 읽는 `x` 패킷을 제한하므로 GDB에서 `x/...`로 MMIO를 읽으려 하면 실패합니다.
+
+    `run`/`step`/`break`/`call`(함수 호출), 게스트 RAM 읽기/쓰기(`x`, `set`) 등이 가능합니다.
+    - GDB의 `x`는 "게스트 메모리"를 읽는 명령이고, `gdbstub`은 보통 RAM만 허용합니다.
+    - 그래서 장치 MMIO 는 gdbstub에서 거부해 “Cannot access memory”가 뜹니다.
+
+    심볼을 써서 함수/변수에 접근할 수 있습니다.
+
+`xp`는 물리 주소를 덤프하는 명령이고, `/1bx`는 1바이트를 16진수로 보겠다는 의미입니다.
+
+```sh
+# LSR
+(qemu) xp /1bx 0x10000005
+xp /1bx 0x10000005
+0000000010000005: 0x60
+```
+
+`LSR`이 0x10000005에서 0x60이 읽힌다는 것은 레지스터가 1바이트 간격(reg‑shift=0)이라는 의미입니다.
+그리고 `THR Empty`(0x20) + `Transmitter Empty`(0x40)로 "지금 당장 써도 된다"는 뜻입니다.
+이제 실제로 `THR`(0x10000000)에 `"a"`(0x61)가 기록되는 것을 확인할 수 있습니다.
+
+만약 0x10000014는 4바이트 간격(reg‑shift=2)을 가정할 경우 "Cannot access memory"라고 나와야 정상입니다.
+
+```sh
+(qemu) xp /1bx 0x10000014
+xp /1bx 0x10000014
+0000000010000014: Cannot access memory
+```
+
+"a"가 출력되는 과정을 디버깅해보기 위해 다음과 같이 HMP와 gdbstub에 붙어봅니다.
+
+HMP에 붙는 과정은 다음과 같습니다.
+
+```sh
+telnetl 127.0.0.1 4444
+```
+
+그리고 `info mtree`로 'serial@10000000'이 '0x10000000..0x100000ff'로 매핑되어 있는지 확인합니다.
+
+```sh
+address-space: I/O
+  0000000000000000-000000000000ffff (prio 0, i/o): io
+
+address-space: cpu-memory-0
+address-space: memory
+  # memory 아래가 게스트 물리 주소 공간의 장치/메모리 배치입니다. 괄호의 태그는 유형입니다.
+  # i/o: 메모리 맵드 I/O(MMIO)
+  0000000000000000-ffffffffffffffff (prio 0, i/o): system
+    # rom/romd: 읽기 전용(펌웨어/플래시 등)
+    0000000000001000-000000000000ffff (prio 0, rom): riscv_virt_board.mrom
+    0000000000100000-0000000000100fff (prio 0, i/o): riscv.sifive.test
+    0000000000101000-0000000000101023 (prio 0, i/o): goldfish_rtc
+    0000000002000000-0000000002003fff (prio 0, i/o): riscv.aclint.swi
+    0000000002004000-000000000200bfff (prio 0, i/o): riscv.aclint.mtimer
+    0000000003000000-000000000300ffff (prio 0, i/o): gpex_ioport_window
+      0000000003000000-000000000300ffff (prio 0, i/o): gpex_ioport
+    0000000004000000-0000000005ffffff (prio 0, i/o): platform bus
+    000000000c000000-000000000c5fffff (prio 0, i/o): riscv.sifive.plic
+    # 0x10000000–0x10000007
+    # - 길이가 정확히 8바이트이므로, ns16550a 레지스터가 1바이트 간격(reg‑shift=0)으로 8개(오프셋 0..7) 배치됐음을 뜻합니다.
+    # - 따라서 주소는 "BASE + 오프셋" 그대로입니다.
+    # - THR=0x10000000, IER=0x10000001, FCR/IIR=0x10000002, LCR=0x10000003, LSR=0x10000005
+    0000000010000000-0000000010000007 (prio 0, i/o): serial
+    0000000010001000-00000000100011ff (prio 0, i/o): virtio-mmio
+    0000000010002000-00000000100021ff (prio 0, i/o): virtio-mmio
+    0000000010003000-00000000100031ff (prio 0, i/o): virtio-mmio
+    0000000010004000-00000000100041ff (prio 0, i/o): virtio-mmio
+    0000000010005000-00000000100051ff (prio 0, i/o): virtio-mmio
+    0000000010006000-00000000100061ff (prio 0, i/o): virtio-mmio
+    0000000010007000-00000000100071ff (prio 0, i/o): virtio-mmio
+    0000000010008000-00000000100081ff (prio 0, i/o): virtio-mmio
+    0000000010100000-0000000010100007 (prio 0, i/o): fwcfg.data
+    0000000010100008-0000000010100009 (prio 0, i/o): fwcfg.ctl
+    0000000010100010-0000000010100017 (prio 0, i/o): fwcfg.dma
+    0000000020000000-0000000021ffffff (prio 0, romd): virt.flash0
+    0000000022000000-0000000023ffffff (prio 0, romd): virt.flash1
+    0000000030000000-000000003fffffff (prio 0, i/o): alias pcie-ecam @pcie-mmcfg-mmio 0000000000000000-000000000fffffff
+    0000000040000000-000000007fffffff (prio 0, i/o): alias pcie-mmio @gpex_mmio_window 0000000040000000-000000007fffffff
+    # ram: 실제 RAM
+    # - 0x80000000–0x87ffffff (128 MiB)
+    # - 커널 링크 주소(0x8000_0000)와 일치합니다.
+    0000000080000000-0000000087ffffff (prio 0, ram): riscv_virt_board.ram
+    0000000400000000-00000007ffffffff (prio 0, i/o): alias pcie-mmio-high @gpex_mmio_window 0000000400000000-00000007ffffffff
+
+address-space: gpex-root
+  0000000000000000-ffffffffffffffff (prio 0, i/o): bus master container
+
+memory-region: pcie-mmcfg-mmio
+  0000000000000000-000000000fffffff (prio 0, i/o): pcie-mmcfg-mmio
+
+memory-region: gpex_mmio_window
+  0000000000000000-ffffffffffffffff (prio 0, i/o): gpex_mmio_window
+    0000000000000000-ffffffffffffffff (prio 0, i/o): gpex_mmio
+
+memory-region: system
+  0000000000000000-ffffffffffffffff (prio 0, i/o): system
+    0000000000001000-000000000000ffff (prio 0, rom): riscv_virt_board.mrom
+    0000000000100000-0000000000100fff (prio 0, i/o): riscv.sifive.test
+    0000000000101000-0000000000101023 (prio 0, i/o): goldfish_rtc
+    0000000002000000-0000000002003fff (prio 0, i/o): riscv.aclint.swi
+    0000000002004000-000000000200bfff (prio 0, i/o): riscv.aclint.mtimer
+    0000000003000000-000000000300ffff (prio 0, i/o): gpex_ioport_window
+      0000000003000000-000000000300ffff (prio 0, i/o): gpex_ioport
+    0000000004000000-0000000005ffffff (prio 0, i/o): platform bus
+    000000000c000000-000000000c5fffff (prio 0, i/o): riscv.sifive.plic
+    0000000010000000-0000000010000007 (prio 0, i/o): serial
+    0000000010001000-00000000100011ff (prio 0, i/o): virtio-mmio
+    0000000010002000-00000000100021ff (prio 0, i/o): virtio-mmio
+    0000000010003000-00000000100031ff (prio 0, i/o): virtio-mmio
+    0000000010004000-00000000100041ff (prio 0, i/o): virtio-mmio
+    0000000010005000-00000000100051ff (prio 0, i/o): virtio-mmio
+    0000000010006000-00000000100061ff (prio 0, i/o): virtio-mmio
+    0000000010007000-00000000100071ff (prio 0, i/o): virtio-mmio
+    0000000010008000-00000000100081ff (prio 0, i/o): virtio-mmio
+    0000000010100000-0000000010100007 (prio 0, i/o): fwcfg.data
+    0000000010100008-0000000010100009 (prio 0, i/o): fwcfg.ctl
+    0000000010100010-0000000010100017 (prio 0, i/o): fwcfg.dma
+    0000000020000000-0000000021ffffff (prio 0, romd): virt.flash0
+    0000000022000000-0000000023ffffff (prio 0, romd): virt.flash1
+    0000000030000000-000000003fffffff (prio 0, i/o): alias pcie-ecam @pcie-mmcfg-mmio 0000000000000000-000000000fffffff
+    0000000040000000-000000007fffffff (prio 0, i/o): alias pcie-mmio @gpex_mmio_window 0000000040000000-000000007fffffff
+    0000000080000000-0000000087ffffff (prio 0, ram): riscv_virt_board.ram
+    0000000400000000-00000007ffffffff (prio 0, i/o): alias pcie-mmio-high @gpex_mmio_window 0000000400000000-00000007ffffffff
+```
+
+이를 통해 virt 보드 메모리 맵이 정상적으로 잡혔음을 나타냅니다.
+또한 serial 범위가 0x10000000–0x10000007로 짧게 잡힌 덕분에 reg‑shift가 0임을 확정할 수 있습니다.
+
+- `xp /1bx 0x10000005`: LSR이 '0x20' 또는 '0x60'이면 송신 가능 상태입니다.
+- `xp /1bx 0x10000003`: LCR 최종값이 '0x03'(`8N1`)인지 반드시 확인합니다.
+    만약 '0x83'이라면 `DLAB=1`이 켜진 상태라 `THR`에 쓰는 바이트가 `DLL`로 샙니다.
+    이는 문자 미출력의 대표 원인입니다.
+
+    ```sh
+    (qemu) xp /1bx 0x10000003
+    0000000010000003: 0x00
+    ```
+
+    이는 `LCR`(Line Control Register)이 리셋 직후의 기본값 그대로라는 뜻입니다.
+
+    ns16550A의 `LCR` 비트는 다음과 같이 정의됩니다:
+    - 하위 2비트는 데이터 비트 수(00=5비트, 01=6비트, 10=7비트, 11=8비트),
+    - 그다음은 스톱 비트(0=1스톱),
+    - 패리티 사용/종류,
+    - 브레이크,
+    - 최상위 비트는 DLAB(Divisor Latch Access Bit)입니다.
+
+    따라서 `LCR=0x00`은 "5비트 데이터, 1스톱, 패리티 없음, 브레이크 꺼짐, DLAB=0" 상태를 의미합니다
+
+    여기서 `0x00`인 이유는 아직 커널 초기화가 실행되지 않았기 때문입니다.
+    `-S -s`로 QEMU를 띄우면 CPU는 리셋 직후(MROM 0x1000 부근)에서 멈춰있고,
+    커널의 '_entry => start => main => uart_init' 흐름이 실행되기 전입니다.
+
+    ns16550A의 `LSR`은 리셋 직후에도 `THRE`/`TEMT`(0x60)가 1로 읽히는반면,
+    `LCR`은 '0x00'이 기본값이므로 `LSR=0x60`, `LCR=0x00` 조합은 아직 `LCR`을 세팅하지 않았다는 의미이며,
+    `uart_init`이 돌지 않았다는 의미입니다.
+
+gdbstub에 붙는 과정은 다음과 같습니다.
+
+```sh
+❯ e
+GNU gdb (GDB) 16.3
+Copyright (C) 2024 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+Type "show copying" and "show warranty" for details.
+This GDB was configured as "--host=aarch64-apple-darwin24.4.0 --target=riscv64-elf".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<https://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+    <http://www.gnu.org/software/gdb/documentation/>.
+
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Reading symbols from kernel/kernel.elf...
+(No debugging symbols found in kernel/kernel.elf)
+(gdb) break uart_init
+Breakpoint 1 at 0x800000a4
+(gdb) break uart_puts_sync
+Breakpoint 2 at 0x800000e6
+(gdb) continue
+The program is not being run.
+```
+
+"The program is not being run."은 커널이 멈춰 있어서가 아니라, GDB가 "아직 원격 대상(QEMU gdbstub)에 붙어 있지 않다"는 뜻입니다.
+같은 세션에서 브레이크포인트는 미리(오프라인으로) 걸 수 있지만, 연결하지 않은 상태에서 `continue`를 입력했기 때문입니다.
+
+따라서 먼저 "붙는다 -> 멈춘 지점 확인 -> 실행을 진행한다" 순서를 확실히 밟아야 합니다:
+- QEMU를 `-S -s`로 띄우면 CPU는 "리셋 직후 정지 상태"입니다. 이 상태는 프로그램이 종료된 게 아니라, 아직 한 줄도 실행하지 않은 초기 정지 상태입니다.
+- HMP(텔넷 모니터)는 QEMU 자체와 대화합니다. 그래서 `xp`로 MMIO를 읽을 수 있지만, 코드 흐름(`continue`/`step`/`break`)은 GDB가 맡아야 합니다.
+- GDB는 QEMU의 `gdbstub`와 "TCP로 붙어야만" 원격 CPU를 제어할 수 있습니다. 붙지 않은 상태에서 `continue`를 입력하면 "The program is not being run."라고 나옵니다.
+
+GDB가 QEMU에 TCP로 붙기 위해서 `target remote :1234`를 입력합니다.
+
+```sh
+(gdb) target remote :1234
+Remote debugging using :1234
+0x0000000000001000 in ?? ()
+```
+
+그리고 타겟에 대한 정보를 출력해 봅니다.
+
+```sh
+(gdb) info target
+Symbols from "/Users/rody/VscodeProjects/study/computer_architecture/ostep/xv6-riscv/kernel/kernel.elf".
+Remote target using gdb-specific protocol:
+    `/Users/rody/VscodeProjects/study/computer_architecture/ostep/xv6-riscv/kernel/kernel.elf', file type elf64-littleriscv.
+    Entry point: 0x80000000
+    0x0000000080000000 - 0x0000000080000174 is .text
+    0x0000000080001000 - 0x000000008000b000 is .bss
+    While running this, GDB does not access memory from...
+Local exec file:
+    `/Users/rody/VscodeProjects/study/computer_architecture/ostep/xv6-riscv/kernel/kernel.elf', file type elf64-littleriscv.
+    Entry point: 0x80000000
+    0x0000000080000000 - 0x0000000080000174 is .text
+    0x0000000080001000 - 0x000000008000b000 is .bss
+```
+
+`x/i $pc`를 입력하면  대개 0x0000000000001000 부근(MROM)의 명령 한 줄이 보입니다.
+이 시점은 아직 커널 코드로 진입 전입니다.
+
+```sh
+(gdb) x/i $pc
+=> 0x1000:    auipc    t0,0x0
+```
+
+현재 걸린 중단점을 확인할 수도 있습니다.
+
+```sh
+(gdb) info break
+Num     Type           Disp Enb Address            What
+1       breakpoint     keep y   0x00000000800000a4 <uart_init+12>
+2       breakpoint     keep y   0x00000000800000e6 <uart_puts_sync+10>
+```
+
+`continue`를 입력하여 진행할 수 있습니다.
+
+```sh
+(gdb) continue
+Continuing.
+```
+
+만약 아무 반응이 없으면 Ctrl‑C로 중단해서 PC를 읽고(아래), 브레이크가 올바르게 풀렸는지 재확인합니다.
+아래의 경우 Ctrl‑C로 중단시키는 순간의 PC가 `start()` 안에 있었다는 의미입니다.
+이 커널의 [start.c](./kernel/start.c)를 보면 `main()`을 호출한 뒤 `for(;;) wfi;`로 "무한 대기(인터럽트 대기) 루프"에 들어갑니다. `-bios none` 환경에서 따로 인터럽트를 발생시키지 않으면 CPU는 그 wfi 루프에서 영원히 멈춰 보입니다.
+
+그래서 Ctrl‑C로 끊으면 지금 실행 중인 위치가 `start()`로 잡힙니다.
+
+```sh
+^C
+Program received signal SIGINT, Interrupt.
+0x000000008000012e in start ()
+```
+
+근데 위에서 Continuing인 동안 0x10000005 값을 확인해보면 0x61로 변경이 되어 있습니다.
+
+```sh
+(qemu) xp /1bx 0x10000003
+0000000010000003: 0x00
+(qemu) xp /1bx 0x10000005
+0000000010000005: 0x61
+```
+
+LSR 비트 구성(16550A):
+- bit0=0x01: Data Ready (수신 버퍼 RBR에 바이트가 도착)
+- bit5=0x20: THRE (송신 홀딩 레지스터 비움)
+- bit6=0x40: TEMT (송신 시프트 레지스터까지 비움)
+
+0x61 = 0b 0110 0001 = TEMT(1) + THRE(1) + DR(1)
+
+이는 수신 경로에 문자가 들어왔다는 뜻입니다.
+숫자 0x61이 우연히 ASCII ‘a’와 같지만, 이 값은 "상태 레지스터의 비트 패턴"이지 ‘a’를 의미하는 게 아닙니다.
+
+또한 "송신이 실행되었다"는 증거는 아닙니다.
+`LSR`의 `THRE`/`TEMT`이 1인 건 "언제든 THR에 써도 된다"는 의미이고, `DR=1`은 입력 바이트가 준비됐다는 의미입니다.
+
+```sh
+# HMP에서 확인
+(qemu) xp /1bx 0x10000000
+0000000010000000: 0x78
+```
+
+수신 경로가 살아 있어 `DR=1`로 바뀐 것이고, 송신 초기화(`uart_init`)가 아직 `LCR`을 0x03으로 바꾸지 못한 상태입니다.
+즉, a가 출력되었다는 의미가 아닙니다.
+'a' 출력은 "송신 경로에서 `THR`(0x10000000)에 0x61을 쓰는 순간"이 있어야 합니다.
+
+중단점을 지우고 다시 시도해 봅니다.
+정확한 지점에 중단점을 설정하기 위해 심볼 주소를 확인합니다.
+
+`-g` 없이 최적화/정렬 변화가 있으면 GDB가 "b main"을 애매하게 해석할 수 있다고 합니다.
+그래서 `nm`으로 확인한 정확한 진입 주소에 걸어주는 게 확실하다고 합니다.
+
+```sh
+❯ riscv64-elf-nm -n kernel/kernel.elf | rg ' (main|uart_init|uart_puts_sync)$'
+0000000080000098 T uart_init
+00000000800000dc T uart_puts_sync
+0000000080000156 T main
+```
+
+또는 `gdbstub`에서 `info address`를 사용합니다.
+
+```sh
+(gdb) info address main
+Symbol "main" is at 0x80000156 in a file compiled without debugging.
+(gdb) info address uart_init
+Symbol "uart_init" is at 0x80000098 in a file compiled without debugging.
+(gdb) info address uart_puts_sync
+Symbol "uart_puts_sync" is at 0x800000dc in a file compiled without debugging.
+```
+
+그리고 해당 주소에 대해 임시 중단점을 설정합니다.
+
+```sh
+(gdb) tbreak *0x80000156
+Temporary breakpoint 1 at 0x80000156
+(gdb) tbreak *0x80000098
+Temporary breakpoint 2 at 0x80000098
+(gdb) tbreak *0x800000dc
+Temporary breakpoint 3 at 0x800000dc
+```
+
+그리고 HMP에서 `system_reset`를 입력하고, 다시 `gdbstub`에서 `continue`를 입력합니다.
+
+```sh
+(gdb) continue
+Continuing.
+
+
+^C
+Program received signal SIGINT, Interrupt.
+0x0000000080000148 in start ()
+(gdb) x/i $pc
+=> 0x80000148 <start+52>:    bltu    a4,a5,0x8000012a <start+22>
+```
+
+`0x80000148 <start+52>`는 `start` 함수 시작 주소에서 52바이트 떨어진 기계어 위치를 의미합니다.
+즉, C 소스의 52번째 줄이 아닙니다. 라인 정보(`-g`)가 없어서 GDB가 바이트 오프셋으로만 표기합니다.
+
+그리고 'continue -> Ctrl^C -> `x/i $pc`' 를 반복하면 계속 결과는 바뀝니다.
+
+```sh
+Program received signal SIGINT, Interrupt.
+0x0000000080000136 in start ()
+(gdb) x/i $pc
+=> 0x80000136 <start+34>:    addi    a5,a5,1
+(gdb) continue
+Continuing.
+
+^C
+Program received signal SIGINT, Interrupt.
+0x000000008000013c in start ()
+(gdb) x/i $pc
+=> 0x8000013c <start+40>:    ld    a4,-24(s0)
+(gdb) continue
+Continuing.
+
+^C
+Program received signal SIGINT, Interrupt.
+0x0000000080000144 in start ()
+(gdb) x/i $pc
+=> 0x80000144 <start+48>:    addi    a5,a5,-320
+(gdb) continue
+Continuing.
+
+^C
+Program received signal SIGINT, Interrupt.
+0x0000000080000148 in start ()
+(gdb) x/i $pc
+=> 0x80000148 <start+52>:    bltu    a4,a5,0x8000012a <start+22>
+(gdb) continue
+Continuing.
+
+^C
+Program received signal SIGINT, Interrupt.
+0x0000000080000140 in start ()
+(gdb) x/i $pc
+=> 0x80000140 <start+44>:    auipc    a5,0xb
+```
+
+HMP에서 `system_reset`을 치면 QEMU는 즉시 리셋 및 재실행합니다.
+이때 브레이크포인트를 메모리에 심어 둔 `ebreak`가 리셋 과정에서 사라질수 있습니다.
+일반적으로 GDB는 `continue` 시점마다 브레이크를 재삽입하지만,
+리셋 직후 이미 CPU가 달려서(`main` 호출을 지나) `start`의 `wfi` 루프까지 가버리면 못 잡습니다.
+
+`tbreak *0x80000156`가 올바르게 작동하게 하려면 "리셋 직후 즉시 정지" 상태를 확보하고,
+그 상태에서 브레이크포인트를 재확인한 다음 진행해야 합니다.
+
+아직 BSS 제로화 루프를 도는 중이었고(`0x8000012a`로 분기하는 `bltu`), `main()` 진입 직전에서 멈춘 것으로 보입니다.
+`wfi`는 `main()`이 끝난 뒤에야 실행되므로 아직 `wfi`가 아닙니다.
+HMP에서 `LCR=0x00`, `LSR=0x60`인 것도 초기화 전, 리셋 기본 상태를 의미합니다.
+
+`LSR=0x61`로 보였던 것은 수신 바이트가 들어왔다는 뜻이지만, 순서상 'a' 송신과는 무관합니다.
+
+```sh
+(gdb) x/i $pc
+▌ => 0x8000012e <start+26>:    sb    zero,0(a5)
+```
+
+'start+26'의 `sb zero, 0(a5)`는 메모리 a5에 0을 1바이트 저장하라는 명령입니다.
+즉 BSS 제로화 루프의 본문입니다.

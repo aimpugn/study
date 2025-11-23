@@ -16,4 +16,4 @@
 [workspace]
 # https://doc.rust-lang.org/cargo/reference/resolver.html#resolver-versions
 resolver = "3"
-members = ["ch01_ownership"]
+members = ["ch01_ownership", "ch02_pattern_enum"]
