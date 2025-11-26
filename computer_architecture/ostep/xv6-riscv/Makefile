@@ -115,7 +115,7 @@ QEMU_GDB_OPTS += -bios none # 펌웨어 없이 `-kernel`로 준 바이너리를 
 QEMU_GDB_OPTS += -kernel $K/kernel.elf # 앞서 생성한 ELF를 커널로 사용
 QEMU_GDB_OPTS += -m $(MEMORY)
 QEMU_GDB_OPTS += -smp $(CPUS) # vCPU 개수. 현재 기본값은 3이고, make CPUS=1로 재정의 가능
-QEMU_GDB_OPTS += -nographic # 그래픽 끄고 stdio로 콘솔 사용(Ctrl-a x로 종료)
+#QEMU_GDB_OPTS += -nographic # 그래픽 끄고 stdio로 콘솔 사용(Ctrl-a x로 종료)
 # - `-S`: QEMU가 CPU를 reset 상태에서 정지시킵니다. 전원이 들어갔지만 아직 한 줄도 실행하지 않은 상태에 해당합니다.
 # - `-s`: `-gdb tcp::1234`와 동일합니다. TCP 포트 1234에서 GDB 접속을 대기하도록
 #         QEMU 안에 간단한 gdbstub을 띄웁니다.

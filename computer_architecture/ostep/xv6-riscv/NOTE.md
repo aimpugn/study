@@ -1201,3 +1201,92 @@ HMP에서 `LCR=0x00`, `LSR=0x60`인 것도 초기화 전, 리셋 기본 상태�
 
 'start+26'의 `sb zero, 0(a5)`는 메모리 a5에 0을 1바이트 저장하라는 명령입니다.
 즉 BSS 제로화 루프의 본문입니다.
+
+---
+
+그런데 bss 초기화 부분을 아래와 같이 주석처리한 후,
+
+```c
+    // char *p = __bss_start__;
+    // while (p < __bss_end__)
+    //     *p++ = 0;
+```
+
+`make qemu`를 실행해보면 "ab"가 출력됩니다.
+
+```sh
+❯ make qemu
+riscv64-elf-gcc -march=rv64gc  -mabi=lp64  -Wall  -mcmodel=medany  -ffreestanding  -nostartfiles  -c -o kernel/main.o kernel/main.c
+riscv64-elf-ld -z max-page-size=4096  -g  -T kernel/kernel.ld -o kernel/kernel.elf kernel/entry.o kernel/printf.o kernel/start.o kernel/main.o
+qemu-system-riscv64 -machine virt -bios none -kernel kernel/kernel.elf  -m 32M -smp 3  -nographic
+ab
+c
+```
+
+이에 대해 gpt 등에 확인을 해보면,
+
+이 루프는 BSS 전체를 0으로 채우라는 C 표준 요구사항을 만족시키려던 부분입니다.
+
+그런데 **`stack0` 자체가 `.bss` 안에 놓여 있고 동시에 현재 스택으로 쓰이고 있어서** 이렇게 초기화하면 `stack0`까지 모두 0으로 덮어쓰게 됩니다.
+
+기존에 [start.c](./kernel/start.c)에서 `stack0`를 아래와 같이 선언했습니다.
+
+```c
+__attribute__((aligned(16))) char stack0[(256 * 16) * MAXCPU];
+```
+
+그런데 이 전역 배열은 **초기값이 없으므로 `.bss`에 배치**되고, 링커 스크립트는 `.sdata` 다음에 `.sbss`/`.bss` 전체를 `__bss_start` ~ `__bss_end` 구간으로 정의합니다.
+
+[entry.S](./kernel/entry.S)에서는 `hart`별 스택을 `sp = &stack0 + 4096 * (hartid + 1)`로 잡도록 구성했습니다.
+
+```S
+    la      sp, stack0          // stack0 심볼의 주소를 sp에 로드합니다. 스택 풀의 베이스 주소가 됩니다.
+                                // 이떄 stack0는 C 코드 어디선가 정의되어 있어야 합니다.
+                                // e.g. __attribute__((aligned(16))) char stack0[4096 * NCPU];
+    li      t1, 4096            // 하트당 스택 크기를 4096(1024 * 4)으로 잡습니다.
+    addi    t2, t0, 1           // t2 <= hartid + 1 (스택 상단으로 이동하기 위함)
+    mul     t1, t1, t2          // t1 <= 4096 * (hartid + 1)
+    add     sp, sp, t1          // sp <= &stack0 + 4096 * (hartid + 1)
+```
+
+그러면 `boot_primary` 심볼에서 `call start`를 하고 바로 bss 제로화를 수행했습니다.
+
+문제는 이 루프가 **`.bss` 전체, 즉 `stack0`까지 전부 0으로 초기화**하고 **현재 사용 중인 스택 프레임까지 실시간으로 초기화**해 버렸습니다.
+
+`start()` 함수가 실행되는 동안 컴파일러는 지역 변수 `p`와 리턴 주소 등을 `stack0` 영역에 쌓아 두는데,
+루프가 진행되면서 그 영역까지 덮어써 버려서 리턴 주소가 깨지고, 결국 `main()`에 정상적으로 도달할 수 없었던 것으로 보입니다.
+
+그래서 bss 초기화하는 부분을 주석처리하면 스택을 더이상 지우지 않기 때문에 ab 등의 문자가 의도대로 출력됩니다.
+
+전통적인 커널이나 부트로더에서는 두 가지 중 하나로 해결한다고 합니다.
+
+1. BSS 제로화를 스택을 쓰기 전에 수행합니다.
+
+    예컨대 원본 xv6-riscv의 `entry.S`는 `la sp, stack0`을 하기 전에 `la a0, _edata; la a1,_end`를
+    읽어 `while (a0 < a1) { sd zero, 0(a0); a0 += 8; }` 같은 루프를 돌립니다.
+
+    즉, 레지스터만 쓰면서 BSS를 초기화한 다음에야 `stack0`를 스택으로 전용합니다.
+    이렇게 하면 자기 스택을 덮어쓸 위험이 없습니다.
+
+2. BSS 중에서도 현재 스택으로 쓰는 부분을 제외하고 제로화한다.
+
+    예컨대 `__bss_start__`를 `stack0` 이전 섹션까지만 가리키게 조정하거나,
+    루프에서 `stack0` 시작 주소 전까지만 0으로 채우고, 각 `hart` 스택은 `memset`으로 따로 초기화합니다.
+
+1번 방식을 따른다면, [entry.S](./kernel/entry.S)의 `_entry`에서 `gp`/`sp`를 잡기 전에,
+또는 스택을 잠시 임시 버퍼로 잡은 뒤, 아래 같은 루프를 넣으면 됩니다.
+
+```asm
+    la   t0, **bss_start**
+    la   t1, **bss_end**
+1:  bge  t0, t1, 2f
+    sd   zero, 0(t0)
+    addi t0, t0, 8
+    j    1b
+2:
+```
+
+그 다음 지금처럼 `la sp, stack0` -> `call start` -> `main()`으로 이어지면
+`start()` 안에서는 더 이상 BSS를 직접 만질 필요가 없습니다.
+
+즉 **"현재 사용 중인 스택 메모리를 자기 손으로 지우지 말아야"** 합니다.

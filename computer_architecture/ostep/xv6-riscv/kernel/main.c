@@ -28,6 +28,7 @@ void main(void) {
     uart_puts_sync('a');
     uart_puts_sync('b');
     uart_puts_sync('\n');
+    uart_puts_sync('c');
     // // puts_sync("\nhello\n");
 
     // // 디버깅을 위해 눈에 확 띄는 문자열을 여러 번 출력합니다.

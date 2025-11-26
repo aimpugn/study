@@ -65,7 +65,7 @@
  *      - 직렬선(serial line)은 "TXD 핀을 따라 흘러가는 비트들의 경로"를 비유적으로 부르는 표현입니다.
  *      - TSR(Transmitter Shift Register)은 THR 바로 뒤에 연결된 하드웨어 내부 레지스터입니다.
  *      - THR에 값이 들어오고 TSR이 비어 있으면, UART는 THR 내용을 TSR로 복사한 뒤 THR을 비웁니다.
- *        이때 LSR.THRE 값이 다시 1이 됩니다
+ *        이때 LSR.THRE(Transmit Holding Register Empty, 0x20) 값이 다시 1이 됩니다
  *      - TSR은 데이터 비트들을 한 비트씩 왼쪽으로 밀어 내보내면서 실제 파이프라인(직렬 출력 핀)으로 흘려보냅니다.
  *        그래서 "Shift Register"라는 이름을 갖고 있습니다.
  *      - TSR이 비트를 밀어 넣는 실제 출력선은 UART 칩의 'TXD(Transmit Data) 핀'입니다.
@@ -115,11 +115,14 @@ enum {
     LCR_8N1        = 0x03, // 8 data bits, no parity, 1 stop bit
     FCR_FIFO_EN    = 0x01, // FIFO enable
     FCR_FIFO_CLR   = 0x06, // FIFO reset (송·수신 큐 비우기)
-    LSR_THRE       = 0x20, // THR Empty 상태
+    LSR_THRE       = 0x20, // THR(Transmit Holding Register) Empty 상태()
 };
 
 /**
- * 메모리 매핑 I/O(MMIO) 레지스터 접근을 위한 공통 프리미티브.
+ * 메모리 매핑 I/O(MMIO) 8비트 레지스터 접근을 위한 공통 프리미티브.
+ *
+ * 현재는 `uint8_t`를 대상으로 해서 사실상 바이트 단위 MMIO이지만,
+ * 32비트, 64비트 레지스터에 접근해야 할 경우 `mmio_read32`, `mmio_write32` 같은 함수를 정의합니다.
  */
 static inline uint8_t mmio_read8(uintptr_t base, int reg_offset) {
     // base는 장치의 MMIO 베이스 주소(UART_BASE 등)입니다.
@@ -130,7 +133,10 @@ static inline uint8_t mmio_read8(uintptr_t base, int reg_offset) {
 }
 
 /**
- * 메모리 매핑 I/O(MMIO) 레지스터 접근을 위한 공통 프리미티브.
+ * 메모리 매핑 I/O(MMIO) 8비트 레지스터 접근을 위한 공통 프리미티브.
+ *
+ * 현재는 `uint8_t`를 대상으로 해서 사실상 바이트 단위 MMIO이지만,
+ * 32비트, 64비트 레지스터에 접근해야 할 경우 `mmio_read32`, `mmio_write32` 같은 함수를 정의합니다.
  *
  * 레지스터에 들어 있는 값들을 더해서 어떤 물리 주소를 만들고,
  * 그 주소에 store 인스트럭션 한 번을 실행합니다.
