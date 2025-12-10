@@ -1,0 +1,18 @@
+server:
+  port: 8080
+
+spring:
+  threads:
+    virtual:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+binary:
+  server:
+    port: 9090
+    frame-length: 300

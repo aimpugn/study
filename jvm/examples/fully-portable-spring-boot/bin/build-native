@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-${0}}")" && pwd)"
+PROJECT_ROOT="${SCRIPT_DIR%/bin}"
+
+PLATFORM="macos"
+# Prefer a bundled GraalVM (bin/jdk-25) if present, otherwise try system GraalVM 25.
+GRAAL_HOME="./bin/graalvm/$PLATFORM"
+
+if [ -z "${GRAAL_HOME}" ] || [ ! -d "${GRAAL_HOME}" ]; then
+  echo "ERROR: GraalVM JDK 25 not found." >&2
+  echo "       - Either place it at bin/jdk-25," >&2
+  echo "       - or install it system-wide and ensure 'java_home -v 25' resolves GraalVM." >&2
+  exit 1
+fi
+
+if [ ! -x "${GRAAL_HOME}/bin/native-image" ]; then
+  echo "ERROR: 'native-image' tool not found in ${GRAAL_HOME}/bin" >&2
+  echo "       Make sure you installed a GraalVM distribution that includes native-image." >&2
+  exit 1
+fi
+
+export JAVA_HOME="${GRAAL_HOME}"
+export PATH="${JAVA_HOME}/bin:${PATH}"
+
+cd "${PROJECT_ROOT}"
+exec mvn -Pnative -DskipTests package
+

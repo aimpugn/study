@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.example</groupId>
+    <artifactId>fully-portable-spring-boot</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>fully-portable-spring-boot</name>
+    <description>Fully portable Spring Boot native image PoC with Picocli</description>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.4</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+
+    <properties>
+        <!-- Use Java 21 bytecode for compatibility with Spring Boot 3.3.x AOT tooling. -->
+        <java.version>21</java.version>
+        <native.maven.plugin.version>0.10.2</native.maven.plugin.version>
+        <picocli.version>4.7.5</picocli.version>
+        <!-- Controls whether spring-boot-maven-plugin repackage runs. -->
+        <spring-boot.repackage.skip>false</spring-boot.repackage.skip>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>info.picocli</groupId>
+            <artifactId>picocli</artifactId>
+            <version>${picocli.version}</version>
+        </dependency>
+
+        <!-- Picocli annotation processor for GraalVM native-image metadata (reflect-config etc.). -->
+        <dependency>
+            <groupId>info.picocli</groupId>
+            <artifactId>picocli-codegen</artifactId>
+            <version>${picocli.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.integration</groupId>
+            <artifactId>spring-integration-ip</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.18.0</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.integration</groupId>
+            <artifactId>spring-integration-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Enable Picocli annotation processing so native-image gets proper reflection config. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>info.picocli</groupId>
+                            <artifactId>picocli-codegen</artifactId>
+                            <version>${picocli.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                    <compilerArgs>
+                        <!-- Picocli-codegen이 native-image 메타데이터를 이 프로젝트 이름으로 생성하게 함 -->
+                        <arg>-Aproject=${project.groupId}/${project.artifactId}</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+            <!-- Default Spring Boot plugin configuration for JVM builds. -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- Use the Spring Boot main class for AOT processing and bootJar. -->
+                    <mainClass>com.example.portable.FullyPortableApplication</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- Linux static binary with musl for maximum portability. -->
+        <profile>
+            <id>native-musl</id>
+            <activation>
+                <property>
+                    <name>os.detected.name</name>
+                    <value>linux</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <version>${native.maven.plugin.version}</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <!-- Example output: target/fpsb-server-musl -->
+                            <imageName>fpsb-server-musl</imageName>
+                            <mainClass>com.example.portable.FullyPortableApplication</mainClass>
+                            <fallback>false</fallback>
+                            <buildArgs>
+                                <!-- Build a fully static binary against musl. -->
+                                <arg>--static</arg>
+                                <arg>--libc=musl</arg>
+                            </buildArgs>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>build-native-musl</id>
+                                <goals>
+                                    <goal>compile-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Native server binary: Spring Boot application only (no CLI), OS/arch-specific. -->
+        <profile>
+            <id>native-server</id>
+            <build>
+                <plugins>
+                    <!-- Run Spring AOT processing for the main application when building the native server. -->
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>process-aot</id>
+                                <goals>
+                                    <goal>process-aot</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <version>${native.maven.plugin.version}</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <!-- Example output: target/fpsb-server -->
+                            <imageName>fpsb-server</imageName>
+                            <mainClass>com.example.portable.FullyPortableApplication</mainClass>
+                            <!-- Use compiled classes (including Spring AOT output) as the classpath root. -->
+                            <classesDirectory>${project.build.outputDirectory}</classesDirectory>
+                            <fallback>false</fallback>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>build-native-server</id>
+                                <goals>
+                                    <goal>compile-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Native CLI binary: Picocli commands (stat, config, etc.), can talk to server over HTTP/TCP. -->
+        <profile>
+            <id>native-cli</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <version>${native.maven.plugin.version}</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <!-- Example output: target/fpsb-cli -->
+                            <imageName>fpsb-cli</imageName>
+                            <mainClass>com.example.portable.ApplicationMain</mainClass>
+                            <fallback>false</fallback>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>build-native-cli</id>
+                                <goals>
+                                    <goal>compile-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+</project>
