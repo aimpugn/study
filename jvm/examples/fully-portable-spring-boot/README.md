@@ -27,6 +27,7 @@ brew install --cask graalvm-jdk@25
 1. **JAR + 내장 JDK (JVM 모드, 개발/디버깅용)**  
 2. **네이티브 서버 바이너리 (`fpsb-server`, Spring Boot 전용)**  
 3. **네이티브 CLI 바이너리 (`fpsb-cli`, Picocli 전용 도구)**  
+4. **JVM OCI 이미지 + udocker 런처 (`run.sh`, 동적 플러그인/JAR 로딩용)**
 
 운영 환경에서는 2, 3번처럼 **JDK 없이도 실행 가능한 네이티브 바이너리**를 사용하는 것을 목표로 합니다.
 
@@ -169,6 +170,56 @@ mvn -Pnative-cli -DskipTests package
 위 요구사항은 예시이며, 실제 운영 환경에서는 각각의 타깃 OS/아키텍처에서  
 `-Pnative-server`, `-Pnative-cli` 프로파일을 사용해 바이너리를 빌드한 후,  
 해당 환경에서 테스트한 결과를 기반으로 “지원 OS/버전”을 문서화하는 것을 권장합니다.
+
+## 4) JVM OCI 이미지 + udocker 런처
+
+native-image + musl 방식으로는 리플렉션/동적 클래스 로딩/플러그인 JAR 로딩에 제약이 크기 때문에,
+일반 JVM 모드(HotSpot)로 실행되는 OCI 이미지를 만들고, Docker 없이도 실행 가능하도록
+`udocker` + `run.sh` 조합을 제공합니다.
+
+구조 요약:
+
+- `Dockerfile.jvm` – `mvn package` 로 생성한 fat jar를 기반으로 하는 JVM용 OCI 이미지 정의
+- `bin/build-oci-image` – Docker로 이미지를 빌드하고 `download/fpsb-jvm-latest.tar` 로 export
+- `bin/udocker/udocker` – 로컬 `bin/udocker` Python 모듈을 사용하는 udocker 래퍼
+- `run.sh` – udocker를 초기화하고, OCI 이미지를 import/실행하는 단일 진입점
+  - 컨테이너 안에서 `/opt/app/app.jar` 를 `java -jar` 로 실행
+  - 호스트의 `./plugins` 디렉터리를 컨테이너 `/opt/app/plugins` 로 마운트
+  - 환경 변수 `FPSB_PLUGINS_DIR=/opt/app/plugins` 를 설정 (애플리케이션이 플러그인 디렉터리로 사용할 수 있음)
+
+### 빌드 및 실행 흐름 (요약)
+
+1. JVM fat jar 빌드 및 OCI 이미지 생성 (Docker가 있는 환경에서):
+
+   ```bash
+   bin/build-oci-image
+   ```
+
+   - 기본 이미지 이름: `fpsb-jvm:latest`
+   - export 경로: `download/fpsb-jvm-latest.tar`
+
+2. 배포 대상(리눅스 x86_64 등)에 다음 파일을 배치:
+
+   - `run.sh`
+   - `bin/udocker/**` (udocker Python 모듈)
+   - `download/fpsb-jvm-latest.tar` (또는 `FPSB_IMAGE_TAR` 로 지정한 tar 파일)
+
+3. 배포 대상에서 실행:
+
+   ```bash
+   chmod +x run.sh bin/udocker/udocker bin/build-oci-image
+   ./run.sh
+   ```
+
+   - `run.sh` 는 최초 실행 시 `.udocker/` 아래에 로컬 udocker 리포지토리를 초기화합니다.
+   - `download/fpsb-jvm-latest.tar` 가 로컬 udocker 이미지로 import 됩니다.
+   - 컨테이너는 호스트의 `./plugins` 디렉터리를 `/opt/app/plugins` 로 마운트합니다.
+
+4. 플러그인/동적 JAR 로딩
+
+   - 애플리케이션이 `/opt/app/plugins` (또는 `FPSB_PLUGINS_DIR`) 를 플러그인 디렉터리로 사용하도록 설계되어 있다면,
+     호스트에서 `./plugins` 아래에 JAR을 추가/갱신하는 것만으로 컨테이너 안에서 해당 JAR을 읽어 동적 클래스 로딩을 할 수 있습니다.
+
 
 ## 다음 단계 아이디어
 

@@ -1,0 +1,16 @@
+FROM eclipse-temurin:21-jre
+
+WORKDIR /opt/app
+
+# Allow overriding the jar path at build time, but default to the main Spring Boot jar.
+ARG JAR_FILE=target/*.jar
+COPY ${JAR_FILE} app.jar
+
+# Directory inside the container where plugin JARs will be mounted.
+RUN mkdir -p /opt/app/plugins
+ENV FPSB_PLUGINS_DIR=/opt/app/plugins
+
+EXPOSE 8080 9090
+
+ENTRYPOINT ["java", "-jar", "/opt/app/app.jar"]
+

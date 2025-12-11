@@ -23,8 +23,8 @@ public class ApplicationMain {
         // ApplicationMain__ApplicationContextInitializer.
         System.setProperty("spring.aot.enabled", "false");
 
-        PortableCommand portableCommand = new PortableCommand();
-        CommandLine.IFactory factory = new CommandLine.IFactory() {
+        var portableCommand = new PortableCommand();
+        var factory = new CommandLine.IFactory() {
             @Override
             @SuppressWarnings("unchecked")
             public <K> K create(Class<K> cls) throws Exception {
@@ -44,7 +44,7 @@ public class ApplicationMain {
             }
         };
 
-        CommandLine commandLine = new CommandLine(portableCommand, factory);
+        var commandLine = new CommandLine(portableCommand, factory);
 
         commandLine.setExecutionExceptionHandler((ex, cmd, parseResult) -> {
             cmd.getErr().println("ERROR: " + ex.getMessage());

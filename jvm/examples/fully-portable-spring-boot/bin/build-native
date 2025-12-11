@@ -4,9 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-${0}}")" && pwd)"
 PROJECT_ROOT="${SCRIPT_DIR%/bin}"
 
-PLATFORM="macos"
 # Prefer a bundled GraalVM (bin/jdk-25) if present, otherwise try system GraalVM 25.
-GRAAL_HOME="./bin/graalvm/$PLATFORM"
+GRAAL_HOME="$HOME/bin/graalvm-jdk25"
 
 if [ -z "${GRAAL_HOME}" ] || [ ! -d "${GRAAL_HOME}" ]; then
   echo "ERROR: GraalVM JDK 25 not found." >&2
@@ -25,5 +24,5 @@ export JAVA_HOME="${GRAAL_HOME}"
 export PATH="${JAVA_HOME}/bin:${PATH}"
 
 cd "${PROJECT_ROOT}"
-exec mvn -Pnative -DskipTests package
+exec mvn -Pnative-server -DskipTests package
 
