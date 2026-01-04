@@ -69,6 +69,10 @@
 
     gnupg
 
+- PDF
+
+    [poppler](https://poppler.freedesktop.org/)
+
 ## 삭제
 
 ### fisher
