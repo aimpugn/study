@@ -17,6 +17,7 @@
     [gradle](https://formulae.brew.sh/formula/gradle)
     node, pnpm
     [nasm](https://formulae.brew.sh/formula/nasm)
+    uv
 
 - fonts
 
