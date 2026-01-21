@@ -74,6 +74,12 @@
 
     [poppler](https://poppler.freedesktop.org/)
 
+- AI Agent
+
+    claude
+    gemini-cli
+    codex
+
 ## 삭제
 
 ### fisher
