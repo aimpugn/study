@@ -1,17 +1,21 @@
 version: 1
 maintainer: rody
-last_updated: 2026-02-17
+
+template:
+  path: "KNOWLEDGE_TEMPLATE.md"
 
 usage:
   intent: "사람 중심 학습과 재사용 가능한 의사결정 지원"
   rule:
-    - "먼저 CATALOG에서 카드를 찾고, 해당 카드의 Snapshot(30초 요약)을 먼저 읽습니다."
-    - "현재 상황이 카드의 적용 조건과 다르면 Variant 섹션을 확인합니다."
-    - "그래도 맞지 않으면 카드 신설보다 기존 카드에 Evidence를 추가하는 것을 우선합니다."
+    - "CATALOG에서 tags/problem_signature로 카드 후보를 찾고, 카드의 \"질문\"과 \"기본 결론\"을 먼저 읽습니다."
+    - "현재 상황이 기본 결론에 그대로 들어맞는지 \"다르게 판단해야 하는 경우\"를 먼저 확인합니다."
+    - "카드의 \"최소 실험(검증)\"을 따라 하며, 근거 -> 연결 논리 -> 결론이 실제로 재현되는지 확인합니다."
+    - "새 카드 신설은 마지막 수단입니다. 대부분은 기존 카드에 변형/반례/최소 실험을 보강하면 충분합니다."
 
 cards:
   - id: K-TYPE-BOUNDARY-ENUM-FAILFAST
     title: "경계 타입화(enum)와 Fail-Fast 검증"
+    quality: "pass"
     tags: ["type-safety", "boundary", "enum", "config", "tcp", "spring"]
     problem_signature: ["closed-set identifier", "external input", "runtime typo risk"]
     path: "cards/K-TYPE-BOUNDARY-ENUM-FAILFAST.md"
@@ -24,6 +28,7 @@ cards:
 
   - id: K-STRING-CONSTANTS-SCOPE-AND-SQL
     title: "문자열 상수화 범위와 SQL 가독성 균형"
+    quality: "pass"
     tags: ["constant", "readability", "sql", "maintainability", "security"]
     problem_signature: ["reused literal", "string drift", "query readability"]
     path: "cards/K-STRING-CONSTANTS-SCOPE-AND-SQL.md"
