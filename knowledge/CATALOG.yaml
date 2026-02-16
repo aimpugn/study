@@ -1,0 +1,34 @@
+version: 1
+maintainer: rody
+last_updated: 2026-02-17
+
+usage:
+  intent: "사람 중심 학습과 재사용 가능한 의사결정 지원"
+  rule:
+    - "먼저 CATALOG에서 카드를 찾고, 해당 카드의 Snapshot(30초 요약)을 먼저 읽습니다."
+    - "현재 상황이 카드의 적용 조건과 다르면 Variant 섹션을 확인합니다."
+    - "그래도 맞지 않으면 카드 신설보다 기존 카드에 Evidence를 추가하는 것을 우선합니다."
+
+cards:
+  - id: K-TYPE-BOUNDARY-ENUM-FAILFAST
+    title: "경계 타입화(enum)와 Fail-Fast 검증"
+    tags: ["type-safety", "boundary", "enum", "config", "tcp", "spring"]
+    problem_signature: ["closed-set identifier", "external input", "runtime typo risk"]
+    path: "cards/K-TYPE-BOUNDARY-ENUM-FAILFAST.md"
+    default_decision: "외부 입력은 경계에서 String->enum 변환, 내부는 enum-only"
+    key_variants:
+      - "바인딩 기본값 때문에 invalid/blank가 조용히 통과할 수 있으면 raw-map 1차 검증을 추가"
+    primary_case_commits:
+      - "1c5d36e4be47300a1d9cbd48a53578021eb28984"
+      - "c1232d1"
+
+  - id: K-STRING-CONSTANTS-SCOPE-AND-SQL
+    title: "문자열 상수화 범위와 SQL 가독성 균형"
+    tags: ["constant", "readability", "sql", "maintainability", "security"]
+    problem_signature: ["reused literal", "string drift", "query readability"]
+    path: "cards/K-STRING-CONSTANTS-SCOPE-AND-SQL.md"
+    default_decision: "의미 단위 재사용 문자열만 상수화, 정적 SQL 문장은 읽기 흐름 우선"
+    key_variants:
+      - "동적 SQL 조립이 많아지면 상수/DSL 비중을 높여 안전성 강화"
+    primary_case_commits:
+      - "1c5d36e4be47300a1d9cbd48a53578021eb28984"
