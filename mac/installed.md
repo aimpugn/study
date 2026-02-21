@@ -76,7 +76,6 @@
 
 - AI Agent
 
-    claude
     gemini-cli
     codex
 
