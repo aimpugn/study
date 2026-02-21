@@ -37,3 +37,78 @@ cards:
       - "동적 SQL 조립이 많아지면 상수/DSL 비중을 높여 안전성 강화"
     primary_case_commits:
       - "1c5d36e4be47300a1d9cbd48a53578021eb28984"
+
+  - id: K-DRY-WRONG-ABSTRACTION-AND-UTIL-PLACEMENT
+    title: "중복(DRY) 제거와 유틸 배치: 잘못된 추상화 비용 줄이기"
+    quality: "pass"
+    tags: ["refactoring", "dry", "duplication", "abstraction", "boundary", "hexagonal", "maintainability"]
+    problem_signature: ["duplicate implementation", "shared util placement", "wrong abstraction risk"]
+    path: "cards/K-DRY-WRONG-ABSTRACTION-AND-UTIL-PLACEMENT.md"
+    default_decision: "중복은 의미가 안정화될 때까지 유지하고, 추출 시 '의미의 소유자' 경계에 배치한다"
+    key_variants:
+      - "독립 배포(서비스 분리) 환경에서는 공유 라이브러리보다 제한적 코드 복제가 더 저렴할 수 있다"
+      - "인프라 의미(예: DB NULL 정규화)는 core가 아니라 인프라(outbound/server) 경계에 둔다"
+    primary_case_commits: []
+
+  - id: K-BOUNDARY-PARSE-DONT-VALIDATE-TOLERANT-READER
+    title: "경계 파싱(Parse)과 검증(Validate): Tolerant Reader와 계약 테스트"
+    quality: "pass"
+    tags: ["boundary", "api", "parsing", "validation", "tolerant-reader", "contract-testing", "reliability"]
+    problem_signature: ["upstream schema drift", "unknown fields", "over-validation", "retry storm"]
+    path: "cards/K-BOUNDARY-PARSE-DONT-VALIDATE-TOLERANT-READER.md"
+    default_decision: "경계에서 파싱으로 구조화하고, unknown은 무시+관측, required는 fail-fast, 계약은 테스트로 조기 탐지"
+    key_variants:
+      - "silent corruption 비용이 더 큰 도메인에서는 strict 검증을 '핵심 필드/엔드포인트'에만 제한적으로 적용"
+      - "업스트림이 버전/스키마 식별자를 제공하면 그 축을 기준으로 파서 분기를 명시"
+    primary_case_commits: []
+
+  - id: K-VERTICAL-SLICE-POLICY-COMPOSITION-READABILITY
+    title: "Vertical Slice로 가독성 확보: 유스케이스 중심 구조와 정책 조합 단순화"
+    quality: "pass"
+    tags: ["architecture", "vertical-slice", "hexagonal", "ddd", "readability", "composition", "policy"]
+    problem_signature: ["usecase-specific code", "too many policies", "cognitive overload", "package inconsistency"]
+    path: "cards/K-VERTICAL-SLICE-POLICY-COMPOSITION-READABILITY.md"
+    default_decision: "유스케이스(요청) 단위로 코드를 모으고, 공통은 실행 골격만 공유하며, 파이프라인 순서를 코드로 드러낸다"
+    key_variants:
+      - "팀이 레이어 단위로 분리돼 있다면 vertical slice는 '핵심 유스케이스'부터 단계적으로 적용"
+      - "규칙은 문서가 아니라 테스트/정적 분석(아키텍처 fitness function)로 drift를 조기 탐지"
+    primary_case_commits: []
+
+  - id: K-HEXAGONAL-PORT-TYPES-AND-MAPPING-OWNERSHIP
+    title: "Hexagonal Port 타입 소유권과 표현(JSON) 매핑 책임"
+    quality: "pass"
+    tags: ["architecture", "hexagonal", "ddd", "ports", "repository", "mapping", "representation", "json"]
+    problem_signature: ["port type leak", "adapter type leak", "db row mapping", "json payload ownership"]
+    path: "cards/K-HEXAGONAL-PORT-TYPES-AND-MAPPING-OWNERSHIP.md"
+    default_decision: "Port(Repository) 시그니처에는 core 소유 타입만 등장시키고, 표현(row/JSON)의 해석 책임은 '표현 소유권'으로 결정한다"
+    key_variants:
+      - "payload가 인프라 스냅샷이면 adapter 파싱이 기본값이고, payload가 도메인 계약(type/version/envelope)이면 core 파싱이 가능하다"
+      - "Port DTO를 테이블 1:1로 둘지(단순/확장성) vs 필요한 필드만 둘지(결합 감소)는 조회 요구/스키마 변화 비용으로 결정한다"
+    primary_case_commits:
+      - "610dbef"
+
+  - id: K-IDEMPOTENT-EXECUTION-WINNER-ELECTION-REPLAY
+    title: "멱등 실행: winner 선출 + requestHash 충돌 탐지 + replay 정책"
+    quality: "pass"
+    tags: ["reliability", "idempotency", "concurrency", "winner-election", "replay", "hexagonal", "ddd"]
+    problem_signature: ["duplicate request", "race window", "double side-effect", "idempotency key reuse"]
+    path: "cards/K-IDEMPOTENT-EXECUTION-WINNER-ELECTION-REPLAY.md"
+    default_decision: "외부 호출 전 winner를 선출(INSERT PENDING/유니크 제약)하고, requestHash로 충돌을 탐지하며, replay/진행중/실패 정책은 core에 고정한다"
+    key_variants:
+      - "replay를 포기하면 저장 표현/타입 결정 규칙 부담은 줄지만 계약 변화와 후속 조회 트래픽이 증가할 수 있다"
+      - "락(advisory lock, lock table) 기반은 가능하지만 DB 종속성과 timeout/해제 정책 비용이 증가한다"
+    primary_case_commits:
+      - "0bff9b0"
+
+  - id: K-ASYNC-EVENTS-OUTBOX-INBOX-CLAIM-LEASE
+    title: "비동기 내구성: Async Events SSOT + Outbox/Inbox 통합 + claim lease"
+    quality: "pass"
+    tags: ["reliability", "async", "outbox", "inbox", "lease", "retry", "hexagonal", "ddd", "operations"]
+    problem_signature: ["callback durability", "at-least-once delivery", "multi-worker duplicate", "retry state machine"]
+    path: "cards/K-ASYNC-EVENTS-OUTBOX-INBOX-CLAIM-LEASE.md"
+    default_decision: "비동기 이벤트는 통합 SSOT로 관리하되, 고정 Envelope + claim lease 원자 primitive를 제공하고 정책(상태기계/백오프)은 core에 둔다"
+    key_variants:
+      - "inbox/outbox 테이블 분리는 단순해질 수 있지만 테이블/코드 폭증과 공통 정책 중복 위험이 증가한다"
+      - "메시지 큐만으로 해결하려면 결국 운영 관측/복구를 위한 최소 원장이 필요해지는 경우가 많다"
+    primary_case_commits:
+      - "e014ecb"
