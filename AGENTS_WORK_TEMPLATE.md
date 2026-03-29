@@ -1,229 +1,352 @@
 # WORK_YYYYMMDD_TITLE
 
-> study 저장소용 기본 WORK 템플릿입니다.
-> SSOT는 항상 [`AGENTS.md`](/Users/rody/VscodeProjects/study/AGENTS.md)와 전역 `~/.codex/AGENTS.md`입니다.
-> 이 템플릿은 특히 Markdown 문서 작성, 정리, 검증, 리팩토링 작업에 맞춰져 있습니다.
-> 작업이 코드 구현까지 크게 확장되면, 필요한 섹션을 전역 `AGENTS_WORK_TEMPLATE.md` 수준으로 추가해서 사용합니다.
+> study 저장소의 규모가 있는 작업용 기본 WORK 템플릿입니다.
+> 이 저장소는 자연어 요청을 기본으로 하며, 이 템플릿은 사용자 입력 형식을 강제하려는 것이 아니라 AI의 집행 ledger를 남기기 위한 것입니다.
+> SSOT는 [`AGENTS.md`](AGENTS.md)와 전역 `~/.codex/AGENTS.md`입니다.
+> 작은 기계적 작업은 축약할 수 있지만, 근거·반박·검증·최종감사라는 핵심 루프는 약화하지 않습니다.
 
 ## 0. Meta
 
 - 작업 제목:
 - WORK 파일 경로:
 - 저장소:
-- 작업 유형: `new_doc | refine_doc | fact_check | restructure_docs | add_examples | explain_only`
-- 대상 경로:
-- 관련 요청 / 질문:
+- 작업 유형: `research | analysis | design | explain | audit | execute | refactor_docs`
+- 작업 깊이: `minimal | standard | full`
+- 관련 요청:
 - 원문 사용자 요청:
+- 대상 경로 / 자산:
 - 실행자:
 - 시작 일시:
 - 종료 일시:
 - 현재 상태: `IN_PROGRESS | PARTIAL | BLOCKED | COMPLETE`
 - 완료 게이트: `PENDING | ALLOW_COMPLETE | BLOCK_COMPLETE`
-- finish 조건: `report | verify | verify+commit`
+- finish: `report | verify | test | test+commit | test+commit+push`
 
 ## 1. Request Normalization
 
-- 이 작업을 한 문장으로 다시 쓰면:
-- 사용자가 진짜로 원하는 결과물:
-- 사용자가 직접 준 필수 요구:
-- 사용자가 직접 준 금지 사항:
-- 내가 추가한 누락 방지 항목:
-- 지금 수정해야 하는가, 새로 만들어야 하는가:
-- 새 파일이라면 왜 기존 문서 보강이 아닌가:
+- goal:
+- refs:
+- scope:
+- mode:
+- run_mode: `normal | dry-run`
+- finish:
+- must_keep:
+- extra_checks:
 
-## 2. Project Overlay
+### 1.1 Explicit Deliverables
+
+- 사용자가 명시한 필수 요구:
+- 사용자가 명시한 금지 사항:
+- path / naming / format / finish 관련 요구:
+- 내가 추가한 누락 방지 항목:
+
+### 1.2 Non-Goals
+
+- 이번 작업의 비범위:
+- 지금 하지 않는 이유:
+
+## 2. Root-First Framing
+
+- 근본 문제:
+- 왜 이 문제가 지금 중요한가:
+- 작업 목표:
+- 기대 이점:
+- 이점이 닫혔다고 판단할 확인 기준:
+- 하드 제약 / 호환성 경계:
+- 성공 정의:
+- PARTIAL 조건:
+- BLOCKED 조건:
+
+## 3. Reader & Internalization Contract
+
+- 주 독자:
+- 독자가 이미 알고 있다고 가정하는 것:
+- 이 작업 결과를 통해 나중에 스스로 설명할 수 있어야 하는 것:
+- 사용자가 내재화해야 할 사고 패턴:
+- 특히 막아야 하는 오해:
+- 기억 anchor 후보:
+
+## 4. Depth Decision
+
+- 선택한 깊이:
+- 왜 이 깊이가 맞는가:
+- 전체 루프를 켜야 하는 트리거:
+- 축약 가능한 섹션과 그 근거:
+
+## 5. Project Overlay
 
 - 적용한 로컬 AGENTS 경로:
-- 로컬 규칙을 읽고 적용했는가: `Y | N`
-- 이번 작업에서 특히 중요한 규칙:
-- 전역 규칙과 충돌 가능성 / 해소 방식:
+- 활성화한 프로젝트 규칙:
+- 특히 중요한 규칙:
+- 전역 규칙과의 충돌 여부 / 해소:
 
-### 2.1 Project Rule Ledger
+## 6. Topic Analysis
 
-- STUDY-01 미래의 내가 다시 이해할 수 있는 설명:
-  - Activated: `Y | N`
-  - 적용 이유:
-  - 검증 방법:
-  - Final: `PASS | FAIL | N/A`
-- STUDY-02 이해와 실전을 함께 남기기:
-  - Activated: `Y | N`
-  - 적용 이유:
-  - 검증 방법:
-  - Final: `PASS | FAIL | N/A`
-- STUDY-03 근거와 추론 분리:
-  - Activated: `Y | N`
-  - 적용 이유:
-  - 검증 방법:
-  - Final: `PASS | FAIL | N/A`
-- STUDY-04 기존 문서와의 관계 선확인:
-  - Activated: `Y | N`
-  - 적용 이유:
-  - 검증 방법:
-  - Final: `PASS | FAIL | N/A`
-- STUDY-05 문서 유형에 맞는 구조:
-  - Activated: `Y | N`
-  - 적용 이유:
-  - 검증 방법:
-  - Final: `PASS | FAIL | N/A`
-- STUDY-06 사용자 이해 기준과 톤 보존:
-  - Activated: `Y | N`
-  - 적용 이유:
-  - 검증 방법:
-  - Final: `PASS | FAIL | N/A`
-- STUDY-07 관련 문서와 탐색 경로 동기화:
-  - Activated: `Y | N`
-  - 적용 이유:
-  - 검증 방법:
-  - Final: `PASS | FAIL | N/A`
-- STUDY-08 문서 작업 검증과 솔직한 마감:
-  - Activated: `Y | N`
-  - 적용 이유:
-  - 검증 방법:
-  - Final: `PASS | FAIL | N/A`
+- 현재 이해한 사용자 의도:
+- 현재 보이는 문제 구조:
+- 핵심 경계:
+- 숨은 가정 / 불확실성:
+- 성공을 오판하기 쉬운 지점:
 
-## 3. Reader & Learning Contract
+## 7. Analysis Critique + Repair
 
-- 이 문서의 주 독자:
-- 독자가 이미 알고 있다고 가정하는 것:
-- 이 문서를 읽고 나면 바로 할 수 있어야 하는 것:
-- 시간이 지나도 다시 떠올릴 수 있게 꼭 남겨야 하는 것:
-- 특히 막아야 하는 오해 / 혼동:
-- 설명 톤 메모:
+### 7.1 Challenge 1
 
-## 4. Scope & Existing Material Survey
+- 어떤 점이 틀릴 수 있는가:
+- 보강안:
+- 왜 이 보강안이 더 강한가:
 
-- 대상 문서 / 디렉터리:
-- 함께 확인한 기존 문서:
-- 검색한 키워드:
-- 동의어 / 원어 / 약어 / 구표현:
-- 중복 가능성 점검 결과:
-- 이번 작업에서 함께 맞춰야 하는 관련 문서:
-- 제외한 범위와 이유:
+### 7.2 Challenge 2
 
-## 5. Doc Archetype
+- 어떤 점이 좁거나 누락될 수 있는가:
+- 보강안:
+- 왜 이 보강안이 더 강한가:
 
-- 문서 유형: `concept | command | troubleshooting | standard | knowledge_card | mixed`
-- 이 유형을 선택한 이유:
-- 이 문서에서 반드시 닫아야 하는 제어점 2~4개:
-  - C1:
-  - C2:
-  - C3:
-  - C4:
+### 7.3 Challenge 3
 
-### 5.1 이 유형에서 필요한 최소 요소
+- 어떤 점이 설명/학습 목표를 놓칠 수 있는가:
+- 보강안:
+- 왜 이 보강안이 더 강한가:
 
-- `concept`: 질문, 왜 중요한가, 핵심 메커니즘, 예제, 흔한 오해, 확인 방법, 근거
-- `command`: 무엇을 하는가, 입력/옵션 감각, 안전한 예제, 실무 예제, 실패/주의점, 확인 방법, 근거
-- `troubleshooting`: 증상, 실제 원인, 왜 그런가, 해결, 재발 방지 또는 확인, 근거
-- `standard`: 규칙 범위, 원 규칙의 의미, 구현 해석 포인트, 예시, 주의점, 근거
-- `knowledge_card`: [`knowledge/KNOWLEDGE_TEMPLATE.md`](/Users/rody/VscodeProjects/study/knowledge/KNOWLEDGE_TEMPLATE.md) 우선
+### 7.4 Retained Framing
 
-## 6. Evidence Ledger
+- 최종 채택한 문제 정의:
+- 폐기한 문제 정의와 이유:
 
-- 핵심 주장 1:
+## 8. Scope Expansion & Impact Sync
+
+- 시작 키워드:
+- 확장 키워드(동의어 / 약어 / 원어 / 구명칭 / 관련 에러 / 표준 번호):
+- 조사한 경로:
+- 함께 점검한 자산:
+- 함께 움직여야 하는 표면:
+- 한쪽만 바꾸면 깨질 부분:
+- 제외 표면과 근거:
+
+## 9. Evidence Gathering
+
+### 9.1 Evidence Ledger
+
+- E-01
   - 주장:
-  - 근거 종류: `공식 문서 | 표준 | repo 문서 | 실험 | 추론`
+  - 근거 유형: `repo evidence | command result | experiment | official doc | standard | expert source | inference`
   - 자료:
-  - 이 자료로 확인한 범위:
+  - 이 자료로 닫힌 것:
   - 아직 비어 있는 것:
-- 핵심 주장 2:
+- E-02
   - 주장:
-  - 근거 종류: `공식 문서 | 표준 | repo 문서 | 실험 | 추론`
+  - 근거 유형:
   - 자료:
-  - 이 자료로 확인한 범위:
+  - 이 자료로 닫힌 것:
   - 아직 비어 있는 것:
-- 핵심 주장 3:
+- E-03
   - 주장:
-  - 근거 종류: `공식 문서 | 표준 | repo 문서 | 실험 | 추론`
+  - 근거 유형:
   - 자료:
-  - 이 자료로 확인한 범위:
+  - 이 자료로 닫힌 것:
   - 아직 비어 있는 것:
 
-### 6.1 추론 / 미확인 항목
+### 9.2 Source Conflicts / Gaps
 
-- 추론으로만 남는 내용:
-- 왜 아직 직접 확인하지 못했는가:
-- 최종 문서에서 어떻게 표시할 것인가:
+- 충돌하는 근거:
+- 아직 부족한 근거:
+- 추론으로만 남는 항목:
 
-## 7. Frozen Checklist
+## 10. Evidence Critique + Repair
 
-> 사용자 항목은 최소 바닥선입니다. 삭제하거나 완화하지 않습니다.
+- 소스 품질 리스크:
+- 오래되었을 가능성이 있는 가정:
+- 빠진 대안 또는 빠진 근거:
+- 근거 세트를 어떻게 보강했는가:
+- 보강 후에도 남는 한계:
 
-- [ ] 이 문서가 답하는 질문이 초반에 드러난다.
-- [ ] 왜 중요한지 또는 어디서 헷갈리는지 설명한다.
-- [ ] 핵심 메커니즘이 닫혀 있다.
-- [ ] 손에 잡히는 예제나 사용 예가 있다.
-- [ ] 실패 모드 / 흔한 오해 / 주의점 중 해당하는 것을 담는다.
-- [ ] 확인 방법, 최소 실험, 또는 검증 경로가 있다.
-- [ ] 근거 / 참고 자료가 남아 있다.
-- [ ] 기존 관련 문서와의 역할 관계가 정리되어 있다.
-- [ ] 실행하지 않은 내용은 실행한 것처럼 쓰지 않는다.
-- [ ] 사용자 요청의 명시 항목이 빠지지 않았다.
+## 11. Design
 
-### 7.1 Task-Specific Checklist
+- 선택한 접근:
+- 왜 이 접근이 근본 문제와 이점에 가장 잘 맞는가:
+- 고려한 대안:
+- 대안을 채택하지 않은 이유:
+- 문서 / 예제 / 자산 구조:
+- 실패 모드:
+- 검증 경로:
 
-- C-01:
+## 12. Design Critique + Repair
+
+### 12.1 Architect View
+
+- 반론:
+- 보강 또는 유지 결정:
+- 이유:
+
+### 12.2 Domain / API Consumer View
+
+- 반론:
+- 보강 또는 유지 결정:
+- 이유:
+
+### 12.3 Newcomer / Learner View
+
+- 반론:
+- 보강 또는 유지 결정:
+- 이유:
+
+### 12.4 Final Design Decision
+
+- 최종 채택:
+- 트레이드오프:
+
+## 13. Overall Plan
+
+- 작업 순서:
+- 선행 의존성:
+- validation order:
+- rollback / retry / staging 필요 여부와 이유:
+
+## 14. Plan Critique + Repair
+
+- 계획이 실패할 수 있는 지점:
+- 순서상 위험:
+- 빠진 prerequisite:
+- 보강안:
+- 왜 보강된 계획이 더 나은가:
+
+## 15. Detailed Task Plan
+
+- 수정 / 생성 / 검토할 파일:
+- 각 파일에서 바꿀 논리 또는 구조:
+- 관련 문서 동기화 계획:
+- 예제 추가 / 보강 계획:
+- 근거 섹션 반영 계획:
+
+### 15.1 Success / Failure / Regression Cases
+
+- 성공 케이스 최소 3개:
+  - S1:
+  - S2:
+  - S3:
+- 실패 케이스 최소 3개:
+  - F1:
+  - F2:
+  - F3:
+- 회귀 위험:
+- 회귀 방지 확인 경로:
+
+### 15.2 Code / Doc Quality Review Points
+
+- 단순성:
+- 응집도:
+- 확장 여지:
+- 과한 일반화 여부:
+- 설명 누락 위험:
+
+## 16. Detailed Plan Critique + Repair
+
+- 누락된 케이스:
+- fuzzy success criteria:
+- scope overreach / under-specification:
+- 보강안:
+- 최종 상세 계획:
+
+## 17. Frozen Checklist
+
+> 사용자 항목은 최소 바닥선입니다. 삭제, 병합, 완화 금지.
+
+### 17.1 Checklist Draft
+
+- C-01
   - 출처: `사용자 | AI-추가`
   - 내용:
   - PASS 기준:
   - FAIL 기준:
   - 필요한 증거:
-- C-02:
-  - 출처: `사용자 | AI-추가`
+- C-02
+  - 출처:
   - 내용:
   - PASS 기준:
   - FAIL 기준:
   - 필요한 증거:
-- C-03:
-  - 출처: `사용자 | AI-추가`
+- C-03
+  - 출처:
+  - 내용:
+  - PASS 기준:
+  - FAIL 기준:
+  - 필요한 증거:
+- C-04
+  - 출처:
   - 내용:
   - PASS 기준:
   - FAIL 기준:
   - 필요한 증거:
 
-### 7.2 Freeze
+### 17.2 Checklist Quality Review
 
-- Freeze 시각:
-- Freeze 버전:
-- Freeze 이후 추가된 항목과 이유:
+- [ ] 각 항목이 목표, 이점, 불변식에 매핑된다.
+- [ ] PASS/FAIL이 관측 가능하다.
+- [ ] 필요한 근거 또는 검증 경로가 있다.
+- [ ] 사용자 요구가 조용히 약화되지 않았다.
+- [ ] 한 항목 실패 시 task가 reopened 되는 구조다.
+- 판정:
+- 보완 사항:
 
-## 8. Structure Plan
+### 17.3 Freeze
 
-- 문서 첫 문장 / 첫 문단이 답할 것:
-- 메인 섹션 흐름:
-- 넣을 예제:
-- 넣을 반례 / 오해 / 주의점:
-- 넣을 확인 방법:
-- 근거 / 참고 자료 섹션 구성:
-- 관련 문서 링크 계획:
+- freeze 시각:
+- freeze 버전:
+- freeze 이후 추가된 항목과 이유:
 
-## 9. Execution Log
+## 18. Execution Log
 
-- 조사한 것:
-- 실제로 수정한 것:
+- 실제 조사한 것:
+- 실제 수정한 것:
+- 실행 중 바뀐 가정:
+- earliest affected phase로 되돌아간 이력:
 - 버린 접근과 이유:
-- 사용자의 이해 기준에 맞추기 위해 조정한 점:
 
-## 10. Verification & Final Audit
+## 19. Verification
 
-- 수행한 검증 명령:
-- 검증 결과:
-- 직접 실행/확인한 예제 범위:
-- 실행하지 못한 것과 이유:
-- 관련 문서 동기화 확인:
-- 남은 불확실성:
+### 19.1 Verification Plan
 
-### 10.1 Checklist Re-Judgement
+- 실행 / 확인할 명령:
+- 확인 경로:
+- PASS 조건:
+- FAIL 조건:
+
+### 19.2 Verification Result
+
+- 실제 실행한 검증:
+- 결과:
+- 실행하지 못한 검증과 이유:
+- 예제 / 명령 검증 범위:
+- 소스 검증 범위:
+
+## 20. Explanation Quality Review
+
+- 결론이 초반에 드러나는가:
+- 왜 중요한지가 닫히는가:
+- 근거와 제약이 설명에 연결되는가:
+- 검증 경로가 보이는가:
+- 의미 있는 대안과 트레이드오프가 남는가:
+- 구체적인 anchor가 있는가:
+- 불확실성이 정직하게 표시되는가:
+- 전이 가능한 원리가 남는가:
+
+## 21. Final Audit & Closure
+
+- intent-fit review:
+- expert-perspective review:
+- remaining risks:
+- 문서 / 예제 / 관련 자산 동기화 상태:
+
+### 21.1 Checklist Re-Judgement
 
 - C-01: `PASS | FAIL | N/A`
 - C-02: `PASS | FAIL | N/A`
 - C-03: `PASS | FAIL | N/A`
-- 공통 체크리스트 판정:
+- C-04: `PASS | FAIL | N/A`
 
-### 10.2 Final Status
+### 21.2 Final State
 
 - 최종 상태: `COMPLETE | PARTIAL | BLOCKED`
 - 완료 게이트: `ALLOW_COMPLETE | BLOCK_COMPLETE`
-- COMPLETE가 아니라면 남은 blocker:
-- 다음 재진입 조건:
+- COMPLETE 승격 조건:
 - 커밋 해시 / 미커밋 사유:
