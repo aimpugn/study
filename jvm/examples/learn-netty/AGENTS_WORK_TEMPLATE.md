@@ -30,6 +30,24 @@
 - 현재 상태: `IN_PROGRESS | PARTIAL | BLOCKED | COMPLETE`
 - 완료 게이트: `PENDING | ALLOW_COMPLETE | BLOCK_COMPLETE`
 
+### 0.1 Usage Policy
+
+- 이 템플릿은 이 프로젝트에서 **작업할 때마다 AI가 반드시 instantiate**합니다.
+- 작은 작업이라고 해서 WORK 문서 자체를 생략하지 않습니다.
+- 다만 기록 밀도는 작업 깊이에 따라 달라질 수 있습니다.
+  - `minimal`: 각 섹션을 매우 짧게 적을 수 있지만 생략하지는 않습니다.
+  - `standard`: 핵심 판단과 근거를 충분히 남깁니다.
+  - `full`: 전 섹션을 실질적으로 채우는 것을 기본값으로 둡니다.
+- 아래 섹션은 작업 깊이와 무관하게 생략할 수 없습니다.
+  - `Instruction Stack Preflight`
+  - `Request Normalization`
+  - `Frozen Success / Failure Checklist`
+  - `Execution Ledger`
+  - `Compliance Audit`
+  - `Final Audit`
+  - `Completion Decision`
+  - `Commit Closure`(repo 변경 작업일 때)
+
 ## 1. Instruction Stack Preflight
 
 ### 1.1 Resolved Sources
@@ -59,6 +77,30 @@
 - `ALLOW_COMPLETE = INSTRUCTION_STACK_READY AND frozen checklist all PASS AND required verification all PASS AND PROJECT_INTENT compliance PASS AND global/local AGENTS compliance PASS AND final audit PASS AND unresolved blocker = 0 AND (repo change -> commit recorded when commit is in scope)`
 - 하나라도 FAIL 또는 미판정이면 `BLOCK_COMPLETE`
 
+### 1.4 Phase Status Board
+
+- Topic Analysis: `NOT_STARTED | IN_PROGRESS | STALE | REOPENED | CLOSED`
+  - last updated:
+  - stale reason:
+- Research / Evidence: `NOT_STARTED | IN_PROGRESS | STALE | REOPENED | CLOSED`
+  - last updated:
+  - stale reason:
+- Design: `NOT_STARTED | IN_PROGRESS | STALE | REOPENED | CLOSED`
+  - last updated:
+  - stale reason:
+- Plan: `NOT_STARTED | IN_PROGRESS | STALE | REOPENED | CLOSED`
+  - last updated:
+  - stale reason:
+- Detailed Plan: `NOT_STARTED | IN_PROGRESS | STALE | REOPENED | CLOSED`
+  - last updated:
+  - stale reason:
+- Execute: `NOT_STARTED | IN_PROGRESS | STALE | REOPENED | CLOSED`
+  - last updated:
+  - stale reason:
+- Final Audit: `NOT_STARTED | IN_PROGRESS | STALE | REOPENED | CLOSED`
+  - last updated:
+  - stale reason:
+
 ## 2. Request Normalization
 
 ### 2.1 Intent
@@ -81,6 +123,30 @@
 - 이번 작업의 비범위:
 - 지금 하지 않는 이유:
 - 나중으로 미루면 안 되는 항목과 그 이유:
+
+### 2.4 Requirement Trace Matrix
+
+- R-01
+  - 사용자 요구:
+  - Checklist ID:
+  - 관련 Unit:
+  - 최종 evidence:
+  - 최종 산출물 / 파일:
+  - 최종 상태: `PASS | FAIL | N/A`
+- R-02
+  - 사용자 요구:
+  - Checklist ID:
+  - 관련 Unit:
+  - 최종 evidence:
+  - 최종 산출물 / 파일:
+  - 최종 상태: `PASS | FAIL | N/A`
+- R-03
+  - 사용자 요구:
+  - Checklist ID:
+  - 관련 Unit:
+  - 최종 evidence:
+  - 최종 산출물 / 파일:
+  - 최종 상태: `PASS | FAIL | N/A`
 
 ## 3. Root Problem & Benefit
 
@@ -448,6 +514,18 @@
   - 다시 수행한 phase:
   - 재검증 결과:
 
+### 19.1 Retry Budget & Escalation
+
+- 총 시도 횟수 상한: `5회`
+  - 첫 시도를 포함합니다.
+  - 5회째까지 required checklist가 닫히지 않으면 6번째 시도를 바로 진행하지 않습니다.
+- 같은 근본 원인으로 2번 이상 실패하면:
+  - 더 이른 phase로 되돌아가 분석 / 근거 / 설계 / 계획 중 earliest affected phase를 다시 엽니다.
+  - 단순 재실행으로 덮지 않습니다.
+- 5회 시도 후에도 required 항목이 FAIL 또는 미판정이면:
+  - 상태를 `PARTIAL` 또는 `BLOCKED`로 낮춥니다.
+  - 왜 막혔는지와 승격 조건을 기록합니다.
+
 ## 20. Frozen Checklist Re-Judgement
 
 - C-01 Final: `PASS | FAIL | N/A`
@@ -517,7 +595,28 @@
 - 실행하지 못한 이유:
 - 최종 confidence:
 
-## 24. Completion Decision
+## 24. Final Deliverable Inventory
+
+- D-01
+  - 자산:
+  - 유형: `문서 | 코드 | 예제 | 실험 | 로그 장치 | 시각화 | 설정 | 기타`
+  - 역할:
+  - 어떤 질문에 답하는가:
+  - 주요 경로 / 파일:
+- D-02
+  - 자산:
+  - 유형:
+  - 역할:
+  - 어떤 질문에 답하는가:
+  - 주요 경로 / 파일:
+- D-03
+  - 자산:
+  - 유형:
+  - 역할:
+  - 어떤 질문에 답하는가:
+  - 주요 경로 / 파일:
+
+## 25. Completion Decision
 
 - 최종 상태: `COMPLETE | PARTIAL | BLOCKED`
 - 완료 게이트: `ALLOW_COMPLETE | BLOCK_COMPLETE`
@@ -526,7 +625,7 @@
 - COMPLETE라고 판단하는 근거:
 - PARTIAL / BLOCKED라면 승격 조건:
 
-## 25. Commit Closure
+## 26. Commit Closure
 
 - repo 변경 여부: `Y | N`
 - commit 요구 여부: `Y | N`
@@ -537,7 +636,7 @@
 - push 여부: `Y | N`
 - push는 왜 했거나 하지 않았는가:
 
-## 26. Closing Notes
+## 27. Closing Notes
 
 - 이번 작업의 핵심 교훈:
 - 다음 작업으로 자연스럽게 이어지는 질문:
