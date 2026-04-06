@@ -19,7 +19,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 연결마다 전용 스레드를 잡고 기다리는 가장 단순한 blocking echo 서버입니다.
+ * 첫 강의에서 "연결마다 기다리는 모델"을 보여 주는 blocking echo 서버입니다.
+ *
+ * 같은 echo 문제를 풀더라도 이 구현은 client마다 worker 하나를 붙이고 그 worker가 {@code readLine()}에서
+ * 계속 기다립니다. 그래서 코드 흐름은 가장 읽기 쉽지만, 연결 수가 늘수록 thread도 함께 늘어나는 모습을
+ * 로그에서 바로 확인할 수 있습니다.
  */
 public final class BlockingEchoServer implements LessonServer {
 
@@ -50,6 +54,7 @@ public final class BlockingEchoServer implements LessonServer {
         serverSocket = new ServerSocket(requestedPort);
         running = true;
         observationLog.event("server-start", "server", "bound to port=" + serverSocket.getLocalPort());
+        // accept 전용 thread를 따로 두어 "연결 수락"과 "각 client 처리"가 로그에서 분리되어 보이게 합니다.
         acceptThread = Thread.ofPlatform().name("blocking-accept").start(this::acceptLoop);
     }
 
@@ -60,6 +65,8 @@ public final class BlockingEchoServer implements LessonServer {
                 int connectionId = connectionIds.incrementAndGet();
                 String channel = channelName(connectionId);
                 observationLog.event("accept", channel, "accepted " + socket.getRemoteSocketAddress());
+                // blocking 모델의 핵심은 여기입니다. client 하나마다 worker를 하나 넘기고,
+                // 그 worker는 자기 client만 붙잡고 readLine()에서 기다립니다.
                 connectionExecutor.submit(() -> handleConnection(socket, connectionId));
             } catch (SocketException socketException) {
                 if (running) {
@@ -82,6 +89,8 @@ public final class BlockingEchoServer implements LessonServer {
             observationLog.event("connection-start", channel, "worker attached");
 
             String line;
+            // 이 loop는 "한 worker가 한 client를 계속 기다린다"는 blocking 모델을 가장 직접적으로 보여 줍니다.
+            // NIO 예제는 같은 일을 selector thread 하나가 번갈아 처리하고, Netty 예제는 EventLoop + pipeline이 맡습니다.
             while ((line = reader.readLine()) != null) {
                 observationLog.event("read", channel, "line=\"" + ObservationLog.previewText(line) + "\"");
                 writer.write(line);

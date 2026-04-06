@@ -8,6 +8,7 @@
 > - 프로젝트 [`AGENTS.md`](/Users/rody/VscodeProjects/study/jvm/examples/learn-netty/AGENTS.md)
 > - 현재 작업 템플릿 [`AGENTS_WORK_TEMPLATE.md`](/Users/rody/VscodeProjects/study/jvm/examples/learn-netty/AGENTS_WORK_TEMPLATE.md)
 > 코드 변경 WORK는 설명 프로토콜이 문서나 최종 응답에만 남지 않게, **코드 주변 설명(KDoc/블록 주석/짧은 근접 주석)** 까지 실제로 계획하고 검수해야 합니다.
+> 비교가 핵심인 학습 WORK는 `비교 대상`, `같은 질문`, `차이가 생기는 지점`, `왜 그 차이가 생기는가`, `관측 포인트`까지 실제로 계획하고 검수해야 합니다.
 > 섹션은 임의로 삭제하지 않습니다. 정말 해당 없음이면 `N/A`와 이유를 적습니다.
 > 한 Unit은 해당 Unit에 연결된 체크리스트와 검증이 닫히기 전에는 다음 Unit으로 넘어가지 않습니다.
 > 각 WORK 문서는 가능하면 직전 WORK와 다음 WORK를 함께 연결해, 학습 흐름이 끊기지 않게 관리합니다.
@@ -106,7 +107,8 @@
 - `INSTRUCTION_STACK_READY = global AGENTS read+applied AND PROJECT_INTENT read+applied AND local AGENTS read+applied AND this template instantiated`
 - `LEARNING_CHAIN_READY = current work position recorded AND (next work or justified stop recorded) AND roadmap change reason recorded when sequence changed`
 - `CODE_EXPLANATION_READY = (code changed -> code-adjacent explanation targets recorded AND required explanations actually added AND explanation verification PASS) OR (no code change -> N/A with reason)`
-- `ALLOW_COMPLETE = INSTRUCTION_STACK_READY AND LEARNING_CHAIN_READY AND CODE_EXPLANATION_READY AND frozen checklist all PASS AND required verification all PASS AND PROJECT_INTENT compliance PASS AND global/local AGENTS compliance PASS AND final audit PASS AND unresolved blocker = 0 AND (repo change -> commit recorded when commit is in scope)`
+- `COMPARISON_LEARNING_READY = (comparison-heavy topic -> compared variants + same question + differing mechanism + why difference + observability recorded and verified) OR (not comparison-heavy topic -> N/A with reason)`
+- `ALLOW_COMPLETE = INSTRUCTION_STACK_READY AND LEARNING_CHAIN_READY AND CODE_EXPLANATION_READY AND COMPARISON_LEARNING_READY AND frozen checklist all PASS AND required verification all PASS AND PROJECT_INTENT compliance PASS AND global/local AGENTS compliance PASS AND final audit PASS AND unresolved blocker = 0 AND (repo change -> commit recorded when commit is in scope)`
 - 하나라도 FAIL 또는 미판정이면 `BLOCK_COMPLETE`
 
 ### 1.5 Phase Status Board
@@ -309,6 +311,12 @@
 - 읽으면서 논리가 쌓이게 할 핵심 서술:
 - worked example 후보:
 - 회상 anchor:
+- 비교형 학습 작업인지 여부: `Y | N`
+- 비교 대상:
+- 같은 질문 또는 동일 조건:
+- 차이가 생기는 핵심 지점:
+- 왜 그 차이가 생기는가:
+- 차이를 직접 볼 수 있는 관측 포인트:
 - 코드 스니펫 / 파일 링크로 직접 보여 줄 위치:
 - 코드 주변에 반드시 설명을 남길 파일 / 지점:
 - 각 지점에 남길 설명 형태: `KDoc | 블록 주석 | 짧은 근접 주석 | 짧은 주석 + 관련 문서 링크`
@@ -475,6 +483,8 @@
 > - 다음 단계 또는 로드맵 변경 기록
 > 코드 변경 작업이라면 required 항목 중 하나 이상은 반드시 아래를 닫아야 합니다.
 > - load-bearing 코드, 비자명한 분기, 관측 포인트에 코드 주변 설명이 실제로 존재하는가
+> 비교가 핵심인 작업이라면 required 항목 중 하나 이상은 반드시 아래를 닫아야 합니다.
+> - 비교 대상, 같은 질문, 차이, 이유, 관측 포인트가 함께 드러나는가
 
 - C-01
   - 출처: `사용자 | AI-추가`
@@ -688,6 +698,7 @@
 - 결과 완결성:
 - 설명 품질:
 - 코드 주변 설명 존재/품질:
+- 비교 학습 closure:
 - 검증 정직성:
 - 남은 이상 징후:
 
@@ -703,6 +714,7 @@
 - PASS 신호:
 - FAIL 신호:
 - 코드 주변 설명 검증 결과:
+- 비교 학습 검증 결과:
 - 실행하지 못한 검증:
 - 실행하지 못한 이유:
 - 최종 confidence:

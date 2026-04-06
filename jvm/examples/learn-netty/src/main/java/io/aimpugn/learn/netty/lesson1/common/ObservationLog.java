@@ -20,6 +20,10 @@ public final class ObservationLog {
         this.serverName = serverName;
     }
 
+    /**
+     * 첫 강의의 비교가 "같은 사건을 어떤 thread와 단계에서 처리하는가"에 맞춰져 있으므로,
+     * 모든 서버가 같은 열 순서로 로그를 찍게 맞춥니다. 그래야 blocking/NIO/Netty를 눈으로 바로 비교할 수 있습니다.
+     */
     public void event(String phase, String channel, String detail) {
         long elapsedMillis = (System.nanoTime() - startedAtNanos) / 1_000_000;
         long sequence = eventSequence.incrementAndGet();
