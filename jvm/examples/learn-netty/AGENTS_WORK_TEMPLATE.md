@@ -9,6 +9,7 @@
 > - 현재 작업 템플릿 [`AGENTS_WORK_TEMPLATE.md`](/Users/rody/VscodeProjects/study/jvm/examples/learn-netty/AGENTS_WORK_TEMPLATE.md)
 > 섹션은 임의로 삭제하지 않습니다. 정말 해당 없음이면 `N/A`와 이유를 적습니다.
 > 한 Unit은 해당 Unit에 연결된 체크리스트와 검증이 닫히기 전에는 다음 Unit으로 넘어가지 않습니다.
+> 각 WORK 문서는 가능하면 직전 WORK와 다음 WORK를 함께 연결해, 학습 흐름이 끊기지 않게 관리합니다.
 
 ## 0. Meta
 
@@ -27,6 +28,9 @@
 - finish: `report | verify | test | test+commit | test+commit+push`
 - repo 변경 여부: `Y | N`
 - commit 기본 요구 여부: `Y | N`
+- 직전 WORK / 선행 작업:
+- 후속 WORK / 다음 작업 후보:
+- 이번 작업의 학습 단계 위치:
 - 현재 상태: `IN_PROGRESS | PARTIAL | BLOCKED | COMPLETE`
 - 완료 게이트: `PENDING | ALLOW_COMPLETE | BLOCK_COMPLETE`
 
@@ -48,6 +52,17 @@
   - `Completion Decision`
   - `Commit Closure`(repo 변경 작업일 때)
 
+### 0.2 Learning Chain Policy
+
+- 이 템플릿에서 한 WORK는 고립된 메모가 아니라 **연속된 학습 경로의 한 단계**입니다.
+- 따라서 현재 작업이 끝났더라도 다음 단계 학습이 비어 있으면, 학습형 작업으로서는 closure가 약하다고 봅니다.
+- `COMPLETE`를 선언하려면 아래 중 하나를 남겨야 합니다.
+  - 다음에 이어질 작업과 그 이유
+  - 로드맵 순서를 바꾼 기록과 그 이유
+  - 정말 다음 작업이 필요 없다는 근거
+- 학습 과정에서 새 지식, 새 관심사, 새 prerequisite가 생기면 계획과 순서를 바꿀 수 있습니다.
+- 다만 순서를 바꿀 때는 `무엇이 바뀌었는가`, `왜 바뀌었는가`, `무엇이 뒤로 밀렸는가`, `다음에 무엇을 할 것인가`를 기록해야 합니다.
+
 ## 1. Instruction Stack Preflight
 
 ### 1.1 Resolved Sources
@@ -64,20 +79,30 @@
 - 이 템플릿 경로:
 - 이 템플릿 사용 시작 시각:
 
-### 1.2 Effective Contract
+### 1.2 Project Overlay
+
+- 로컬 규범 경로:
+- 이번 작업에서 활성화한 프로젝트 규칙:
+- 활성화 이유:
+- 이 규칙을 실제로 검증할 방법:
+- 전역 규칙과의 충돌 가능성:
+- 충돌 해소 방식:
+
+### 1.3 Effective Contract
 
 - 이번 작업에서 특히 강한 hard rule:
 - 충돌 가능성:
 - 충돌 해소 방식:
 - preflight blocker:
 
-### 1.3 Completion Formula
+### 1.4 Completion Formula
 
 - `INSTRUCTION_STACK_READY = global AGENTS read+applied AND PROJECT_INTENT read+applied AND local AGENTS read+applied AND this template instantiated`
-- `ALLOW_COMPLETE = INSTRUCTION_STACK_READY AND frozen checklist all PASS AND required verification all PASS AND PROJECT_INTENT compliance PASS AND global/local AGENTS compliance PASS AND final audit PASS AND unresolved blocker = 0 AND (repo change -> commit recorded when commit is in scope)`
+- `LEARNING_CHAIN_READY = current work position recorded AND (next work or justified stop recorded) AND roadmap change reason recorded when sequence changed`
+- `ALLOW_COMPLETE = INSTRUCTION_STACK_READY AND LEARNING_CHAIN_READY AND frozen checklist all PASS AND required verification all PASS AND PROJECT_INTENT compliance PASS AND global/local AGENTS compliance PASS AND final audit PASS AND unresolved blocker = 0 AND (repo change -> commit recorded when commit is in scope)`
 - 하나라도 FAIL 또는 미판정이면 `BLOCK_COMPLETE`
 
-### 1.4 Phase Status Board
+### 1.5 Phase Status Board
 
 - Topic Analysis: `NOT_STARTED | IN_PROGRESS | STALE | REOPENED | CLOSED`
   - last updated:
@@ -95,6 +120,9 @@
   - last updated:
   - stale reason:
 - Execute: `NOT_STARTED | IN_PROGRESS | STALE | REOPENED | CLOSED`
+  - last updated:
+  - stale reason:
+- Learning Continuity / Roadmap: `NOT_STARTED | IN_PROGRESS | STALE | REOPENED | CLOSED`
   - last updated:
   - stale reason:
 - Final Audit: `NOT_STARTED | IN_PROGRESS | STALE | REOPENED | CLOSED`
@@ -147,6 +175,14 @@
   - 최종 evidence:
   - 최종 산출물 / 파일:
   - 최종 상태: `PASS | FAIL | N/A`
+
+### 2.5 Learning Continuity Input
+
+- 사용자가 직접 말했거나 암묵적으로 기대하는 다음 학습 흐름:
+- 이번 작업 앞에 있어야 하는 prerequisite:
+- 이번 작업 뒤에 자연스럽게 이어져야 하는 주제:
+- 순서 변경을 허용하는 조건:
+- 순서 변경이 생기면 반드시 지켜야 할 고정점:
 
 ## 3. Root Problem & Benefit
 
@@ -268,6 +304,14 @@
 - 회상 anchor:
 - 코드 스니펫 / 파일 링크로 직접 보여 줄 위치:
 
+### 9.3 Learning Transfer Design
+
+- 이번 작업이 다음 단계에 넘겨야 하는 핵심 개념:
+- 이번 작업이 닫아 줘야 하는 prerequisite:
+- 다음 단계가 이 작업을 발판으로 바로 사용할 자산:
+- 이번 작업 완료 후 독자가 스스로 답할 수 있어야 하는 질문:
+- 다음 단계 진입 질문:
+
 ## 10. Scope Expansion & Impact Sync
 
 ### 10.1 Included Scope
@@ -348,6 +392,13 @@
 - retry order:
 - rollback / reopen 기준:
 
+### 13.1 Sequence Position And Next-Step Hypothesis
+
+- 현재 학습 경로에서의 위치:
+- 원래 예상한 다음 단계:
+- 이번 작업 중 순서가 바뀔 수 있는 신호:
+- 순서가 바뀌면 다시 확인할 prerequisite:
+
 ## 14. Plan Critique + Repair
 
 - 이 계획이 실패할 수 있는 지점:
@@ -405,6 +456,9 @@
 
 > 사용자 항목은 최소 바닥선이다. 삭제·완화 금지.
 > 모든 required 항목이 PASS여야만 COMPLETE 가능.
+> 학습형 작업이라면 최소한 아래 두 축이 required로 들어가야 합니다.
+> - 이번 단계에서 닫아야 할 학습 질문
+> - 다음 단계 또는 로드맵 변경 기록
 
 - C-01
   - 출처: `사용자 | AI-추가`
@@ -451,6 +505,15 @@
   - 필요한 증거:
   - 재시도 트리거:
   - 관련 Unit:
+- C-06
+  - 출처:
+  - 내용:
+  - required: `Y | N`
+  - PASS 기준:
+  - FAIL 기준:
+  - 필요한 증거:
+  - 재시도 트리거:
+  - 관련 Unit:
 
 ### 17.1 Checklist Critique + Repair
 
@@ -471,6 +534,8 @@
   - 실행 내용:
   - 변경 파일:
   - 새로 생긴 증거:
+  - 이번 시도에서 새로 얻은 지식:
+  - 계획 / 순서 변경 여부:
   - 수행한 검증:
   - 결과: `PASS | FAIL | PARTIAL`
   - 실패 시 근본 원인:
@@ -481,6 +546,8 @@
   - 실행 내용:
   - 변경 파일:
   - 새로 생긴 증거:
+  - 이번 시도에서 새로 얻은 지식:
+  - 계획 / 순서 변경 여부:
   - 수행한 검증:
   - 결과: `PASS | FAIL | PARTIAL`
   - 실패 시 근본 원인:
@@ -491,6 +558,8 @@
   - 실행 내용:
   - 변경 파일:
   - 새로 생긴 증거:
+  - 이번 시도에서 새로 얻은 지식:
+  - 계획 / 순서 변경 여부:
   - 수행한 검증:
   - 결과: `PASS | FAIL | PARTIAL`
   - 실패 시 근본 원인:
@@ -526,6 +595,25 @@
   - 상태를 `PARTIAL` 또는 `BLOCKED`로 낮춥니다.
   - 왜 막혔는지와 승격 조건을 기록합니다.
 
+### 19.2 Roadmap Reorder Log
+
+- Change-01
+  - reorder 발생 여부: `Y | N`
+  - 변경 전 순서:
+  - 변경 후 순서:
+  - 변경 트리거: `새로 배운 사실 | 새 prerequisite 발견 | 사용자 관심 변화 | 난이도 재조정 | 범위 위험 | 기타`
+  - 왜 이 변경이 더 강한가:
+  - 뒤로 밀린 항목:
+  - 다음 WORK에 넘길 메모:
+- Change-02
+  - reorder 발생 여부: `Y | N`
+  - 변경 전 순서:
+  - 변경 후 순서:
+  - 변경 트리거:
+  - 왜 이 변경이 더 강한가:
+  - 뒤로 밀린 항목:
+  - 다음 WORK에 넘길 메모:
+
 ## 20. Frozen Checklist Re-Judgement
 
 - C-01 Final: `PASS | FAIL | N/A`
@@ -541,6 +629,9 @@
   - evidence:
   - notes:
 - C-05 Final: `PASS | FAIL | N/A`
+  - evidence:
+  - notes:
+- C-06 Final: `PASS | FAIL | N/A`
   - evidence:
   - notes:
 
@@ -616,7 +707,23 @@
   - 어떤 질문에 답하는가:
   - 주요 경로 / 파일:
 
-## 25. Completion Decision
+## 25. Learning Continuity Closure
+
+- 이번 작업으로 닫힌 학습 질문:
+- 이번 작업이 열어 버린 새 질문:
+- 다음 작업 후보:
+- 권장 다음 작업:
+- 왜 지금 이 작업이 다음 단계로 가장 자연스러운가:
+- 순서 변경 여부: `Y | N`
+- 변경 전 로드맵:
+- 변경 후 로드맵:
+- 뒤로 미룬 작업과 이유:
+- 다음 WORK가 이어받아야 할 자산 / evidence / commit:
+- 다음 작업 시작 조건:
+- 더 이상 다음 작업이 필요 없다고 판단한다면 그 근거:
+- Learning chain final: `PASS | FAIL`
+
+## 26. Completion Decision
 
 - 최종 상태: `COMPLETE | PARTIAL | BLOCKED`
 - 완료 게이트: `ALLOW_COMPLETE | BLOCK_COMPLETE`
@@ -625,7 +732,7 @@
 - COMPLETE라고 판단하는 근거:
 - PARTIAL / BLOCKED라면 승격 조건:
 
-## 26. Commit Closure
+## 27. Commit Closure
 
 - repo 변경 여부: `Y | N`
 - commit 요구 여부: `Y | N`
@@ -636,7 +743,7 @@
 - push 여부: `Y | N`
 - push는 왜 했거나 하지 않았는가:
 
-## 27. Closing Notes
+## 28. Closing Notes
 
 - 이번 작업의 핵심 교훈:
 - 다음 작업으로 자연스럽게 이어지는 질문:
