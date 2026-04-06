@@ -7,6 +7,7 @@
 > - 프로젝트 [`PROJECT_INTENT.md`](/Users/rody/VscodeProjects/study/jvm/examples/learn-netty/PROJECT_INTENT.md)
 > - 프로젝트 [`AGENTS.md`](/Users/rody/VscodeProjects/study/jvm/examples/learn-netty/AGENTS.md)
 > - 현재 작업 템플릿 [`AGENTS_WORK_TEMPLATE.md`](/Users/rody/VscodeProjects/study/jvm/examples/learn-netty/AGENTS_WORK_TEMPLATE.md)
+> 코드 변경 WORK는 설명 프로토콜이 문서나 최종 응답에만 남지 않게, **코드 주변 설명(KDoc/블록 주석/짧은 근접 주석)** 까지 실제로 계획하고 검수해야 합니다.
 > 섹션은 임의로 삭제하지 않습니다. 정말 해당 없음이면 `N/A`와 이유를 적습니다.
 > 한 Unit은 해당 Unit에 연결된 체크리스트와 검증이 닫히기 전에는 다음 Unit으로 넘어가지 않습니다.
 > 각 WORK 문서는 가능하면 직전 WORK와 다음 WORK를 함께 연결해, 학습 흐름이 끊기지 않게 관리합니다.
@@ -25,7 +26,7 @@
 - 관련 요청 / 이슈:
 - 원문 사용자 요청:
 - run_mode: `normal | dry-run`
-- finish: `report | verify | test | test+commit | test+commit+push`
+- finish: `report | verify | verify+commit | test | test+commit | test+commit+push`
 - repo 변경 여부: `Y | N`
 - commit 기본 요구 여부: `Y | N`
 - 직전 WORK / 선행 작업:
@@ -38,6 +39,7 @@
 
 - 이 템플릿은 이 프로젝트에서 **작업할 때마다 AI가 반드시 instantiate**합니다.
 - 작은 작업이라고 해서 WORK 문서 자체를 생략하지 않습니다.
+- 코드 변경 작업이면, AI는 어떤 파일의 어떤 지점에 코드 주변 설명을 남길지까지 WORK에 적어야 합니다.
 - 다만 기록 밀도는 작업 깊이에 따라 달라질 수 있습니다.
   - `minimal`: 각 섹션을 매우 짧게 적을 수 있지만 생략하지는 않습니다.
   - `standard`: 핵심 판단과 근거를 충분히 남깁니다.
@@ -51,6 +53,10 @@
   - `Final Audit`
   - `Completion Decision`
   - `Commit Closure`(repo 변경 작업일 때)
+- 코드 변경 작업에서는 아래도 사실상 required로 취급합니다.
+  - `Explanation Design`
+  - `Detailed Task Plan`의 코드 주변 설명 계획
+  - `Frozen Success / Failure Checklist`의 코드 주변 설명 PASS/FAIL 항목
 
 ### 0.2 Learning Chain Policy
 
@@ -99,7 +105,8 @@
 
 - `INSTRUCTION_STACK_READY = global AGENTS read+applied AND PROJECT_INTENT read+applied AND local AGENTS read+applied AND this template instantiated`
 - `LEARNING_CHAIN_READY = current work position recorded AND (next work or justified stop recorded) AND roadmap change reason recorded when sequence changed`
-- `ALLOW_COMPLETE = INSTRUCTION_STACK_READY AND LEARNING_CHAIN_READY AND frozen checklist all PASS AND required verification all PASS AND PROJECT_INTENT compliance PASS AND global/local AGENTS compliance PASS AND final audit PASS AND unresolved blocker = 0 AND (repo change -> commit recorded when commit is in scope)`
+- `CODE_EXPLANATION_READY = (code changed -> code-adjacent explanation targets recorded AND required explanations actually added AND explanation verification PASS) OR (no code change -> N/A with reason)`
+- `ALLOW_COMPLETE = INSTRUCTION_STACK_READY AND LEARNING_CHAIN_READY AND CODE_EXPLANATION_READY AND frozen checklist all PASS AND required verification all PASS AND PROJECT_INTENT compliance PASS AND global/local AGENTS compliance PASS AND final audit PASS AND unresolved blocker = 0 AND (repo change -> commit recorded when commit is in scope)`
 - 하나라도 FAIL 또는 미판정이면 `BLOCK_COMPLETE`
 
 ### 1.5 Phase Status Board
@@ -303,6 +310,10 @@
 - worked example 후보:
 - 회상 anchor:
 - 코드 스니펫 / 파일 링크로 직접 보여 줄 위치:
+- 코드 주변에 반드시 설명을 남길 파일 / 지점:
+- 각 지점에 남길 설명 형태: `KDoc | 블록 주석 | 짧은 근접 주석 | 짧은 주석 + 관련 문서 링크`
+- 각 주석이 답해야 하는 질문:
+- 이 reasoning을 코드 밖 문서에만 두면 왜 부족한가:
 
 ### 9.3 Learning Transfer Design
 
@@ -414,6 +425,7 @@
   - 대상 파일 / 자산:
   - 바꿀 논리:
   - 설명 / 로그 / 시각화 / 실험 중 포함할 것:
+  - 코드 주변 설명 계획:
   - 검증:
   - 완료 판정:
 - Unit-02
@@ -421,6 +433,7 @@
   - 대상 파일 / 자산:
   - 바꿀 논리:
   - 설명 / 로그 / 시각화 / 실험 중 포함할 것:
+  - 코드 주변 설명 계획:
   - 검증:
   - 완료 판정:
 - Unit-03
@@ -428,6 +441,7 @@
   - 대상 파일 / 자산:
   - 바꿀 논리:
   - 설명 / 로그 / 시각화 / 실험 중 포함할 것:
+  - 코드 주변 설명 계획:
   - 검증:
   - 완료 판정:
 
@@ -459,6 +473,8 @@
 > 학습형 작업이라면 최소한 아래 두 축이 required로 들어가야 합니다.
 > - 이번 단계에서 닫아야 할 학습 질문
 > - 다음 단계 또는 로드맵 변경 기록
+> 코드 변경 작업이라면 required 항목 중 하나 이상은 반드시 아래를 닫아야 합니다.
+> - load-bearing 코드, 비자명한 분기, 관측 포인트에 코드 주변 설명이 실제로 존재하는가
 
 - C-01
   - 출처: `사용자 | AI-추가`
@@ -533,6 +549,7 @@
   - 시작 시각:
   - 실행 내용:
   - 변경 파일:
+  - 추가/보강한 코드 주변 설명:
   - 새로 생긴 증거:
   - 이번 시도에서 새로 얻은 지식:
   - 계획 / 순서 변경 여부:
@@ -545,6 +562,7 @@
   - 시작 시각:
   - 실행 내용:
   - 변경 파일:
+  - 추가/보강한 코드 주변 설명:
   - 새로 생긴 증거:
   - 이번 시도에서 새로 얻은 지식:
   - 계획 / 순서 변경 여부:
@@ -557,6 +575,7 @@
   - 시작 시각:
   - 실행 내용:
   - 변경 파일:
+  - 추가/보강한 코드 주변 설명:
   - 새로 생긴 증거:
   - 이번 시도에서 새로 얻은 지식:
   - 계획 / 순서 변경 여부:
@@ -654,7 +673,7 @@
 ### 21.3 Local AGENTS Compliance
 
 - 로컬 hard rule 중 이번 작업에 적용된 것:
-- 관측 장치 / 설명 품질 / 자연스러운 한국어 / 코드 링크 규칙 준수 여부:
+- 관측 장치 / 설명 품질 / 자연스러운 한국어 / 코드 링크 규칙 / 코드 주변 설명 규칙 준수 여부:
 - 누락 또는 위반 가능성:
 - repair:
 - Final: `PASS | FAIL`
@@ -668,6 +687,7 @@
 - 작업 완결성:
 - 결과 완결성:
 - 설명 품질:
+- 코드 주변 설명 존재/품질:
 - 검증 정직성:
 - 남은 이상 징후:
 
@@ -682,6 +702,7 @@
 - 실제 실행한 명령 / 테스트 / 확인:
 - PASS 신호:
 - FAIL 신호:
+- 코드 주변 설명 검증 결과:
 - 실행하지 못한 검증:
 - 실행하지 못한 이유:
 - 최종 confidence:
