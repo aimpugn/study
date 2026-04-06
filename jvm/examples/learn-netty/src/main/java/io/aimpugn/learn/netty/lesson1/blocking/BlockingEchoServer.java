@@ -28,7 +28,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class BlockingEchoServer implements LessonServer {
 
     private final ObservationLog observationLog = new ObservationLog("blocking");
+    // 새 연결이 들어올 때마다 client-1, client-2처럼 번호를 붙여,
+    // 로그와 설명 문서에서 같은 연결을 계속 따라갈 수 있게 합니다.
     private final AtomicInteger connectionIds = new AtomicInteger();
+    // blocking 모델은 연결마다 worker thread가 하나씩 붙는다는 점이 핵심 비교 포인트이므로,
+    // thread 이름에 worker 번호를 넣어 "연결 수가 늘면 기다리는 worker도 늘어난다"는 사실을 드러냅니다.
     private final AtomicInteger workerThreadIds = new AtomicInteger();
     private final int requestedPort;
     private final ExecutorService connectionExecutor = Executors.newCachedThreadPool(task ->
@@ -82,6 +86,8 @@ public final class BlockingEchoServer implements LessonServer {
     private void handleConnection(Socket socket, int connectionId) {
         String channel = channelName(connectionId);
 
+        // 이 worker가 맡은 socket과 그 위에 얹힌 reader/writer를 한 scope 안에서 같이 닫습니다.
+        // blocking 예제에서는 "한 worker가 한 연결을 독점하고, 끝나면 여기서 한 번에 정리된다"는 점이 중요합니다.
         try (socket;
              BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
              BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {

@@ -20,6 +20,8 @@
   - [`ObservationLog.java`](../../src/main/java/io/aimpugn/learn/netty/lesson1/common/ObservationLog.java)
 - 자동 검증 테스트 12개
   - [`Lesson1EchoServersTest.java`](../../src/test/java/io/aimpugn/learn/netty/lesson1/Lesson1EchoServersTest.java)
+- line-by-line walkthrough
+  - [`lesson-01-line-by-line.md`](./lesson-01-line-by-line.md)
 
 ## 버전과 이번 강의의 의도적 단순화
 
