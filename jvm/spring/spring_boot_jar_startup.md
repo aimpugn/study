@@ -26,8 +26,7 @@
 
 ## 먼저 눈으로 볼 구조와 공식 자료
 
-설명을 시작하기 전에, 실제로 무엇이 들어 있는지 먼저 눈으로 보는 편이 이해가 빠릅니다.
-이 저장소의 샘플 jar인 [fully-portable-spring-boot-0.0.1-SNAPSHOT.jar](/Users/rody/VscodeProjects/study/jvm/examples/fully-portable-spring-boot/target/fully-portable-spring-boot-0.0.1-SNAPSHOT.jar)을 보면 다음 구조가 보입니다.
+예를 들어, [fully-portable-spring-boot-0.0.1-SNAPSHOT.jar](/Users/rody/VscodeProjects/study/jvm/examples/fully-portable-spring-boot/target/fully-portable-spring-boot-0.0.1-SNAPSHOT.jar)을 보면 다음과 같이 실행에 참여하는 항목들을 확인할 수 있습니다.
 
 ```sh
 jar tf /Users/rody/VscodeProjects/study/jvm/examples/fully-portable-spring-boot/target/fully-portable-spring-boot-0.0.1-SNAPSHOT.jar \
@@ -42,8 +41,35 @@ BOOT-INF/lib/spring-boot-3.3.4.jar
 BOOT-INF/lib/spring-boot-autoconfigure-3.3.4.jar
 ```
 
-이 다섯 줄만 봐도 구조가 거의 드러납니다.
-이 jar 안에는 manifest가 있고, Spring Boot loader인 `JarLauncher`가 있고, 내가 만든 애플리케이션 클래스가 있고, 라이브러리 jar들이 `BOOT-INF/lib/` 아래에 같이 들어 있습니다.
+이제 각 항목을 하나씩 보면 다음과 같습니다.
+
+1. `META-INF/MANIFEST.MF`
+
+    JAR의 manifest 파일입니다.
+    `java -jar`로 실행할 때 Java launcher는 이 파일을 열어 `Main-Class`를 읽습니다.
+
+2. `org/springframework/boot/loader/launch/JarLauncher.class`
+
+    Spring Boot loader의 시작 클래스입니다.
+    Spring Boot executable jar에서는 manifest의 `Main-Class`가 보통 이 클래스를 가리킵니다.
+
+    이 클래스가 `BOOT-INF/classes/`가 아니라 jar 루트에 들어 있는 이유도 중요합니다.
+    아직 `BOOT-INF/classes/`와 `BOOT-INF/lib/`를 classpath로 풀기 전에도 먼저 로드되어야 하기 때문입니다.
+
+3. `BOOT-INF/classes/com/example/portable/FullyPortableApplication.class`
+
+    우리가 만든 애플리케이션 클래스입니다.
+    manifest의 `Start-Class`가 이 클래스를 가리키면, 결국 이 클래스의 `main()`으로 도달하게 됩니다.
+
+4. `BOOT-INF/lib/spring-boot-3.3.4.jar`
+
+    `SpringApplication` 같은 Spring Boot 핵심 부팅 코드가 들어 있는 라이브러리입니다.
+    애플리케이션 `main()`이 `SpringApplication.run()`을 호출하면, 실제 부팅 로직은 이 라이브러리 안의 코드가 담당합니다.
+
+5. `BOOT-INF/lib/spring-boot-autoconfigure-3.3.4.jar`
+
+    자동 구성(auto-configuration) 로직이 들어 있는 라이브러리입니다.
+    `ApplicationContext`를 올리는 과정에서 조건에 맞는 자동 구성을 적용할 때 이 라이브러리가 함께 참여합니다.
 
 manifest도 바로 확인할 수 있습니다.
 
@@ -58,7 +84,53 @@ Spring-Boot-Classes: BOOT-INF/classes/
 Spring-Boot-Lib: BOOT-INF/lib/
 ```
 
-이 문서에서 계속 등장하는 `Main-Class`, `Start-Class`, `BOOT-INF/classes/`, `BOOT-INF/lib/`는 위 실제 구조를 바탕으로 읽으면 훨씬 덜 헷갈립니다.
+여기서 각 항목은 다음 뜻입니다.
+
+1. `Main-Class`
+
+    Java launcher가 가장 먼저 시작할 클래스를 가리킵니다.
+    여기서는 `JarLauncher`가 들어 있으므로, Java launcher는 내 애플리케이션 클래스로 바로 들어가지 않습니다.
+
+2. `Start-Class`
+
+    `JarLauncher`가 classpath를 준비한 뒤 최종적으로 넘겨 줄 실제 애플리케이션 시작 클래스입니다.
+
+3. `Spring-Boot-Classes`
+
+    애플리케이션 클래스들을 어디서 찾아야 하는지 알려 줍니다.
+    여기서는 `BOOT-INF/classes/`입니다.
+
+4. `Spring-Boot-Lib`
+
+    라이브러리 jar들을 어디서 찾아야 하는지 알려 줍니다.
+    여기서는 `BOOT-INF/lib/`입니다.
+
+이제 위 항목들이 실제 실행에서 어떻게 엮이는지 순서대로 보면 다음과 같습니다.
+
+1. 운영 체제가 `java` 네이티브 실행 파일을 시작합니다.
+
+    이 단계에서는 아직 jar 내부를 읽지 않습니다.
+
+2. Java launcher가 jar를 열고 `META-INF/MANIFEST.MF`를 읽습니다.
+
+    여기서 `Main-Class`를 보고 첫 시작 클래스를 결정합니다.
+
+3. `Main-Class`가 `JarLauncher`이므로 Spring Boot loader가 먼저 시작합니다.
+
+    이때 `JarLauncher.class`가 jar 루트에 있어야 하는 이유가 드러납니다.
+    아직 `BOOT-INF/classes/`와 `BOOT-INF/lib/`가 classpath로 정리되기 전이므로, 먼저 로드될 수 있는 위치에 있어야 합니다.
+
+4. `JarLauncher`가 `Spring-Boot-Classes`와 `Spring-Boot-Lib`를 읽어 classpath를 준비합니다.
+
+    즉 `BOOT-INF/classes/`에 있는 애플리케이션 클래스와 `BOOT-INF/lib/`에 있는 라이브러리 jar들을 이제야 실행 가능한 형태로 연결합니다.
+
+5. `JarLauncher`가 `Start-Class`를 찾아 애플리케이션 `main()`을 호출합니다.
+
+    여기서 `BOOT-INF/classes/com/example/portable/FullyPortableApplication.class`가 실제 시작점으로 연결됩니다.
+
+6. 애플리케이션 `main()` 안의 `SpringApplication.run()`이 Spring Boot 라이브러리들을 사용해 컨텍스트를 올립니다.
+
+    이때 `spring-boot-3.3.4.jar` 안의 부팅 코드와 `spring-boot-autoconfigure-3.3.4.jar` 안의 자동 구성 로직이 함께 동작합니다.
 
 같이 보면 좋은 공식 자료는 다음과 같습니다.
 
