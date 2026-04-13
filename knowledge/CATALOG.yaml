@@ -5,11 +5,12 @@ template:
   path: "KNOWLEDGE_TEMPLATE.md"
 
 usage:
-  intent: "사람 중심 학습과 재사용 가능한 의사결정 지원"
+  intent: "사람과 AI가 좁고 깊은 판단 메모를 탐색하고 재사용 가능한 의사결정을 찾도록 돕는 인덱스"
   rule:
     - "CATALOG에서 tags/problem_signature로 카드 후보를 찾고, 카드의 \"질문\"과 \"기본 결론\"을 먼저 읽습니다."
     - "현재 상황이 기본 결론에 그대로 들어맞는지 \"다르게 판단해야 하는 경우\"를 먼저 확인합니다."
     - "카드의 \"최소 실험(검증)\"을 따라 하며, 근거 -> 연결 논리 -> 결론이 실제로 재현되는지 확인합니다."
+    - "카드는 주제 전체를 짧게 요약하는 문서가 아니라, 반복되는 설계/구현 판단을 좁고 깊게 닫는 decision memo로 취급합니다."
     - "새 카드 신설은 마지막 수단입니다. 대부분은 기존 카드에 변형/반례/최소 실험을 보강하면 충분합니다."
 
 cards:
@@ -38,18 +39,6 @@ cards:
     primary_case_commits:
       - "1c5d36e4be47300a1d9cbd48a53578021eb28984"
 
-  - id: K-DRY-WRONG-ABSTRACTION-AND-UTIL-PLACEMENT
-    title: "중복(DRY) 제거와 유틸 배치: 잘못된 추상화 비용 줄이기"
-    quality: "pass"
-    tags: ["refactoring", "dry", "duplication", "abstraction", "boundary", "hexagonal", "maintainability"]
-    problem_signature: ["duplicate implementation", "shared util placement", "wrong abstraction risk"]
-    path: "cards/K-DRY-WRONG-ABSTRACTION-AND-UTIL-PLACEMENT.md"
-    default_decision: "중복은 의미가 안정화될 때까지 유지하고, 추출 시 '의미의 소유자' 경계에 배치한다"
-    key_variants:
-      - "독립 배포(서비스 분리) 환경에서는 공유 라이브러리보다 제한적 코드 복제가 더 저렴할 수 있다"
-      - "인프라 의미(예: DB NULL 정규화)는 core가 아니라 인프라(outbound/server) 경계에 둔다"
-    primary_case_commits: []
-
   - id: K-BOUNDARY-PARSE-DONT-VALIDATE-TOLERANT-READER
     title: "경계 파싱(Parse)과 검증(Validate): Tolerant Reader와 계약 테스트"
     quality: "pass"
@@ -74,15 +63,16 @@ cards:
       - "규칙은 문서가 아니라 테스트/정적 분석(아키텍처 fitness function)로 drift를 조기 탐지"
     primary_case_commits: []
 
-  - id: K-HEXAGONAL-PORT-TYPES-AND-MAPPING-OWNERSHIP
-    title: "Hexagonal Port 타입 소유권과 표현(JSON) 매핑 책임"
+  - id: K-HEXAGONAL-DDD-BOUNDARY-PORT-TEST-PLAYBOOK
+    title: "Hexagonal + DDD 경계/Port/테스트 플레이북"
     quality: "pass"
-    tags: ["architecture", "hexagonal", "ddd", "ports", "repository", "mapping", "representation", "json"]
-    problem_signature: ["port type leak", "adapter type leak", "db row mapping", "json payload ownership"]
-    path: "cards/K-HEXAGONAL-PORT-TYPES-AND-MAPPING-OWNERSHIP.md"
-    default_decision: "Port(Repository) 시그니처에는 core 소유 타입만 등장시키고, 표현(row/JSON)의 해석 책임은 '표현 소유권'으로 결정한다"
+    tags: ["architecture", "hexagonal", "ddd", "boundary", "ports", "mapping", "testing", "dry", "abstraction", "maintainability"]
+    problem_signature: ["port type leak", "adapter type leak", "test boundary confusion", "shared util placement", "wrong abstraction risk"]
+    path: "cards/K-HEXAGONAL-DDD-BOUNDARY-PORT-TEST-PLAYBOOK.md"
+    default_decision: "Port는 core 소유 타입만 노출하고, 표현의 해석 책임은 소유자 경계에 두며, DRY는 의미가 안정화될 때만 적용하고, 정책/primitive/contract 테스트를 분리한다"
     key_variants:
       - "payload가 인프라 스냅샷이면 adapter 파싱이 기본값이고, payload가 도메인 계약(type/version/envelope)이면 core 파싱이 가능하다"
+      - "독립 배포(서비스 분리) 환경에서는 공유 라이브러리보다 제한적 코드 복제가 더 저렴할 수 있다"
       - "Port DTO를 테이블 1:1로 둘지(단순/확장성) vs 필요한 필드만 둘지(결합 감소)는 조회 요구/스키마 변화 비용으로 결정한다"
     primary_case_commits:
       - "610dbef"
