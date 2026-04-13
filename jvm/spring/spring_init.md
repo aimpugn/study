@@ -9,6 +9,7 @@
         - [`rootpath/settings.gradle.kts`](#rootpathsettingsgradlekts)
         - [`rootpath/build.gradle.kts`](#rootpathbuildgradlekts)
     - [실행 가능한 jar 파일 만들기](#실행-가능한-jar-파일-만들기)
+        - [심화: `java -jar` 실행 경로](#심화-java--jar-실행-경로)
     - [코드 구조화하기](#코드-구조화하기)
     - [Deploying Spring Boot Applications](#deploying-spring-boot-applications)
         - [systemd 서비스로 관리](#systemd-서비스로-관리)
@@ -301,6 +302,10 @@ jar tvf build/libs/backend-0.0.1-SNAPSHOT.jar
 ```sh
 java -jar build/libs/myproject-0.0.1-SNAPSHOT.jar
 ```
+
+### 심화: `java -jar` 실행 경로
+
+위 명령을 입력했을 때 운영 체제, Java launcher, manifest, Spring Boot loader, `SpringApplication.run()`이 어떻게 이어지는지는 별도 문서 [spring_boot_jar_startup.md](./spring_boot_jar_startup.md)에서 깊게 정리했습니다.
 
 ## 코드 구조화하기
 
