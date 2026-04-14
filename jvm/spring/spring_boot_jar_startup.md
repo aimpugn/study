@@ -240,22 +240,25 @@ file /usr/bin/java
 
 ## `META-INF/MANIFEST.MF`는 무엇이고, 왜 생겼고, 언제부터 있었을까
 
-이제 JAR 안으로 올라가 보겠습니다.
-
 Java 표준의 [JAR File Specification](https://docs.oracle.com/en/java/javase/25/docs/specs/jar/jar.html)은 JAR를 ZIP 기반 파일 포맷으로 설명합니다.
-이 문서에 따르면 JAR는 `META-INF` 디렉터리를 가질 수 있고, 그 안의 `MANIFEST.MF`는 JAR 자체와 애플리케이션에 대한 설정 정보를 담는 manifest 파일입니다.
+이 문서에 따르면 JAR는 `META-INF` 디렉터리를 가질 수 있고, 그 안의 `MANIFEST.MF`는 JAR 전체에 공통으로 적용되는 메타데이터를 적는 manifest 파일입니다.
 
 즉 `META-INF/MANIFEST.MF`는 Spring Boot가 임의로 만든 파일이 아니라, JAR 규약 안에 있는 표준 위치입니다.
 이 파일 안에는 `name: value` 형태의 속성이 들어가고, manifest의 main section에는 JAR 자체와 애플리케이션에 대한 보안 및 설정 정보가 들어갑니다.
 executable JAR에서는 `Main-Class` 같은 속성이 시작 경로를 결정합니다.
 
-이 파일의 정체가 오래 모호하게 느껴지는 이유는, 보통 우리가 `jar`를 "클래스를 묶은 압축 파일" 정도로만 보고 지나가기 때문입니다.
-하지만 JAR는 단순 압축 파일이 아니라 "여러 파일을 하나의 배포 단위로 묶고, 그 배포 단위의 메타데이터도 함께 담는 형식"입니다.
-`META-INF/MANIFEST.MF`는 그 메타데이터를 위한 표준 위치라고 보면 됩니다.
+여기서 manifest라는 말도 같이 정리해 두는 편이 좋습니다.
+manifest는 archive 전체에 공통으로 적용되는 메타데이터를 적는 파일이라고 생각하면 됩니다.
+archive는 여러 파일을 하나로 묶은 파일이라고 보면 됩니다.
 
-왜 이런 파일이 필요했는지도 같이 봐야 합니다.
-Oracle의 [JAR File Overview](https://docs.oracle.com/javase/6/docs/technotes/guides/jar/jarGuide.html)는 JAR 형식의 주된 동기로, applet과 관련 리소스를 한 번의 HTTP transaction으로 내려받게 하여 여러 연결을 열지 않게 하고, 압축과 디지털 서명을 지원하려는 점을 설명합니다.
-즉 많은 파일을 하나의 archive로 묶기 시작하면, 그 archive 전체에 대한 설명이 필요해집니다.
+보통은 `jar` 파일을 "클래스를 묶은 압축 파일" 정도로 이해하기 때문에 `META-INF/MANIFEST.MF`를 자세하게 살펴볼 일이 없습니다.
+하지만 JAR는 단순 압축 파일이 아니라, 여러 클래스와 리소스를 하나의 배포 단위로 묶고 그 배포 단위에 대한 설명도 함께 담는 형식입니다.
+`META-INF/MANIFEST.MF`는 바로 그 설명을 적는 자리입니다.
+
+Oracle의 [JAR File Overview](https://docs.oracle.com/javase/6/docs/technotes/guides/jar/jarGuide.html)에 따르면 applet과 관련 리소스를 한 번의 HTTP transaction으로 내려받게 하여 여러 연결을 열지 않게 하고, 압축과 디지털 서명을 지원하기 위해 JAR 형식의 파일을 지원하게 됐습니다.
+여기서 applet과 관련 리소스는, 웹에서 내려받아 실행하던 Java applet 클래스와 그 applet이 함께 필요로 하는 이미지, 오디오, 기타 보조 파일들을 뜻한다고 이해하면 됩니다.
+
+그런데 많은 파일을 하나의 archive로 묶으려면 그 archive 전체에 대한 설명이 필요해집니다.
 무엇이 시작 클래스인지, 무엇이 서명되었는지, 어떤 버전 정보가 있는지 같은 정보를 파일마다 흩어 적을 수는 없으니, archive 전체의 공통 메타데이터를 담는 표준 위치가 필요했고 그 자리가 manifest입니다.
 
 `언제부터 있었는가`도 문서로 직접 확인되는 범위까지는 정리할 수 있습니다.
