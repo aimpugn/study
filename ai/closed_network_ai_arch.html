@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-assisted GitLab CI to DMZ Jenkins Deployment (Refined HA)</title>
+    <style>
+        /* Modern UI Color Palette & Variables */
+        :root {
+            --bg-page: #f4f7f9;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+
+            /* Zone Colors */
+            --rnd-border: #10b981;
+            --rnd-bg: #ecfdf5;
+            --rnd-header: #d1fae5;
+
+            --dmz-border: #f59e0b;
+            --dmz-bg: #fffbeb;
+            --dmz-header: #fef3c7;
+
+            --int-border: #3b82f6;
+            --int-bg: #eff6ff;
+            --int-header: #dbeafe;
+
+            /* Flow Colors */
+            --flow-build: #3b82f6;
+            --flow-deploy: #10b981;
+            --flow-status: #f59e0b;
+            --flow-block: #ef4444;
+
+            /* Shadows & Borders */
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --radius-lg: 12px;
+            --radius-md: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            line-height: 1.5;
+            padding: 30px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Header Area */
+        .header-container {
+            background: #ffffff;
+            padding: 24px 30px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--card-shadow);
+            margin-bottom: 24px;
+            border-left: 6px solid var(--text-main);
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .summary {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .ha-badge {
+            background: #4f46e5;
+            color: white;
+            font-size: 0.85rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .core-message {
+            background: #f1f5f9;
+            padding: 16px;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #334155;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 24px;
+            padding: 0 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .line {
+            width: 30px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .line.build {
+            background: var(--flow-build);
+        }
+
+        .line.deploy {
+            background: var(--flow-deploy);
+        }
+
+        .line.status {
+            background: var(--flow-status);
+        }
+
+        .line.block {
+            background: transparent;
+            border-top: 3px dashed var(--flow-block);
+        }
+
+        /* Main Architecture Grid */
+        .arch-grid {
+            display: grid;
+            grid-template-columns: 1.15fr 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        /* Network Zones */
+        .zone {
+            background: #ffffff;
+            border: 2px solid;
+            border-radius: var(--radius-lg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+        }
+
+        .zone.rnd {
+            border-color: var(--rnd-border);
+        }
+
+        .zone.dmz {
+            border-color: var(--dmz-border);
+        }
+
+        .zone.int {
+            border-color: var(--int-border);
+        }
+
+        .zone-header {
+            padding: 16px;
+            font-weight: 800;
+            font-size: 1.15rem;
+            text-align: center;
+            border-bottom: 2px solid;
+        }
+
+        .zone.rnd .zone-header {
+            background: var(--rnd-header);
+            border-color: var(--rnd-border);
+            color: #064e3b;
+        }
+
+        .zone.dmz .zone-header {
+            background: var(--dmz-header);
+            border-color: var(--dmz-border);
+            color: #92400e;
+        }
+
+        .zone.int .zone-header {
+            background: var(--int-header);
+            border-color: var(--int-border);
+            color: #1e3a8a;
+        }
+
+        .zone-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            flex: 1;
+        }
+
+        /* Components */
+        .component {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
+            padding: 16px;
+            position: relative;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
+        }
+
+        .component:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--card-shadow);
+        }
+
+        .comp-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .comp-title {
+            font-weight: 800;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .comp-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* Human Actor Badge */
+        .actor-badge {
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        /* HA Grouping */
+        .ha-group {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: var(--radius-md);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ha-group.db-group {
+            border-color: #8b5cf6;
+            background: #faf5ff;
+        }
+
+        .ha-title-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .ha-group-title {
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .db-group .ha-group-title {
+            color: #6d28d9;
+        }
+
+        .lb-node {
+            background: #e2e8f0;
+            border: 1px solid #94a3b8;
+            border-radius: 20px;
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 800;
+            padding: 6px;
+            color: #334155;
+            box-shadow: 0 2px 0 #cbd5e1;
+        }
+
+        .node-stack {
+            display: flex;
+            gap: 8px;
+        }
+
+        .node-item {
+            flex: 1;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 8px 4px;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #0f172a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .node-item.active {
+            border-color: #10b981;
+            border-top: 3px solid #10b981;
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
+        }
+
+        .node-item.standby {
+            border-color: #f59e0b;
+            border-top: 3px solid #f59e0b;
+            background: #fffbeb;
+            color: #92400e;
+        }
+
+        .node-item.stateless {
+            border-color: #3b82f6;
+            border-top: 3px solid #3b82f6;
+        }
+
+        .node-item.db-node {
+            border-color: #8b5cf6;
+            border-top: 3px solid #8b5cf6;
+        }
+
+        /* Specific Component Styles */
+        .comp-ai {
+            border-left: 4px solid #8b5cf6;
+        }
+
+        .comp-gitlab {
+            border-left: 4px solid #e24329;
+        }
+
+        .comp-runner {
+            border-left: 4px solid #3b82f6;
+            background: #f8fafc;
+        }
+
+        .comp-nexus {
+            border-left: 4px solid #10b981;
+        }
+
+        .comp-dropzone {
+            border-left: 4px solid #f59e0b;
+            background: #fffbeb;
+        }
+
+        .comp-jenkins {
+            border-left: 4px solid #d946ef;
+        }
+
+        .comp-target {
+            border-left: 4px solid #3b82f6;
+            background: #eff6ff;
+        }
+
+        /* Drop Zone File List */
+        .file-list {
+            background: #ffffff;
+            border: 1px dashed #fbbf24;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #92400e;
+            text-align: left;
+        }
+
+        /* Jenkins Deploy Button */
+        .deploy-btn {
+            background: #d946ef;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 8px;
+            display: inline-block;
+            cursor: default;
+        }
+
+        /* Badge Numbers */
+        .badge {
+            background: var(--text-main);
+            color: white;
+            min-width: 22px;
+            height: 22px;
+            border-radius: 11px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            flex-shrink: 0;
+            padding: 0 8px;
+            white-space: nowrap;
+            letter-spacing: 0.5px;
+            z-index: 10;
+        }
+
+        .badge-arrow {
+            color: #94a3b8;
+            font-size: 0.65rem;
+            margin: 0 3px;
+        }
+
+        /* SVG Arrows & Flows */
+        .flow-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-align: center;
+            margin: 8px 0;
+        }
+
+        .flow-build {
+            background: #eff6ff;
+            color: var(--flow-build);
+            border: 1px solid #bfdbfe;
+        }
+
+        .flow-deploy {
+            background: #ecfdf5;
+            color: var(--flow-deploy);
+            border: 1px solid #a7f3d0;
+        }
+
+        .flow-block {
+            background: #fef2f2;
+            color: var(--flow-block);
+            border: 1px dashed #fecaca;
+        }
+
+        /* Sequence List */
+        .sequence-container {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            padding: 24px 30px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 24px;
+            border-top: 4px solid var(--text-main);
+        }
+
+        .sequence-container h3 {
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+        }
+
+        .seq-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            column-gap: 40px;
+        }
+
+        .seq-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+
+        .seq-num {
+            color: var(--flow-build);
+            font-weight: 800;
+            min-width: 24px;
+        }
+
+        /* Warning Footer */
+        .footer-warning {
+            background: #fef2f2;
+            border: 2px solid #fca5a5;
+            border-radius: var(--radius-lg);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #991b1b;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        /* Rolling Deploy Step UI */
+        .rolling-steps {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #334155;
+            margin-top: 4px;
+        }
+
+        .rolling-steps .step {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .step-tag {
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: bold;
+            width: 45px;
+            text-align: center;
+        }
+
+        .tag-drain {
+            background: #64748b;
+        }
+
+        .tag-deploy {
+            background: #3b82f6;
+        }
+
+        .tag-check {
+            background: #f59e0b;
+        }
+
+        .tag-join {
+            background: #10b981;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+                background: white;
+            }
+
+            .header-container,
+            .zone,
+            .sequence-container {
+                box-shadow: none;
+                border: 1px solid #cbd5e1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header-container">
+        <h1>
+            AI-assisted GitLab CI to DMZ Jenkins Deployment
+            <span class="ha-badge">Core Infra HA & Rolling Deploy</span>
+        </h1>
+        <div class="summary">플랫폼 제어 영역(GitLab)과 앱 데이터 영역(MySQL)의 물리적 격리를 포함한 이중화 MVP</div>
+        <div class="core-message">
+            <svg style="width:24px;height:24px;color:#3b82f6;flex-shrink:0" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            망 분리 환경의 핵심 불변식인 '제어(Control Plane)와 데이터(Data Plane)의 분리'를 반영했습니다. GitLab 메타데이터를 담는 시스템 DB(PostgreSQL)와
+            애플리케이션 테스트용 DB(MySQL)를 분리하여, 상호 장애 전파(Noisy Neighbor)를 원천 차단한 엔터프라이즈 설계입니다.
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+        <div class="legend-item">
+            <div class="line build"></div> 연구/개발망 Build & Artifact 흐름
+        </div>
+        <div class="legend-item">
+            <div class="line deploy"></div> DMZ에서 내부망으로 승인된 배포 흐름
+        </div>
+        <div class="legend-item">
+            <div class="line status"></div> 최소 상태 응답 (Health Check)
+        </div>
+        <div class="legend-item">
+            <div class="line block"></div> 금지된 역방향 데이터 흐름
+        </div>
+    </div>
+
+    <!-- Architecture Grid -->
+    <div class="arch-grid">
+
+        <!-- ZONE 1: R&D -->
+        <div class="zone rnd">
+            <div class="zone-header">1. 연구/개발망 (R&D CI)</div>
+            <div class="zone-body">
+
+                <div class="component comp-ai" style="margin-bottom: -4px;">
+                    <div class="comp-header">
+                        <span class="comp-title">Claude (AI Assistant)</span>
+                        <span class="badge">1</span>
+                    </div>
+                    <div class="comp-desc">개발 보조, 코드/테스트 작성 지원 (내부 접근 X)</div>
+                </div>
+
+                <!-- GitLab Core HA (Platform Control Plane) -->
+                <div class="ha-group">
+                    <div class="ha-title-bar">
+                        <span class="ha-group-title">GitLab Core HA (Control Plane)</span>
+                        <span class="badge">2 <span class="badge-arrow">➔</span> 4</span>
+                    </div>
+                    <div class="lb-node">L4 (GitLab VIP) <span class="actor-badge">👤 개발자 MR 접근</span></div>
+                    <div class="node-stack">
+                        <div class="node-item stateless">GL Web/API<br><span
+                                style="font-size:0.65rem;color:#64748b;">(Stateless)</span></div>
+                        <div class="node-item stateless">GL Web/API<br><span
+                                style="font-size:0.65rem;color:#64748b;">(Stateless)</span></div>
+                    </div>
+                    <div class="comp-desc" style="margin:2px 0;"><b>[플랫폼 상태 격리]</b> 소스 및 파이프라인 메타데이터</div>
+                    <div class="node-stack">
+                        <div class="node-item stateless">Gitaly Cluster<br><span
+                                style="font-size:0.65rem;color:#3b82f6;">(Git Repository)</span></div>
+                        <div class="node-item standby">GitLab DB HA<br><span
+                                style="font-size:0.65rem;color:#d97706;">(PostgreSQL / Redis)</span></div>
+                    </div>
+                </div>
+
+                <div class="ha-group">
+                    <div class="ha-title-bar">
+                        <span class="ha-group-title">GitLab Runner Pool</span>
+                        <span class="badge">5</span>
+                    </div>
+                    <div class="node-stack">
+                        <div class="node-item active">Runner 01</div>
+                        <div class="node-item active">Runner 02</div>
+                        <div class="node-item active">Runner 03</div>
+                    </div>
+                    <div class="comp-desc" style="margin-top:4px;">Runner는 위 <b>R&D MySQL</b>을 활용하여 통합 테스트(Integration
+                        Test) 수행</div>
+                </div>
+
+                <div class="ha-group">
+                    <div class="ha-title-bar">
+                        <span class="ha-group-title">Nexus Repository HA</span>
+                        <span class="badge">6</span>
+                    </div>
+                    <div class="node-stack">
+                        <div class="node-item stateless">Nexus Node 1</div>
+                        <div class="node-item stateless">Nexus Node 2</div>
+                    </div>
+                    <div class="node-item stateless" style="margin-top: 4px;">Shared Storage (IDC 할당 자원)</div>
+                </div>
+
+                <!-- R&D App DB (Data Plane) -->
+                <div class="ha-group db-group">
+                    <div class="ha-title-bar">
+                        <span class="ha-group-title">R&D Application DB (Data Plane)</span>
+                    </div>
+                    <div class="comp-desc" style="margin-bottom:6px;">서비스 개발 및 테스트 전용 저장소. GitLab과 물리적 분리.</div>
+                    <div class="node-stack">
+                        <div class="node-item db-node">R&D MySQL<br><span
+                                style="font-size:0.65rem;color:#6d28d9;">(Primary)</span></div>
+                        <div class="node-item db-node">R&D MySQL<br><span
+                                style="font-size:0.65rem;color:#6d28d9;">(Replica)</span></div>
+                    </div>
+                </div>
+
+                <div class="flow-box flow-build" style="margin-top:auto;">
+                    <span class="badge">7 <span class="badge-arrow">➔</span> 8</span>
+                    Artifact Bundle 생성 후 POST ➔
+                </div>
+            </div>
+        </div>
+
+        <!-- ZONE 2: DMZ -->
+        <div class="zone dmz">
+            <div class="zone-header">2. DMZ (완충 구역)</div>
+            <div class="zone-body">
+
+                <div class="ha-group">
+                    <div class="ha-title-bar">
+                        <span class="ha-group-title">Entry Point HA & External State</span>
+                        <span class="badge">9 <span class="badge-arrow">➔</span> 10</span>
+                    </div>
+                    <div class="lb-node">DMZ L4 Load Balancer</div>
+                    <div class="node-stack">
+                        <div class="node-item stateless">Receiver 1<br><span
+                                style="font-size:0.65rem;color:#64748b;">(Manifest 검증)</span></div>
+                        <div class="node-item stateless">Receiver 2<br><span
+                                style="font-size:0.65rem;color:#64748b;">(Manifest 검증)</span></div>
+                    </div>
+
+                    <div class="component comp-dropzone" style="margin-top:8px;">
+                        <div class="comp-header"><span class="comp-title">Shared Drop Zone (IDC Storage)</span></div>
+                        <div class="comp-desc">검증 통과 후 특정 인프라 기술에 종속되지 않은 공유 볼륨에 영구 보관</div>
+                        <div class="file-list">
+                            /drop-zone/{project}/{commit-sha}/<br>
+                            ├─ app.jar<br>
+                            ├─ app.jar.sha256<br>
+                            ├─ deploy-manifest.json<br>
+                            └─ test-result-summary.json
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ha-group">
+                    <div class="ha-title-bar">
+                        <span class="ha-group-title">Jenkins Controller HA</span>
+                        <span class="badge">11 <span class="badge-arrow">➔</span> 12</span>
+                    </div>
+                    <div class="node-stack">
+                        <div class="node-item active">Jenkins Master<br><span
+                                style="font-size:0.65rem;color:#10b981;">(Active)</span></div>
+                        <div class="node-item standby">Jenkins Master<br><span
+                                style="font-size:0.65rem;color:#d97706;">(Standby)</span></div>
+                    </div>
+                    <div class="comp-desc" style="text-align: center; margin-top: 6px;"><span class="actor-badge">👤 승인자
+                            대시보드 열람</span></div>
+                    <div class="deploy-btn" style="text-align: center; margin-top: 4px;">▶ Manual Deploy Selected
+                        Artifact</div>
+                </div>
+
+                <div class="component comp-jenkins">
+                    <div class="comp-header">
+                        <span class="comp-title">Jenkins Agent</span>
+                        <span class="badge">13</span>
+                    </div>
+                    <div class="comp-desc">배포 시 특정 서비스 계정(User)으로 권한 위임 후 스크립트 실행</div>
+                </div>
+
+                <div class="flow-box flow-deploy" style="margin-top:auto;">
+                    <span class="badge">13</span> 제한된 계정 권한으로 실행 ➔ 내부망
+                </div>
+            </div>
+        </div>
+
+        <!-- ZONE 3: Internal -->
+        <div class="zone int">
+            <div class="zone-header">3. 내부망 (Internal CD)</div>
+            <div class="zone-body">
+
+                <div class="ha-group">
+                    <div class="ha-title-bar">
+                        <span class="ha-group-title">Target Server HA (Rolling Deploy)</span>
+                        <span class="badge">14</span>
+                    </div>
+                    <div class="lb-node">Internal L4 Switch (Service VIP)</div>
+
+                    <div class="rolling-steps">
+                        <div class="step"><span class="step-tag tag-drain">Drain</span> L4에서 <b>Server A</b> 연결 차단</div>
+                        <div class="step"><span class="step-tag tag-deploy">Deploy</span> sudo su - 서비스계정 ➔ deploy.sh 실행
+                        </div>
+                        <div class="step"><span class="step-tag tag-check">Check</span> HTTP /actuator/health == 200 OK
+                            확인</div>
+                        <div class="step"><span class="step-tag tag-join">Join</span> 통과 시 L4에 <b>Server A</b> 복귀 ➔
+                            <b>Server B</b> 반복
+                        </div>
+                    </div>
+
+                    <div class="node-stack" style="margin-top: 6px;">
+                        <div class="node-item active">Target Server A<br><span
+                                style="font-size:0.65rem;color:#64748b;">(Service Account / JVM)</span></div>
+                        <div class="node-item active">Target Server B<br><span
+                                style="font-size:0.65rem;color:#64748b;">(Service Account / JVM)</span></div>
+                    </div>
+                </div>
+
+                <div class="component" style="border-left: 4px solid #64748b; background: #f8fafc;">
+                    <div class="comp-header"><span class="comp-title">Internal Service Logs (Shared)</span></div>
+                    <div class="comp-desc">내부망 보관 전용. 서비스 계정만 쓰기 권한 보유.</div>
+                </div>
+
+                <div style="margin-top:auto;">
+                    <div class="flow-box flow-block">🚫 Internal logs/secrets ➔ R&D망 역류 금지</div>
+                    <div class="flow-box" style="background:#fffbeb; color:#d97706; border:1px solid #fde68a;">
+                        <span class="badge" style="background:#d97706;">15</span>
+                        ← DMZ Jenkins로 최소 상태 응답(200 OK)만 허용
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sequence List -->
+    <div class="sequence-container">
+        <h3>배포 파이프라인 시퀀스 (Main Sequence)</h3>
+        <div class="seq-grid">
+            <div class="seq-item"><span class="seq-num">01.</span> Claude가 연구/개발망에서 개발 보조 (내부 접근 X)</div>
+            <div class="seq-item"><span class="seq-num">09.</span> DMZ Artifact Receiver (HA)가 L4를 통해 Upload 수신</div>
+
+            <div class="seq-item"><span class="seq-num">02.</span> 개발자가 코드 작성 후 Commit & Push</div>
+            <div class="seq-item"><span class="seq-num">10.</span> 무결성 확인 후 Shared Drop Zone(IDC 자원)에 영구 보관</div>
+
+            <div class="seq-item"><span class="seq-num">03.</span> GitLab (HA)에서 MR 생성, 코드 리뷰 후 Merge</div>
+            <div class="seq-item"><span class="seq-num">11.</span> Jenkins Controller (Active)가 배포 가능한 후보 인식</div>
+
+            <div class="seq-item"><span class="seq-num">04.</span> GitLab Pipeline Trigger 발생</div>
+            <div class="seq-item"><span class="seq-num">12.</span> 승인자가 Jenkins에서 배포 타이밍 선택 (수동 배포)</div>
+
+            <div class="seq-item"><span class="seq-num">05.</span> Runner가 별도의 <b>R&D MySQL</b>을 활용하여 통합 테스트 수행</div>
+            <div class="seq-item"><span class="seq-num">13.</span> Jenkins Agent가 서비스 계정(sudo su -s) 권한으로 타겟 스크립트 실행
+            </div>
+
+            <div class="seq-item"><span class="seq-num">06.</span> Runner가 Nexus (HA)를 통해 의존성 다운로드</div>
+            <div class="seq-item"><span class="seq-num">14.</span> 롤링 배포 (L4 Drain ➔ Script Execution ➔ Health Check ➔
+                Join)</div>
+
+            <div class="seq-item"><span class="seq-num">07.</span> 테스트 통과 시 배포용 Artifact Bundle 및 Manifest 생성</div>
+            <div class="seq-item"><span class="seq-num">15.</span> Jenkins 화면에서 최소화된 배포 결과 및 상태 모니터링</div>
+
+            <div class="seq-item"><span class="seq-num">08.</span> Runner가 Bundle을 DMZ로 POST 전송</div>
+        </div>
+    </div>
+
+    <!-- Footer Warning -->
+    <div class="footer-warning">
+        <svg style="width:28px;height:28px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+            </path>
+        </svg>
+        <span>
+            <b>[보안 아키텍처 절대 원칙]</b> 내부망 상세 애플리케이션 로그, 스택 트레이스 전체, 운영 Secret, 서버 Inventory 정보는 어떠한 경우에도 연구/개발망(GitLab,
+            Claude)으로 반출되거나 Jenkins(DMZ)에 무제한 노출되어서는 안 됩니다.
+        </span>
+    </div>
+
+</body>
+
+</html>
