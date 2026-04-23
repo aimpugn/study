@@ -11,6 +11,7 @@ import argparse
 import dataclasses
 import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 
@@ -47,6 +48,8 @@ IPV4_RE = re.compile(
     r"\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b"
 )
 PROFILE_TOKEN_RE = re.compile(r"[A-Za-z0-9_.-]+")
+SPRING_PLACEHOLDER_RE = re.compile(r"\$\{(?P<name>[^}:]+)(?::(?P<default>[^}]*))?\}")
+SAFE_USERNAME_VALUES = {"sa"}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -152,6 +155,44 @@ def placeholder_for(category: str) -> str:
     if category == "username":
         return "<REDACTED_USERNAME>"
     return "<REDACTED_SECRET>"
+
+
+def strip_wrapping_quotes(value: str) -> str:
+    stripped = value.strip()
+    if len(stripped) >= 2 and stripped[0] == stripped[-1] and stripped[0] in {"'", '"'}:
+        return stripped[1:-1]
+    return stripped
+
+
+def safe_username_value(value: str) -> bool:
+    return strip_wrapping_quotes(value).strip().lower() in SAFE_USERNAME_VALUES
+
+
+def value_is_only_spring_placeholders(value: str) -> bool:
+    stripped = strip_wrapping_quotes(value)
+    return bool(SPRING_PLACEHOLDER_RE.search(stripped)) and not SPRING_PLACEHOLDER_RE.sub("", stripped).strip()
+
+
+def redact_spring_placeholder_defaults(
+    value: str,
+    replacement: str,
+    should_redact_default: Callable[[str], bool] | None = None,
+) -> tuple[str, int, bool]:
+    count = 0
+    found = False
+
+    def replace(match: re.Match[str]) -> str:
+        nonlocal count, found
+        found = True
+        default = match.group("default")
+        if default is None or default == "":
+            return match.group(0)
+        if should_redact_default is not None and not should_redact_default(default):
+            return match.group(0)
+        count += 1
+        return "${" + match.group("name") + ":" + replacement + "}"
+
+    return SPRING_PLACEHOLDER_RE.sub(replace, value), count, found
 
 
 def extract_profiles(value: str) -> tuple[set[str], bool]:
@@ -269,7 +310,24 @@ def sanitize_value(path_parts: list[str], value: str, settings: Settings) -> tup
     category = key_category(path_parts)
     redactions = 0
 
-    if category and body.strip():
+    if category == "username" and body.strip():
+        if safe_username_value(body):
+            return body + newline, redactions
+        body, placeholder_count, placeholder_found = redact_spring_placeholder_defaults(
+            body,
+            placeholder_for(category),
+            should_redact_default=lambda default: not safe_username_value(default),
+        )
+        redactions += placeholder_count
+        if placeholder_found and (placeholder_count > 0 or value_is_only_spring_placeholders(body)):
+            return body + newline, redactions
+        body = placeholder_for(category)
+        redactions += 1
+    elif category and body.strip():
+        body, placeholder_count, placeholder_found = redact_spring_placeholder_defaults(body, placeholder_for(category))
+        redactions += placeholder_count
+        if placeholder_found and (placeholder_count > 0 or value_is_only_spring_placeholders(body)):
+            return body + newline, redactions
         body = placeholder_for(category)
         redactions += 1
     else:

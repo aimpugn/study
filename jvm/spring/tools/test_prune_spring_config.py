@@ -171,6 +171,78 @@ class PruneSpringConfigTest(unittest.TestCase):
             self.assertIn("KEEP   application.properties", output)
             self.assertEqual("spring.application.name=demo-service\n", app.read_text(encoding="utf-8"))
 
+    def test_secret_spring_placeholder_keeps_env_name_and_redacts_default(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = root / "application.yml"
+            app.write_text(
+                "notification:\n"
+                "  slack-token: ${SVC_NOTIFICATION_GATEWAY_SLACK_TOKEN:xoxb-49755-secret}\n"
+                "  api-token: ${SVC_NOTIFICATION_GATEWAY_API_TOKEN}\n",
+                encoding="utf-8",
+            )
+
+            output = self.run_tool(root, "--write")
+            text = app.read_text(encoding="utf-8")
+
+            self.assertIn("redactions=1", output)
+            self.assertIn("slack-token: ${SVC_NOTIFICATION_GATEWAY_SLACK_TOKEN:<REDACTED_SECRET>}", text)
+            self.assertIn("api-token: ${SVC_NOTIFICATION_GATEWAY_API_TOKEN}", text)
+            self.assertNotIn("xoxb-49755-secret", text)
+
+    def test_properties_secret_spring_placeholder_keeps_env_name_and_redacts_default(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = root / "application.properties"
+            app.write_text(
+                "svc.notification.gateway.slack-token=${SVC_NOTIFICATION_GATEWAY_SLACK_TOKEN:xoxb-49755-secret}\n",
+                encoding="utf-8",
+            )
+
+            self.run_tool(root, "--write")
+
+            self.assertEqual(
+                "svc.notification.gateway.slack-token=${SVC_NOTIFICATION_GATEWAY_SLACK_TOKEN:<REDACTED_SECRET>}\n",
+                app.read_text(encoding="utf-8"),
+            )
+
+    def test_h2_sa_username_is_preserved(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = root / "application.yml"
+            app.write_text(
+                "spring:\n"
+                "  datasource:\n"
+                "    username: sa\n"
+                "    password: passwd01\n",
+                encoding="utf-8",
+            )
+
+            output = self.run_tool(root, "--write")
+            text = app.read_text(encoding="utf-8")
+
+            self.assertIn("redactions=1", output)
+            self.assertIn("username: sa", text)
+            self.assertIn("password: <REDACTED_PASSWORD>", text)
+
+    def test_username_placeholder_preserves_safe_default(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = root / "application.properties"
+            app.write_text(
+                "spring.datasource.username=${SPRING_DATASOURCE_USERNAME:sa}\n"
+                "audit.datasource.username=${AUDIT_DATASOURCE_USERNAME:kcfadmin}\n",
+                encoding="utf-8",
+            )
+
+            output = self.run_tool(root, "--write")
+            text = app.read_text(encoding="utf-8")
+
+            self.assertIn("redactions=1", output)
+            self.assertIn("spring.datasource.username=${SPRING_DATASOURCE_USERNAME:sa}", text)
+            self.assertIn("audit.datasource.username=${AUDIT_DATASOURCE_USERNAME:<REDACTED_USERNAME>}", text)
+            self.assertNotIn("kcfadmin", text)
+
 
 if __name__ == "__main__":
     unittest.main()
