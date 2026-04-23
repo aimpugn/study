@@ -21,6 +21,19 @@ class PruneSpringConfigTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         return out.getvalue()
 
+    def test_help_exposes_only_write_option(self) -> None:
+        out = io.StringIO()
+        with redirect_stdout(out), self.assertRaises(SystemExit) as raised:
+            prune.main(["--help"])
+
+        self.assertEqual(0, raised.exception.code)
+        help_text = out.getvalue()
+        self.assertIn("--write", help_text)
+        self.assertNotIn("--keep-profile", help_text)
+        self.assertNotIn("--drop-profile", help_text)
+        self.assertNotIn("--include-build-output", help_text)
+        self.assertNotIn("--redacted-ip", help_text)
+
     def test_dry_run_removes_profile_suffix_without_reading_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

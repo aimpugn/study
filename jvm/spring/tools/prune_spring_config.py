@@ -15,8 +15,9 @@ from collections.abc import Callable
 from pathlib import Path
 
 
-DEFAULT_KEEP_PROFILES = {"common", "junit", "local"}
-DEFAULT_DROP_PROFILES = {"dev", "real", "stg"}
+DEFAULT_KEEP_PROFILES = frozenset({"common", "junit", "local"})
+DEFAULT_DROP_PROFILES = frozenset({"dev", "real", "stg"})
+REDACTED_IP = "127.0.0.1"
 DEFAULT_EXCLUDED_DIRS = {
     ".git",
     ".gradle",
@@ -55,11 +56,7 @@ SAFE_USERNAME_VALUES = {"sa"}
 @dataclasses.dataclass(frozen=True)
 class Settings:
     root: Path
-    keep_profiles: frozenset[str]
-    drop_profiles: frozenset[str]
     write: bool
-    include_build_output: bool
-    redacted_ip: str
 
 
 @dataclasses.dataclass
@@ -85,13 +82,6 @@ class FileAction:
 class TextFile:
     text: str
     encoding: str
-
-
-def parse_csv(values: list[str], default: set[str]) -> frozenset[str]:
-    parsed: set[str] = set()
-    for value in values:
-        parsed.update(item.strip().lower() for item in value.split(",") if item.strip())
-    return frozenset(parsed or default)
 
 
 def is_loopback_or_bind_ip(value: str) -> bool:
@@ -250,11 +240,11 @@ def profile_suffix(path: Path) -> str | None:
 
 def should_remove_without_read(path: Path, settings: Settings) -> tuple[bool, str]:
     app_profile = profile_from_application_name(path)
-    if app_profile is not None and app_profile not in settings.keep_profiles:
+    if app_profile is not None and app_profile not in DEFAULT_KEEP_PROFILES:
         return True, f"application profile '{app_profile}' is not kept"
 
     suffix = profile_suffix(path)
-    if suffix in settings.drop_profiles:
+    if suffix in DEFAULT_DROP_PROFILES:
         return True, f"filename profile suffix '{suffix}' is configured for removal"
 
     return False, ""
@@ -270,7 +260,7 @@ def iter_candidate_paths(settings: Settings) -> list[Path]:
     for path in settings.root.rglob("*"):
         if path.is_dir():
             continue
-        if not settings.include_build_output and any(part in DEFAULT_EXCLUDED_DIRS for part in path.parts):
+        if any(part in DEFAULT_EXCLUDED_DIRS for part in path.parts):
             continue
         if path.suffix.lower() not in CONFIG_EXTENSIONS:
             continue
@@ -331,11 +321,11 @@ def sanitize_value(path_parts: list[str], value: str, settings: Settings) -> tup
         body = placeholder_for(category)
         redactions += 1
     else:
-        body, ip_count = redact_ipv4(body, settings.redacted_ip)
+        body, ip_count = redact_ipv4(body, REDACTED_IP)
         redactions += ip_count
 
     if network_key(path_parts):
-        body, ip_count = redact_ipv4(body, settings.redacted_ip)
+        body, ip_count = redact_ipv4(body, REDACTED_IP)
         redactions += ip_count
 
     return body + newline, redactions
@@ -344,12 +334,12 @@ def sanitize_value(path_parts: list[str], value: str, settings: Settings) -> tup
 def sanitize_yaml_line(line: str, path_parts: list[str], settings: Settings) -> tuple[str, int]:
     match = YAML_KEY_RE.match(line)
     if not match:
-        sanitized, count = redact_ipv4(line, settings.redacted_ip)
+        sanitized, count = redact_ipv4(line, REDACTED_IP)
         return sanitized, count
 
     value = match.group("value")
     if not value.strip():
-        sanitized, count = redact_ipv4(line, settings.redacted_ip)
+        sanitized, count = redact_ipv4(line, REDACTED_IP)
         return sanitized, count
 
     newline = "\n" if line.endswith("\n") else ""
@@ -358,7 +348,7 @@ def sanitize_yaml_line(line: str, path_parts: list[str], settings: Settings) -> 
     value_part, comment = split_yaml_comment(value_body)
     prefix = body[: match.start("value")]
     sanitized_value, count = sanitize_value(path_parts, value_part.strip(), settings)
-    sanitized_comment, comment_count = redact_ipv4(comment, settings.redacted_ip)
+    sanitized_comment, comment_count = redact_ipv4(comment, REDACTED_IP)
     separator = " " if sanitized_comment else ""
     return f"{prefix}{sanitized_value.rstrip()}{separator}{sanitized_comment}{newline}", count + comment_count
 
@@ -366,7 +356,7 @@ def sanitize_yaml_line(line: str, path_parts: list[str], settings: Settings) -> 
 def sanitize_properties_line(line: str, settings: Settings) -> tuple[str, int]:
     match = PROPERTIES_ENTRY_RE.match(line)
     if not match:
-        sanitized, count = redact_ipv4(line, settings.redacted_ip)
+        sanitized, count = redact_ipv4(line, REDACTED_IP)
         return sanitized, count
 
     key = match.group("key")
@@ -375,7 +365,7 @@ def sanitize_properties_line(line: str, settings: Settings) -> tuple[str, int]:
     path_parts = key.split(".")
     if key.lower() in {"spring.profiles.active", "spring.profiles.default"}:
         tokens, has_negation = extract_profiles(value)
-        if has_negation or any(token not in settings.keep_profiles for token in tokens):
+        if has_negation or any(token not in DEFAULT_KEEP_PROFILES for token in tokens):
             return f"{match.group('prefix')}local{newline}", 1
 
     sanitized_value, count = sanitize_value(path_parts, value, settings)
@@ -431,7 +421,7 @@ def sanitize_yaml(text: str, settings: Settings) -> tuple[str, ChangeStats]:
 
     for doc in documents:
         profile = yaml_document_profile(doc)
-        if profile and not profiles_allowed(profile, settings.keep_profiles):
+        if profile and not profiles_allowed(profile, DEFAULT_KEEP_PROFILES):
             stats.profile_documents_removed += 1
             continue
 
@@ -451,7 +441,7 @@ def sanitize_yaml(text: str, settings: Settings) -> tuple[str, ChangeStats]:
                 if not value.strip():
                     stack.append((indent, key))
             else:
-                sanitized, count = redact_ipv4(line, settings.redacted_ip)
+                sanitized, count = redact_ipv4(line, REDACTED_IP)
             stats.redactions += count
             output.append(sanitized)
 
@@ -499,7 +489,7 @@ def sanitize_properties(text: str, settings: Settings) -> tuple[str, ChangeStats
 
     for doc in documents:
         profile = properties_document_profile(doc)
-        if profile and not profiles_allowed(profile, settings.keep_profiles):
+        if profile and not profiles_allowed(profile, DEFAULT_KEEP_PROFILES):
             stats.profile_documents_removed += 1
             continue
         if doc.separator:
@@ -541,33 +531,8 @@ def build_settings(argv: list[str]) -> Settings:
     )
     parser.add_argument("root", nargs="?", default=".", help="root directory to scan")
     parser.add_argument("--write", action="store_true", help="apply removals and redactions; default is dry-run")
-    parser.add_argument(
-        "--keep-profile",
-        action="append",
-        default=[],
-        help="comma-separated profiles to keep; default: common,junit,local",
-    )
-    parser.add_argument(
-        "--drop-profile",
-        action="append",
-        default=[],
-        help="comma-separated profile suffixes to remove without reading; default: dev,real,stg",
-    )
-    parser.add_argument(
-        "--include-build-output",
-        action="store_true",
-        help="also scan generated directories such as target and build",
-    )
-    parser.add_argument("--redacted-ip", default="127.0.0.1", help="replacement for non-loopback IPv4 values")
     args = parser.parse_args(argv)
-    return Settings(
-        root=Path(args.root).resolve(),
-        keep_profiles=parse_csv(args.keep_profile, DEFAULT_KEEP_PROFILES),
-        drop_profiles=parse_csv(args.drop_profile, DEFAULT_DROP_PROFILES),
-        write=args.write,
-        include_build_output=args.include_build_output,
-        redacted_ip=args.redacted_ip,
-    )
+    return Settings(root=Path(args.root).resolve(), write=args.write)
 
 
 def print_report(actions: list[FileAction], settings: Settings) -> None:
