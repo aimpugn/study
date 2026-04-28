@@ -3,12 +3,13 @@
 > study 저장소의 규모가 있는 작업용 기본 WORK 템플릿입니다.
 > 이 저장소는 자연어 요청을 기본으로 하며, 이 템플릿은 사용자 입력 형식을 강제하려는 것이 아니라 AI의 집행 ledger를 남기기 위한 것입니다.
 > SSOT는 [`AGENTS.md`](AGENTS.md)와 전역 `~/.codex/AGENTS.md`입니다.
+> 새 WORK 파일은 `docs/works/WORK_YYYYMMDD_TITLE.md`에 둡니다. 프로젝트 루트에 `WORK_*.md`를 만들지 않습니다.
 > 작은 기계적 작업은 축약할 수 있지만, 근거·반박·검증·최종감사라는 핵심 루프는 약화하지 않습니다.
 
 ## 0. Meta
 
 - 작업 제목:
-- WORK 파일 경로:
+- WORK 파일 경로: `docs/works/WORK_YYYYMMDD_TITLE.md`
 - 저장소:
 - 작업 유형: `research | analysis | design | explain | audit | execute | refactor_docs`
 - 작업 깊이: `minimal | standard | full`
