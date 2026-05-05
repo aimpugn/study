@@ -19,9 +19,9 @@ class Solution {
      * 4. 후보를 놓고 DFS로 한 칸 들어간 뒤, 돌아오면 반드시 원복합니다.
      * 5. 도착점에 도착하면 모든 선로 방문 여부와 전체 연결 상태를 함께 검사합니다.
      *
-     * `visited`와 `inPath`는 서로 다른 질문에 답합니다.
+     * `visited`와 `entryStatesInCurrentPath`는 서로 다른 질문에 답합니다.
      * `visited`는 "이번 완성 후보에서 이 선로를 한 번 이상 지났는가"를 묻고,
-     * `inPath`는 "현재 재귀 호출 스택 안에서 같은 이동 상태가 반복되고 있는가"를 묻습니다.
+     * `entryStatesInCurrentPath`는 "현재 재귀 호출 스택 안에 같은 진입 상태가 이미 활성화되어 있는가"를 묻습니다.
      */
     fun solution(grid: Array<IntArray>): Int {
         // 프로그래머스 기본 템플릿에서 남은 변수입니다.
@@ -51,9 +51,9 @@ class Solution {
         // 문제는 모든 선로를 한 번 이상 지나야 한다고 했으므로, 선로 칸을 처음 지날 때만 카운트를 올립니다.
         val visited = Array(grid.size) { BooleanArray(grid[0].size) }
 
-        // 이 배열은 "무한 재귀 방지"를 위한 현재 경로 기록입니다.
-        // 같은 칸이라도 어느 방향에서 들어왔는지에 따라 다음 선택이 달라질 수 있으므로 세 번째 차원을 방향 수로 둡니다.
-        val inPath = Array(grid.size) {
+        // 이 배열은 "현재 재귀 경로에 활성화된 진입 상태"를 기록합니다.
+        // 진입 상태는 `(row, col, enteredFrom)`이고, 같은 칸이라도 어느 방향에서 들어왔는지에 따라 다음 선택이 달라질 수 있습니다.
+        val entryStatesInCurrentPath = Array(grid.size) {
             Array(grid[0].size) {
                 BooleanArray(Direction.entries.size)
             }
@@ -78,7 +78,7 @@ class Solution {
             Direction.LEFT,
             visited,
             1,
-            inPath,
+            entryStatesInCurrentPath,
             initialTrackCount,
         )
     }
@@ -173,7 +173,7 @@ class Solution {
      * 백트래킹 리듬은 항상 다음 네 단계입니다.
      *
      * 1. 후보를 고릅니다.
-     * 2. `grid`, `visited`, `inPath` 같은 상태를 바꿉니다.
+     * 2. `grid`, `visited`, `entryStatesInCurrentPath` 같은 상태를 바꿉니다.
      * 3. 재귀로 한 칸 더 들어갑니다.
      * 4. 재귀가 끝나면 바꾼 상태를 되돌립니다.
      */
@@ -185,7 +185,7 @@ class Solution {
         enteredFrom: Direction?,
         visited: Array<BooleanArray>,
         visitedCount: Int,
-        inPath: Array<Array<BooleanArray>>,
+        entryStatesInCurrentPath: Array<Array<BooleanArray>>,
         totalTrackCount: Int
     ): Int {
         // 도착점에 왔다고 바로 정답이 아닙니다.
@@ -194,19 +194,19 @@ class Solution {
             return if (visitedCount == totalTrackCount && allConnectionsValid(grid, tracks)) 1 else 0
         }
 
-        // `enteredFrom?.ordinal`은 방향을 `inPath`의 세 번째 인덱스로 바꿉니다.
+        // `enteredFrom?.ordinal`은 방향을 `entryStatesInCurrentPath`의 세 번째 인덱스로 바꿉니다.
         // `enteredFrom`이 null이면 "어느 방향에서 들어왔는가"라는 질문 자체가 없으므로 기록할 인덱스도 없습니다.
         val enteredDirectionIndex = enteredFrom?.ordinal
 
-        // `inPath`는 방문 금지가 아니라, 현재 재귀 경로 안에서 같은 상태가 반복되는 것을 막는 장치입니다.
-        // 같은 `(row, col, enteredFrom)` 상태가 다시 나오면 이후 선택이 반복될 수 있으므로 이 가지는 0으로 끊습니다.
+        // `entryStatesInCurrentPath`는 방문 금지가 아니라, 현재 재귀 경로에서 활성화된 진입 상태 목록입니다.
+        // 같은 `(row, col, enteredFrom)` 진입 상태가 다시 나오면 이후 선택이 반복될 수 있으므로 이 가지는 0으로 끊습니다.
         if (enteredDirectionIndex != null) {
-            if (inPath[row][col][enteredDirectionIndex]) {
+            if (entryStatesInCurrentPath[row][col][enteredDirectionIndex]) {
                 return 0
             }
 
             // 지금부터 이 재귀 호출이 끝날 때까지 이 상태는 현재 경로 안에서 사용 중입니다.
-            inPath[row][col][enteredDirectionIndex] = true
+            entryStatesInCurrentPath[row][col][enteredDirectionIndex] = true
         }
 
         // 이 상태에서 가능한 모든 하위 배치 수를 누적합니다.
@@ -260,7 +260,7 @@ class Solution {
                     direction.opposite(),
                     visited,
                     nextVisitedCount,
-                    inPath,
+                    entryStatesInCurrentPath,
                     nextTotalTrackCount,
                 )
 
@@ -281,7 +281,7 @@ class Solution {
         // 이 재귀 호출이 맡은 상태 탐색이 끝났으므로 현재 경로 사용 표시를 지웁니다.
         // 이 원복이 있어야 다른 분기에서 같은 상태를 다시 합법적으로 사용할 수 있습니다.
         if (enteredDirectionIndex != null) {
-            inPath[row][col][enteredDirectionIndex] = false
+            entryStatesInCurrentPath[row][col][enteredDirectionIndex] = false
         }
 
         // 현재 상태에서 가능한 모든 분기의 유효 배치 수를 반환합니다.
