@@ -1,4 +1,4 @@
-# 07. 메시징과 이벤트 기반 구조
+# 메시징과 이벤트 기반 구조
 
 RabbitMQ, Kafka, AMQP, consumer, client library처럼 서비스 사이의 비동기 메시지 흐름을 다룹니다.
 

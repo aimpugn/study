@@ -23,62 +23,62 @@
   "majors": [
     {
       "key": "language-runtime",
-      "file": "01-language-runtime.md",
-      "title": "01. 언어와 런타임",
+      "file": "language-runtime.md",
+      "title": "언어와 런타임",
       "summary": "언어 문법이 아니라 코드가 실행 단위가 되어 메모리, GC, 클래스 로딩, 런타임 스케줄러를 만나는 지점을 다룹니다."
     },
     {
       "key": "concurrency-async-io",
-      "file": "02-concurrency-async-io.md",
-      "title": "02. 동시성, 비동기, I/O",
+      "file": "concurrency-async-io.md",
+      "title": "동시성, 비동기, I/O",
       "summary": "스레드, 락, 대기, 이벤트 루프, 논블로킹 I/O처럼 많은 요청을 안전하고 효율적으로 처리하는 실행 모델을 다룹니다."
     },
     {
       "key": "os-kernel-computer-architecture",
-      "file": "03-os-kernel-computer-architecture.md",
-      "title": "03. OS, 커널, 컴퓨터 구조",
+      "file": "os-kernel-computer-architecture.md",
+      "title": "OS, 커널, 컴퓨터 구조",
       "summary": "프로세스, 커널, 부팅, CPU, 메모리, 파일 디스크립터처럼 애플리케이션 아래층의 실행 조건을 다룹니다."
     },
     {
       "key": "network-web-protocols",
-      "file": "04-network-web-protocols.md",
-      "title": "04. 네트워크와 웹 프로토콜",
+      "file": "network-web-protocols.md",
+      "title": "네트워크와 웹 프로토콜",
       "summary": "TCP/IP, HTTP, keep-alive, gRPC, proxy, Nginx처럼 프로세스 밖으로 나간 요청이 흐르는 경로를 다룹니다."
     },
     {
       "key": "security-cryptography",
-      "file": "05-security-cryptography.md",
-      "title": "05. 보안과 암호학",
+      "file": "security-cryptography.md",
+      "title": "보안과 암호학",
       "summary": "TLS, HTTPS, Diffie-Hellman, OAuth, token, privacy처럼 통신과 인증을 안전하게 만드는 기술 단위를 다룹니다."
     },
     {
       "key": "database-storage-search-nosql",
-      "file": "06-database-storage-search-nosql.md",
-      "title": "06. 데이터베이스, 저장소, 검색/NoSQL",
+      "file": "database-storage-search-nosql.md",
+      "title": "데이터베이스, 저장소, 검색/NoSQL",
       "summary": "트랜잭션, 인덱스, 락, 복제, 파티셔닝, Elasticsearch, Couchbase처럼 데이터를 저장하고 찾는 전체 축을 함께 다룹니다."
     },
     {
       "key": "messaging-event-driven",
-      "file": "07-messaging-event-driven.md",
-      "title": "07. 메시징과 이벤트 기반 구조",
+      "file": "messaging-event-driven.md",
+      "title": "메시징과 이벤트 기반 구조",
       "summary": "RabbitMQ, Kafka, AMQP, consumer, client library처럼 서비스 사이의 비동기 메시지 흐름을 다룹니다."
     },
     {
       "key": "distributed-systems-architecture",
-      "file": "08-distributed-systems-architecture.md",
-      "title": "08. 분산 시스템과 아키텍처",
+      "file": "distributed-systems-architecture.md",
+      "title": "분산 시스템과 아키텍처",
       "summary": "MSA, consistency, availability, topology, saga, idempotency처럼 작은 기술 단위를 큰 시스템 설계로 조립하는 판단 축을 다룹니다."
     },
     {
       "key": "spring-backend-frameworks",
-      "file": "09-spring-backend-frameworks.md",
-      "title": "09. Spring과 백엔드 프레임워크",
+      "file": "spring-backend-frameworks.md",
+      "title": "Spring과 백엔드 프레임워크",
       "summary": "Spring Boot, IoC, Bean, Transaction, Servlet/Tomcat, WebClient/WebFlux처럼 백엔드 프레임워크가 런타임 위에 올리는 실행 모델을 다룹니다."
     },
     {
       "key": "problem-solving-code-quality",
-      "file": "10-problem-solving-code-quality.md",
-      "title": "10. 문제 해결, 코드 품질, 운영 실천",
+      "file": "problem-solving-code-quality.md",
+      "title": "문제 해결, 코드 품질, 운영 실천",
       "summary": "알고리즘, 복잡도, 테스트, mock, 패턴, Docker/배포처럼 문제를 풀고 코드를 신뢰 가능하게 만드는 실천 축을 다룹니다."
     }
   ],
@@ -112,7 +112,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "운영 실천과 배포 기반",
         "sub": "Docker 컨테이너 가상화",
         "reason": "devops/deployment practice"
@@ -127,7 +127,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "CPU와 숫자 표현",
         "sub": "부동소수점",
         "reason": "cpu/numeric representation"
@@ -142,7 +142,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "공유 상태와 경쟁 조건",
         "sub": "경쟁 조건 (Race Condition)",
         "reason": "race condition"
@@ -157,7 +157,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "교착과 진행 보장",
         "sub": "교착 상태 (Deadlock)",
         "reason": "deadlock"
@@ -172,7 +172,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "HTTP/gRPC와 스트리밍",
         "sub": "네트워크를 통한 스트리밍 방식",
         "reason": "streaming"
@@ -187,7 +187,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "HTTP/gRPC와 스트리밍",
         "sub": "서버에서 100GB 파일을 스트리밍 방식으로 읽는 방법 (CPU 4코어, RAM 16GB, SWAP 16GB 조건에서)",
         "reason": "streaming"
@@ -202,7 +202,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "distributed-systems-architecture",
-        "file": "08-distributed-systems-architecture.md",
+        "file": "distributed-systems-architecture.md",
         "mid": "일관성과 분산 트랜잭션",
         "sub": "eventual consistency",
         "reason": "distributed consistency"
@@ -217,7 +217,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "distributed-systems-architecture",
-        "file": "08-distributed-systems-architecture.md",
+        "file": "distributed-systems-architecture.md",
         "mid": "가용성, 토폴로지, 확장성",
         "sub": "토폴로지",
         "reason": "availability/topology"
@@ -232,7 +232,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "DB 접근과 저장소 운영",
         "sub": "DB와 레플리케이션과 고가용성",
         "reason": "database/storage"
@@ -247,7 +247,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "distributed-systems-architecture",
-        "file": "08-distributed-systems-architecture.md",
+        "file": "distributed-systems-architecture.md",
         "mid": "가용성, 토폴로지, 확장성",
         "sub": "Distributed Systems에서 고가용성이란?",
         "reason": "availability/topology"
@@ -262,7 +262,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "[DB - ACID](https://postgresql.kr/blog/pg_phantom_read.html)",
         "reason": "transaction/isolation"
@@ -277,7 +277,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "ACID(Atomicity, Consistency, Isolation, Durability)와 MVCC(Multi-Version Concurrency Control, 다중 버전 동시성 제어)",
         "reason": "transaction/isolation"
@@ -292,7 +292,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "TCP/IP와 소켓 통신",
         "sub": "NAT(Network Address Translation)",
         "reason": "tcp/ip socket"
@@ -307,7 +307,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "TCP/IP와 소켓 통신",
         "sub": "IP 구조",
         "reason": "tcp/ip socket"
@@ -322,7 +322,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "서버 하드웨어와 운영 환경",
         "sub": "왜 맥북이나 가정용 PC로 서비스하지 않고 별도의 서버용 컴퓨터를 사용하나요?",
         "reason": "server environment"
@@ -337,7 +337,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "인덱스와 조회 성능",
         "sub": "B Tree & B+ Tree",
         "reason": "index/query performance"
@@ -352,7 +352,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "부팅과 init 시스템",
         "sub": "서버 부팅 과정",
         "reason": "boot/init"
@@ -367,7 +367,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "부팅과 init 시스템",
         "sub": "systemd가 다른 시스템 데몬들을 실행하는 과정",
         "reason": "boot/init"
@@ -382,7 +382,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "distributed-systems-architecture",
-        "file": "08-distributed-systems-architecture.md",
+        "file": "distributed-systems-architecture.md",
         "mid": "MSA와 결제 시스템 설계",
         "sub": "결제 MSA에서 결제 PG사 기능 구현",
         "reason": "service architecture"
@@ -397,7 +397,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "트랜잭션과 데이터 접근",
         "sub": "리파지토리 메서드에 `@Transactional` 사용",
         "reason": "spring data access"
@@ -412,7 +412,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Servlet/Tomcat 요청 처리",
         "sub": "Nginx가 Tomcat을 업스트림으로 요청을 전달하고, Tomcat이 Spring 애플리케이션의 `@RestController`나 `@Controller`로 요청을 전달하는 과정",
         "reason": "servlet request path"
@@ -427,7 +427,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "AOP와 어노테이션 처리",
         "sub": "어노테이션 프로세싱과 Spring의 내부 동작 원리",
         "reason": "aop/annotation"
@@ -442,7 +442,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "Kotlin 언어 기능",
         "sub": "kotlin의 `when` 표현식에서의 exhaustiveness 체크",
         "reason": "kotlin language"
@@ -457,7 +457,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "트랜잭션과 데이터 접근",
         "sub": "hikari cp",
         "reason": "spring data access"
@@ -472,7 +472,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "AOP와 어노테이션 처리",
         "sub": "jvm 계열 언어에서 어노테이션 선언 방법 및 spring 어노테이션 동작 원리",
         "reason": "aop/annotation"
@@ -487,7 +487,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Goroutine과 런타임 스케줄링",
         "sub": "Go의 Goroutine은 M 대 N 모델 멀티스레딩",
         "reason": "goroutine"
@@ -502,7 +502,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Coroutine과 협력형 실행",
         "sub": "Kotlin Coroutine",
         "reason": "coroutine"
@@ -517,7 +517,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "스레드 생성과 스케줄링",
         "sub": "`pthread_create` 이후 커널에서 발생하는 작업들",
         "reason": "thread creation"
@@ -532,7 +532,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "비동기 프로그래밍",
         "reason": "async/non-blocking"
@@ -547,7 +547,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "libuv, aio_*, io_uring",
         "reason": "io multiplexing"
@@ -562,7 +562,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "싱글 코어 & 싱글 스레드 경우 커널에서의 비동기와 멀티플렉싱",
         "reason": "async/non-blocking"
@@ -577,7 +577,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "블로킹 vs 논블로킹, 동기 vs 비동기, 동시성 vs 병렬성 개념 정리",
         "reason": "async/non-blocking"
@@ -592,7 +592,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "논블로킹 vs 비동기 차이",
         "reason": "async/non-blocking"
@@ -607,7 +607,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "I/O 서브시스템",
         "reason": "async/non-blocking"
@@ -622,7 +622,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring Boot 실행 모델",
         "sub": "과거 톰캣 & 스프링 실행 방식 vs Spring boot 비교",
         "reason": "spring boot"
@@ -637,7 +637,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring Boot 실행 모델",
         "sub": "Spring boot에서 톰캣 실행 후 일어나는 일",
         "reason": "spring boot"
@@ -652,7 +652,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "IoC와 DI",
         "sub": "Spring Framework의 Dependency Injection (DI)",
         "reason": "ioc/di"
@@ -667,7 +667,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "IoC와 DI",
         "sub": "Inversion of Control (IoC)",
         "reason": "ioc/di"
@@ -682,7 +682,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Bean 생명주기와 선택",
         "sub": "적절한 Bean 선택",
         "reason": "bean lifecycle"
@@ -697,7 +697,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "스케줄링과 선점",
         "sub": "선점형(Pre-emption)OS와 비선점형(Nonpre-emption)OS 차이",
         "reason": "scheduling"
@@ -712,7 +712,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "언어 런타임 비교",
         "sub": "VM, GC, 그리고 런타임",
         "reason": "runtime comparison"
@@ -727,7 +727,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "언어 런타임 비교",
         "sub": "Golang의 Concurrent Mark and Sweep(CMS)",
         "reason": "runtime comparison"
@@ -742,7 +742,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "언어 런타임 비교",
         "sub": "Apache + mod_php와 Nginx + php-fpm의 차이",
         "reason": "runtime comparison"
@@ -757,7 +757,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "JVM 실행 모델",
         "sub": "JVM, PHP runtime, Go runtime",
         "reason": "jvm execution"
@@ -772,7 +772,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "프로세스 생성과 실행",
         "sub": "fork",
         "reason": "process execution"
@@ -787,7 +787,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "프로세스 생성과 실행",
         "sub": "exec",
         "reason": "process execution"
@@ -802,7 +802,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "프로세스 생성과 실행",
         "sub": "java 프로그램이 프로세스로 실행되는 과정: 시스템 레벨부터 JVM까지",
         "reason": "process execution"
@@ -817,7 +817,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "네트워크 통신 시 epoll 동작 방식",
         "reason": "io multiplexing"
@@ -832,7 +832,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "TCP/IP와 소켓 통신",
         "sub": "클라이언트와 서버 간의 소켓 통신 과정",
         "reason": "tcp/ip socket"
@@ -847,7 +847,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "security-cryptography",
-        "file": "05-security-cryptography.md",
+        "file": "security-cryptography.md",
         "mid": "TLS/HTTPS 핸드셰이크",
         "sub": "HTTPS 통신에서 TLS 핸드셰이크",
         "reason": "secure transport"
@@ -862,7 +862,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "security-cryptography",
-        "file": "05-security-cryptography.md",
+        "file": "security-cryptography.md",
         "mid": "키 교환과 전방 비밀성",
         "sub": "DHE(Diffie-Hellman)/ECDHE와 TLS",
         "reason": "key exchange"
@@ -877,7 +877,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Servlet/Tomcat 요청 처리",
         "sub": "NGINX와 Java Spring Web 애플리케이션이 함께 사용되는 경우",
         "reason": "servlet request path"
@@ -892,7 +892,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "소켓, epoll, nginx, 과다한 요청",
         "reason": "io multiplexing"
@@ -907,7 +907,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Servlet/Tomcat 요청 처리",
         "sub": "nginx와 java/kotlin spring web app 사이에 tomcat이 필요한 이유",
         "reason": "servlet request path"
@@ -922,7 +922,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "security-cryptography",
-        "file": "05-security-cryptography.md",
+        "file": "security-cryptography.md",
         "mid": "TLS/HTTPS 핸드셰이크",
         "sub": "HTTPS 통신 과정",
         "reason": "secure transport"
@@ -937,7 +937,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "서버 하드웨어와 운영 환경",
         "sub": "노트북도 서버가 될 수 있는데 왜 굳이 서버 호스팅을 받나요?",
         "reason": "server environment"
@@ -967,7 +967,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "Elasticsearch, OOM 문제, Hot/Warm 아키텍처 설명",
         "reason": "search engine"
@@ -982,7 +982,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "ElasticSearch에서 OOM(Out of Memory) 문제",
         "reason": "search engine"
@@ -997,7 +997,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "[ElasticSearch Hot/Warm 아키텍처](https://www.elastic.co/kr/blog/elasticsearch-data-lifecycle-management-with-data-tiers)",
         "reason": "search engine"
@@ -1012,7 +1012,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "Elasticsearch의 샤드와 레플리카 샤드",
         "reason": "search engine"
@@ -1027,7 +1027,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "ElasticSearch 쿼리 과정 예시",
         "reason": "search engine"
@@ -1042,7 +1042,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "Broker 비교와 선택",
         "sub": "rabbit mq, kafka 등 차이",
         "reason": "broker comparison"
@@ -1057,7 +1057,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "메시징 프로토콜",
         "sub": "[표준 메세징 프로토콜 정리 (AMQP, STOMP, MQTT)](https://velog.io/@holicme7/%ED%91%9C%EC%A4%80-%EB%A9%94%EC%84%B8%EC%A7%95-%ED%94%84%EB%A1%9C%ED%86%A0%EC%BD%9C-%EC%A0%95%EB%A6%AC-AMQP-STOMP-MQTT)",
         "reason": "messaging protocol"
@@ -1072,7 +1072,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "데이터베이스 락(Lock)과 격리 수준(Isolation Level)",
         "reason": "transaction/isolation"
@@ -1087,7 +1087,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "MVCC와 스냅숏 격리",
         "reason": "transaction/isolation"
@@ -1102,7 +1102,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "TCP/IP와 소켓 통신",
         "sub": "TCP 컨제스천 컨트롤",
         "reason": "tcp/ip socket"
@@ -1117,7 +1117,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색/NoSQL 저장소",
         "sub": "카우치베이스",
         "reason": "NoSQL storage"
@@ -1132,7 +1132,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "security-cryptography",
-        "file": "05-security-cryptography.md",
+        "file": "security-cryptography.md",
         "mid": "TLS/HTTPS 핸드셰이크",
         "sub": "pkcs 11 멀티 프로세스 curl 에러",
         "reason": "secure transport"
@@ -1147,7 +1147,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "알고리즘과 문제 해결",
         "sub": "정규표현식",
         "reason": "algorithm/problem-solving"
@@ -1162,7 +1162,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "2단계커밋과 2단계 잠금",
         "reason": "transaction/isolation"
@@ -1177,7 +1177,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "Proxy와 L7 진입 경로",
         "sub": "proxy와 reverse proxy",
         "reason": "proxy"
@@ -1192,7 +1192,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "설계 원칙과 패턴",
         "sub": "프록시 패턴",
         "reason": "code design"
@@ -1207,7 +1207,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "security-cryptography",
-        "file": "05-security-cryptography.md",
+        "file": "security-cryptography.md",
         "mid": "키 교환과 전방 비밀성",
         "sub": "전방 비밀성",
         "reason": "key exchange"
@@ -1222,7 +1222,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "Broker 비교와 선택",
         "sub": "RabbitMQ와 Kafka",
         "reason": "broker comparison"
@@ -1237,7 +1237,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "Consumer와 클라이언트 구현",
         "sub": "RabbitMQ가 Node.js 앱으로 메시지를 전달하는 과정",
         "reason": "consumer/client implementation"
@@ -1252,7 +1252,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "메시징 프로토콜",
         "sub": "`amqplib`의 동작 원리",
         "reason": "messaging protocol"
@@ -1267,7 +1267,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "Node.js의 싱글 스레드와 libuv의 멀티 스레딩",
         "reason": "io multiplexing"
@@ -1282,7 +1282,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "epoll 상세",
         "reason": "io multiplexing"
@@ -1297,7 +1297,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "프로세스 생성과 실행",
         "sub": "`&`와 background process",
         "reason": "process execution"
@@ -1312,7 +1312,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "DB 접근과 저장소 운영",
         "sub": "PDO가 데이터베이스에서 데이터 가져오는 원리",
         "reason": "database/storage"
@@ -1327,7 +1327,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "트랜잭션과 데이터 접근",
         "sub": "Spring JDBC에서도 데이터를 가져오는 방식",
         "reason": "spring data access"
@@ -1342,7 +1342,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "테스트와 대역 객체",
         "sub": "테스트 더블",
         "reason": "testing"
@@ -1357,7 +1357,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "테스트와 대역 객체",
         "sub": "java, php에서 mock 생성 원리",
         "reason": "testing"
@@ -1372,7 +1372,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Bean 생명주기와 선택",
         "sub": "`@Bean` vs. `@Component`",
         "reason": "bean lifecycle"
@@ -1387,7 +1387,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Servlet/Tomcat 요청 처리",
         "sub": "Tomcat과 Spring의 동작 원리 및 WAR 파일 처리 과정",
         "reason": "servlet request path"
@@ -1402,7 +1402,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "Class loading과 실행 준비",
         "sub": "부모 위임 모델",
         "reason": "class loading"
@@ -1417,7 +1417,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring Boot 실행 모델",
         "sub": "Spring의 동시성 및 Thread Management 정리",
         "reason": "spring boot"
@@ -1432,7 +1432,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring HTTP 클라이언트와 Reactive",
         "sub": "RestTemplate vs WebClient 차이",
         "reason": "spring reactive/http client"
@@ -1447,7 +1447,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring HTTP 클라이언트와 Reactive",
         "sub": "Spring WebFlux의 이벤트 루프(Event Loop)",
         "reason": "spring reactive/http client"
@@ -1462,7 +1462,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring HTTP 클라이언트와 Reactive",
         "sub": "Mono와 Flux: 개념, 필요성, 이벤트 루프와의 관계",
         "reason": "spring reactive/http client"
@@ -1477,7 +1477,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Event loop와 네트워크 런타임",
         "sub": "Netty의 이벤트 루프(Event Loop)와 epoll 기반 논블로킹 I/O 구현",
         "reason": "event loop"
@@ -1537,7 +1537,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "공유 상태와 경쟁 조건",
         "sub": "멀티스레딩에서 어떻게 읽기 전용 속성을 동시에 사용할 수 있는지",
         "reason": "shared state"
@@ -1552,7 +1552,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Coroutine과 협력형 실행",
         "sub": "코루틴을 Cooperative Multitasking 이라고 하는 이유?",
         "reason": "coroutine"
@@ -1567,7 +1567,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Coroutine과 협력형 실행",
         "sub": "코루틴 제어의 양보",
         "reason": "coroutine"
@@ -1582,7 +1582,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "Kotlin의 async HTTP 요청과 코루틴 비교",
         "reason": "async/non-blocking"
@@ -1597,7 +1597,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "HTTP 요청을 Async로 처리했을 때의 이점",
         "reason": "async/non-blocking"
@@ -1612,7 +1612,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "동시 요청이 많아 소켓이 몇 만 개 이상 필요한 상황에서 File Descriptor 설정을 수정하지 않은 경우",
         "reason": "io multiplexing"
@@ -1627,7 +1627,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring Boot 실행 모델",
         "sub": "`java -jar SpringBootApp.jar` 명령어의 실행 과정",
         "reason": "spring boot"
@@ -1642,7 +1642,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "대용량 테이블 운영",
         "sub": "수억건의 데이터가 존재하는 테이블 처리 방법",
         "reason": "large table operation"
@@ -1657,7 +1657,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "인덱스와 조회 성능",
         "sub": "3억건의 데이터의 B+Tree 깊이 계산",
         "reason": "index/query performance"
@@ -1672,7 +1672,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "Kotlin 언어 기능",
         "sub": "infix, inline, noinline, crossinline",
         "reason": "kotlin language"
@@ -1687,7 +1687,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Bean 생명주기와 선택",
         "sub": "스프링 부트 시작과 빈 라이프 사이클",
         "reason": "bean lifecycle"
@@ -1702,7 +1702,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "함수형 프로그래밍 모델",
         "sub": "함수형",
         "reason": "functional programming"
@@ -1717,7 +1717,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "HTTP/gRPC와 스트리밍",
         "sub": "HTTP 요청이 일반적인 TCP 연결 방식과 Keep-Alive TCP 연결 방식 이루어지는 경우",
         "reason": "web protocol"
@@ -1747,7 +1747,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "JVM 실행 모델",
         "sub": "1. Java 관련 질문",
         "reason": "java question cluster"
@@ -1762,7 +1762,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring Boot 실행 모델",
         "sub": "2. Spring 관련 질문",
         "reason": "spring boot"
@@ -1777,7 +1777,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "DB 접근과 저장소 운영",
         "sub": "3. MySQL 관련 질문",
         "reason": "database/storage"
@@ -1792,7 +1792,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Event loop와 네트워크 런타임",
         "sub": "4. Netty 관련 질문",
         "reason": "event loop"
@@ -1807,7 +1807,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "distributed-systems-architecture",
-        "file": "08-distributed-systems-architecture.md",
+        "file": "distributed-systems-architecture.md",
         "mid": "가용성, 토폴로지, 확장성",
         "sub": "5. 종합 아키텍처/적용 질문",
         "reason": "availability/topology"
@@ -1822,7 +1822,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "공유 상태와 경쟁 조건",
         "sub": "자바 쓰레드 동기화",
         "reason": "shared state"
@@ -1837,7 +1837,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Java monitor와 wait/notify",
         "sub": "자바 쓰레드, 상태, 그리고 모니터 등",
         "reason": "monitor/wait-notify"
@@ -1852,7 +1852,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Java monitor와 wait/notify",
         "sub": "1. 자바에서의 쓰레드와 모니터 개념",
         "reason": "monitor/wait-notify"
@@ -1867,7 +1867,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "스레드 상태와 스케줄링",
         "sub": "2. 쓰레드 상태(States) 개념",
         "reason": "thread state"
@@ -1882,7 +1882,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Java monitor와 wait/notify",
         "sub": "3. synchronized 블록과 모니터 잠금",
         "reason": "monitor/wait-notify"
@@ -1897,7 +1897,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Java monitor와 wait/notify",
         "sub": "4. wait()와 notify() 메서드의 메커니즘",
         "reason": "monitor/wait-notify"
@@ -1912,7 +1912,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Java monitor와 wait/notify",
         "sub": "5. wait set의 작동 원리",
         "reason": "monitor/wait-notify"
@@ -1927,7 +1927,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Java monitor와 wait/notify",
         "sub": "6. 쓰레드 상태: BLOCKED vs WAITING",
         "reason": "monitor/wait-notify"
@@ -1942,7 +1942,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Java monitor와 wait/notify",
         "sub": "7. notify가 없으면 wait한 스레드는 어떻게 되는가?",
         "reason": "monitor/wait-notify"
@@ -1957,7 +1957,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Java monitor와 wait/notify",
         "sub": "8. JVM 레벨에서의 synchronized 작동 방식",
         "reason": "monitor/wait-notify"
@@ -1972,7 +1972,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Java monitor와 wait/notify",
         "sub": "9. 실제 동작 시나리오 예시",
         "reason": "monitor/wait-notify scenario"
@@ -1987,7 +1987,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Java monitor와 wait/notify",
         "sub": "10. 핵심 요약 및 결론",
         "reason": "monitor/wait-notify"
@@ -2002,7 +2002,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Java monitor와 wait/notify",
         "sub": "자바에서 wait/notify 패턴**을 조금 더 현실감 있게 적용한 **프로덕션 코드 예시",
         "reason": "monitor/wait-notify"
@@ -2017,7 +2017,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Java monitor와 wait/notify",
         "sub": "쓰레드 wait와 notify 예제",
         "reason": "monitor/wait-notify"
@@ -2032,7 +2032,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Java monitor와 wait/notify",
         "sub": "7. 결론 정리",
         "reason": "monitor/wait-notify"
@@ -2092,7 +2092,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "운영 실천과 배포 기반",
         "sub": "Docker 컨테이너 가상화",
         "reason": "devops/deployment practice"
@@ -2107,7 +2107,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "CPU와 숫자 표현",
         "sub": "부동소수점",
         "reason": "cpu/numeric representation"
@@ -2122,7 +2122,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "공유 상태와 경쟁 조건",
         "sub": "경쟁 조건 (Race Condition)",
         "reason": "race condition"
@@ -2137,7 +2137,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "교착과 진행 보장",
         "sub": "교착 상태 (Deadlock)",
         "reason": "deadlock"
@@ -2152,7 +2152,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "HTTP/gRPC와 스트리밍",
         "sub": "네트워크를 통한 스트리밍 방식",
         "reason": "streaming"
@@ -2167,7 +2167,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "HTTP/gRPC와 스트리밍",
         "sub": "서버에서 100GB 파일을 스트리밍 방식으로 읽는 방법 (CPU 4코어, RAM 16GB, SWAP 16GB 조건에서)",
         "reason": "streaming"
@@ -2182,7 +2182,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "distributed-systems-architecture",
-        "file": "08-distributed-systems-architecture.md",
+        "file": "distributed-systems-architecture.md",
         "mid": "일관성과 분산 트랜잭션",
         "sub": "eventual consistency",
         "reason": "distributed consistency"
@@ -2197,7 +2197,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "distributed-systems-architecture",
-        "file": "08-distributed-systems-architecture.md",
+        "file": "distributed-systems-architecture.md",
         "mid": "가용성, 토폴로지, 확장성",
         "sub": "토폴로지",
         "reason": "availability/topology"
@@ -2212,7 +2212,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "DB 접근과 저장소 운영",
         "sub": "DB와 레플리케이션과 고가용성",
         "reason": "database/storage"
@@ -2227,7 +2227,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "distributed-systems-architecture",
-        "file": "08-distributed-systems-architecture.md",
+        "file": "distributed-systems-architecture.md",
         "mid": "가용성, 토폴로지, 확장성",
         "sub": "Distributed Systems에서 고가용성이란?",
         "reason": "availability/topology"
@@ -2242,7 +2242,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "[DB - ACID](https://postgresql.kr/blog/pg_phantom_read.html)",
         "reason": "transaction/isolation"
@@ -2257,7 +2257,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "ACID(Atomicity, Consistency, Isolation, Durability)와 MVCC(Multi-Version Concurrency Control, 다중 버전 동시성 제어)",
         "reason": "transaction/isolation"
@@ -2272,7 +2272,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "TCP/IP와 소켓 통신",
         "sub": "NAT(Network Address Translation)",
         "reason": "tcp/ip socket"
@@ -2287,7 +2287,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "TCP/IP와 소켓 통신",
         "sub": "IP 구조",
         "reason": "tcp/ip socket"
@@ -2302,7 +2302,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "서버 하드웨어와 운영 환경",
         "sub": "왜 맥북이나 가정용 PC로 서비스하지 않고 별도의 서버용 컴퓨터를 사용하나요?",
         "reason": "server environment"
@@ -2317,7 +2317,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "인덱스와 조회 성능",
         "sub": "B Tree & B+ Tree",
         "reason": "index/query performance"
@@ -2332,7 +2332,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "부팅과 init 시스템",
         "sub": "서버 부팅 과정",
         "reason": "boot/init"
@@ -2347,7 +2347,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "부팅과 init 시스템",
         "sub": "systemd가 다른 시스템 데몬들을 실행하는 과정",
         "reason": "boot/init"
@@ -2362,7 +2362,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "distributed-systems-architecture",
-        "file": "08-distributed-systems-architecture.md",
+        "file": "distributed-systems-architecture.md",
         "mid": "MSA와 결제 시스템 설계",
         "sub": "결제 MSA에서 결제 PG사 기능 구현",
         "reason": "service architecture"
@@ -2377,7 +2377,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "트랜잭션과 데이터 접근",
         "sub": "리파지토리 메서드에 `@Transactional` 사용",
         "reason": "spring data access"
@@ -2392,7 +2392,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Servlet/Tomcat 요청 처리",
         "sub": "Nginx가 Tomcat을 업스트림으로 요청을 전달하고, Tomcat이 Spring 애플리케이션의 `@RestController`나 `@Controller`로 요청을 전달하는 과정",
         "reason": "servlet request path"
@@ -2407,7 +2407,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "AOP와 어노테이션 처리",
         "sub": "어노테이션 프로세싱과 Spring의 내부 동작 원리",
         "reason": "aop/annotation"
@@ -2422,7 +2422,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "Kotlin 언어 기능",
         "sub": "kotlin의 `when` 표현식에서의 exhaustiveness 체크",
         "reason": "kotlin language"
@@ -2437,7 +2437,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "트랜잭션과 데이터 접근",
         "sub": "hikari cp",
         "reason": "spring data access"
@@ -2452,7 +2452,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "AOP와 어노테이션 처리",
         "sub": "jvm 계열 언어에서 어노테이션 선언 방법 및 spring 어노테이션 동작 원리",
         "reason": "aop/annotation"
@@ -2467,7 +2467,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Goroutine과 런타임 스케줄링",
         "sub": "Go의 Goroutine은 M 대 N 모델 멀티스레딩",
         "reason": "goroutine"
@@ -2482,7 +2482,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Coroutine과 협력형 실행",
         "sub": "Kotlin Coroutine",
         "reason": "coroutine"
@@ -2497,7 +2497,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "스레드 생성과 스케줄링",
         "sub": "`pthread_create` 이후 커널에서 발생하는 작업들",
         "reason": "thread creation"
@@ -2512,7 +2512,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "비동기 프로그래밍",
         "reason": "async/non-blocking"
@@ -2527,7 +2527,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "libuv, aio_*, io_uring",
         "reason": "io multiplexing"
@@ -2542,7 +2542,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "싱글 코어 & 싱글 스레드 경우 커널에서의 비동기와 멀티플렉싱",
         "reason": "async/non-blocking"
@@ -2557,7 +2557,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "블로킹 vs 논블로킹, 동기 vs 비동기, 동시성 vs 병렬성 개념 정리",
         "reason": "async/non-blocking"
@@ -2572,7 +2572,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "논블로킹 vs 비동기 차이",
         "reason": "async/non-blocking"
@@ -2587,7 +2587,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "I/O 서브시스템",
         "reason": "async/non-blocking"
@@ -2602,7 +2602,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring Boot 실행 모델",
         "sub": "과거 톰캣 & 스프링 실행 방식 vs Spring boot 비교",
         "reason": "spring boot"
@@ -2617,7 +2617,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring Boot 실행 모델",
         "sub": "Spring boot에서 톰캣 실행 후 일어나는 일",
         "reason": "spring boot"
@@ -2632,7 +2632,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "IoC와 DI",
         "sub": "Spring Framework의 Dependency Injection (DI)",
         "reason": "ioc/di"
@@ -2647,7 +2647,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "IoC와 DI",
         "sub": "Inversion of Control (IoC)",
         "reason": "ioc/di"
@@ -2662,7 +2662,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Bean 생명주기와 선택",
         "sub": "적절한 Bean 선택",
         "reason": "bean lifecycle"
@@ -2677,7 +2677,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "스케줄링과 선점",
         "sub": "선점형(Pre-emption)OS와 비선점형(Nonpre-emption)OS 차이",
         "reason": "scheduling"
@@ -2692,7 +2692,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "언어 런타임 비교",
         "sub": "VM, GC, 그리고 런타임",
         "reason": "runtime comparison"
@@ -2707,7 +2707,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "언어 런타임 비교",
         "sub": "Golang의 Concurrent Mark and Sweep(CMS)",
         "reason": "runtime comparison"
@@ -2722,7 +2722,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "언어 런타임 비교",
         "sub": "Apache + mod_php와 Nginx + php-fpm의 차이",
         "reason": "runtime comparison"
@@ -2737,7 +2737,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "JVM 실행 모델",
         "sub": "JVM, PHP runtime, Go runtime",
         "reason": "jvm execution"
@@ -2752,7 +2752,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "프로세스 생성과 실행",
         "sub": "fork",
         "reason": "process execution"
@@ -2767,7 +2767,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "프로세스 생성과 실행",
         "sub": "exec",
         "reason": "process execution"
@@ -2782,7 +2782,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "프로세스 생성과 실행",
         "sub": "java 프로그램이 프로세스로 실행되는 과정: 시스템 레벨부터 JVM까지",
         "reason": "process execution"
@@ -2797,7 +2797,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "네트워크 통신 시 epoll 동작 방식",
         "reason": "io multiplexing"
@@ -2812,7 +2812,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "TCP/IP와 소켓 통신",
         "sub": "클라이언트와 서버 간의 소켓 통신 과정",
         "reason": "tcp/ip socket"
@@ -2827,7 +2827,7 @@
       "is_representative": true,
       "curriculum": {
         "major": "security-cryptography",
-        "file": "05-security-cryptography.md",
+        "file": "security-cryptography.md",
         "mid": "TLS/HTTPS 핸드셰이크",
         "sub": "HTTPS 통신에서 TLS 핸드셰이크",
         "reason": "secure transport"
@@ -2842,7 +2842,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "security-cryptography",
-        "file": "05-security-cryptography.md",
+        "file": "security-cryptography.md",
         "mid": "키 교환과 전방 비밀성",
         "sub": "DHE(Diffie-Hellman)/ECDHE와 TLS",
         "reason": "key exchange"
@@ -2857,7 +2857,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Servlet/Tomcat 요청 처리",
         "sub": "NGINX와 Java Spring Web 애플리케이션이 함께 사용되는 경우",
         "reason": "servlet request path"
@@ -2872,7 +2872,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "소켓, epoll, nginx, 과다한 요청",
         "reason": "io multiplexing"
@@ -2887,7 +2887,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Servlet/Tomcat 요청 처리",
         "sub": "nginx와 java/kotlin spring web app 사이에 tomcat이 필요한 이유",
         "reason": "servlet request path"
@@ -2902,7 +2902,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "security-cryptography",
-        "file": "05-security-cryptography.md",
+        "file": "security-cryptography.md",
         "mid": "TLS/HTTPS 핸드셰이크",
         "sub": "HTTPS 통신 과정",
         "reason": "secure transport"
@@ -2917,7 +2917,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "서버 하드웨어와 운영 환경",
         "sub": "노트북도 서버가 될 수 있는데 왜 굳이 서버 호스팅을 받나요?",
         "reason": "server environment"
@@ -2947,7 +2947,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "Elasticsearch, OOM 문제, Hot/Warm 아키텍처 설명",
         "reason": "search engine"
@@ -2962,7 +2962,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "ElasticSearch에서 OOM(Out of Memory) 문제",
         "reason": "search engine"
@@ -2977,7 +2977,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "[ElasticSearch Hot/Warm 아키텍처](https://www.elastic.co/kr/blog/elasticsearch-data-lifecycle-management-with-data-tiers)",
         "reason": "search engine"
@@ -2992,7 +2992,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "Elasticsearch의 샤드와 레플리카 샤드",
         "reason": "search engine"
@@ -3007,7 +3007,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "ElasticSearch 쿼리 과정 예시",
         "reason": "search engine"
@@ -3022,7 +3022,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "Broker 비교와 선택",
         "sub": "rabbit mq, kafka 등 차이",
         "reason": "broker comparison"
@@ -3037,7 +3037,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "메시징 프로토콜",
         "sub": "[표준 메세징 프로토콜 정리 (AMQP, STOMP, MQTT)](https://velog.io/@holicme7/%ED%91%9C%EC%A4%80-%EB%A9%94%EC%84%B8%EC%A7%95-%ED%94%84%EB%A1%9C%ED%86%A0%EC%BD%9C-%EC%A0%95%EB%A6%AC-AMQP-STOMP-MQTT)",
         "reason": "messaging protocol"
@@ -3052,7 +3052,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "데이터베이스 락(Lock)과 격리 수준(Isolation Level)",
         "reason": "transaction/isolation"
@@ -3067,7 +3067,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "MVCC와 스냅숏 격리",
         "reason": "transaction/isolation"
@@ -3082,7 +3082,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "TCP/IP와 소켓 통신",
         "sub": "TCP 컨제스천 컨트롤",
         "reason": "tcp/ip socket"
@@ -3097,7 +3097,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색/NoSQL 저장소",
         "sub": "카우치베이스",
         "reason": "NoSQL storage"
@@ -3112,7 +3112,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "security-cryptography",
-        "file": "05-security-cryptography.md",
+        "file": "security-cryptography.md",
         "mid": "TLS/HTTPS 핸드셰이크",
         "sub": "pkcs 11 멀티 프로세스 curl 에러",
         "reason": "secure transport"
@@ -3127,7 +3127,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "알고리즘과 문제 해결",
         "sub": "정규표현식",
         "reason": "algorithm/problem-solving"
@@ -3142,7 +3142,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "2단계커밋과 2단계 잠금",
         "reason": "transaction/isolation"
@@ -3157,7 +3157,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "Proxy와 L7 진입 경로",
         "sub": "proxy와 reverse proxy",
         "reason": "proxy"
@@ -3172,7 +3172,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "설계 원칙과 패턴",
         "sub": "프록시 패턴",
         "reason": "code design"
@@ -3187,7 +3187,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "security-cryptography",
-        "file": "05-security-cryptography.md",
+        "file": "security-cryptography.md",
         "mid": "키 교환과 전방 비밀성",
         "sub": "전방 비밀성",
         "reason": "key exchange"
@@ -3202,7 +3202,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "Broker 비교와 선택",
         "sub": "RabbitMQ와 Kafka",
         "reason": "broker comparison"
@@ -3217,7 +3217,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "Consumer와 클라이언트 구현",
         "sub": "RabbitMQ가 Node.js 앱으로 메시지를 전달하는 과정",
         "reason": "consumer/client implementation"
@@ -3232,7 +3232,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "메시징 프로토콜",
         "sub": "`amqplib`의 동작 원리",
         "reason": "messaging protocol"
@@ -3247,7 +3247,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "Node.js의 싱글 스레드와 libuv의 멀티 스레딩",
         "reason": "io multiplexing"
@@ -3262,7 +3262,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "epoll 상세",
         "reason": "io multiplexing"
@@ -3277,7 +3277,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "프로세스 생성과 실행",
         "sub": "`&`와 background process",
         "reason": "process execution"
@@ -3292,7 +3292,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "DB 접근과 저장소 운영",
         "sub": "PDO가 데이터베이스에서 데이터 가져오는 원리",
         "reason": "database/storage"
@@ -3307,7 +3307,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "트랜잭션과 데이터 접근",
         "sub": "Spring JDBC에서도 데이터를 가져오는 방식",
         "reason": "spring data access"
@@ -3322,7 +3322,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "테스트와 대역 객체",
         "sub": "테스트 더블",
         "reason": "testing"
@@ -3337,7 +3337,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "테스트와 대역 객체",
         "sub": "java, php에서 mock 생성 원리",
         "reason": "testing"
@@ -3352,7 +3352,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Bean 생명주기와 선택",
         "sub": "`@Bean` vs. `@Component`",
         "reason": "bean lifecycle"
@@ -3367,7 +3367,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Servlet/Tomcat 요청 처리",
         "sub": "Tomcat과 Spring의 동작 원리 및 WAR 파일 처리 과정",
         "reason": "servlet request path"
@@ -3382,7 +3382,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "Class loading과 실행 준비",
         "sub": "부모 위임 모델",
         "reason": "class loading"
@@ -3397,7 +3397,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring Boot 실행 모델",
         "sub": "Spring의 동시성 및 Thread Management 정리",
         "reason": "spring boot"
@@ -3412,7 +3412,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring HTTP 클라이언트와 Reactive",
         "sub": "RestTemplate vs WebClient 차이",
         "reason": "spring reactive/http client"
@@ -3427,7 +3427,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring HTTP 클라이언트와 Reactive",
         "sub": "Spring WebFlux의 이벤트 루프(Event Loop)",
         "reason": "spring reactive/http client"
@@ -3442,7 +3442,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring HTTP 클라이언트와 Reactive",
         "sub": "Mono와 Flux: 개념, 필요성, 이벤트 루프와의 관계",
         "reason": "spring reactive/http client"
@@ -3457,7 +3457,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Event loop와 네트워크 런타임",
         "sub": "Netty의 이벤트 루프(Event Loop)와 epoll 기반 논블로킹 I/O 구현",
         "reason": "event loop"
@@ -3517,7 +3517,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "공유 상태와 경쟁 조건",
         "sub": "멀티스레딩에서 어떻게 읽기 전용 속성을 동시에 사용할 수 있는지",
         "reason": "shared state"
@@ -3532,7 +3532,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Coroutine과 협력형 실행",
         "sub": "코루틴을 Cooperative Multitasking 이라고 하는 이유?",
         "reason": "coroutine"
@@ -3547,7 +3547,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Coroutine과 협력형 실행",
         "sub": "코루틴 제어의 양보",
         "reason": "coroutine"
@@ -3562,7 +3562,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "Kotlin의 async HTTP 요청과 코루틴 비교",
         "reason": "async/non-blocking"
@@ -3577,7 +3577,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "HTTP 요청을 Async로 처리했을 때의 이점",
         "reason": "async/non-blocking"
@@ -3592,7 +3592,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "동시 요청이 많아 소켓이 몇 만 개 이상 필요한 상황에서 File Descriptor 설정을 수정하지 않은 경우",
         "reason": "io multiplexing"
@@ -3607,7 +3607,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring Boot 실행 모델",
         "sub": "`java -jar SpringBootApp.jar` 명령어의 실행 과정",
         "reason": "spring boot"
@@ -3622,7 +3622,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "대용량 테이블 운영",
         "sub": "수억건의 데이터가 존재하는 테이블 처리 방법",
         "reason": "large table operation"
@@ -3637,7 +3637,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "인덱스와 조회 성능",
         "sub": "3억건의 데이터의 B+Tree 깊이 계산",
         "reason": "index/query performance"
@@ -3652,7 +3652,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "Kotlin 언어 기능",
         "sub": "infix, inline, noinline, crossinline",
         "reason": "kotlin language"
@@ -3667,7 +3667,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Bean 생명주기와 선택",
         "sub": "스프링 부트 시작과 빈 라이프 사이클",
         "reason": "bean lifecycle"
@@ -3682,7 +3682,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "함수형 프로그래밍 모델",
         "sub": "함수형",
         "reason": "functional programming"
@@ -3697,7 +3697,7 @@
       "is_representative": false,
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "HTTP/gRPC와 스트리밍",
         "sub": "HTTP 요청이 일반적인 TCP 연결 방식과 Keep-Alive TCP 연결 방식 이루어지는 경우",
         "reason": "web protocol"
@@ -3714,7 +3714,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "소켓, epoll, nginx, 과다한 요청"
       }
@@ -3728,7 +3728,7 @@
       ],
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "서버 하드웨어와 운영 환경",
         "sub": "왜 맥북이나 가정용 PC로 서비스하지 않고 별도의 서버용 컴퓨터를 사용하나요?"
       }
@@ -3742,7 +3742,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "DB 접근과 저장소 운영",
         "sub": "PDO가 데이터베이스에서 데이터 가져오는 원리"
       }
@@ -3756,7 +3756,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "Kotlin의 async HTTP 요청과 코루틴 비교"
       }
@@ -3770,7 +3770,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "트랜잭션과 데이터 접근",
         "sub": "Spring JDBC에서도 데이터를 가져오는 방식"
       }
@@ -3784,7 +3784,7 @@
       ],
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "HTTP/gRPC와 스트리밍",
         "sub": "네트워크를 통한 스트리밍 방식"
       }
@@ -3798,7 +3798,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring Boot 실행 모델",
         "sub": "과거 톰캣 & 스프링 실행 방식 vs Spring boot 비교"
       }
@@ -3812,7 +3812,7 @@
       ],
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "Broker 비교와 선택",
         "sub": "rabbit mq, kafka 등 차이"
       }
@@ -3826,7 +3826,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "공유 상태와 경쟁 조건",
         "sub": "경쟁 조건 (Race Condition)"
       }
@@ -3840,7 +3840,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "교착과 진행 보장",
         "sub": "교착 상태 (Deadlock)"
       }
@@ -3854,7 +3854,7 @@
       ],
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "CPU와 숫자 표현",
         "sub": "부동소수점"
       }
@@ -3868,7 +3868,7 @@
       ],
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "Proxy와 L7 진입 경로",
         "sub": "proxy와 reverse proxy"
       }
@@ -3882,7 +3882,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "스레드 생성과 스케줄링",
         "sub": "`pthread_create` 이후 커널에서 발생하는 작업들"
       }
@@ -3896,7 +3896,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Coroutine과 협력형 실행",
         "sub": "코루틴을 Cooperative Multitasking 이라고 하는 이유?"
       }
@@ -3910,7 +3910,7 @@
       ],
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "TCP/IP와 소켓 통신",
         "sub": "클라이언트와 서버 간의 소켓 통신 과정"
       }
@@ -3924,7 +3924,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Bean 생명주기와 선택",
         "sub": "`@Bean` vs. `@Component`"
       }
@@ -3938,7 +3938,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "네트워크 통신 시 epoll 동작 방식"
       }
@@ -3966,7 +3966,7 @@
       ],
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "부팅과 init 시스템",
         "sub": "서버 부팅 과정"
       }
@@ -3980,7 +3980,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "논블로킹 vs 비동기 차이"
       }
@@ -4008,7 +4008,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "동시 요청이 많아 소켓이 몇 만 개 이상 필요한 상황에서 File Descriptor 설정을 수정하지 않은 경우"
       }
@@ -4022,7 +4022,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "MVCC와 스냅숏 격리"
       }
@@ -4036,7 +4036,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색/NoSQL 저장소",
         "sub": "카우치베이스"
       }
@@ -4050,7 +4050,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring Boot 실행 모델",
         "sub": "Spring의 동시성 및 Thread Management 정리"
       }
@@ -4064,7 +4064,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "IoC와 DI",
         "sub": "Inversion of Control (IoC)"
       }
@@ -4078,7 +4078,7 @@
       ],
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "프로세스 생성과 실행",
         "sub": "java 프로그램이 프로세스로 실행되는 과정: 시스템 레벨부터 JVM까지"
       }
@@ -4092,7 +4092,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "libuv, aio_*, io_uring"
       }
@@ -4106,7 +4106,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Servlet/Tomcat 요청 처리",
         "sub": "nginx와 java/kotlin spring web app 사이에 tomcat이 필요한 이유"
       }
@@ -4120,7 +4120,7 @@
       ],
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "언어 런타임 비교",
         "sub": "Golang의 Concurrent Mark and Sweep(CMS)"
       }
@@ -4134,7 +4134,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Servlet/Tomcat 요청 처리",
         "sub": "NGINX와 Java Spring Web 애플리케이션이 함께 사용되는 경우"
       }
@@ -4148,7 +4148,7 @@
       ],
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "메시징 프로토콜",
         "sub": "`amqplib`의 동작 원리"
       }
@@ -4162,7 +4162,7 @@
       ],
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "언어 런타임 비교",
         "sub": "VM, GC, 그리고 런타임"
       }
@@ -4176,7 +4176,7 @@
       ],
       "curriculum": {
         "major": "security-cryptography",
-        "file": "05-security-cryptography.md",
+        "file": "security-cryptography.md",
         "mid": "TLS/HTTPS 핸드셰이크",
         "sub": "pkcs 11 멀티 프로세스 curl 에러"
       }
@@ -4190,7 +4190,7 @@
       ],
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "운영 실천과 배포 기반",
         "sub": "Docker 컨테이너 가상화"
       }
@@ -4204,7 +4204,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "대용량 테이블 운영",
         "sub": "수억건의 데이터가 존재하는 테이블 처리 방법"
       }
@@ -4218,7 +4218,7 @@
       ],
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "서버 하드웨어와 운영 환경",
         "sub": "노트북도 서버가 될 수 있는데 왜 굳이 서버 호스팅을 받나요?"
       }
@@ -4232,7 +4232,7 @@
       ],
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "언어 런타임 비교",
         "sub": "Apache + mod_php와 Nginx + php-fpm의 차이"
       }
@@ -4246,7 +4246,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Servlet/Tomcat 요청 처리",
         "sub": "Nginx가 Tomcat을 업스트림으로 요청을 전달하고, Tomcat이 Spring 애플리케이션의 `@RestController`나 `@Controller`로 요청을 전달하는 과정"
       }
@@ -4260,7 +4260,7 @@
       ],
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "설계 원칙과 패턴",
         "sub": "프록시 패턴"
       }
@@ -4288,7 +4288,7 @@
       ],
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "테스트와 대역 객체",
         "sub": "java, php에서 mock 생성 원리"
       }
@@ -4302,7 +4302,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Event loop와 네트워크 런타임",
         "sub": "Netty의 이벤트 루프(Event Loop)와 epoll 기반 논블로킹 I/O 구현"
       }
@@ -4316,7 +4316,7 @@
       ],
       "curriculum": {
         "major": "distributed-systems-architecture",
-        "file": "08-distributed-systems-architecture.md",
+        "file": "distributed-systems-architecture.md",
         "mid": "가용성, 토폴로지, 확장성",
         "sub": "토폴로지"
       }
@@ -4330,7 +4330,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "2단계커밋과 2단계 잠금"
       }
@@ -4344,7 +4344,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "ElasticSearch에서 OOM(Out of Memory) 문제"
       }
@@ -4358,7 +4358,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "블로킹 vs 논블로킹, 동기 vs 비동기, 동시성 vs 병렬성 개념 정리"
       }
@@ -4372,7 +4372,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "Elasticsearch, OOM 문제, Hot/Warm 아키텍처 설명"
       }
@@ -4386,7 +4386,7 @@
       ],
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "Broker 비교와 선택",
         "sub": "RabbitMQ와 Kafka"
       }
@@ -4400,7 +4400,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring HTTP 클라이언트와 Reactive",
         "sub": "RestTemplate vs WebClient 차이"
       }
@@ -4414,7 +4414,7 @@
       ],
       "curriculum": {
         "major": "security-cryptography",
-        "file": "05-security-cryptography.md",
+        "file": "security-cryptography.md",
         "mid": "TLS/HTTPS 핸드셰이크",
         "sub": "HTTPS 통신 과정"
       }
@@ -4428,7 +4428,7 @@
       ],
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "함수형 프로그래밍 모델",
         "sub": "함수형"
       }
@@ -4442,7 +4442,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring Boot 실행 모델",
         "sub": "Spring boot에서 톰캣 실행 후 일어나는 일"
       }
@@ -4456,7 +4456,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Coroutine과 협력형 실행",
         "sub": "Kotlin Coroutine"
       }
@@ -4470,7 +4470,7 @@
       ],
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "HTTP/gRPC와 스트리밍",
         "sub": "HTTP 요청이 일반적인 TCP 연결 방식과 Keep-Alive TCP 연결 방식 이루어지는 경우"
       }
@@ -4484,7 +4484,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "[DB - ACID](https://postgresql.kr/blog/pg_phantom_read.html)"
       }
@@ -4498,7 +4498,7 @@
       ],
       "curriculum": {
         "major": "security-cryptography",
-        "file": "05-security-cryptography.md",
+        "file": "security-cryptography.md",
         "mid": "키 교환과 전방 비밀성",
         "sub": "DHE(Diffie-Hellman)/ECDHE와 TLS"
       }
@@ -4512,7 +4512,7 @@
       ],
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "프로세스 생성과 실행",
         "sub": "exec"
       }
@@ -4526,7 +4526,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "공유 상태와 경쟁 조건",
         "sub": "멀티스레딩에서 어떻게 읽기 전용 속성을 동시에 사용할 수 있는지"
       }
@@ -4540,7 +4540,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "I/O 서브시스템"
       }
@@ -4554,7 +4554,7 @@
       ],
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "메시징 프로토콜",
         "sub": "[표준 메세징 프로토콜 정리 (AMQP, STOMP, MQTT)](https://velog.io/@holicme7/%ED%91%9C%EC%A4%80-%EB%A9%94%EC%84%B8%EC%A7%95-%ED%94%84%EB%A1%9C%ED%86%A0%EC%BD%9C-%EC%A0%95%EB%A6%AC-AMQP-STOMP-MQTT)"
       }
@@ -4568,7 +4568,7 @@
       ],
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "프로세스 생성과 실행",
         "sub": "`&`와 background process"
       }
@@ -4582,7 +4582,7 @@
       ],
       "curriculum": {
         "major": "distributed-systems-architecture",
-        "file": "08-distributed-systems-architecture.md",
+        "file": "distributed-systems-architecture.md",
         "mid": "MSA와 결제 시스템 설계",
         "sub": "결제 MSA에서 결제 PG사 기능 구현"
       }
@@ -4596,7 +4596,7 @@
       ],
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "JVM 실행 모델",
         "sub": "JVM, PHP runtime, Go runtime"
       }
@@ -4610,7 +4610,7 @@
       ],
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "Class loading과 실행 준비",
         "sub": "부모 위임 모델"
       }
@@ -4624,7 +4624,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Bean 생명주기와 선택",
         "sub": "스프링 부트 시작과 빈 라이프 사이클"
       }
@@ -4638,7 +4638,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "epoll 상세"
       }
@@ -4652,7 +4652,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Bean 생명주기와 선택",
         "sub": "적절한 Bean 선택"
       }
@@ -4666,7 +4666,7 @@
       ],
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "TCP/IP와 소켓 통신",
         "sub": "IP 구조"
       }
@@ -4680,7 +4680,7 @@
       ],
       "curriculum": {
         "major": "distributed-systems-architecture",
-        "file": "08-distributed-systems-architecture.md",
+        "file": "distributed-systems-architecture.md",
         "mid": "가용성, 토폴로지, 확장성",
         "sub": "Distributed Systems에서 고가용성이란?"
       }
@@ -4694,7 +4694,7 @@
       ],
       "curriculum": {
         "major": "messaging-event-driven",
-        "file": "07-messaging-event-driven.md",
+        "file": "messaging-event-driven.md",
         "mid": "Consumer와 클라이언트 구현",
         "sub": "RabbitMQ가 Node.js 앱으로 메시지를 전달하는 과정"
       }
@@ -4708,7 +4708,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "Elasticsearch의 샤드와 레플리카 샤드"
       }
@@ -4722,7 +4722,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "AOP와 어노테이션 처리",
         "sub": "어노테이션 프로세싱과 Spring의 내부 동작 원리"
       }
@@ -4736,7 +4736,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring HTTP 클라이언트와 Reactive",
         "sub": "Spring WebFlux의 이벤트 루프(Event Loop)"
       }
@@ -4750,7 +4750,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "데이터베이스 락(Lock)과 격리 수준(Isolation Level)"
       }
@@ -4764,7 +4764,7 @@
       ],
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "Kotlin 언어 기능",
         "sub": "kotlin의 `when` 표현식에서의 exhaustiveness 체크"
       }
@@ -4778,7 +4778,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring HTTP 클라이언트와 Reactive",
         "sub": "Mono와 Flux: 개념, 필요성, 이벤트 루프와의 관계"
       }
@@ -4792,7 +4792,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "DB 접근과 저장소 운영",
         "sub": "DB와 레플리케이션과 고가용성"
       }
@@ -4806,7 +4806,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "트랜잭션과 데이터 접근",
         "sub": "hikari cp"
       }
@@ -4820,7 +4820,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "HTTP 요청을 Async로 처리했을 때의 이점"
       }
@@ -4834,7 +4834,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "트랜잭션, 락, 격리",
         "sub": "ACID(Atomicity, Consistency, Isolation, Durability)와 MVCC(Multi-Version Concurrency Control, 다중 버전 동시성 제어)"
       }
@@ -4848,7 +4848,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Goroutine과 런타임 스케줄링",
         "sub": "Go의 Goroutine은 M 대 N 모델 멀티스레딩"
       }
@@ -4862,7 +4862,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "ElasticSearch 쿼리 과정 예시"
       }
@@ -4876,7 +4876,7 @@
       ],
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "TCP/IP와 소켓 통신",
         "sub": "TCP 컨제스천 컨트롤"
       }
@@ -4890,7 +4890,7 @@
       ],
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "스케줄링과 선점",
         "sub": "선점형(Pre-emption)OS와 비선점형(Nonpre-emption)OS 차이"
       }
@@ -4904,7 +4904,7 @@
       ],
       "curriculum": {
         "major": "security-cryptography",
-        "file": "05-security-cryptography.md",
+        "file": "security-cryptography.md",
         "mid": "키 교환과 전방 비밀성",
         "sub": "전방 비밀성"
       }
@@ -4918,7 +4918,7 @@
       ],
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "TCP/IP와 소켓 통신",
         "sub": "NAT(Network Address Translation)"
       }
@@ -4932,7 +4932,7 @@
       ],
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "테스트와 대역 객체",
         "sub": "테스트 더블"
       }
@@ -4946,7 +4946,7 @@
       ],
       "curriculum": {
         "major": "language-runtime",
-        "file": "01-language-runtime.md",
+        "file": "language-runtime.md",
         "mid": "Kotlin 언어 기능",
         "sub": "infix, inline, noinline, crossinline"
       }
@@ -4960,7 +4960,7 @@
       ],
       "curriculum": {
         "major": "network-web-protocols",
-        "file": "04-network-web-protocols.md",
+        "file": "network-web-protocols.md",
         "mid": "HTTP/gRPC와 스트리밍",
         "sub": "서버에서 100GB 파일을 스트리밍 방식으로 읽는 방법 (CPU 4코어, RAM 16GB, SWAP 16GB 조건에서)"
       }
@@ -4974,7 +4974,7 @@
       ],
       "curriculum": {
         "major": "distributed-systems-architecture",
-        "file": "08-distributed-systems-architecture.md",
+        "file": "distributed-systems-architecture.md",
         "mid": "일관성과 분산 트랜잭션",
         "sub": "eventual consistency"
       }
@@ -4988,7 +4988,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "AOP와 어노테이션 처리",
         "sub": "jvm 계열 언어에서 어노테이션 선언 방법 및 spring 어노테이션 동작 원리"
       }
@@ -5002,7 +5002,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "IoC와 DI",
         "sub": "Spring Framework의 Dependency Injection (DI)"
       }
@@ -5016,7 +5016,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "비동기 프로그래밍"
       }
@@ -5030,7 +5030,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "트랜잭션과 데이터 접근",
         "sub": "리파지토리 메서드에 `@Transactional` 사용"
       }
@@ -5058,7 +5058,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Servlet/Tomcat 요청 처리",
         "sub": "Tomcat과 Spring의 동작 원리 및 WAR 파일 처리 과정"
       }
@@ -5072,7 +5072,7 @@
       ],
       "curriculum": {
         "major": "problem-solving-code-quality",
-        "file": "10-problem-solving-code-quality.md",
+        "file": "problem-solving-code-quality.md",
         "mid": "알고리즘과 문제 해결",
         "sub": "정규표현식"
       }
@@ -5086,7 +5086,7 @@
       ],
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "프로세스 생성과 실행",
         "sub": "fork"
       }
@@ -5100,7 +5100,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Blocking, non-blocking, async 구분",
         "sub": "싱글 코어 & 싱글 스레드 경우 커널에서의 비동기와 멀티플렉싱"
       }
@@ -5114,7 +5114,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "OS I/O multiplexing",
         "sub": "Node.js의 싱글 스레드와 libuv의 멀티 스레딩"
       }
@@ -5128,7 +5128,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "검색 엔진과 샤딩",
         "sub": "[ElasticSearch Hot/Warm 아키텍처](https://www.elastic.co/kr/blog/elasticsearch-data-lifecycle-management-with-data-tiers)"
       }
@@ -5142,7 +5142,7 @@
       ],
       "curriculum": {
         "major": "spring-backend-frameworks",
-        "file": "09-spring-backend-frameworks.md",
+        "file": "spring-backend-frameworks.md",
         "mid": "Spring Boot 실행 모델",
         "sub": "`java -jar SpringBootApp.jar` 명령어의 실행 과정"
       }
@@ -5170,7 +5170,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "인덱스와 조회 성능",
         "sub": "B Tree & B+ Tree"
       }
@@ -5184,7 +5184,7 @@
       ],
       "curriculum": {
         "major": "database-storage-search-nosql",
-        "file": "06-database-storage-search-nosql.md",
+        "file": "database-storage-search-nosql.md",
         "mid": "인덱스와 조회 성능",
         "sub": "3억건의 데이터의 B+Tree 깊이 계산"
       }
@@ -5198,7 +5198,7 @@
       ],
       "curriculum": {
         "major": "os-kernel-computer-architecture",
-        "file": "03-os-kernel-computer-architecture.md",
+        "file": "os-kernel-computer-architecture.md",
         "mid": "부팅과 init 시스템",
         "sub": "systemd가 다른 시스템 데몬들을 실행하는 과정"
       }
@@ -5212,7 +5212,7 @@
       ],
       "curriculum": {
         "major": "concurrency-async-io",
-        "file": "02-concurrency-async-io.md",
+        "file": "concurrency-async-io.md",
         "mid": "Coroutine과 협력형 실행",
         "sub": "코루틴 제어의 양보"
       }

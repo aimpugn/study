@@ -15,16 +15,16 @@
 
 ## 대분류
 
-- [01. 언어와 런타임](01-language-runtime.md): 9 source chunks
-- [02. 동시성, 비동기, I/O](02-concurrency-async-io.md): 38 source chunks
-- [03. OS, 커널, 컴퓨터 구조](03-os-kernel-computer-architecture.md): 10 source chunks
-- [04. 네트워크와 웹 프로토콜](04-network-web-protocols.md): 8 source chunks
-- [05. 보안과 암호학](05-security-cryptography.md): 6 source chunks
-- [06. 데이터베이스, 저장소, 검색/NoSQL](06-database-storage-search-nosql.md): 17 source chunks
-- [07. 메시징과 이벤트 기반 구조](07-messaging-event-driven.md): 5 source chunks
-- [08. 분산 시스템과 아키텍처](08-distributed-systems-architecture.md): 5 source chunks
-- [09. Spring과 백엔드 프레임워크](09-spring-backend-frameworks.md): 22 source chunks
-- [10. 문제 해결, 코드 품질, 운영 실천](10-problem-solving-code-quality.md): 5 source chunks
+- [언어와 런타임](language-runtime.md): 9 source chunks
+- [동시성, 비동기, I/O](concurrency-async-io.md): 38 source chunks
+- [OS, 커널, 컴퓨터 구조](os-kernel-computer-architecture.md): 10 source chunks
+- [네트워크와 웹 프로토콜](network-web-protocols.md): 8 source chunks
+- [보안과 암호학](security-cryptography.md): 6 source chunks
+- [데이터베이스, 저장소, 검색/NoSQL](database-storage-search-nosql.md): 17 source chunks
+- [메시징과 이벤트 기반 구조](messaging-event-driven.md): 5 source chunks
+- [분산 시스템과 아키텍처](distributed-systems-architecture.md): 5 source chunks
+- [Spring과 백엔드 프레임워크](spring-backend-frameworks.md): 22 source chunks
+- [문제 해결, 코드 품질, 운영 실천](problem-solving-code-quality.md): 5 source chunks
 - [Source Context And Question Bank](source/_source-context-and-question-bank.md): 8 context chunks
 
 ## 보존 규칙

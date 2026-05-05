@@ -1,4 +1,4 @@
-# 04. 네트워크와 웹 프로토콜
+# 네트워크와 웹 프로토콜
 
 TCP/IP, HTTP, keep-alive, gRPC, proxy, Nginx처럼 프로세스 밖으로 나간 요청이 흐르는 경로를 다룹니다.
 

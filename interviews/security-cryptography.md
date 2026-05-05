@@ -1,4 +1,4 @@
-# 05. 보안과 암호학
+# 보안과 암호학
 
 TLS, HTTPS, Diffie-Hellman, OAuth, token, privacy처럼 통신과 인증을 안전하게 만드는 기술 단위를 다룹니다.
 

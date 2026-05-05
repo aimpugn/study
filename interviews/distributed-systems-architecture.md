@@ -1,4 +1,4 @@
-# 08. 분산 시스템과 아키텍처
+# 분산 시스템과 아키텍처
 
 MSA, consistency, availability, topology, saga, idempotency처럼 작은 기술 단위를 큰 시스템 설계로 조립하는 판단 축을 다룹니다.
 

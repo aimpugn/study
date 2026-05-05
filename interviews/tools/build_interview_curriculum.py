@@ -42,64 +42,77 @@ class Placement:
 MAJORS: list[Major] = [
     Major(
         "language-runtime",
-        "01-language-runtime.md",
-        "01. 언어와 런타임",
+        "language-runtime.md",
+        "언어와 런타임",
         "언어 문법이 아니라 코드가 실행 단위가 되어 메모리, GC, 클래스 로딩, 런타임 스케줄러를 만나는 지점을 다룹니다.",
     ),
     Major(
         "concurrency-async-io",
-        "02-concurrency-async-io.md",
-        "02. 동시성, 비동기, I/O",
+        "concurrency-async-io.md",
+        "동시성, 비동기, I/O",
         "스레드, 락, 대기, 이벤트 루프, 논블로킹 I/O처럼 많은 요청을 안전하고 효율적으로 처리하는 실행 모델을 다룹니다.",
     ),
     Major(
         "os-kernel-computer-architecture",
-        "03-os-kernel-computer-architecture.md",
-        "03. OS, 커널, 컴퓨터 구조",
+        "os-kernel-computer-architecture.md",
+        "OS, 커널, 컴퓨터 구조",
         "프로세스, 커널, 부팅, CPU, 메모리, 파일 디스크립터처럼 애플리케이션 아래층의 실행 조건을 다룹니다.",
     ),
     Major(
         "network-web-protocols",
-        "04-network-web-protocols.md",
-        "04. 네트워크와 웹 프로토콜",
+        "network-web-protocols.md",
+        "네트워크와 웹 프로토콜",
         "TCP/IP, HTTP, keep-alive, gRPC, proxy, Nginx처럼 프로세스 밖으로 나간 요청이 흐르는 경로를 다룹니다.",
     ),
     Major(
         "security-cryptography",
-        "05-security-cryptography.md",
-        "05. 보안과 암호학",
+        "security-cryptography.md",
+        "보안과 암호학",
         "TLS, HTTPS, Diffie-Hellman, OAuth, token, privacy처럼 통신과 인증을 안전하게 만드는 기술 단위를 다룹니다.",
     ),
     Major(
         "database-storage-search-nosql",
-        "06-database-storage-search-nosql.md",
-        "06. 데이터베이스, 저장소, 검색/NoSQL",
+        "database-storage-search-nosql.md",
+        "데이터베이스, 저장소, 검색/NoSQL",
         "트랜잭션, 인덱스, 락, 복제, 파티셔닝, Elasticsearch, Couchbase처럼 데이터를 저장하고 찾는 전체 축을 함께 다룹니다.",
     ),
     Major(
         "messaging-event-driven",
-        "07-messaging-event-driven.md",
-        "07. 메시징과 이벤트 기반 구조",
+        "messaging-event-driven.md",
+        "메시징과 이벤트 기반 구조",
         "RabbitMQ, Kafka, AMQP, consumer, client library처럼 서비스 사이의 비동기 메시지 흐름을 다룹니다.",
     ),
     Major(
         "distributed-systems-architecture",
-        "08-distributed-systems-architecture.md",
-        "08. 분산 시스템과 아키텍처",
+        "distributed-systems-architecture.md",
+        "분산 시스템과 아키텍처",
         "MSA, consistency, availability, topology, saga, idempotency처럼 작은 기술 단위를 큰 시스템 설계로 조립하는 판단 축을 다룹니다.",
     ),
     Major(
         "spring-backend-frameworks",
-        "09-spring-backend-frameworks.md",
-        "09. Spring과 백엔드 프레임워크",
+        "spring-backend-frameworks.md",
+        "Spring과 백엔드 프레임워크",
         "Spring Boot, IoC, Bean, Transaction, Servlet/Tomcat, WebClient/WebFlux처럼 백엔드 프레임워크가 런타임 위에 올리는 실행 모델을 다룹니다.",
     ),
     Major(
         "problem-solving-code-quality",
-        "10-problem-solving-code-quality.md",
-        "10. 문제 해결, 코드 품질, 운영 실천",
+        "problem-solving-code-quality.md",
+        "문제 해결, 코드 품질, 운영 실천",
         "알고리즘, 복잡도, 테스트, mock, 패턴, Docker/배포처럼 문제를 풀고 코드를 신뢰 가능하게 만드는 실천 축을 다룹니다.",
     ),
+]
+
+LEGACY_MAJOR_FILES = [
+    "01-language-runtime.md",
+    "02-concurrency-async-io.md",
+    "03-os-kernel-computer-architecture.md",
+    "04-network-web-protocols.md",
+    "05-security-cryptography.md",
+    "06-database-storage-search-nosql.md",
+    "07-messaging-event-driven.md",
+    "08-distributed-systems-architecture.md",
+    "09-spring-backend-frameworks.md",
+    "10-problem-solving-code-quality.md",
 ]
 
 APPENDIX_KEY = "source-context"
@@ -327,6 +340,8 @@ def source_ref(split_module, chunk) -> str:
 def clear_generated_outputs() -> None:
     for major in MAJORS:
         (CURRICULUM_DIR / major.file_name).unlink(missing_ok=True)
+    for file_name in LEGACY_MAJOR_FILES:
+        (CURRICULUM_DIR / file_name).unlink(missing_ok=True)
     (CURRICULUM_DIR / "_question-index.md").unlink(missing_ok=True)
     (CURRICULUM_DIR / "_curriculum_manifest.json").unlink(missing_ok=True)
     (CURRICULUM_DIR / APPENDIX_FILE).unlink(missing_ok=True)

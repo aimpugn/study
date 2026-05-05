@@ -1,4 +1,4 @@
-# 09. Spring과 백엔드 프레임워크
+# Spring과 백엔드 프레임워크
 
 Spring Boot, IoC, Bean, Transaction, Servlet/Tomcat, WebClient/WebFlux처럼 백엔드 프레임워크가 런타임 위에 올리는 실행 모델을 다룹니다.
 
