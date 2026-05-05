@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build the interview curriculum hierarchy from raw source chunks.
+"""Build the root interview curriculum from raw source chunks.
 
-The topic splitter keeps a low-level source-preserving staging area. This
-builder creates the human-facing curriculum view: roughly ten major domains,
-with mid topics and subtopics inside each document.
+Raw source files stay under ``interviews/source``. This builder writes the
+human-facing learning documents directly under ``interviews`` so the new
+curriculum is the default study surface.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CURRICULUM_DIR = ROOT / "curriculum"
+CURRICULUM_DIR = ROOT
 SPLIT_SCRIPT = ROOT / "tools" / "split_interview_sources.py"
 
 
@@ -103,7 +103,7 @@ MAJORS: list[Major] = [
 ]
 
 APPENDIX_KEY = "source-context"
-APPENDIX_FILE = "_source-context-and-question-bank.md"
+APPENDIX_FILE = "source/_source-context-and-question-bank.md"
 
 
 def load_split_module():
@@ -325,10 +325,11 @@ def source_ref(split_module, chunk) -> str:
 
 
 def clear_generated_outputs() -> None:
-    CURRICULUM_DIR.mkdir(exist_ok=True)
-    for path in CURRICULUM_DIR.glob("*.md"):
-        path.unlink()
+    for major in MAJORS:
+        (CURRICULUM_DIR / major.file_name).unlink(missing_ok=True)
+    (CURRICULUM_DIR / "_question-index.md").unlink(missing_ok=True)
     (CURRICULUM_DIR / "_curriculum_manifest.json").unlink(missing_ok=True)
+    (CURRICULUM_DIR / APPENDIX_FILE).unlink(missing_ok=True)
 
 
 def write_curriculum_doc(major: Major, chunks: list, placements: dict[str, Placement], aliases_by_hash, split_module) -> None:
@@ -374,6 +375,7 @@ def write_curriculum_doc(major: Major, chunks: list, placements: dict[str, Place
 
 def write_appendix(chunks: list, placements: dict[str, Placement], aliases_by_hash, split_module) -> None:
     path = CURRICULUM_DIR / APPENDIX_FILE
+    path.parent.mkdir(exist_ok=True)
     lines = [
         "# Source Context And Question Bank",
         "",
@@ -412,10 +414,17 @@ def write_appendix(chunks: list, placements: dict[str, Placement], aliases_by_ha
 
 def write_readme(counts: Counter, appendix_count: int) -> None:
     lines = [
-        "# Interview Curriculum",
+        "# interviews",
         "",
-        "이 디렉터리는 `intervie*.md` 원재료를 실제 인터뷰 준비용 대분류 구조로 재배치한 곳입니다.",
-        "대주제는 10개로 유지하고, `검색/NoSQL`은 `데이터베이스, 저장소, 검색/NoSQL` 안에 포함합니다.",
+        "이 디렉터리는 경력 기술 인터뷰를 준비하기 위한 공간입니다.",
+        "목표는 예상 질문을 많이 모으는 데서 끝나지 않고, 질문이 들어왔을 때 짧은 시간 안에 먼저 핵심을 답하고, 이어서 필요한 만큼 깊게 설명할 수 있는 상태를 만드는 것입니다.",
+        "",
+        "프로젝트 의도는 [PROJECT_INTENT.md](PROJECT_INTENT.md)에서 고정합니다.",
+        "대표 사용 장면과 산출물 역할은 [USECASE.md](USECASE.md)에서 고정합니다.",
+        "",
+        "현재 학습용 기본 진입점은 이 디렉터리 바로 아래의 10개 대주제 문서입니다.",
+        "원문 질문 은행과 시나리오는 [source](source/)에 보관하고, 앞으로의 정리와 학습은 아래 새 curriculum 문서를 기준으로 진행합니다.",
+        "`검색/NoSQL`은 독립 문서로 분리하지 않고 `데이터베이스, 저장소, 검색/NoSQL` 안에 포함합니다.",
         "",
         "현재 파일은 아직 딥 리라이트 완료본이 아니라 `원문 배치본`입니다.",
         "다음 단계에서 각 소주제를 `짧은 직답 -> 깊은 메커니즘 -> 예시 -> 꼬리 질문 -> 검증/근거` 구조로 승격합니다.",
@@ -431,9 +440,9 @@ def write_readme(counts: Counter, appendix_count: int) -> None:
             "",
             "## 보존 규칙",
             "",
-            "- 원본 `intervie*.md` 파일은 source reservoir로 유지합니다.",
+            "- 원본 `intervie*.md` 파일은 `source/` 아래 source reservoir로 유지합니다.",
             "- 원문 chunk는 source span, duplicate alias, SHA-256으로 추적합니다.",
-            "- curriculum 문서에서는 계층을 맞추기 위해 heading depth만 조정합니다.",
+            "- root curriculum 문서에서는 계층을 맞추기 위해 heading depth만 조정합니다.",
             "- `_curriculum_manifest.json`은 모든 unique chunk가 어느 대분류/중분류/소분류에 놓였는지 기록합니다.",
             "",
             "## 재생성",
@@ -485,7 +494,7 @@ def write_manifest(all_chunks: list, unique_chunks: list, placements: dict[str, 
     manifest = {
         "source_files": split_module.SOURCE_NAMES,
         "source_file_hashes": {
-            name: hashlib.sha256((split_module.ROOT / name).read_bytes()).hexdigest()
+            name: hashlib.sha256((split_module.SOURCE_DIR / name).read_bytes()).hexdigest()
             for name in split_module.SOURCE_NAMES
         },
         "source_chunk_count": len(all_chunks),
@@ -548,7 +557,7 @@ def main() -> None:
     split_module = load_split_module()
     all_chunks = []
     for name in split_module.SOURCE_NAMES:
-        all_chunks.extend(split_module.read_chunks(split_module.ROOT / name))
+        all_chunks.extend(split_module.read_chunks(split_module.SOURCE_DIR / name))
 
     aliases_by_hash = defaultdict(list)
     unique_by_hash = {}

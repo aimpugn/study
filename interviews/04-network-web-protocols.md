@@ -10,11 +10,11 @@ TCP/IP, HTTP, keep-alive, gRPC, proxy, Nginx처럼 프로세스 밖으로 나간
 
 #### 원문: HTTP 요청이 일반적인 TCP 연결 방식과 Keep-Alive TCP 연결 방식 이루어지는 경우
 
-<!-- curriculum-chunk: sha256=85895a240d771a6c050541af675be61764b2e3683e2457a4033a78bdae0e90a7 major=network-web-protocols mid=HTTP/gRPC와 스트리밍 sub=HTTP 요청이 일반적인 TCP 연결 방식과 Keep-Alive TCP 연결 방식 이루어지는 경우 sources=interview_questions2.md:2121-2296, interviews2.md:2121-2296 -->
+<!-- curriculum-chunk: sha256=85895a240d771a6c050541af675be61764b2e3683e2457a4033a78bdae0e90a7 major=network-web-protocols mid=HTTP/gRPC와 스트리밍 sub=HTTP 요청이 일반적인 TCP 연결 방식과 Keep-Alive TCP 연결 방식 이루어지는 경우 sources=source/interview_questions2.md:2121-2296, source/interviews2.md:2121-2296 -->
 
-> Source: `interview_questions2.md:2121-2296`
+> Source: `source/interview_questions2.md:2121-2296`
 > Classification reason: web protocol
-> Duplicate source aliases: `interview_questions2.md:2121-2296, interviews2.md:2121-2296`
+> Duplicate source aliases: `source/interview_questions2.md:2121-2296, source/interviews2.md:2121-2296`
 
 ##### HTTP 요청이 일반적인 TCP 연결 방식과 Keep-Alive TCP 연결 방식 이루어지는 경우
 
@@ -199,11 +199,11 @@ TCP Keep-Alive의 기본 동작:
 
 #### 원문: 네트워크를 통한 스트리밍 방식
 
-<!-- curriculum-chunk: sha256=10c7759a0de61e5c450470a6000ab06726b71e796e54810e14a65ec8e08cee4e major=network-web-protocols mid=HTTP/gRPC와 스트리밍 sub=네트워크를 통한 스트리밍 방식 sources=interview_questions.md:1289-1514, interviews.md:1289-1514 -->
+<!-- curriculum-chunk: sha256=10c7759a0de61e5c450470a6000ab06726b71e796e54810e14a65ec8e08cee4e major=network-web-protocols mid=HTTP/gRPC와 스트리밍 sub=네트워크를 통한 스트리밍 방식 sources=source/interview_questions.md:1289-1514, source/interviews.md:1289-1514 -->
 
-> Source: `interview_questions.md:1289-1514`
+> Source: `source/interview_questions.md:1289-1514`
 > Classification reason: streaming
-> Duplicate source aliases: `interview_questions.md:1289-1514, interviews.md:1289-1514`
+> Duplicate source aliases: `source/interview_questions.md:1289-1514, source/interviews.md:1289-1514`
 
 ##### 네트워크를 통한 스트리밍 방식
 
@@ -437,11 +437,11 @@ TCP Keep-Alive의 기본 동작:
 
 #### 원문: 서버에서 100GB 파일을 스트리밍 방식으로 읽는 방법 (CPU 4코어, RAM 16GB, SWAP 16GB 조건에서)
 
-<!-- curriculum-chunk: sha256=d6b1e076cf17ef98fe84be2aea4c93aee9f20b65af6f20549ded77bae593d0bf major=network-web-protocols mid=HTTP/gRPC와 스트리밍 sub=서버에서 100GB 파일을 스트리밍 방식으로 읽는 방법 (CPU 4코어, RAM 16GB, SWAP 16GB 조건에서) sources=interview_questions.md:1515-1661, interviews.md:1515-1661 -->
+<!-- curriculum-chunk: sha256=d6b1e076cf17ef98fe84be2aea4c93aee9f20b65af6f20549ded77bae593d0bf major=network-web-protocols mid=HTTP/gRPC와 스트리밍 sub=서버에서 100GB 파일을 스트리밍 방식으로 읽는 방법 (CPU 4코어, RAM 16GB, SWAP 16GB 조건에서) sources=source/interview_questions.md:1515-1661, source/interviews.md:1515-1661 -->
 
-> Source: `interview_questions.md:1515-1661`
+> Source: `source/interview_questions.md:1515-1661`
 > Classification reason: streaming
-> Duplicate source aliases: `interview_questions.md:1515-1661, interviews.md:1515-1661`
+> Duplicate source aliases: `source/interview_questions.md:1515-1661, source/interviews.md:1515-1661`
 
 ##### 서버에서 100GB 파일을 스트리밍 방식으로 읽는 방법 (CPU 4코어, RAM 16GB, SWAP 16GB 조건에서)
 
@@ -598,11 +598,11 @@ TCP Keep-Alive의 기본 동작:
 
 #### 원문: proxy와 reverse proxy
 
-<!-- curriculum-chunk: sha256=1e557b5ef19e51333f5a98825f6973553e031a5a04fd79a65610b961ebefeea8 major=network-web-protocols mid=Proxy와 L7 진입 경로 sub=proxy와 reverse proxy sources=interview_questions.md:8057-8109, interviews.md:8005-8057 -->
+<!-- curriculum-chunk: sha256=1e557b5ef19e51333f5a98825f6973553e031a5a04fd79a65610b961ebefeea8 major=network-web-protocols mid=Proxy와 L7 진입 경로 sub=proxy와 reverse proxy sources=source/interview_questions.md:8057-8109, source/interviews.md:8005-8057 -->
 
-> Source: `interview_questions.md:8057-8109`
+> Source: `source/interview_questions.md:8057-8109`
 > Classification reason: proxy
-> Duplicate source aliases: `interview_questions.md:8057-8109, interviews.md:8005-8057`
+> Duplicate source aliases: `source/interview_questions.md:8057-8109, source/interviews.md:8005-8057`
 
 ##### proxy와 reverse proxy
 
@@ -665,11 +665,11 @@ TCP Keep-Alive의 기본 동작:
 
 #### 원문: IP 구조
 
-<!-- curriculum-chunk: sha256=aa0d7040e4b5bfe93b4d26b5a7ece02f87d382b99ee9ca53e487fd747da297dd major=network-web-protocols mid=TCP/IP와 소켓 통신 sub=IP 구조 sources=interview_questions.md:2638-2753, interviews.md:2638-2753 -->
+<!-- curriculum-chunk: sha256=aa0d7040e4b5bfe93b4d26b5a7ece02f87d382b99ee9ca53e487fd747da297dd major=network-web-protocols mid=TCP/IP와 소켓 통신 sub=IP 구조 sources=source/interview_questions.md:2638-2753, source/interviews.md:2638-2753 -->
 
-> Source: `interview_questions.md:2638-2753`
+> Source: `source/interview_questions.md:2638-2753`
 > Classification reason: tcp/ip socket
-> Duplicate source aliases: `interview_questions.md:2638-2753, interviews.md:2638-2753`
+> Duplicate source aliases: `source/interview_questions.md:2638-2753, source/interviews.md:2638-2753`
 
 ##### IP 구조
 
@@ -793,11 +793,11 @@ IPv6는 확장 헤더를 도입하여, 필요에 따라 기능을 확장할 수 
 
 #### 원문: NAT(Network Address Translation)
 
-<!-- curriculum-chunk: sha256=cd5b2913355bcf22172b9f2d40731665ffdee7a23af29b7cf46310fe535003b9 major=network-web-protocols mid=TCP/IP와 소켓 통신 sub=NAT(Network Address Translation) sources=interview_questions.md:2577-2637, interviews.md:2577-2637 -->
+<!-- curriculum-chunk: sha256=cd5b2913355bcf22172b9f2d40731665ffdee7a23af29b7cf46310fe535003b9 major=network-web-protocols mid=TCP/IP와 소켓 통신 sub=NAT(Network Address Translation) sources=source/interview_questions.md:2577-2637, source/interviews.md:2577-2637 -->
 
-> Source: `interview_questions.md:2577-2637`
+> Source: `source/interview_questions.md:2577-2637`
 > Classification reason: tcp/ip socket
-> Duplicate source aliases: `interview_questions.md:2577-2637, interviews.md:2577-2637`
+> Duplicate source aliases: `source/interview_questions.md:2577-2637, source/interviews.md:2577-2637`
 
 ##### NAT(Network Address Translation)
 
@@ -866,11 +866,11 @@ NAT의 단점:
 
 #### 원문: TCP 컨제스천 컨트롤
 
-<!-- curriculum-chunk: sha256=cab804954a61da47bdf2735bfee053b8b0fac219a8467014e90ddb4cb4f8638b major=network-web-protocols mid=TCP/IP와 소켓 통신 sub=TCP 컨제스천 컨트롤 sources=interview_questions.md:7812-7815, interviews.md:7760-7763 -->
+<!-- curriculum-chunk: sha256=cab804954a61da47bdf2735bfee053b8b0fac219a8467014e90ddb4cb4f8638b major=network-web-protocols mid=TCP/IP와 소켓 통신 sub=TCP 컨제스천 컨트롤 sources=source/interview_questions.md:7812-7815, source/interviews.md:7760-7763 -->
 
-> Source: `interview_questions.md:7812-7815`
+> Source: `source/interview_questions.md:7812-7815`
 > Classification reason: tcp/ip socket
-> Duplicate source aliases: `interview_questions.md:7812-7815, interviews.md:7760-7763`
+> Duplicate source aliases: `source/interview_questions.md:7812-7815, source/interviews.md:7760-7763`
 
 ##### TCP 컨제스천 컨트롤
 
@@ -882,11 +882,11 @@ TCP 컨제스천 컨트롤 후질때엔 의미가있었는데 요즘은 뭐 TCP 
 
 #### 원문: 클라이언트와 서버 간의 소켓 통신 과정
 
-<!-- curriculum-chunk: sha256=21d65133cbce16e3dfe5c01469bde6fcf56378e344593925e46aba5a186caa41 major=network-web-protocols mid=TCP/IP와 소켓 통신 sub=클라이언트와 서버 간의 소켓 통신 과정 sources=interview_questions.md:6612-6819, interviews.md:6612-6819 -->
+<!-- curriculum-chunk: sha256=21d65133cbce16e3dfe5c01469bde6fcf56378e344593925e46aba5a186caa41 major=network-web-protocols mid=TCP/IP와 소켓 통신 sub=클라이언트와 서버 간의 소켓 통신 과정 sources=source/interview_questions.md:6612-6819, source/interviews.md:6612-6819 -->
 
-> Source: `interview_questions.md:6612-6819`
+> Source: `source/interview_questions.md:6612-6819`
 > Classification reason: tcp/ip socket
-> Duplicate source aliases: `interview_questions.md:6612-6819, interviews.md:6612-6819`
+> Duplicate source aliases: `source/interview_questions.md:6612-6819, source/interviews.md:6612-6819`
 
 ##### 클라이언트와 서버 간의 소켓 통신 과정
 

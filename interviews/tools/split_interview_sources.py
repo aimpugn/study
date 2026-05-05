@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Split raw interview markdown files into source-preserving topic files.
+"""Parse raw interview source markdown files into traceable chunks.
 
-This generator deliberately does not rewrite or improve the source chunks.
-It copies each unique chunk verbatim, records every original source span in a
-manifest, and lets later deep-study passes work from traceable topic files.
+The raw source files live under ``interviews/source``. Curriculum builders
+import this module to preserve source spans and exact chunk hashes while
+placing the content in the root interview learning documents.
 """
 
 from __future__ import annotations
@@ -17,7 +17,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TOPIC_DIR = ROOT / "topics"
+SOURCE_DIR = ROOT / "source"
+TOPIC_DIR = SOURCE_DIR / "topics"
 
 SOURCE_NAMES = [
     "interview_questions.md",
@@ -189,7 +190,7 @@ def make_chunk(path: Path, start: int, end: int, title: str, body: str) -> Chunk
 
 
 def source_ref(chunk: Chunk) -> str:
-    return f"{chunk.source_file}:{chunk.start_line}-{chunk.end_line}"
+    return f"source/{chunk.source_file}:{chunk.start_line}-{chunk.end_line}"
 
 
 def write_topic_file(topic: str, chunks: list[Chunk], aliases_by_hash: dict[str, list[Chunk]]) -> None:
@@ -268,7 +269,7 @@ def write_manifest(all_chunks: list[Chunk], unique_chunks: list[Chunk], aliases_
     manifest = {
         "source_files": SOURCE_NAMES,
         "source_file_hashes": {
-            name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+            name: hashlib.sha256((SOURCE_DIR / name).read_bytes()).hexdigest()
             for name in SOURCE_NAMES
         },
         "source_chunk_count": len(all_chunks),
@@ -307,12 +308,9 @@ def clear_generated_outputs() -> None:
 
 
 def main() -> None:
-    TOPIC_DIR.mkdir(exist_ok=True)
-    clear_generated_outputs()
-
     all_chunks: list[Chunk] = []
     for name in SOURCE_NAMES:
-        path = ROOT / name
+        path = SOURCE_DIR / name
         if not path.exists():
             raise FileNotFoundError(path)
         all_chunks.extend(read_chunks(path))
@@ -327,12 +325,6 @@ def main() -> None:
     chunks_by_topic: dict[str, list[Chunk]] = defaultdict(list)
     for chunk in unique_chunks:
         chunks_by_topic[chunk.topic].append(chunk)
-
-    for topic, chunks in chunks_by_topic.items():
-        write_topic_file(topic, chunks, aliases_by_hash)
-
-    write_index(unique_chunks, aliases_by_hash)
-    write_manifest(all_chunks, unique_chunks, aliases_by_hash)
 
     print(f"source chunks: {len(all_chunks)}")
     print(f"unique chunks: {len(unique_chunks)}")
