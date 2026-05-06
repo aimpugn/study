@@ -13,6 +13,7 @@
 - [빠른 사용법](#빠른-사용법)
 - [시간이 없을 때 먼저 볼 질문](#시간이-없을-때-먼저-볼-질문)
 - [모든 답변에 깔리는 기본 프레임](#모든-답변에-깔리는-기본-프레임)
+- [이 문서에 주제를 추가하는 기준](#이-문서에-주제를-추가하는-기준)
 - [1. 웹 요청 하나는 OS, 프록시, 톰캣, 스프링, DB를 어떻게 지나가는가](#1-웹-요청-하나는-os-프록시-톰캣-스프링-db를-어떻게-지나가는가)
 - [2. 트랜잭션은 ACID에서 MVCC, 격리 수준, 전파, 2PC, 보상 트랜잭션까지 어떻게 이어지는가](#2-트랜잭션은-acid에서-mvcc-격리-수준-전파-2pc-보상-트랜잭션까지-어떻게-이어지는가)
 - [3. 인덱스는 왜 B+Tree를 쓰고 실제 데이터 읽기와 어떻게 연결되는가](#3-인덱스는-왜-btree를-쓰고-실제-데이터-읽기와-어떻게-연결되는가)
@@ -27,7 +28,17 @@
 - [12. JVM GC와 런타임 성능은 heap, allocation, pause, throughput을 어떻게 이어 말하는가](#12-jvm-gc와-런타임-성능은-heap-allocation-pause-throughput을-어떻게-이어-말하는가)
 - [13. 장애 분석 질문은 관측 지표에서 병목 계층으로 어떻게 좁혀 가는가](#13-장애-분석-질문은-관측-지표에서-병목-계층으로-어떻게-좁혀-가는가)
 - [14. 알고리즘과 코드 품질 질문은 복잡도, 자료구조, 불변식, 테스트 가능성으로 어떻게 답하는가](#14-알고리즘과-코드-품질-질문은-복잡도-자료구조-불변식-테스트-가능성으로-어떻게-답하는가)
+- [15. 검색과 NoSQL은 shard, replica, query fan-out, heap을 어떻게 함께 다루는가](#15-검색과-nosql은-shard-replica-query-fan-out-heap을-어떻게-함께-다루는가)
+- [16. 조회 API 성능은 애플리케이션과 DB 경계를 어떻게 나누어 보는가](#16-조회-api-성능은-애플리케이션과-db-경계를-어떻게-나누어-보는가)
+- [17. 파일 스트리밍은 HTTP, TCP, page cache, backpressure를 어떻게 지나가는가](#17-파일-스트리밍은-http-tcp-page-cache-backpressure를-어떻게-지나가는가)
+- [18. 로그인, 세션, 토큰, OAuth는 인증과 인가를 어떻게 분리해 말하는가](#18-로그인-세션-토큰-oauth는-인증과-인가를-어떻게-분리해-말하는가)
+- [19. 컨테이너에서 Spring 서비스가 느리거나 죽을 때 무엇을 확인하는가](#19-컨테이너에서-spring-서비스가-느리거나-죽을-때-무엇을-확인하는가)
+- [20. 고가용성은 replication, 장애 격리, health check, failover를 어떻게 설계하는가](#20-고가용성은-replication-장애-격리-health-check-failover를-어떻게-설계하는가)
+- [21. Spring의 IoC, DI, AOP proxy, test double은 객체 경계와 테스트 가능성을 어떻게 만든다](#21-spring의-ioc-di-aop-proxy-test-double은-객체-경계와-테스트-가능성을-어떻게-만든다)
+- [22. 숫자 표현, CPU cache, memory barrier는 정확성과 성능 질문에서 어떻게 등장하는가](#22-숫자-표현-cpu-cache-memory-barrier는-정확성과-성능-질문에서-어떻게-등장하는가)
+- [23. VM, runtime, GC, scheduler는 언어 실행 모델 비교에서 어떻게 나뉘는가](#23-vm-runtime-gc-scheduler는-언어-실행-모델-비교에서-어떻게-나뉘는가)
 - [복합 질문으로 연습하기](#복합-질문으로-연습하기)
+- [낯선 복합 질문을 받았을 때 복구 루틴](#낯선-복합-질문을-받았을-때-복구-루틴)
 - [마지막 점검 질문](#마지막-점검-질문)
 
 ## 빠른 사용법
@@ -68,6 +79,15 @@
 7. TLS 핸드셰이크에서 인증서와 ECDHE가 각각 무엇을 해결하는가.
 8. 장애가 났을 때 p99 latency, CPU, memory, GC, thread, DB, network, broker lag 중 어디서부터 좁혀 가는가.
 
+이 8개를 먼저 닫은 뒤에는 아래 5개를 다음 우선순위로 본다.
+이들은 단독 암기 주제라기보다, 실무 경험 질문이나 시스템 설계 질문에서 여러 문서 주제가 한꺼번에 섞여 나오는 경로다.
+
+1. 검색과 NoSQL 시스템은 shard, replica, query fan-out, heap, GC, 장애 승격을 어떻게 같이 설명하는가.
+2. 조회 API가 느릴 때 애플리케이션 코드, mapper/ORM, DB 실행 계획, payload 크기를 어떻게 나누어 보는가.
+3. 100GB 파일 다운로드나 스트리밍은 page cache, TCP window, proxy buffering, backpressure를 어떻게 지나가는가.
+4. 로그인과 OAuth 질문에서 인증, 인가, session, token, `state`, PKCE를 어떻게 분리해 말하는가.
+5. 컨테이너에서 서비스가 죽거나 느릴 때 namespace, cgroup, PID 1, OOM, health check를 어떻게 확인하는가.
+
 ## 모든 답변에 깔리는 기본 프레임
 
 면접 답변은 보통 아래 다섯 문장 뼈대로 정리하면 덜 흔들린다.
@@ -82,6 +102,18 @@
 
 이 뼈대는 답변을 기계적으로 만들기 위한 문장이 아니다.
 면접관이 꼬리 질문을 던졌을 때 "어느 계층의 질문인지" 빠르게 분류하기 위한 기준이다.
+
+## 이 문서에 주제를 추가하는 기준
+
+이 guide는 두 번째 커리큘럼 문서가 아니라 실전 답변 경로 지도다.
+따라서 새 주제는 아래 조건을 통과할 때만 들어온다.
+
+1. 실제 면접에서 한 질문으로 들어올 가능성이 높다.
+2. 적어도 두 개 이상의 대주제 문서가 함께 설명되어야 한다.
+3. 기존 섹션의 꼬리 질문 한 줄로는 답변 경로가 충분히 복원되지 않는다.
+4. `첫 30초 답변`, `이어 말할 순서`, `꼬리 질문 지도`, `실무 답변 포인트`, `확인 경로`로 압축해도 핵심이 살아남는다.
+
+조건을 통과하지 못한 내용은 이 guide에 계속 붙이지 않고, 각 대주제 문서의 deep rewrite 후보로 둔다.
 
 ## 1. 웹 요청 하나는 OS, 프록시, 톰캣, 스프링, DB를 어떻게 지나가는가
 
@@ -601,6 +633,337 @@ GC log 없이 collector만 바꾸는 것은 진단이 아니라 추측에 가깝
 - 관련 문서: [problem-solving-code-quality.md](problem-solving-code-quality.md), [dynamic_programming.md](../algorithms/dynamic_programming.md)
 - 확인 실험 후보: baseline과 개선안을 같은 입력에서 실행해 시간 증가율을 비교하고, boundary case를 먼저 테스트한다.
 
+## 15. 검색과 NoSQL은 shard, replica, query fan-out, heap을 어떻게 함께 다루는가
+
+**첫 30초 답변**
+
+검색 엔진과 NoSQL은 RDB 인덱스를 단순히 더 빠르게 만든 버전이 아니다.
+Elasticsearch 같은 검색 시스템은 데이터를 여러 shard에 나누고, coordinator가 쿼리를 각 shard로 보내 결과를 다시 병합한다.
+replica는 읽기 부하 분산과 장애 시 승격에 쓰이지만, shard 수와 heap 사용량, GC, refresh 지연, reindex 비용이 함께 따라온다.
+
+**이어 말할 순서**
+
+1. RDB는 보통 transaction과 정규화된 원본 데이터에 강하고, 검색 엔진은 text search, ranking, aggregation, 분산 fan-out 조회에 강하다.
+2. 문서는 index에 들어갈 때 routing 규칙에 따라 primary shard에 저장되고 replica shard로 복제된다.
+3. 검색 요청은 coordinator node에 도착하고, coordinator는 관련 shard에 쿼리를 보내 병렬로 실행시킨다.
+4. 각 shard는 자기 local segment에서 검색한 결과를 돌려주고, coordinator는 score, sort, pagination 조건에 맞춰 결과를 병합한다.
+5. replica가 있으면 읽기를 분산하고 primary 장애 시 승격할 수 있지만, replica도 저장 공간과 복제 비용을 쓴다.
+6. shard가 너무 많으면 병렬성이 좋아지는 대신 heap metadata, file handle, cluster coordination, merge 비용이 커진다.
+7. 대량 조회는 `from/size`만 키우지 않고 `search_after`, scroll, point-in-time, batch export 같은 방식을 구분한다.
+
+**꼬리 질문 지도**
+
+- RDB index를 두면 되는데 왜 검색 엔진을 쓰나: full-text search, 형태소 분석, relevance scoring, 다중 field ranking, 분산 집계가 필요하면 검색 엔진이 더 자연스럽다.
+- 검색 엔진을 source of truth로 둬도 되나: 보통 결제, 주문, 계정 같은 원본 상태는 RDB나 transactional store에 두고, 검색 엔진은 조회용 read model로 둔다.
+- refresh와 commit은 같은가: 아니다. 검색 가능해지는 refresh 주기와 durable하게 저장되는 commit/fsync 경로는 다른 개념이다.
+- shard를 많이 만들면 항상 빠른가: 아니다. 작은 shard가 너무 많으면 heap, metadata, merge, recovery, coordination 비용이 늘어난다.
+- OOM은 왜 생기나: aggregation, fielddata, cache, 너무 큰 result window, 과도한 shard 수, JVM heap 설정과 GC 문제가 함께 원인이 될 수 있다.
+
+**실무 답변 포인트**
+
+검색 API 설계 질문에서는 "Elasticsearch를 붙입니다"가 답이 아니다.
+원본 데이터 변경을 outbox나 CDC로 search index에 반영할지, 검색 결과가 잠깐 stale해도 되는지, 재색인 중 alias 전환을 어떻게 할지, 장애 시 RDB fallback이 필요한지를 함께 말해야 한다.
+검색은 빠른 조회를 주지만, 색인 지연과 운영 복잡도를 새로 만든다.
+
+**확인 경로**
+
+- 관련 문서: [database-storage-search-nosql.md](database-storage-search-nosql.md), [distributed-systems-architecture.md](distributed-systems-architecture.md), [messaging-event-driven.md](messaging-event-driven.md)
+- 확인 실험 후보: shard 수가 다른 index에서 같은 aggregation을 실행하고 latency, heap usage, GC log, rejected search thread, result window 비용을 비교한다.
+
+## 16. 조회 API 성능은 애플리케이션과 DB 경계를 어떻게 나누어 보는가
+
+**첫 30초 답변**
+
+조회 API 성능은 DB 인덱스 하나만의 문제가 아니라 요청 파라미터, pagination 방식, SQL 실행 계획, mapper나 ORM의 row 조립, transaction scope, connection pool 대기, JSON 직렬화, response size가 같이 만드는 결과다.
+먼저 DB가 느린지 애플리케이션이 많이 가져와 많이 버리는지 나누고, 그 다음 실행 계획과 애플리케이션 경계를 각각 줄인다.
+
+**이어 말할 순서**
+
+1. endpoint별 p95/p99 latency, response size, rows returned, rows examined, pool wait를 먼저 본다.
+2. DB에서는 `EXPLAIN`, index selectivity, sort/temp table, lock wait, buffer pool miss를 본다.
+3. 애플리케이션에서는 N+1 query, 반복 mapper 호출, DTO 변환 비용, JSON serialization, compression 비용을 본다.
+4. pagination은 offset이 커질수록 앞 row를 많이 건너뛸 수 있으므로 cursor/keyset pagination 후보를 검토한다.
+5. 필요한 column만 projection하면 covering index나 smaller row transfer가 가능해진다.
+6. read-only transaction은 영속성 context나 lock 정책, flush 가능성, connection 사용 시간을 줄이는 관점에서 본다.
+7. cache를 넣을 때는 hit ratio보다 invalidation, stale data 허용 범위, stampede 방지를 먼저 말한다.
+
+**꼬리 질문 지도**
+
+- N+1은 왜 생기나: 한 번에 가져올 수 있는 연관 데이터를 row마다 추가 조회하면 네트워크 round trip과 DB execution이 반복된다.
+- offset pagination은 왜 느려지나: 뒤 페이지로 갈수록 DB가 앞쪽 row를 세고 버리는 비용이 커질 수 있다.
+- cursor pagination은 언제 어렵나: 정렬 기준이 안정적이어야 하고, 중간 삽입/삭제, 복합 정렬, 임의 페이지 이동 요구와 tradeoff가 생긴다.
+- DTO projection은 왜 도움이 되나: 필요한 column만 가져와 row fetch, network transfer, object allocation, serialization 비용을 줄인다.
+- cache는 언제 위험한가: 원본 변경과 cache invalidation이 어긋나면 stale read가 business invariant를 깨뜨릴 수 있다.
+
+**실무 답변 포인트**
+
+조회 API 장애 경험을 말할 때는 "인덱스를 추가했습니다"에서 끝내지 않는다.
+요청 하나가 DB에서 몇 row를 읽고, 애플리케이션에서 몇 객체를 만들고, 응답으로 몇 MB를 보냈는지 말하면 강하다.
+특히 `SELECT *`, 큰 page size, N+1, 무제한 export, eager loading, JSON 직렬화 비용은 DB와 애플리케이션 사이에서 같이 봐야 한다.
+
+**확인 경로**
+
+- 관련 문서: [database-storage-search-nosql.md](database-storage-search-nosql.md), [spring-backend-frameworks.md](spring-backend-frameworks.md), [problem-solving-code-quality.md](problem-solving-code-quality.md)
+- 확인 실험 후보: 같은 API를 `SELECT *`와 projection, offset과 cursor, N+1과 join/fetch batch로 나눠 `EXPLAIN`, query count, response bytes, allocation profile을 비교한다.
+
+## 17. 파일 스트리밍은 HTTP, TCP, page cache, backpressure를 어떻게 지나가는가
+
+**첫 30초 답변**
+
+큰 파일 스트리밍은 파일을 전부 메모리에 올려 응답하는 방식이 아니다.
+서버는 파일을 작은 단위로 읽고, 커널 page cache와 애플리케이션 buffer, socket send buffer, TCP window를 거쳐 클라이언트로 흘려보낸다.
+클라이언트나 네트워크가 느리면 backpressure가 생기므로, proxy buffering, timeout, range request, client disconnect까지 함께 봐야 한다.
+
+**이어 말할 순서**
+
+1. HTTP 요청은 다운로드 대상과 range, 인증, 압축 여부 같은 정책을 결정한다.
+2. 애플리케이션은 파일 descriptor를 열고 일정 chunk 단위로 읽거나, 서버와 OS가 지원하면 `sendfile` 같은 zero-copy 경로를 사용할 수 있다.
+3. 디스크에서 읽은 data block은 보통 커널 page cache에 올라오고, `read()`는 그 데이터를 user buffer로 복사한다.
+4. user buffer의 데이터는 `write()`나 response stream을 통해 socket send buffer로 들어간다.
+5. TCP는 상대방 receive window와 congestion window에 맞춰 전송량을 조절한다.
+6. reverse proxy가 buffering을 켜면 애플리케이션과 클라이언트 사이의 흐름이 달라지고, 메모리와 디스크 임시 파일 비용이 생길 수 있다.
+7. 클라이언트가 끊기면 server는 write 실패나 connection reset을 감지하고 파일 handle과 작업 상태를 정리해야 한다.
+
+**꼬리 질문 지도**
+
+- streaming이면 메모리를 안 쓰나: 전체 파일을 한 번에 올리지 않는다는 뜻이지 buffer, page cache, socket buffer가 없어지는 것은 아니다.
+- `sendfile`은 무엇을 줄이나: user space로 복사했다가 다시 kernel space로 쓰는 복사를 줄일 수 있다.
+- 일반 파일도 `epoll`로 처리하면 되나: 많은 경우 일반 파일은 항상 ready처럼 보이므로 네트워크 소켓과 같은 event readiness 모델이 잘 맞지 않는다.
+- range request는 왜 필요한가: 이어받기, 동영상 seek, 부분 다운로드에 필요하다.
+- proxy buffering은 언제 문제가 되나: 큰 응답을 proxy가 먼저 받아 쌓으면 latency, disk temp file, memory 사용량이 커지고 실시간 streaming 성질이 약해질 수 있다.
+
+**실무 답변 포인트**
+
+100GB export 질문에서는 "streaming으로 내려줍니다"가 아니라 누가 속도를 조절하는지 말해야 한다.
+DB cursor나 batch read, 파일 생성 위치, page cache 압박, response chunk, proxy timeout, client 재시도, 다운로드 재개 정책을 함께 잡아야 한다.
+파일 다운로드가 느릴 때 CPU가 낮아도 disk I/O, network window, proxy buffering, client 속도가 병목일 수 있다.
+
+**확인 경로**
+
+- 관련 문서: [network-web-protocols.md](network-web-protocols.md), [os-kernel-computer-architecture.md](os-kernel-computer-architecture.md), [concurrency-async-io.md](concurrency-async-io.md), [spring-backend-frameworks.md](spring-backend-frameworks.md)
+- 확인 명령 후보: `curl -v -r`, `tcpdump`, `ss -ti`, Nginx upstream timing log, `iostat`, `pidstat -d`, application access log의 bytes sent
+
+## 18. 로그인, 세션, 토큰, OAuth는 인증과 인가를 어떻게 분리해 말하는가
+
+**첫 30초 답변**
+
+로그인은 사용자가 누구인지 확인하는 인증이고, 인가는 그 사용자가 어떤 자원에 접근할 수 있는지 결정하는 과정이다.
+세션과 토큰은 인증 결과를 이후 요청에서 다시 증명하기 위한 수단이며, OAuth는 사용자가 제3자 애플리케이션에 자신의 자원 접근 권한을 위임하는 인가 프레임이다.
+Authorization Code 흐름에서는 code를 서버가 token으로 교환하고, `state`는 CSRF 방지, PKCE는 code 가로채기 방지에 쓰인다.
+
+**이어 말할 순서**
+
+1. HTTPS/TLS는 통신 채널을 보호하지만, 사용자가 누구인지 판단하는 login 자체를 대신하지 않는다.
+2. ID/password login은 credential을 확인하고 session id나 access token 같은 후속 인증 수단을 발급한다.
+3. cookie session은 server-side session store를 참조하고, JWT는 token 자체에 claims와 signature를 담을 수 있다.
+4. OAuth Authorization Code 흐름은 browser redirect, authorization code, token exchange, resource API 호출로 이어진다.
+5. `state`는 요청을 시작한 사용자 세션과 callback을 묶어 CSRF를 막는다.
+6. PKCE는 code verifier와 code challenge로 authorization code가 탈취되어도 token 교환을 어렵게 만든다.
+7. token은 만료, refresh, rotation, revocation, 저장 위치, scope를 함께 설계해야 한다.
+
+**꼬리 질문 지도**
+
+- OAuth는 로그인인가: OAuth 자체는 인가 프로토콜이고, 로그인 용도로 쓰려면 OpenID Connect처럼 identity layer를 함께 봐야 한다.
+- JWT는 session보다 항상 좋은가: 아니다. stateless 검증은 편하지만 즉시 폐기, 권한 변경 반영, token 탈취 대응이 어려울 수 있다.
+- CSRF와 XSS는 어떻게 다른가: CSRF는 사용자의 인증 상태를 악용해 원치 않는 요청을 보내게 하는 공격이고, XSS는 공격자 script가 브라우저 안에서 실행되는 문제다.
+- CORS는 보안 인증인가: 아니다. 브라우저가 cross-origin 요청을 어떻게 허용할지 정하는 정책이지 서버 간 호출이나 인증 자체를 보장하지 않는다.
+- 비밀번호는 암호화해서 저장하나: 복호화가 필요 없으므로 salt와 느린 password hashing을 사용한다.
+
+**실무 답변 포인트**
+
+OAuth 경험을 말할 때는 "토큰을 받았습니다"보다 redirect URI 고정, `state` 검증, PKCE, token scope, 만료와 갱신, 저장 위치, 로그 마스킹까지 이어 말해야 한다.
+내 서비스 로그인과 외부 API 권한 위임을 섞으면 답변이 흐려진다.
+먼저 인증과 인가를 나누고, 그 위에 session, JWT, OAuth token을 배치하면 꼬리 질문에 강해진다.
+
+**확인 경로**
+
+- 관련 문서: [security-cryptography.md](security-cryptography.md), [network-web-protocols.md](network-web-protocols.md), [spring-backend-frameworks.md](spring-backend-frameworks.md), [source/_source-context-and-question-bank.md](source/_source-context-and-question-bank.md)
+- 확인 실험 후보: OAuth callback에서 `state` mismatch, redirect URI mismatch, expired authorization code, wrong PKCE verifier를 각각 만들어 FAIL 경로를 확인한다.
+
+## 19. 컨테이너에서 Spring 서비스가 느리거나 죽을 때 무엇을 확인하는가
+
+**첫 30초 답변**
+
+컨테이너는 별도 커널을 띄우는 가상 머신이 아니라, 호스트 커널을 공유하면서 namespace로 보이는 세계를 나누고 cgroup으로 자원 사용을 제한하는 실행 단위다.
+Spring 서비스가 컨테이너 안에서 느리거나 죽으면 애플리케이션 로그만 보지 않고 CPU quota, memory limit, cgroup OOM, PID 1 signal 처리, health check, restart 정책, container network를 함께 확인해야 한다.
+
+**이어 말할 순서**
+
+1. image는 애플리케이션 파일과 user-space dependency를 담지만, syscall은 호스트 커널이 처리한다.
+2. PID, network, mount, user namespace는 컨테이너가 자기만의 프로세스와 파일 시스템, 네트워크를 보는 것처럼 만든다.
+3. cgroup은 CPU, memory, pids, block I/O 같은 자원을 제한하고 관측한다.
+4. JVM은 container memory limit을 기준으로 heap, metaspace, direct buffer, thread stack을 함께 써야 한다.
+5. 컨테이너의 PID 1은 signal forwarding과 zombie reaping을 제대로 처리해야 graceful shutdown이 된다.
+6. liveness/readiness health check는 죽은 프로세스 재시작과 트래픽 투입 가능 여부를 구분해야 한다.
+7. rollout 중에는 startup time, readiness, DB migration, connection drain, rollback 경로를 함께 봐야 한다.
+
+**꼬리 질문 지도**
+
+- container와 VM은 무엇이 다른가: VM은 guest kernel을 따로 실행하고, container는 host kernel을 공유한다.
+- 컨테이너 메모리를 넘으면 JVM OOM인가 container OOM인가: heap OOM일 수도 있고, cgroup limit 초과로 kernel이 프로세스를 죽이는 OOM kill일 수도 있다.
+- CPU limit이 낮으면 어떤 증상이 생기나: thread는 많아도 실제 CPU time을 충분히 못 받아 latency가 튀고 GC나 JIT도 늦어질 수 있다.
+- PID 1 문제는 왜 중요한가: signal을 무시하거나 자식 프로세스를 회수하지 못하면 graceful shutdown과 zombie process 처리에 문제가 생긴다.
+- health check는 왜 두 종류가 필요한가: process 생존과 traffic 처리 가능 상태는 다르기 때문이다.
+
+**실무 답변 포인트**
+
+컨테이너 장애 답변에서는 "Pod를 재시작했습니다"보다 왜 재시작됐는지부터 말한다.
+exit code, previous logs, OOMKilled 여부, cgroup memory, CPU throttling, readiness 실패, probe timeout, connection drain 실패를 순서대로 보면 운영 경험이 드러난다.
+Spring Boot라면 actuator health와 metrics를 probe와 dashboard에 어떻게 연결했는지도 함께 말한다.
+
+**확인 경로**
+
+- 관련 문서: [problem-solving-code-quality.md](problem-solving-code-quality.md), [os-kernel-computer-architecture.md](os-kernel-computer-architecture.md), [spring-backend-frameworks.md](spring-backend-frameworks.md)
+- 확인 명령 후보: `docker inspect`, `docker stats`, container logs, `/sys/fs/cgroup` 지표, actuator health, orchestrator event log
+
+## 20. 고가용성은 replication, 장애 격리, health check, failover를 어떻게 설계하는가
+
+**첫 30초 답변**
+
+고가용성은 장애가 없다는 뜻이 아니라, 장애가 나도 약속한 핵심 기능을 계속 제공하거나 빠르게 복구하는 능력이다.
+replication은 데이터나 인스턴스를 여러 곳에 두는 수단이고, 장애 격리와 health check, failover, graceful degradation은 장애가 전체 서비스로 번지는 것을 줄이는 운영 설계다.
+일관성 질문과 겹치지만, 고가용성 답변의 중심은 최신성보다 영향 범위와 복구 시간이다.
+
+**이어 말할 순서**
+
+1. 먼저 보호할 사용자 기능과 SLO를 정한다. 모든 기능이 같은 가용성 목표를 갖지는 않는다.
+2. 단일 장애점이 있는지 본다. load balancer, DB primary, cache, broker, external API가 후보가 된다.
+3. replication은 read capacity와 failover 후보를 만들지만, replication lag와 split brain 위험을 만든다.
+4. health check는 process alive, dependency availability, traffic readiness를 구분해야 한다.
+5. failover는 감지, 승격, routing 전환, stale client connection 처리, rollback 경로가 필요하다.
+6. 장애 격리는 timeout, circuit breaker, bulkhead, queue, rate limit으로 연쇄 장애를 막는다.
+7. graceful degradation은 비핵심 기능을 줄이고 핵심 기능을 살리는 정책이다.
+
+**꼬리 질문 지도**
+
+- replication만 하면 HA인가: 아니다. 장애 감지, 승격, routing 전환, 데이터 정합성, 운영 runbook이 없으면 복제본이 있어도 장애가 길어진다.
+- active-active는 항상 좋은가: write conflict, session affinity, cache consistency, idempotency, split brain을 해결해야 한다.
+- health check가 너무 엄격하면 어떻게 되나: 일시적인 dependency 지연으로 정상 인스턴스가 계속 빠져나가 오히려 장애가 커질 수 있다.
+- backup과 HA는 같은가: backup은 복구 자료이고, HA는 서비스 지속과 빠른 복구 구조다.
+- degraded mode는 왜 필요한가: 추천, 알림, 검색 같은 부가 기능을 잠시 줄여 주문, 결제, 로그인 같은 핵심 기능을 살릴 수 있다.
+
+**실무 답변 포인트**
+
+시스템 설계 질문에서 "서버를 이중화합니다"만 말하면 부족하다.
+어떤 장애를 어떤 시간 안에 감지하고, 누가 traffic을 빼고, 어떤 데이터는 stale해도 되고, 어떤 기능은 중단해도 되는지 말해야 한다.
+가용성은 topology 그림보다 운영 절차와 실패 모드까지 함께 있어야 설득된다.
+
+**확인 경로**
+
+- 관련 문서: [distributed-systems-architecture.md](distributed-systems-architecture.md), [messaging-event-driven.md](messaging-event-driven.md), [database-storage-search-nosql.md](database-storage-search-nosql.md), [problem-solving-code-quality.md](problem-solving-code-quality.md)
+- 확인 실험 후보: primary DB 중단, broker 중단, external API timeout, cache 장애를 각각 주입하고 failover time, error rate, degraded behavior를 기록한다.
+
+## 21. Spring의 IoC, DI, AOP proxy, test double은 객체 경계와 테스트 가능성을 어떻게 만든다
+
+**첫 30초 답변**
+
+IoC는 객체 생성과 연결의 제어권을 애플리케이션 코드 밖의 컨테이너로 옮기는 구조이고, DI는 그 구조를 이용해 필요한 의존성을 주입하는 방식이다.
+AOP proxy는 객체 호출 앞뒤를 감싸 transaction, logging, security 같은 공통 기능을 넣는다.
+test double은 같은 의존성 경계에 fake, stub, mock을 넣어 외부 시스템 없이 business rule을 검증하게 해 준다.
+
+**이어 말할 순서**
+
+1. Spring은 component scan, `@Bean`, configuration class를 통해 bean definition을 만든다.
+2. container는 bean을 생성하고 constructor, field, method 등을 통해 dependency를 연결한다.
+3. interface나 class 경계가 분명하면 실제 구현 대신 test double을 넣기 쉽다.
+4. AOP proxy는 실제 bean 앞에 대리 객체를 세워 method call을 감싼다.
+5. 같은 객체 안의 `this.method()` 호출은 proxy를 거치지 않으므로 transaction이나 security advice가 빠질 수 있다.
+6. mock은 호출 행위를 검증하는 데 강하고, stub은 정해진 응답을 돌려주는 데 강하다.
+7. 과한 mocking은 실제 wiring, SQL, transaction, serialization 문제를 숨길 수 있으므로 slice test와 integration test가 필요하다.
+
+**꼬리 질문 지도**
+
+- `@Bean`과 `@Component`는 무엇이 다른가: `@Component`는 class를 scan해 등록하고, `@Bean`은 configuration method가 반환한 객체를 등록한다.
+- DI가 왜 테스트에 좋나: 객체가 자기 의존성을 직접 만들지 않으므로 테스트에서 대체 구현을 주입할 수 있다.
+- JDK dynamic proxy와 CGLIB은 왜 중요한가: interface 기반 proxy인지 class subclass proxy인지에 따라 final class, final method, type casting 제약이 달라진다.
+- mock과 stub은 어떻게 다른가: stub은 상태나 반환값 중심이고, mock은 호출 여부와 interaction 검증 중심이다.
+- `@SpringBootTest`만 쓰면 충분한가: 전체 wiring 검증에는 좋지만 느리고 실패 지점이 넓다. 단위, slice, integration test를 목적별로 나누는 편이 좋다.
+
+**실무 답변 포인트**
+
+Spring 설계 질문에서는 "DI를 쓰면 결합도가 낮아집니다"에서 멈추지 않는다.
+어떤 dependency가 business rule이고 어떤 dependency가 외부 I/O인지 나누고, 외부 I/O 경계만 test double로 바꾸며, transaction이나 proxy가 실제로 필요한 경우에는 integration test로 한 번 닫는다고 말하면 강하다.
+테스트 가능한 구조는 mock을 많이 쓰는 구조가 아니라 책임 경계가 잘 보이는 구조다.
+
+**확인 경로**
+
+- 관련 문서: [spring-backend-frameworks.md](spring-backend-frameworks.md), [problem-solving-code-quality.md](problem-solving-code-quality.md), [language-runtime.md](language-runtime.md)
+- 확인 실험 후보: 생성자 주입 service를 fake repository로 단위 테스트하고, self-invocation transaction case는 Spring context integration test로 확인한다.
+
+## 22. 숫자 표현, CPU cache, memory barrier는 정확성과 성능 질문에서 어떻게 등장하는가
+
+**첫 30초 답변**
+
+낮은 계층 지식은 면접에서 갑자기 하드웨어 강의로 나오는 것이 아니라, 정확성과 성능의 경계 조건으로 등장한다.
+금융이나 정산에서는 부동소수점 오차와 integer overflow가 문제가 되고, 멀티스레드에서는 CPU cache와 reordering 때문에 visibility와 ordering 문제가 생긴다.
+성능 분석에서는 cache miss, context switch, NUMA, memory bandwidth가 "코드는 같지만 왜 느린가"를 설명하는 단서가 된다.
+
+**이어 말할 순서**
+
+1. 정수는 고정된 bit 폭 안에서 표현되므로 범위를 넘으면 overflow가 생긴다.
+2. 부동소수점은 이진수 근사 표현이므로 `0.1` 같은 십진수가 정확히 표현되지 않을 수 있다.
+3. CPU는 main memory보다 훨씬 빠른 cache를 계층적으로 두고, cache line 단위로 데이터를 가져온다.
+4. 멀티코어에서는 각 core의 cache가 같은 memory 값을 서로 다르게 볼 수 있으므로 cache coherence protocol이 필요하다.
+5. 컴파일러와 CPU는 성능을 위해 instruction reordering을 할 수 있고, memory barrier와 happens-before가 관측 순서를 제한한다.
+6. context switch는 register, scheduler queue, cache locality에 비용을 만든다.
+7. NUMA 환경에서는 어떤 CPU가 어느 memory bank에 접근하느냐에 따라 latency가 달라진다.
+
+**꼬리 질문 지도**
+
+- 돈 계산에 `double`을 쓰면 왜 위험한가: 십진 소수를 이진 부동소수점으로 정확히 표현하지 못해 누적 오차가 생길 수 있다.
+- `volatile`은 무엇을 보장하나: visibility와 일정한 ordering에는 도움을 주지만 compound operation의 원자성은 보장하지 않는다.
+- false sharing은 무엇인가: 서로 다른 변수가 같은 cache line에 있어 여러 core가 불필요하게 cache line을 주고받는 현상이다.
+- context switch는 왜 비용인가: 실행 상태 저장/복원뿐 아니라 cache와 TLB locality가 깨질 수 있다.
+- NUMA는 언제 중요한가: 큰 heap, 많은 thread, memory bandwidth가 중요한 서버에서 remote memory 접근 비용이 보일 수 있다.
+
+**실무 답변 포인트**
+
+정확성 질문에서는 금액, 시간, ID, bit flag처럼 "틀리면 안 되는 값"의 표현을 먼저 말한다.
+성능 질문에서는 CPU 사용률만 보지 말고 cache miss, lock contention, context switch, allocation, GC, NUMA 같은 낮은 계층 신호를 후보로 둔다.
+다만 모든 문제를 하드웨어로 끌고 가지 말고, 애플리케이션/DB/네트워크 원인이 배제된 뒤 낮은 계층으로 내려가는 편이 안전하다.
+
+**확인 경로**
+
+- 관련 문서: [os-kernel-computer-architecture.md](os-kernel-computer-architecture.md), [concurrency-async-io.md](concurrency-async-io.md), [language-runtime.md](language-runtime.md), [problem-solving-code-quality.md](problem-solving-code-quality.md)
+- 확인 실험 후보: `0.1 + 0.2`, integer overflow, unsafely shared flag, false sharing microbenchmark, `perf stat`의 context switch/cache miss를 각각 관찰한다.
+
+## 23. VM, runtime, GC, scheduler는 언어 실행 모델 비교에서 어떻게 나뉘는가
+
+**첫 30초 답변**
+
+VM, runtime, GC, scheduler는 같은 말이 아니다.
+VM은 bytecode 같은 중간 표현을 실행하는 환경이고, runtime은 memory 관리, thread나 coroutine scheduling, standard library support, system call 연결 같은 실행 지원 전체다.
+JVM은 bytecode와 JIT, GC를 갖고, Go는 VM 없이 native binary로 실행되지만 runtime scheduler와 GC를 갖고, PHP는 Zend Engine과 OPcache, request 처리 모델을 중심으로 설명해야 한다.
+
+**이어 말할 순서**
+
+1. Java는 `.java`를 `.class` bytecode로 컴파일하고, JVM이 class loading, verification, interpretation/JIT compilation을 담당한다.
+2. JIT은 자주 실행되는 hot path를 native code로 바꿔 성능을 높이지만 warm-up과 code cache, profiling 비용이 있다.
+3. PHP는 보통 request마다 script를 Zend Engine이 해석하거나 opcode로 실행하고, OPcache가 컴파일된 opcode 재사용을 돕는다.
+4. Go는 native binary로 컴파일되지만 goroutine scheduler, GC, stack growth, network poller 같은 runtime 기능을 포함한다.
+5. Kotlin coroutine은 OS thread가 아니라 중단과 재개 가능한 실행 단위이며, JVM 위에서는 dispatcher가 thread pool에 coroutine을 배치한다.
+6. blocking call을 만났을 때 누가 다른 작업을 계속 실행하게 하는지가 runtime 비교의 핵심이다.
+7. 성능 비교는 "언어가 빠르다"가 아니라 startup, warm-up, GC pause, memory footprint, concurrency model, deployment model로 나눠야 한다.
+
+**꼬리 질문 지도**
+
+- Go는 runtime이 있는데 VM이 없다는 말이 무슨 뜻인가: bytecode VM 위에서 실행하지는 않지만, scheduler와 GC 같은 실행 지원 코드는 binary와 함께 들어간다.
+- coroutine은 thread보다 왜 가볍나: OS thread stack과 kernel scheduling을 직접 늘리는 대신, 중단 지점의 continuation과 dispatcher로 실행을 나눌 수 있기 때문이다.
+- JIT은 항상 빠른가: long-running hot path에는 유리하지만, 짧은 실행이나 cold start에서는 warm-up 비용이 보일 수 있다.
+- PHP-FPM은 왜 process pool을 쓰나: request 격리와 운영 단순성이 있지만, request마다 상태를 오래 유지하는 서버와는 다른 성능 모델을 가진다.
+- GC가 있는 언어는 memory leak이 없나: business 의미상 더 이상 필요 없는 객체가 reachable하면 GC가 회수하지 못한다.
+
+**실무 답변 포인트**
+
+언어 비교 질문에서 "Go는 빠르고 Java는 무겁습니다"처럼 말하면 약하다.
+서버가 long-running인지, cold start가 중요한지, concurrency가 I/O 대기 중심인지 CPU 중심인지, memory footprint와 GC pause가 서비스 목표에 어떤 영향을 주는지 나눠야 한다.
+런타임 선택은 문법 취향보다 배포, 운영, 관측, 팀 숙련도까지 함께 보는 판단이다.
+
+**확인 경로**
+
+- 관련 문서: [language-runtime.md](language-runtime.md), [concurrency-async-io.md](concurrency-async-io.md), [os-kernel-computer-architecture.md](os-kernel-computer-architecture.md)
+- 확인 실험 후보: 같은 HTTP echo나 CPU-bound loop를 JVM, Go, PHP-FPM 모델로 나눠 startup time, steady-state latency, memory, GC log, thread/goroutine count를 비교한다.
+
 ## 복합 질문으로 연습하기
 
 이 절은 실제 면접처럼 한 질문에서 여러 주제가 한꺼번에 따라오는 연습용이다.
@@ -674,6 +1037,99 @@ TLS에서는 인증서로 서버 신원을 확인하고, ECDHE 같은 키 교환
 4. 운영: certificate renewal, private key 보호, TLS termination 위치
 5. 장애: handshake failure, expired certificate, wrong SNI, trust store 문제
 
+### 검색 API를 설계해 보세요
+
+**첫 답변**
+
+상품 검색 API는 RDB query 하나로만 보지 않는다.
+원본 상품과 재고, 가격은 transactional store에서 관리하고, 검색용 문서는 Elasticsearch 같은 search index로 비동기 반영할 수 있다.
+검색 요청은 coordinator가 shard로 fan-out하고 결과를 병합하므로, shard sizing, refresh 지연, ranking, pagination, stale data 허용 범위를 함께 설계해야 한다.
+
+**이어갈 꼬리**
+
+1. 원본성: RDB source of truth, search index read model
+2. 반영 경로: outbox, CDC, reindex, alias switch
+3. 검색 실행: analyzer, shard fan-out, replica read, result merge
+4. pagination: `from/size`, `search_after`, scroll, export
+5. 운영: heap, GC, shard count, slow query, rejected search thread
+6. 일관성: 가격/재고 stale 허용 여부, fallback, 재시도
+
+### 100GB 파일을 다운로드하게 해야 합니다
+
+**첫 답변**
+
+파일 전체를 메모리에 올리지 않고 chunk 단위로 흘려보내야 한다.
+파일은 disk와 page cache를 거쳐 애플리케이션 buffer나 zero-copy 경로로 socket send buffer에 들어가고, TCP window와 클라이언트 속도에 맞춰 전송된다.
+따라서 range request, client disconnect, proxy buffering, timeout, disk I/O, network throughput을 함께 설계한다.
+
+**이어갈 꼬리**
+
+1. HTTP: auth, range, content length, chunked transfer
+2. OS: file descriptor, page cache, `read`, `sendfile`, zero-copy
+3. 네트워크: TCP window, congestion control, slow client
+4. Spring: streaming response, worker thread, blocking file I/O
+5. Proxy: buffering, temp file, timeout, upstream timing
+6. 운영: `iostat`, bytes sent, client abort, retry/resume
+
+### 컨테이너 배포 후 서비스가 OOMKilled로 재시작됩니다
+
+**첫 답변**
+
+먼저 JVM heap OOM인지 cgroup memory limit 초과로 kernel이 프로세스를 죽인 것인지 나눈다.
+컨테이너는 host kernel을 공유하고 cgroup limit 안에서 heap, metaspace, direct buffer, thread stack, native memory를 모두 써야 한다.
+따라서 container event, previous logs, heap dump, GC log, memory limit, CPU throttling, readiness 실패를 함께 본다.
+
+**이어갈 꼬리**
+
+1. 컨테이너 모델: namespace, cgroup, shared kernel
+2. JVM memory: heap, metaspace, direct buffer, thread stack
+3. 장애 신호: exit code, OOMKilled, GC overhead, native memory
+4. 운영: health check, graceful shutdown, PID 1, restart policy
+5. 배포: rolling update, readiness gate, connection drain, rollback
+6. 재발 방지: memory budget, request/limit, alert, load test
+
+### OAuth 기반 외부 API 연동을 설계해 보세요
+
+**첫 답변**
+
+OAuth 연동은 사용자 로그인 문장으로만 답하면 부족하다.
+사용자 동의로 authorization code를 받고, 서버가 code를 access token으로 교환해 외부 API를 호출하며, `state`와 PKCE로 callback 위조와 code 탈취를 막는다.
+토큰은 scope, 만료, refresh, 저장 위치, 암호화 또는 접근 통제, 로그 마스킹까지 운영 정책을 가져야 한다.
+
+**이어갈 꼬리**
+
+1. 인증/인가 구분: login, OAuth, OpenID Connect
+2. 흐름: redirect, authorization code, token exchange, resource API
+3. 방어: redirect URI, `state`, PKCE, HTTPS
+4. token 운영: access token, refresh token, expiry, rotation, revocation
+5. 저장: DB encryption, secret manager, log masking, least privilege
+6. 장애: expired token, consent revoked, rate limit, retry/backoff
+
+## 낯선 복합 질문을 받았을 때 복구 루틴
+
+준비하지 못한 질문이 들어오면 바로 정답을 꾸미지 않는다.
+아래 다섯 단계로 질문을 분류하면 모르는 부분을 정직하게 남기면서도 사고 과정을 계속 보여 줄 수 있다.
+
+1. 질문이 어느 계층의 문제인지 먼저 나눈다.
+
+    예를 들어 "서버가 느립니다"는 애플리케이션, 런타임, OS, DB, 네트워크, 외부 의존성 중 어디인지 아직 모른다.
+
+2. 확실한 사실과 추론을 분리한다.
+
+    "p99만 튄다면 일부 요청이 lock, GC, slow query, retry, queueing을 만났을 수 있습니다"처럼 가능성을 말하되, 아직 원인이라고 단정하지 않는다.
+
+3. 가장 먼저 깨지면 안 되는 불변식을 말한다.
+
+    결제라면 중복 승인 방지, 검색이라면 원본 데이터와 index의 허용 가능한 지연, 인증이라면 token 탈취 방지가 불변식이 된다.
+
+4. 확인 경로를 제안한다.
+
+    `EXPLAIN`, thread dump, GC log, packet capture, broker lag, container event처럼 어느 증거가 어떤 가설을 통과 또는 탈락시키는지 말한다.
+
+5. 모르는 부분은 좁혀서 인정한다.
+
+    "해당 DB 엔진의 정확한 격리 구현은 확인이 필요하지만, 제가 먼저 볼 경로는 MVCC snapshot과 lock wait입니다"처럼 범위를 좁히면 답변이 무너지지 않는다.
+
 ## 마지막 점검 질문
 
 문서를 덮고 아래 질문에 자기 말로 답해 본다.
@@ -686,3 +1142,12 @@ TLS에서는 인증서로 서버 신원을 확인하고, ECDHE 같은 키 교환
 5. 장애 질문에서 직접 원인과 근본 원인을 분리하고, 어떤 관측으로 가설을 배제했는지 설명할 수 있는가.
 6. 보안 질문에서 인증서, 키 교환, 세션 키, 대칭 암호, 해시, 서명을 서로 섞지 않고 설명할 수 있는가.
 7. 시스템 설계 질문에서 작은 기술 단위의 제약을 큰 아키텍처 선택으로 연결할 수 있는가.
+8. 검색/NoSQL 질문에서 shard fan-out, replica, result merge, heap/GC, stale index를 한 흐름으로 설명할 수 있는가.
+9. 조회 API 성능 질문에서 N+1, pagination, projection, connection pool, serialization, response size를 DB와 애플리케이션 경계로 나누어 볼 수 있는가.
+10. 큰 파일 스트리밍 질문에서 page cache, socket buffer, TCP window, proxy buffering, backpressure를 빠뜨리지 않고 말할 수 있는가.
+11. OAuth 질문에서 login, authorization, authorization code, `state`, PKCE, token lifecycle을 섞지 않고 설명할 수 있는가.
+12. 컨테이너 장애 질문에서 namespace, cgroup, PID 1, OOMKilled, health check, graceful shutdown을 연결할 수 있는가.
+13. 고가용성 질문에서 replication과 failover, 장애 격리, graceful degradation, MTTR을 구분할 수 있는가.
+14. Spring 설계 질문에서 IoC/DI, AOP proxy, test double, integration test의 역할을 한 경계 모델로 설명할 수 있는가.
+15. 낮은 계층 질문에서 부동소수점, overflow, CPU cache, memory barrier, context switch가 정확성과 성능에 어떻게 나타나는지 말할 수 있는가.
+16. 언어 런타임 비교 질문에서 VM, runtime, GC, scheduler, JIT, coroutine/goroutine을 역할별로 나누어 설명할 수 있는가.
