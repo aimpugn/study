@@ -38,6 +38,7 @@ public class Main260507 {
             uniqueTypes.add(num);
         }
 
+        //test
         return Math.min(nums.length / 2, uniqueTypes.size());
     }
 
