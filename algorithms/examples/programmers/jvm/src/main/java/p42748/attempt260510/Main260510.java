@@ -33,9 +33,11 @@ class Solution {
         // 3. [1, 7, 3] 경우
         //   => [1, 5, 2, 6, 3, 7, 4] => [1, 2, 3, 4, 5, 6, 7]
         //   => 3
-        // AI feedback: 문제 크기가 작아서 핵심 판단은 "명령마다 잘라서 정렬해도 충분하다"입니다.
-        // 2021 Java 풀이처럼 int[]를 그대로 정렬하면 같은 생각을 더 직접 표현할 수 있고,
-        // 지금 stream은 Integer[] 박싱이 생겨 풀이 의도보다 도구 사용이 조금 앞에 나옵니다.
+        // 첨삭: 문제 크기가 작아서 핵심 판단은 "명령마다 잘라서 정렬해도 충분하다"입니다.
+        // 아래처럼 int[]를 유지하면 "자른다 -> 정렬한다 -> k번째를 꺼낸다"가 라인 단위로 바로 보입니다.
+        // int[] sliced = Arrays.copyOfRange(array, command[0] - 1, command[1]);
+        // Arrays.sort(sliced);
+        // answer[idx++] = sliced[command[2] - 1];
         var answer = new int[commands.length];
         var idx = 0;
         for (var command : commands) {
@@ -54,8 +56,10 @@ public class Main260510 {
     public static void main(String[] args) {
         Solution solution = new Solution();
 
-        // AI feedback: 공식 예제 하나는 통과 확인에 충분하지만, 인덱스 보정 습관을 굳히려면
-        // [4,4,1]처럼 길이 1 구간과 [1,n,k]처럼 전체 구간을 별도 케이스로도 한 번씩 남겨 보세요.
+        // 첨삭: 공식 예제를 통째로만 확인하면 어느 명령에서 깨졌는지 좁히기 어렵습니다.
+        // 인덱스 보정 습관을 굳히려면 아래처럼 길이 1 구간과 전체 구간을 따로도 확인해 보세요.
+        // assertArrayEquals(new int[]{6}, solution.solution(new int[]{1, 5, 2, 6, 3, 7, 4}, new int[][]{{4, 4, 1}}));
+        // assertArrayEquals(new int[]{3}, solution.solution(new int[]{1, 5, 2, 6, 3, 7, 4}, new int[][]{{1, 7, 3}}));
         assertArrayEquals(
             new int[]{5, 6, 3},
             solution.solution(
