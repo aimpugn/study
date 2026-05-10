@@ -33,18 +33,25 @@ class Solution {
         // 3. [1, 7, 3] 경우
         //   => [1, 5, 2, 6, 3, 7, 4] => [1, 2, 3, 4, 5, 6, 7]
         //   => 3
-        // 첨삭: 문제 크기가 작아서 핵심 판단은 "명령마다 잘라서 정렬해도 충분하다"입니다.
-        // 아래처럼 int[]를 유지하면 "자른다 -> 정렬한다 -> k번째를 꺼낸다"가 라인 단위로 바로 보입니다.
+        // 첨삭: 아래 stream 방식도 정답은 만들 수 있지만, int[] -> Integer[]로 바꾸는 과정이 앞에 나와서
+        // 이 문제의 핵심인 "자른다 -> 정렬한다 -> k번째를 꺼낸다"가 코드에서 한눈에 덜 보입니다.
+        // 권장 방식은 int[]를 그대로 유지하므로 필요한 동작만 남고, k번째 값도 원시 배열에서 바로 꺼냅니다.
+        //
+        // 기존 방식: copyOfRange 결과를 stream/boxed/sorted/toArray로 다시 조립
+        // var sliced = Arrays.stream(Arrays.copyOfRange(array, command[0] - 1, command[1]))
+        //     .boxed()
+        //     .sorted()
+        //     .toArray(Integer[]::new);
+        //
+        // 권장 방식: 자른 배열을 그대로 정렬하고 바로 조회
         // int[] sliced = Arrays.copyOfRange(array, command[0] - 1, command[1]);
         // Arrays.sort(sliced);
         // answer[idx++] = sliced[command[2] - 1];
         var answer = new int[commands.length];
         var idx = 0;
         for (var command : commands) {
-            var sliced = Arrays.stream(Arrays.copyOfRange(array, command[0] - 1, command[1]))
-                .boxed()
-                .sorted()
-                .toArray(Integer[]::new);
+            int[] sliced = Arrays.copyOfRange(array, command[0] - 1, command[1]);
+            Arrays.sort(sliced);
             answer[idx++] = sliced[command[2] - 1];
         }
 
