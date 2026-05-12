@@ -58,6 +58,12 @@ class Solution {
      * - Queue는 "맨 앞 기능을 꺼내고, 그 기능이 허락하는 뒤 기능만 같이 꺼낸다"는 선입선출 흐름을 보여 주기 좋습니다.
      * - Stack은 마지막에 들어온 기능을 먼저 보는 구조라 이 문제의 배포 순서와 맞지 않습니다.
      *
+     * 아래 개선 풀이들은 작은 계산을 일부러 별도 메서드로 빼지 않았습니다.
+     * 실무 코드에서는 `daysToFinish` 같은 이름이 중복을 줄여 줄 수 있지만, 지금 학습 목표는
+     * "완료일을 만든다 -> 앞 기능 기준으로 묶는다 -> 다음 시작점으로 이동한다"를 위에서 아래로
+     * 한 번에 따라가는 것입니다. DFS처럼 재귀 단위가 핵심이거나, 같은 정책이 여러 곳에서 반복되거나,
+     * 코드가 길어져서 이름 붙인 단위가 오히려 사고 부담을 줄일 때는 메서드 분리가 더 좋습니다.
+     *
      * 대표 반례를 손으로 따라가면, 왜 "다음 시작점"이 핵심인지 더 잘 보입니다.
      *
      * remained = [5, 10, 1, 1, 1, 20]
@@ -75,6 +81,13 @@ class Solution {
      *   남은 기능은 [20] 하나입니다.
      *
      * answer = [1, 4, 1]
+     *
+     * Queue로 보면 같은 입력의 상태 변화는 이렇게 보입니다.
+     *
+     * front -> [5, 10, 1, 1, 1, 20]
+     * poll 5  : 기준일 5, 다음 front 10은 더 늦습니다. answer = [1]
+     * poll 10 : 기준일 10, 1, 1, 1은 같이 빠지고 20에서 멈춥니다. answer = [1, 4]
+     * poll 20 : 남은 기능 하나가 빠집니다. answer = [1, 4, 1]
      */
 
     /**
@@ -154,7 +167,15 @@ class Solution {
     public int[] solutionByExplicitStartIndex(int[] progresses, int[] speeds) {
         // 먼저 각 기능이 며칠 뒤 완료되는지 같은 단위의 숫자로 바꿉니다.
         // 진도율과 속도를 그대로 비교하면 "앞 기능 때문에 기다린다"는 규칙을 적용하기 어렵습니다.
-        int[] remained = calculateRemainedDays(progresses, speeds);
+        int[] remained = new int[progresses.length];
+        for (int i = 0; i < progresses.length; i++) {
+            // 남은 진도율을 하루 개발 속도로 나눠 완료까지 필요한 날짜로 바꿉니다.
+            int remainingProgress = 100 - progresses[i];
+
+            // 나누어떨어지지 않으면 하루가 더 필요합니다.
+            // 예를 들어 5%가 남고 하루 4%씩 진행하면 1일로는 부족하고 2일 뒤에 배포 가능합니다.
+            remained[i] = (remainingProgress + speeds[i] - 1) / speeds[i];
+        }
 
         // answer에는 각 배포 시점에 함께 나가는 기능 개수만 쌓습니다.
         // 실제 배포 날짜는 반환하지 않으므로, 날짜 자체보다 묶음 크기가 최종 산출물입니다.
@@ -190,7 +211,7 @@ class Solution {
         }
 
         // Programmers 제출 형식은 int[]라서, 학습 중 다루기 쉬운 List<Integer>를 마지막에만 변환합니다.
-        return toIntArray(answer);
+        return answer.stream().mapToInt(Integer::intValue).toArray();
     }
 
     /*
@@ -206,7 +227,9 @@ class Solution {
         // Queue의 앞쪽 값은 "아직 배포되지 않은 가장 앞 기능"의 완료일입니다.
         Queue<Integer> waitingDays = new ArrayDeque<>();
         for (int i = 0; i < progresses.length; i++) {
-            waitingDays.add(daysToFinish(progresses[i], speeds[i]));
+            int remainingProgress = 100 - progresses[i];
+            int days = (remainingProgress + speeds[i] - 1) / speeds[i];
+            waitingDays.add(days);
         }
 
         // 각 배포마다 몇 개가 함께 나가는지 저장합니다.
@@ -235,32 +258,7 @@ class Solution {
         }
 
         // List<Integer>로 쌓은 배포 개수를 제출 형식인 int[]로 바꿉니다.
-        return toIntArray(answer);
-    }
-
-    private int[] calculateRemainedDays(int[] progresses, int[] speeds) {
-        // 각 기능마다 완료일까지 걸리는 일수를 담습니다.
-        // remained[i]는 i번째 기능이 혼자 배포 가능해지는 날짜입니다.
-        int[] remained = new int[progresses.length];
-        for (int i = 0; i < progresses.length; i++) {
-            remained[i] = daysToFinish(progresses[i], speeds[i]);
-        }
-        return remained;
-    }
-
-    private int daysToFinish(int progress, int speed) {
-        // 남은 진도율을 하루 개발 속도로 나누면 필요한 날짜의 기본값이 나옵니다.
-        int remainingProgress = 100 - progress;
-
-        // 나누어떨어지지 않는 경우에는 하루가 더 필요합니다.
-        // 예를 들어 5%가 남고 하루 4%씩 진행하면 1일로는 부족하고 2일 뒤에 배포 가능합니다.
-        return (remainingProgress + speed - 1) / speed;
-    }
-
-    private int[] toIntArray(List<Integer> values) {
-        // Programmers는 기본형 int[]를 기대합니다.
-        // List<Integer>는 묶음을 동적으로 추가하기 편하고, 마지막에만 제출 형식으로 바꿉니다.
-        return values.stream().mapToInt(Integer::intValue).toArray();
+        return answer.stream().mapToInt(Integer::intValue).toArray();
     }
 }
 
