@@ -4,6 +4,14 @@ import java.util.List;
 
 /**
  * <a href="https://school.programmers.co.kr/learn/courses/30/lessons/12909?language=java">올바른 괄호</a>
+ * <p>
+ * 준비 메타
+ * - 공식 레벨: Lv.2
+ * - 분류/트랙: Stage1/StackQueue
+ * - 핵심 패턴: Stack/Counter
+ * - 체감 난이도: 체감 Lv.2 하
+ * - 예상 풀이 시간: 실전 숙련자 10~20분 / 학습 모드 25~45분
+ * - 첫 접근: 열린 괄호 수가 음수가 되는 순간 실패하고, 끝에서는 0이어야 한다.
  */
 class Solution {
     /**
