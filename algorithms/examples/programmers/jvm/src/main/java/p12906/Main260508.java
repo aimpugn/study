@@ -1,5 +1,6 @@
 package p12906;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -16,7 +17,16 @@ public class Main260508 {
 
     static class Solution {
         /**
-         * TODO: 연속으로 같은 숫자가 나오는 구간에서 대표 숫자 하나만 남기는 흐름으로 분해하세요.
+         * - `arr` 배열에서 연속으로 나타나는 숫자는 하나만 남기고 전부 제거
+         * - 제거된 후 남은 수들을 반환할 때는 배열 arr의 원소들의 순서 유지
+         * <p>
+         * 예를 들어:
+         * <pre>{@code
+         * [1, 1, 3, 3, 0, 1, 1] -> [1, 3, 0, 1]
+         *    (X)   (X)      (X)
+         * [4, 4, 4, 3, 3] -> [4, 3]
+         *    (X)(X)   (X)
+         * }</pre>
          *
          * @param arr 숫자 배열
          * - 1 <= arr.length <= 1,000,000
@@ -25,8 +35,25 @@ public class Main260508 {
          * @return 연속 중복을 제거하되 원래 순서를 유지한 숫자 배열
          */
         public int[] solution(int[] arr) {
-            // TODO: 직전에 답으로 채택한 숫자와 현재 숫자를 비교하세요.
-            return new int[]{};
+            var answer = new ArrayList<Integer>();
+
+            int prev = -1;
+            for (var num : arr) {
+                // 최초인 경우
+                if (prev == -1) {
+                    prev = num;
+                    answer.add(num);
+                    continue;
+                }
+                if (prev == num) {
+                    continue;
+                }
+
+                prev = num;
+                answer.add(num);
+            }
+
+            return answer.stream().mapToInt(Integer::intValue).toArray();
         }
     }
 }

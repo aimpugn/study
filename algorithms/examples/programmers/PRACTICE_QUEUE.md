@@ -57,14 +57,14 @@ SKIP   지금은 우선순위 낮음
 |----:|-----------------------|-------:|--------------|----|------------------------------|-----------------------------------------|--------|------|
 |   1 | Stage1/Hash           |  42576 | 완주하지 못한 선수   | 1  | HashMap                      | 이름별 개수를 세고 하나만 남는 값을 찾는다.               | DONE   |      |
 |   2 | Stage1/Hash           |   1845 | 폰켓몬          | 1  | Set                          | 고를 수 있는 수와 종류 수 중 작은 값을 고른다.            | DONE   |      |
-|   3 | Stage1/StackQueue     |  12906 | 같은 숫자는 싫어    | 1  | Stack                        | 직전 값과 같으면 버린다.                          | TODO   |      |
-|   4 | Stage1/Sort           |  42748 | K번째수         | 1  | Sort                         | 자르고 정렬하고 k번째를 고른다.                      | TODO   |      |
+|   3 | Stage1/StackQueue     |  12906 | 같은 숫자는 싫어    | 1  | Stack                        | 직전 값과 같으면 버린다.                          | DONE   |      |
+|   4 | Stage1/Sort           |  42748 | K번째수         | 1  | Sort                         | 자르고 정렬하고 k번째를 고른다.                      | DONE   |      |
 |   5 | Stage1/BruteForce     |  86491 | 최소직사각형       | 1  | Normalize                    | 각 명함을 긴 쪽과 짧은 쪽으로 정규화한다.                | TODO   |      |
 |   6 | Stage1/BruteForce     |  42840 | 모의고사         | 1  | Pattern                      | 반복 패턴의 인덱스를 나머지로 맞춘다.                   | TODO   |      |
 |   7 | Stage1/Greedy         |  42862 | 체육복          | 1  | Greedy                       | 잃어버렸고 여벌도 있는 학생을 먼저 제거한다.               | TODO   |      |
 |   8 | Stage1/StackQueue     |  12909 | 올바른 괄호       | 2  | Stack/Counter                | 열린 수가 음수가 되면 실패, 끝에 0이어야 한다.            | TODO   |      |
 |   9 | Stage1/StackQueue     |  42586 | 기능개발         | 2  | Queue                        | 각 작업의 완료일을 만들고 앞에서부터 묶는다.               | TODO   |      |
-|  10 | Stage1/StackQueue     |  42587 | 프로세스         | 2  | Queue/Priority               | 더 높은 우선순위가 남아 있으면 뒤로 보낸다.               | TODO   |      |
+|  10 | Stage1/StackQueue     |  42587 | 프로세스         | 2  | Queue/Priority               | 더 높은 우선순위가 남아 있으면 뒤로 보낸다.               | DONE   |      |
 |  11 | Stage1/StackQueue     |  42583 | 다리를 지나는 트럭   | 2  | Queue/Simulation             | 시간 흐름과 다리 위 무게를 같이 관리한다.                | TODO   |      |
 |  12 | Stage1/StackQueue     |  42584 | 주식가격         | 2  | Monotonic Stack              | 가격이 떨어지는 첫 시점을 스택으로 찾는다.                | TODO   |      |
 |  13 | Stage1/Hash           |  42577 | 전화번호 목록      | 2  | Sort/Hash                    | 접두어 관계는 정렬 후 이웃 비교로 줄일 수 있다.            | TODO   |      |
