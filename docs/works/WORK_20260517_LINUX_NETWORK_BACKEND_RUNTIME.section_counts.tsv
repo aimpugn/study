@@ -1,0 +1,43 @@
+h2	h3	chars	verdict
+전체 요청 경로 지도	클라이언트 요청은 DNS에서 DB 응답까지 어떤 순서로 왕복하는가	15826	PASS
+전체 요청 경로 지도	한 요청 경로에서 커널, 프록시, 런타임, 애플리케이션, DB의 책임은 어떻게 나뉘는가	16077	PASS
+리눅스 실행 기반	프로세스, 스레드, 파일 디스크립터	15878	PASS
+리눅스 실행 기반	사용자 공간과 커널 공간, 시스템 콜	16164	PASS
+리눅스 실행 기반	서버 프로세스는 포트를 어떻게 열고 연결을 받을 준비를 하는가	16207	PASS
+리눅스 실행 기반	소켓 버퍼와 파일 디스크립터	15813	PASS
+리눅스 실행 기반	메모리, page cache, OOM, cgroup	16001	PASS
+리눅스 실행 기반	스케줄링, load average, iowait	15955	PASS
+리눅스 실행 기반	systemd, signal, 로그, ulimit	16162	PASS
+네트워크 실행 경로	DNS, IP, routing, NAT	15871	PASS
+네트워크 실행 경로	bind, listen, accept는 각각 어느 계층의 일을 하는가	16094	PASS
+네트워크 실행 경로	TCP 3-way handshake, backlog, accept queue	16342	PASS
+네트워크 실행 경로	TCP 상태: ESTABLISHED, CLOSE_WAIT, TIME_WAIT	16052	PASS
+네트워크 실행 경로	TLS와 HTTP keep-alive	16132	PASS
+네트워크 실행 경로	Nginx, L4/L7 load balancer, reverse proxy	15995	PASS
+네트워크 실행 경로	패킷이 NIC에서 애플리케이션 버퍼까지 가는 길	16143	PASS
+네트워크 실행 경로	요청 수신 경로와 응답 송신 경로는 커널 안에서 어떻게 다르게 보이는가	15973	PASS
+네트워크 실행 경로	방화벽, security group, routing 문제는 connection refused와 timeout을 어떻게 갈라놓는가	16169	PASS
+I/O multiplexing과 커널 이벤트 모델	select와 poll은 왜 한계가 생겼는가	15993	PASS
+I/O multiplexing과 커널 이벤트 모델	epoll은 readiness를 어떤 방식으로 관리하는가	16060	PASS
+I/O multiplexing과 커널 이벤트 모델	kqueue는 epoll과 어떤 관점에서 비교해야 하는가	15958	PASS
+I/O multiplexing과 커널 이벤트 모델	io_uring은 readiness가 아니라 completion을 어떻게 다루는가	15902	PASS
+I/O multiplexing과 커널 이벤트 모델	readiness 기반 모델과 completion 기반 모델은 서버 설계를 어떻게 바꾸는가	15949	PASS
+JVM 네트워크 런타임과 비동기 처리	Java NIO는 blocking socket 모델과 무엇이 다른가	16279	PASS
+JVM 네트워크 런타임과 비동기 처리	Tomcat thread-per-request 모델과 Netty event loop 모델은 어디서 갈라지는가	15866	PASS
+JVM 네트워크 런타임과 비동기 처리	Netty는 selector, event loop, channel, pipeline을 어떻게 조립하는가	16134	PASS
+JVM 네트워크 런타임과 비동기 처리	Reactor는 Publisher, Subscriber, backpressure를 어떤 계약으로 묶는가	15921	PASS
+JVM 네트워크 런타임과 비동기 처리	Spring WebFlux는 Servlet MVC와 요청 처리 모델이 어떻게 다른가	16240	PASS
+JVM 네트워크 런타임과 비동기 처리	WebFlux, Reactor, Netty는 Linux I/O 모델 위에서 어떻게 이어지는가	16073	PASS
+Streaming과 backpressure	HTTP streaming은 응답을 한 번에 만들지 않고 어떻게 흘려보내는가	16125	PASS
+Streaming과 backpressure	100GB 파일 스트리밍은 page cache, TCP window, backpressure를 어떻게 지나간다	15943	PASS
+Streaming과 backpressure	proxy buffering은 streaming 응답의 의미를 어떻게 바꿀 수 있는가	15956	PASS
+Streaming과 backpressure	느린 클라이언트는 서버 스레드, 메모리, 소켓 버퍼에 어떤 압력을 주는가	15889	PASS
+장애 상황으로 묶어 말하기	장애 분석은 증상에서 커널, 런타임, 애플리케이션, 외부 시스템 중 어디로 좁혀 가는가	15882	PASS
+장애 상황으로 묶어 말하기	connection refused와 timeout은 어디가 다른가	16126	PASS
+장애 상황으로 묶어 말하기	CLOSE_WAIT가 쌓이면 무엇을 의심하는가	16046	PASS
+장애 상황으로 묶어 말하기	TIME_WAIT가 많으면 항상 문제인가	16285	PASS
+장애 상황으로 묶어 말하기	too many open files는 왜 네트워크 장애처럼 보이는가	16192	PASS
+장애 상황으로 묶어 말하기	p99 latency가 튈 때 CPU, GC, DB, network를 어떻게 가른다	16314	PASS
+장애 상황으로 묶어 말하기	컨테이너에서 OOMKilled가 났을 때 Linux 관점에서 무엇을 본다	16127	PASS
+장애 상황으로 묶어 말하기	WebFlux나 Netty로 바꿨는데도 느릴 때 무엇을 의심하는가	15993	PASS
+장애 상황으로 묶어 말하기	커널 파라미터와 애플리케이션 설정은 언제 같이 봐야 하는가	15974	PASS
