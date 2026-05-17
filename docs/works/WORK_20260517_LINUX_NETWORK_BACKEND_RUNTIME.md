@@ -223,3 +223,35 @@
 - duplicate verification: PASS, fenced code 제외 160자 이상 long paragraph exact duplicate 0건.
 - diff verification: PASS, `git diff --check` clean for touched paths.
 - protocol sentinel: PASS_PRE_COMMIT, push는 요청되지 않았으므로 제외.
+
+## 12. Honorific Tone and Title-Repetition Repair
+
+- trigger: 사용자가 "존댓말로 다 바꾸세요"라고 요청했고, 특히 `TIME_WAIT가 많으면 항상 문제인가`라는 제목이 본문에서 계속 반복되어 사람이 쓴 문장처럼 보이지 않는다고 지적했다.
+- repair scope: `interviews/linux-network-backend-runtime.md` 전체 본문을 대상으로 평서형/반말형 종결, 제목을 변수처럼 반복하는 문장, 같은 긴 문단의 복제, 기계적 변환으로 생긴 이상 문장을 다시 감사했다.
+- accepted repairs:
+    - 본문 문장과 표 설명을 존댓말 종결로 맞췄다. 원 outline의 H3 제목은 사용자가 고정한 구조이므로 제목 자체는 유지했다.
+    - H3 제목이 본문에 그대로 다시 등장하는 패턴을 제거하고, 실제 관측 대상이나 계층 상태를 주어로 다시 썼다.
+    - 사용자가 예시로 든 TIME_WAIT 구간은 제목 반복 대신 `active close`, `final ACK`, `2MSL wait`, `ephemeral port reuse` 같은 실제 TCP 상태와 관측 명령 중심으로 읽히도록 고쳤고, generic DB/요청 경로 설명을 걷어내 inbound/outbound, active closer, keep-alive, local port/NAT 압박 중심으로 다시 좁혔다.
+    - `socket fd가 \`socket -> bind -> listen -> accept\``처럼 중첩 backtick으로 깨진 문장과 `흐름를` 같은 조사 오류를 수정했다.
+    - 같은 긴 안내 문단이 여러 섹션에 그대로 붙어 있던 문제를 줄이기 위해 문단을 짧게 분리하고, 포트 준비 구간은 섹션 고유 설명으로 다시 썼다.
+- critic confirmation:
+    - definition: 단순 말투 변환이 아니라 "제목 반복으로 생긴 비인간적 문장 구조"를 제거하는 보수 작업으로 재정의했다. ACCEPT_REPAIR.
+    - success/failure criteria: H3별 문자 수 통과 외에 body exact H3 refs 0, TIME_WAIT title body refs 0, non-honorific sentence endings 0, long paragraph duplicate 0을 추가했다. ACCEPT_REPAIR.
+    - checklist: 문장 변환으로 Markdown 구조나 15,000자 조건이 깨질 수 있어 section count와 heading/link/fence 검증을 다시 실행했다. ACCEPT_REPAIR.
+    - execution result: 기계적 변환 과정에서 중복 문단과 중첩 backtick이 남을 수 있었으나, 후속 pattern audit과 duplicate scan으로 닫았다. ACCEPT_REPAIR.
+
+### 12.1 Verification After Honorific Repair
+
+- H3 body section count: 42
+- min H3 body chars: 15,014
+- max H3 body chars: 17,085
+- failed H3 sections under 15,000 chars: 0
+- body exact H3 title references: 0
+- body references to `TIME_WAIT가 많으면 항상 문제인가`: 0
+- non-honorific sentence-ending scan outside fenced code/headings: 0
+- long paragraph exact duplicate scan outside fenced code: 0
+- forbidden headings: `이 문장이 실제로 묻는 것` 0건, `30초 답변` 0건
+- Markdown structure: actual H1 1개, H2 12개, H3 42개, fenced code block count 254개로 even, local missing links 0건, heading blank issues 0건, empty subheading issues 0건
+- section count artifact: `docs/works/WORK_20260517_LINUX_NETWORK_BACKEND_RUNTIME.section_counts.tsv` regenerated after the repair
+- TIME_WAIT H3 body chars after targeted repair: 15,014
+- closure status: final verification PASS, scoped commit pending at this ledger point
