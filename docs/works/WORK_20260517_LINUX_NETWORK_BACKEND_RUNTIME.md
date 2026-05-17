@@ -9,8 +9,8 @@
 - 작업 깊이: `full`
 - 대상 경로 / 자산: `interviews/linux-network-backend-runtime.md`
 - 시작 일시: 2026-05-17T00:00:00+09:00
-- 현재 상태: `READY_TO_COMMIT`
-- 완료 게이트: `ALLOW_COMMIT_AFTER_SCOPED_STAGING`
+- 현재 상태: `READY_TO_COMMIT_AFTER_PROSE_REPAIR`
+- 완료 게이트: `ALLOW_COMMIT_AFTER_FINAL_VERIFICATION`
 - finish: `test+commit`
 
 ## 1. Request Normalization
@@ -130,62 +130,96 @@
 
 | H2 | H3 | chars | verdict |
 | --- | --- | ---: | --- |
-| 전체 요청 경로 지도 | 클라이언트 요청은 DNS에서 DB 응답까지 어떤 순서로 왕복하는가 | 15826 | PASS |
-| 전체 요청 경로 지도 | 한 요청 경로에서 커널, 프록시, 런타임, 애플리케이션, DB의 책임은 어떻게 나뉘는가 | 16077 | PASS |
-| 리눅스 실행 기반 | 프로세스, 스레드, 파일 디스크립터 | 15878 | PASS |
-| 리눅스 실행 기반 | 사용자 공간과 커널 공간, 시스템 콜 | 16164 | PASS |
-| 리눅스 실행 기반 | 서버 프로세스는 포트를 어떻게 열고 연결을 받을 준비를 하는가 | 16207 | PASS |
-| 리눅스 실행 기반 | 소켓 버퍼와 파일 디스크립터 | 15813 | PASS |
-| 리눅스 실행 기반 | 메모리, page cache, OOM, cgroup | 16001 | PASS |
-| 리눅스 실행 기반 | 스케줄링, load average, iowait | 15955 | PASS |
-| 리눅스 실행 기반 | systemd, signal, 로그, ulimit | 16162 | PASS |
-| 네트워크 실행 경로 | DNS, IP, routing, NAT | 15871 | PASS |
-| 네트워크 실행 경로 | bind, listen, accept는 각각 어느 계층의 일을 하는가 | 16094 | PASS |
-| 네트워크 실행 경로 | TCP 3-way handshake, backlog, accept queue | 16342 | PASS |
-| 네트워크 실행 경로 | TCP 상태: ESTABLISHED, CLOSE_WAIT, TIME_WAIT | 16052 | PASS |
-| 네트워크 실행 경로 | TLS와 HTTP keep-alive | 16132 | PASS |
-| 네트워크 실행 경로 | Nginx, L4/L7 load balancer, reverse proxy | 15995 | PASS |
-| 네트워크 실행 경로 | 패킷이 NIC에서 애플리케이션 버퍼까지 가는 길 | 16143 | PASS |
-| 네트워크 실행 경로 | 요청 수신 경로와 응답 송신 경로는 커널 안에서 어떻게 다르게 보이는가 | 15973 | PASS |
-| 네트워크 실행 경로 | 방화벽, security group, routing 문제는 connection refused와 timeout을 어떻게 갈라놓는가 | 16169 | PASS |
-| I/O multiplexing과 커널 이벤트 모델 | select와 poll은 왜 한계가 생겼는가 | 15993 | PASS |
-| I/O multiplexing과 커널 이벤트 모델 | epoll은 readiness를 어떤 방식으로 관리하는가 | 16060 | PASS |
-| I/O multiplexing과 커널 이벤트 모델 | kqueue는 epoll과 어떤 관점에서 비교해야 하는가 | 15958 | PASS |
-| I/O multiplexing과 커널 이벤트 모델 | io_uring은 readiness가 아니라 completion을 어떻게 다루는가 | 15902 | PASS |
-| I/O multiplexing과 커널 이벤트 모델 | readiness 기반 모델과 completion 기반 모델은 서버 설계를 어떻게 바꾸는가 | 15949 | PASS |
-| JVM 네트워크 런타임과 비동기 처리 | Java NIO는 blocking socket 모델과 무엇이 다른가 | 16279 | PASS |
-| JVM 네트워크 런타임과 비동기 처리 | Tomcat thread-per-request 모델과 Netty event loop 모델은 어디서 갈라지는가 | 15866 | PASS |
-| JVM 네트워크 런타임과 비동기 처리 | Netty는 selector, event loop, channel, pipeline을 어떻게 조립하는가 | 16134 | PASS |
-| JVM 네트워크 런타임과 비동기 처리 | Reactor는 Publisher, Subscriber, backpressure를 어떤 계약으로 묶는가 | 15921 | PASS |
-| JVM 네트워크 런타임과 비동기 처리 | Spring WebFlux는 Servlet MVC와 요청 처리 모델이 어떻게 다른가 | 16240 | PASS |
-| JVM 네트워크 런타임과 비동기 처리 | WebFlux, Reactor, Netty는 Linux I/O 모델 위에서 어떻게 이어지는가 | 16073 | PASS |
-| Streaming과 backpressure | HTTP streaming은 응답을 한 번에 만들지 않고 어떻게 흘려보내는가 | 16125 | PASS |
-| Streaming과 backpressure | 100GB 파일 스트리밍은 page cache, TCP window, backpressure를 어떻게 지나간다 | 15943 | PASS |
-| Streaming과 backpressure | proxy buffering은 streaming 응답의 의미를 어떻게 바꿀 수 있는가 | 15956 | PASS |
-| Streaming과 backpressure | 느린 클라이언트는 서버 스레드, 메모리, 소켓 버퍼에 어떤 압력을 주는가 | 15889 | PASS |
-| 장애 상황으로 묶어 말하기 | 장애 분석은 증상에서 커널, 런타임, 애플리케이션, 외부 시스템 중 어디로 좁혀 가는가 | 15882 | PASS |
-| 장애 상황으로 묶어 말하기 | connection refused와 timeout은 어디가 다른가 | 16126 | PASS |
-| 장애 상황으로 묶어 말하기 | CLOSE_WAIT가 쌓이면 무엇을 의심하는가 | 16046 | PASS |
-| 장애 상황으로 묶어 말하기 | TIME_WAIT가 많으면 항상 문제인가 | 16285 | PASS |
-| 장애 상황으로 묶어 말하기 | too many open files는 왜 네트워크 장애처럼 보이는가 | 16192 | PASS |
-| 장애 상황으로 묶어 말하기 | p99 latency가 튈 때 CPU, GC, DB, network를 어떻게 가른다 | 16314 | PASS |
-| 장애 상황으로 묶어 말하기 | 컨테이너에서 OOMKilled가 났을 때 Linux 관점에서 무엇을 본다 | 16127 | PASS |
-| 장애 상황으로 묶어 말하기 | WebFlux나 Netty로 바꿨는데도 느릴 때 무엇을 의심하는가 | 15993 | PASS |
-| 장애 상황으로 묶어 말하기 | 커널 파라미터와 애플리케이션 설정은 언제 같이 봐야 하는가 | 15974 | PASS |
+| 전체 요청 경로 지도 | 클라이언트 요청은 DNS에서 DB 응답까지 어떤 순서로 왕복하는가 | 17096 | PASS |
+| 전체 요청 경로 지도 | 한 요청 경로에서 커널, 프록시, 런타임, 애플리케이션, DB의 책임은 어떻게 나뉘는가 | 16399 | PASS |
+| 리눅스 실행 기반 | 프로세스, 스레드, 파일 디스크립터 | 17304 | PASS |
+| 리눅스 실행 기반 | 사용자 공간과 커널 공간, 시스템 콜 | 16695 | PASS |
+| 리눅스 실행 기반 | 서버 프로세스는 포트를 어떻게 열고 연결을 받을 준비를 하는가 | 17038 | PASS |
+| 리눅스 실행 기반 | 소켓 버퍼와 파일 디스크립터 | 16818 | PASS |
+| 리눅스 실행 기반 | 메모리, page cache, OOM, cgroup | 17162 | PASS |
+| 리눅스 실행 기반 | 스케줄링, load average, iowait | 16476 | PASS |
+| 리눅스 실행 기반 | systemd, signal, 로그, ulimit | 16790 | PASS |
+| 네트워크 실행 경로 | DNS, IP, routing, NAT | 16237 | PASS |
+| 네트워크 실행 경로 | bind, listen, accept는 각각 어느 계층의 일을 하는가 | 17574 | PASS |
+| 네트워크 실행 경로 | TCP 3-way handshake, backlog, accept queue | 16876 | PASS |
+| 네트워크 실행 경로 | TCP 상태: ESTABLISHED, CLOSE_WAIT, TIME_WAIT | 16972 | PASS |
+| 네트워크 실행 경로 | TLS와 HTTP keep-alive | 16932 | PASS |
+| 네트워크 실행 경로 | Nginx, L4/L7 load balancer, reverse proxy | 17384 | PASS |
+| 네트워크 실행 경로 | 패킷이 NIC에서 애플리케이션 버퍼까지 가는 길 | 16685 | PASS |
+| 네트워크 실행 경로 | 요청 수신 경로와 응답 송신 경로는 커널 안에서 어떻게 다르게 보이는가 | 17167 | PASS |
+| 네트워크 실행 경로 | 방화벽, security group, routing 문제는 connection refused와 timeout을 어떻게 갈라놓는가 | 17936 | PASS |
+| I/O multiplexing과 커널 이벤트 모델 | select와 poll은 왜 한계가 생겼는가 | 15954 | PASS |
+| I/O multiplexing과 커널 이벤트 모델 | epoll은 readiness를 어떤 방식으로 관리하는가 | 16847 | PASS |
+| I/O multiplexing과 커널 이벤트 모델 | kqueue는 epoll과 어떤 관점에서 비교해야 하는가 | 16470 | PASS |
+| I/O multiplexing과 커널 이벤트 모델 | io_uring은 readiness가 아니라 completion을 어떻게 다루는가 | 16478 | PASS |
+| I/O multiplexing과 커널 이벤트 모델 | readiness 기반 모델과 completion 기반 모델은 서버 설계를 어떻게 바꾸는가 | 17584 | PASS |
+| JVM 네트워크 런타임과 비동기 처리 | Java NIO는 blocking socket 모델과 무엇이 다른가 | 17102 | PASS |
+| JVM 네트워크 런타임과 비동기 처리 | Tomcat thread-per-request 모델과 Netty event loop 모델은 어디서 갈라지는가 | 16791 | PASS |
+| JVM 네트워크 런타임과 비동기 처리 | Netty는 selector, event loop, channel, pipeline을 어떻게 조립하는가 | 17053 | PASS |
+| JVM 네트워크 런타임과 비동기 처리 | Reactor는 Publisher, Subscriber, backpressure를 어떤 계약으로 묶는가 | 17414 | PASS |
+| JVM 네트워크 런타임과 비동기 처리 | Spring WebFlux는 Servlet MVC와 요청 처리 모델이 어떻게 다른가 | 16631 | PASS |
+| JVM 네트워크 런타임과 비동기 처리 | WebFlux, Reactor, Netty는 Linux I/O 모델 위에서 어떻게 이어지는가 | 16985 | PASS |
+| Streaming과 backpressure | HTTP streaming은 응답을 한 번에 만들지 않고 어떻게 흘려보내는가 | 17092 | PASS |
+| Streaming과 backpressure | 100GB 파일 스트리밍은 page cache, TCP window, backpressure를 어떻게 지나간다 | 16312 | PASS |
+| Streaming과 backpressure | proxy buffering은 streaming 응답의 의미를 어떻게 바꿀 수 있는가 | 16372 | PASS |
+| Streaming과 backpressure | 느린 클라이언트는 서버 스레드, 메모리, 소켓 버퍼에 어떤 압력을 주는가 | 16361 | PASS |
+| 장애 상황으로 묶어 말하기 | 장애 분석은 증상에서 커널, 런타임, 애플리케이션, 외부 시스템 중 어디로 좁혀 가는가 | 16613 | PASS |
+| 장애 상황으로 묶어 말하기 | connection refused와 timeout은 어디가 다른가 | 16123 | PASS |
+| 장애 상황으로 묶어 말하기 | CLOSE_WAIT가 쌓이면 무엇을 의심하는가 | 16520 | PASS |
+| 장애 상황으로 묶어 말하기 | TIME_WAIT가 많으면 항상 문제인가 | 16367 | PASS |
+| 장애 상황으로 묶어 말하기 | too many open files는 왜 네트워크 장애처럼 보이는가 | 16255 | PASS |
+| 장애 상황으로 묶어 말하기 | p99 latency가 튈 때 CPU, GC, DB, network를 어떻게 가른다 | 16181 | PASS |
+| 장애 상황으로 묶어 말하기 | 컨테이너에서 OOMKilled가 났을 때 Linux 관점에서 무엇을 본다 | 16326 | PASS |
+| 장애 상황으로 묶어 말하기 | WebFlux나 Netty로 바꿨는데도 느릴 때 무엇을 의심하는가 | 17454 | PASS |
+| 장애 상황으로 묶어 말하기 | 커널 파라미터와 애플리케이션 설정은 언제 같이 봐야 하는가 | 17428 | PASS |
 
 ## 10. Final Audit & Closure
 
 - intent-fit review: PASS. 새 문서는 기존 `core-interview-guide.md`를 대체하지 않고 Linux/network/JVM/proxy/DB/ops를 요청 경로 관점으로 잇는 deep detail bridge 역할을 한다.
 - expert-perspective review: PASS. Critic R4가 첫 생성본의 반복 보강/플랫폼 경계/근거 부족을 BLOCK했고, 재작성 뒤 second R4에서 material blocker 없음으로 critic-confirmed.
 - protocol review: PASS_PRE_COMMIT. Protocol Sentinel이 H3 count, TSV match, min chars, forbidden heading, link sanity, duplicate scan, diff-check를 확인하고 scoped staging/commit/no-push 조건만 남겼다.
-- verification results:
-    - H3 count `42`; min chars `15813`; max chars `16342`; failed_count `0`.
-    - forbidden headings `0`.
-    - heading/link sanity: H1 `1`, H2 `12`, H3 `42`, local_missing_links `0`.
-    - required H3 substance markers: sections `42`, required_markers `7`, missing `0`.
-    - duplicate-long-paragraph scan excluding fenced code blocks: paragraphs_checked `1205`, repeated_over3 `0`.
+- verification results after prose-quality revision:
+    - H3 count `42`; min chars `15954`; max chars `17936`; failed_count `0`.
+    - forbidden headings `0`; user-reported problem-pattern family `0`.
+    - heading/link sanity: actual H1 `1`, H2 `12`, H3 `42`, code fence even, local_missing_links `0`.
+    - duplicate-long-paragraph scan excluding fenced code blocks: repeated `0`.
     - `git diff --check` PASS after this WORK update.
 - checklist re-judgement: C-01 PASS, C-02 PASS, C-03 PASS, C-04 PASS, C-05 PASS, C-06 PASS, C-07 PASS, C-08 PASS, C-09 PASS after scoped commit.
-- remaining risks: 문서가 매우 커서 모든 기술 문장을 사람 손으로 줄 단위 재감사하지는 못했다. 완화: 공식 근거 matrix, section-specific trace/observability, duplicate scan, critic/protocol confirmation.
-- final state: `READY_TO_COMMIT`
+- remaining risks: 대형 문서 특성상 향후 사람이 특정 면접 질문 흐름을 더 짧게 다듬을 수는 있으나, 이번 사용자가 지적한 불명확/AI식 문장 패턴과 중복 문단은 현재 검증에서 닫혔다.
+- final state: `READY_TO_COMMIT_AFTER_PROSE_REPAIR`
 - commit hash: final response에서 commit 후 기록.
+
+## 11. Revision After Prose-Quality Critique
+
+- trigger: 사용자 보완 요청. 기존 문서에 `이 trace에서 중요한 점은 ...의 산출물이 다음 계층의 입력...`처럼 제목을 실제 대상처럼 다루는 문장, `이 절`, `산출물`, `연결의 주인이 사라진다` 같은 메타 표현, 중복 문단이 남아 있어 학습/면접 문서로 부적절하다는 지적을 받았다.
+- repair scope: `interviews/linux-network-backend-runtime.md` 전체 H3 42개를 대상으로 문장 패턴, 문단 중복, Markdown inline code 파손, 불명확한 영어식 표현을 전수 감사하고 재작성했다.
+- pre-repair audit: `이 절의 주제는` 84건, `의 산출물이 다음 계층의 입력` 40건, `이 비교축을 적용하면` 42건, `연결의 주인이 사라` 62건, `이 절` 714건, long paragraph exact duplicate 107개.
+- accepted repairs: 제목을 사물처럼 다루는 문장을 실제 상태 소유권 설명으로 교체, nested backtick으로 깨진 장면 문장 보정, 중복 문단 제거 후 H3별 운영 질문/재현/반례 보강, `adjacent signal`, `replay`, `PASS/FAIL 신호` 같은 문서 내부형 표현을 자연스러운 한국어로 교체.
+- post-repair audit: 위 금지/문제 패턴 0건, missing inline-code `ss` 패턴 0건, long paragraph exact duplicate 0건, H3 42개 전부 15,000자 이상.
+
+### 11.1 Critic Confirmation
+
+| Artifact | Critic challenge | Disposition | Evidence |
+| --- | --- | --- | --- |
+| definition | 이번 작업은 새 지식 추가가 아니라 기존 문서의 문장/문단 품질 실패를 닫는 보수 작업이어야 한다. | ACCEPT_REPAIR | repair scope를 target doc 전체 H3 42개로 고정 |
+| success/failure criteria | 문자 수만 통과하면 안 되고, 사용자가 지적한 불명확 문장 패턴이 0건이어야 한다. | ACCEPT_REPAIR | pattern audit 0건, duplicate scan 0건 |
+| checklist | 중복 제거로 H3 15,000자 조건이 깨질 수 있다. | ACCEPT_REPAIR | section count TSV 재생성, min 15,954자 |
+| execution result | 제목을 반복 접두어로 붙이는 수치 맞춤은 독해 품질을 떨어뜨린다. | ACCEPT_REPAIR | 과도한 제목 접두어 제거, 자연 문장 우선으로 재검수 |
+
+### 11.2 Revision Verification Snapshot
+
+- H3 count: 42
+- min H3 body chars: 15,954
+- forbidden headings: `이 문장이 실제로 묻는 것` 0건, `30초 답변` 0건
+- problem phrases: `이 절의 주제는`, `이 절에서 따라갈 대상`, `의 산출물이 다음 계층의 입력`, `연결의 주인이`, `문서 제목이나 답변 문장의 산출물`, `여기서는 다음 대상을 따라간다`, `행를` 모두 0건
+- duplicate paragraphs: long paragraph exact duplicate 0건
+- closure status: final verification PASS, scoped commit pending at this ledger point
+
+### 11.3 Final Revision Audit
+
+- section length verification: PASS, H3 42개, min 15,954자, failed_count 0.
+- prose-pattern verification: PASS, 사용자 지적 계열 문제 표현과 금지 heading 0건.
+- markdown verification: PASS, code fence even, actual H1 1개, H2 12개, H3 42개, local missing links 0건.
+- duplicate verification: PASS, fenced code 제외 160자 이상 long paragraph exact duplicate 0건.
+- diff verification: PASS, `git diff --check` clean for touched paths.
+- protocol sentinel: PASS_PRE_COMMIT, push는 요청되지 않았으므로 제외.
