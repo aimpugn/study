@@ -2,6 +2,7 @@ package p42584.attempt260511;
 
 import support.TestCase;
 
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.List;
 
@@ -18,7 +19,6 @@ import java.util.List;
  */
 class Solution {
     /**
-     *
      * @param prices 초 단위로 기록된 주식 가격이 담긴 배열
      * - 1 <= prices[i] <= 10,000
      * - 2 <= prices.length <= 100,000
@@ -26,43 +26,41 @@ class Solution {
      * @return 가격이 떨어지지 않은 기간(초)
      */
     public int[] solution(int[] prices) {
-        // [1, 2, 3, 2, 3]
-        //  ㄴ----------- 안 떨어짐 4
-        //     ㄴ-------- 안 떨어짐 3
-        //        ㄴ--|   떨어짐   1
-        //           ㄴ-- 안 떨어짐 1
-        //              ㄴ 0
-
-        // 일단 드는 생각은, 현재 요소를 다음 요소와 계속 비교하며 떨어지는 때를 찾는 겁니다.
-        // 첨삭: 이 출발점 자체는 좋습니다. 다만 이 문제의 답은 "끝까지 현재값 이상인 칸의 개수"가 아니라
-        // "처음으로 현재값보다 낮아지는 시점까지 몇 초가 지났는가"입니다.
-        // 그래서 낮아지는 값을 만나면 그 1초까지 답에 포함하고 바로 멈춰야 합니다.
         var answer = new int[prices.length];
-        for (var i = 0; i < prices.length; i++) {
-            var curr = prices[i];
-            // 3초 시점의 3은 4초 시점에 2로 떨어집니다. 그러면 1초간 가격이 떨어지지 않은 것으로 봅니다.
-            // 그렇다면 기본적으로 항상 1초는 유지된다고 봅니다.
-            // 첨삭: "기본 1초"로 보정하면 즉시 떨어지는 경우와 마지막 원소를 같은 모양으로 뭉개게 됩니다.
-            // 더 안전한 기준은 seconds를 보정하는 것이 아니라, 비교한 다음 시점마다 1초를 먼저 더하고
-            // prices[j] < curr가 되는 순간 break하는 것입니다.
-            var seconds = 0;
 
-            for (var j = i + 1; j < prices.length; j++) {
-                // 다음 가격이 현재 가격보다 크거나 같다면 떨어지지 않은 것
-                // 첨삭: 여기서는 "떨어지지 않은 값만 센다"가 아니라 "시간이 1초 흘렀다"를 세야 합니다.
-                // 반례: [5, 1, 5, 5, 5]에서 첫 5의 답은 바로 다음 1에서 떨어지므로 1입니다.
-                // 현재 방식은 뒤의 5, 5, 5를 세어서 첫 답을 3으로 만들 수 있습니다.
-                if (prices[j] < curr) {
-                    break;
-                }
-                seconds++;
+        // 이 문제에서 스택에 넣는 것은 가격 자체가 아니라 "아직 답이 확정되지 않은 시점의 인덱스"입니다.
+        // 어떤 인덱스 i의 답은 오른쪽에서 처음으로 prices[i]보다 낮은 가격을 만나는 순간 확정됩니다.
+        // 반대로 그런 가격을 아직 못 만난 인덱스는 나중 가격을 더 봐야 하므로 스택에 잠시 보관합니다.
+        //
+        // [1, 2, 3, 2, 3]에서는 index 0, 1, 2가 차례로 스택에 쌓입니다.
+        // index 3의 가격 2를 만나는 순간 index 2의 가격 3만 처음으로 떨어진 시점을 만나므로
+        // answer[2] = 3 - 2 = 1이 됩니다. index 0의 1과 index 1의 2는 아직 떨어지지 않았으므로 남깁니다.
+        var waitingIndexes = new ArrayDeque<Integer>();
+
+        for (var currentIndex = 0; currentIndex < prices.length; currentIndex++) {
+            var currentPrice = prices[currentIndex];
+
+            // 현재 가격이 더 낮아졌다면, 스택 위쪽의 가격들은 지금 처음으로 하락 시점을 만난 것입니다.
+            // 예를 들어 [3, 3, 1]에서 currentIndex가 2이고 currentPrice가 1이면,
+            // index 1의 3도, index 0의 3도 지금 떨어진 시점이 확정됩니다.
+            // 같은 가격은 떨어진 것이 아니므로 '>'일 때만 꺼냅니다.
+            while (!waitingIndexes.isEmpty() && prices[waitingIndexes.peekLast()] > currentPrice) {
+                var droppedIndex = waitingIndexes.pollLast();
+                answer[droppedIndex] = currentIndex - droppedIndex;
             }
-            if (seconds == 0) {
-                seconds = 1;
-            }
-            answer[i] = seconds;
+
+            // 아직 currentIndex의 답은 모릅니다.
+            // 뒤에서 더 낮은 가격을 만나면 그때 확정되고, 끝까지 못 만나면 마지막 정리 단계에서 확정됩니다.
+            waitingIndexes.offerLast(currentIndex);
         }
-        answer[prices.length - 1] = 0;
+
+        // 끝까지 스택에 남은 인덱스는 마지막 시점까지 가격이 떨어지지 않은 경우입니다.
+        // 따라서 마지막 인덱스까지 간 시간, 즉 lastIndex - index가 답입니다.
+        var lastIndex = prices.length - 1;
+        while (!waitingIndexes.isEmpty()) {
+            var stableIndex = waitingIndexes.pollLast();
+            answer[stableIndex] = lastIndex - stableIndex;
+        }
 
         return answer;
     }
@@ -75,18 +73,28 @@ public class Main260511 {
         var testCases = List.of(
             new TestCase<>(new int[]{1, 2, 3, 2, 3}, new int[]{4, 3, 1, 1, 0}),
             new TestCase<>(new int[]{1, 1, 1, 1, 1}, new int[]{4, 3, 2, 1, 0}),
-            new TestCase<>(new int[]{5, 4, 3, 2, 1}, new int[]{1, 1, 1, 1, 0})
-            // 첨삭: 위 세 케이스는 현재 버그를 잡기 어렵습니다.
-            // 떨어진 뒤 다시 회복하는 입력도 넣어 보세요.
-            // new TestCase<>(new int[]{5, 1, 5, 5, 5}, new int[]{1, 3, 2, 1, 0})
+            new TestCase<>(new int[]{5, 4, 3, 2, 1}, new int[]{1, 1, 1, 1, 0}),
+            new TestCase<>(new int[]{3, 3, 1}, new int[]{2, 1, 0}),
+            new TestCase<>(new int[]{5, 1, 5, 5, 5}, new int[]{1, 3, 2, 1, 0}),
+            new TestCase<>(new int[]{2, 2, 2, 1}, new int[]{3, 2, 1, 0}),
+            new TestCase<>(new int[]{1, 2}, new int[]{1, 0}),
+            new TestCase<>(new int[]{2, 1}, new int[]{1, 0}),
+            new TestCase<>(new int[]{2, 2}, new int[]{1, 0}),
+            new TestCase<>(new int[]{1, 3, 2, 2, 1}, new int[]{4, 1, 2, 1, 0})
         );
 
         for (var testCase : testCases) {
             var result = solution.solution(testCase.input());
-            System.out.println(
-                // 첨삭: 출력으로 true/false를 보는 방식은 실패를 놓치기 쉽습니다.
-                // 이 연습 저장소에서는 expected와 actual이 다르면 AssertionError로 바로 멈추는 편이 더 좋습니다.
-                Arrays.toString(result) + " == " + Arrays.toString(testCase.answer()) + ": " + Arrays.equals(solution.solution(testCase.input()), testCase.answer())
+            assertEquals(testCase, result);
+        }
+    }
+
+    private static void assertEquals(TestCase<int[], int[]> testCase, int[] actual) {
+        if (!Arrays.equals(testCase.answer(), actual)) {
+            throw new AssertionError(
+                "prices=" + Arrays.toString(testCase.input())
+                    + ", expected=" + Arrays.toString(testCase.answer())
+                    + ", actual=" + Arrays.toString(actual)
             );
         }
     }
