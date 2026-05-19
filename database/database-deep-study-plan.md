@@ -9,7 +9,7 @@
 이 계획에서의 완전성은 다음 조건을 뜻합니다.
 먼저 DB의 주요 작동 축을 빠뜨리지 않는 유한한 레지스트리를 둡니다.
 그다음 각 축마다 공식 문서, 로컬 기존 정리, 실험, 반례, 관측 명령을 연결합니다.
-마지막으로 작성 완료를 말하기 전에 각 주요 학습 단위가 최소 15,000자 이상인지, 근거가 있는지, 반복으로 분량을 채우지 않았는지, 다른 문서와 충돌하지 않는지 기계적으로 검증합니다.
+마지막으로 작성 완료를 말하기 전에 각 주요 학습 단위가 최소 20,000자 이상인지, 근거가 있는지, 반복으로 분량을 채우지 않았는지, 다른 문서와 충돌하지 않는지 기계적으로 검증합니다.
 
 ## 1. review-kernel 판정
 
@@ -38,10 +38,9 @@ DBMS별 세부 동작, 표준 SQL, PostgreSQL/MySQL/InnoDB/Oracle/SQL Server 차
 - goal: DB를 기초 개념부터 내부 실행과 운영 시나리오까지 해체해, 시간이 지나도 다시 복원 가능한 장문 지식 자산을 만든다.
 - scope: `/Users/rody/VscodeProjects/study/database` 전체와 연결되는 `interviews`, `jvm/spring`, `knowledge/cards`, `domains/payment`, `domains/firmbanking`, `math` 자료.
 - mode: planning, review, design, then staged execute.
-- finish for this tranche: 계획 개선, multi-agent/dialectic/review 기록, 검증, commit.
-- finish for whole request: 모든 등록된 학습 단위 작성, 각 단위 최소 15,000자 검증, 근거/실험/링크 검증, 최종 리뷰, commit.
+- finish for current whole request: 모든 등록된 학습 단위 작성, 각 단위 최소 20,000자 검증, 근거/실험/링크/문장 흐름 검증, 최종 리뷰, commit.
 - must_keep: 기존 `database/mvcc.md` 같은 사용자 정리 내용을 최대한 살린다. 내용 누락, 열화, 타협을 허용하지 않는다. 단, `완벽`을 근거 없는 과장으로 쓰지 않고 fail-closed 검증 조건으로 바꾼다.
-- extra_checks: 각 major learning unit은 최소 15,000자 이상이어야 한다. 분량은 반복 문장으로 채우지 않고 first brick, worked trace, failure mode, observability, 공식 근거, 실험으로 채운다.
+- extra_checks: 각 major learning unit은 최소 20,000자 이상이어야 한다. 분량은 반복 문장으로 채우지 않고 first brick, worked trace, failure mode, observability, 공식 근거, 실험으로 채운다.
 
 ## 3. canonical 배치
 
@@ -101,12 +100,14 @@ database/
       money-calculation/
       outbox-race/
     source-map.md
+    source-map.tsv
     validation.md
 ```
 
 이 구조는 `database/`를 새로 만드는 것이 아니라, 이미 있는 `database/`를 정식 지식 축으로 인정하고 그 아래에 장문 교재용 하위 디렉터리를 둡니다.
 기존 루트 파일은 곧바로 삭제하지 않습니다.
-새 문서 작성 시 `source-map.md`에 각 기존 파일의 내용을 `preserve`, `merge`, `expand`, `supersede-with-pointer`, `archive-candidate` 중 하나로 기록하고, 실제 이동이나 축약은 별도 tranche에서 diff를 보며 결정합니다.
+새 문서 작성 시 사람이 읽는 보존 원칙은 `source-map.md`에 남기고, 기계가 검증할 DU별 출처·실험·보존 처분은 `source-map.tsv`에 기록합니다.
+각 기존 파일의 내용은 `preserve`, `merge`, `expand`, `supersede-with-pointer`, `archive-candidate`, `sensitive-source-do-not-promote`, `raw-source-sanitize-first` 중 하나로 처리하고, 실제 이동이나 축약은 별도 review slice에서 diff를 보며 결정합니다.
 
 ## 4. 기존 자료 보존 정책
 
@@ -135,7 +136,7 @@ database/
 ## 4.1 current database inventory disposition
 
 아래 표는 현재 `find database -maxdepth 6 -type f`로 확인한 파일 단위 inventory입니다.
-이 표는 “전부 읽고 이미 승격했다”는 뜻이 아니라, 다음 tranche의 `source-map.md`가 빠뜨리면 안 되는 최소 coverage ledger입니다.
+이 표는 “전부 읽고 이미 승격했다”는 뜻이 아니라, `source-map.md`가 빠뜨리면 안 되는 최소 coverage ledger입니다.
 특히 `auth.ini`, `auth.ini.bak`, query JSON, log 파일은 학습 원자료일 수 있어도 본문에 그대로 복사하지 않습니다.
 민감 값, 내부 endpoint, 토큰, 계정 정보가 없는지 먼저 검사하고, 필요하면 redaction 또는 synthetic sample로 바꿔야 합니다.
 
@@ -234,73 +235,73 @@ DB를 머릿속에 넣으려면 “트랜잭션부터” 시작하면 오히려 
 ## 6. major learning unit registry
 
 아래 `DU`는 deep-study unit입니다.
-각 `DU`는 해당 파일의 `##` major section이거나 파일 전체 본문이며, 실제 작성 시 최소 15,000자 이상이어야 합니다.
+각 `DU`는 해당 파일의 `##` major section이거나 파일 전체 본문이며, 실제 작성 시 최소 20,000자 이상이어야 합니다.
 한 파일에 여러 `DU`가 들어가면 각 `##` 본문을 따로 검증합니다.
 `DU`는 내부 실행 단위이지 완료 조건이 아닙니다.
 whole request는 모든 `DU`가 작성되고 검증될 때만 닫힙니다.
 
 | id | target | major section | 최소 길이 | 기존 seed |
 |---|---|---|---:|---|
-| DU01 | `foundations/01-database-mental-model.md` | DB는 어떤 문제를 해결하는 시스템인가 | 15,000자 | `database/query.md`, `interviews/database-storage-search-nosql.md` |
-| DU02 | `foundations/01-database-mental-model.md` | 논리 모델과 물리 실행 모델을 분리해 읽기 | 15,000자 | 전체 DB corpus |
-| DU03 | `foundations/02-relational-model-and-sql.md` | 관계 모델, tuple, relation, key, set/bag semantics | 15,000자 | `database/join.md` |
-| DU04 | `foundations/02-relational-model-and-sql.md` | SELECT 문이 논리적으로 처리되는 순서 | 15,000자 | `database/query.md` |
-| DU05 | `foundations/03-sql-semantics-types-null-collation.md` | NULL과 3-valued logic | 15,000자 | existing SQL notes |
-| DU06 | `foundations/03-sql-semantics-types-null-collation.md` | type, charset, collation, comparison | 15,000자 | `database/collation.md`, `database/mysql/types/mysql_varchar.md`, `database/mysql/charset.sql` |
-| DU07 | `foundations/03-sql-semantics-types-null-collation.md` | placeholder, escaping, prepared statement | 15,000자 | `database/placeholder.md`, `database/prepared_statements.md`, `database/quote_and_escape.md` |
-| DU08 | `storage-index-optimizer/04-storage-files-pages-rows.md` | file, page, extent, row, tuple layout | 15,000자 | `database/mvcc.md` partial |
-| DU09 | `storage-index-optimizer/04-storage-files-pages-rows.md` | heap table, clustered table, row movement, vacuum/purge | 15,000자 | `database/mvcc.md`, MySQL/PostgreSQL sources |
-| DU10 | `storage-index-optimizer/05-buffer-pool-cache-io.md` | buffer pool과 OS page cache | 15,000자 | storage notes to add |
-| DU11 | `storage-index-optimizer/05-buffer-pool-cache-io.md` | random/sequential I/O, fsync, flush, checkpoint pressure | 15,000자 | `database/replication.md` partial |
-| DU12 | `storage-index-optimizer/06-wal-undo-redo-recovery.md` | WAL/redo/undo를 값 변화 trace로 이해하기 | 15,000자 | `database/mvcc.md`, `database/replication.md` |
-| DU13 | `storage-index-optimizer/06-wal-undo-redo-recovery.md` | crash recovery, checkpoint, PITR | 15,000자 | official PostgreSQL/MySQL docs required |
-| DU14 | `storage-index-optimizer/07-index-structures.md` | B+tree 구조와 탐색/삽입/분할 | 15,000자 | MySQL/PostgreSQL docs required |
-| DU15 | `storage-index-optimizer/07-index-structures.md` | composite, covering, unique, partial/function index | 15,000자 | `database/mysql/order.md` partial |
-| DU16 | `storage-index-optimizer/07-index-structures.md` | LSM/hash/bitmap/search index와 RDBMS index 비교 | 15,000자 | `database/elasticsearch/*`, `database/opensearch/*` |
-| DU17 | `storage-index-optimizer/08-query-execution-operators.md` | scan, filter, projection, sort, aggregate | 15,000자 | `database/query.md` |
-| DU18 | `storage-index-optimizer/08-query-execution-operators.md` | nested loop/hash/merge join | 15,000자 | `database/join.md`, `database/mysql/explains/when_join.md` |
-| DU19 | `storage-index-optimizer/08-query-execution-operators.md` | subquery, CTE, window, pagination | 15,000자 | `database/elasticsearch/paginate.md` for comparison |
-| DU20 | `storage-index-optimizer/09-optimizer-statistics-explain.md` | statistics, cardinality, selectivity, cost | 15,000자 | explain docs required |
-| DU21 | `storage-index-optimizer/09-optimizer-statistics-explain.md` | EXPLAIN/EXPLAIN ANALYZE 읽기 | 15,000자 | `database/mysql/explains/when_join.md`, memory DB perf preference |
-| DU22 | `storage-index-optimizer/09-optimizer-statistics-explain.md` | slow query diagnosis and plan regression | 15,000자 | local DB perf memories |
-| DU23 | `schema-migration-ops/10-schema-design-constraints.md` | normalization, denormalization, keys, constraints | 15,000자 | DB design docs to add |
-| DU24 | `schema-migration-ops/10-schema-design-constraints.md` | migration, schema diff, online DDL, Flyway | 15,000자 | `database/db_diff.md`, `database/examples/db_diff/*`, `database/migration/flyway/flyway.md` |
-| DU25 | `transactions/11-transaction-lifecycle-acid.md` | transaction boundary, autocommit, savepoint, ACID | 15,000자 | existing transaction plan |
-| DU26 | `transactions/11-transaction-lifecycle-acid.md` | consistency와 도메인 불변식 | 15,000자 | existing transaction plan |
-| DU27 | `transactions/12-mvcc-snapshot-visibility.md` | MVCC 역사와 등장 배경 | 15,000자 | `database/mvcc.md` |
-| DU28 | `transactions/12-mvcc-snapshot-visibility.md` | PostgreSQL tuple visibility와 vacuum | 15,000자 | `database/mvcc.md`, official PostgreSQL docs |
-| DU29 | `transactions/12-mvcc-snapshot-visibility.md` | InnoDB read view, undo, purge | 15,000자 | `database/mvcc.md`, official MySQL docs |
-| DU30 | `transactions/13-isolation-anomalies.md` | SQL 표준 isolation과 anomaly | 15,000자 | `database/mvcc.md` |
-| DU31 | `transactions/13-isolation-anomalies.md` | PostgreSQL과 InnoDB 실제 차이 | 15,000자 | official docs and two-session labs |
-| DU32 | `transactions/14-locks-latches-deadlocks.md` | lock vs latch, row/table/gap/next-key/predicate lock | 15,000자 | `database/lock.md`, `database/postgresql/lock.md` |
-| DU33 | `transactions/14-locks-latches-deadlocks.md` | deadlock, wait graph, timeout, retry | 15,000자 | two-session labs |
-| DU34 | `reliability-distribution/15-replication-backup-recovery.md` | replication log, binlog/WAL shipping, lag | 15,000자 | `database/replication.md`, `database/replication_lag.md` |
-| DU35 | `reliability-distribution/15-replication-backup-recovery.md` | backup, restore, PITR, failover, consistency | 15,000자 | official docs required |
-| DU36 | `reliability-distribution/16-partitioning-sharding-distribution.md` | partitioning and pruning | 15,000자 | docs to add |
-| DU37 | `reliability-distribution/16-partitioning-sharding-distribution.md` | sharding, resharding, global transaction trade-off | 15,000자 | `database/newsql.md` |
-| DU38 | `mysql/17-mysql-innodb-deep-dive.md` | InnoDB architecture: clustered index, buffer pool, redo/undo | 15,000자 | `database/mysql/*`, `database/mvcc.md` |
-| DU39 | `mysql/17-mysql-innodb-deep-dive.md` | InnoDB locking/isolation/online DDL | 15,000자 | `database/mysql/problems/mysql5_online_large_indexing.md` |
-| DU40 | `postgresql/18-postgresql-deep-dive.md` | PostgreSQL heap, tuple, xmin/xmax, vacuum | 15,000자 | `database/mvcc.md`, `database/postgresql/*` |
-| DU41 | `postgresql/18-postgresql-deep-dive.md` | PostgreSQL planner, locks, WAL, replication | 15,000자 | `database/postgresql/introspection.log` |
-| DU42 | `application-boundaries/19-application-boundaries.md` | connection, session, transaction manager, pooling | 15,000자 | `jvm/spring/spring_transactional.md` |
-| DU43 | `application-boundaries/19-application-boundaries.md` | Spring/JPA/MyBatis transaction boundary | 15,000자 | `jvm/spring/spring_transactional.md`, `interviews/spring-backend-frameworks.md` |
-| DU44 | `application-boundaries/20-idempotency-duplicate-request.md` | duplicate request and idempotency key | 15,000자 | `knowledge/cards/K-IDEMPOTENT-EXECUTION-WINNER-ELECTION-REPLAY.md` |
-| DU45 | `application-boundaries/21-money-calculation.md` | decimal, rounding, allocation, minor unit | 15,000자 | `math/*`, `domains/payment/*` |
-| DU46 | `application-boundaries/22-financial-transaction-scenarios.md` | ledger, balance, payment state machine | 15,000자 | `domains/payment/*`, `domains/firmbanking/*` |
-| DU47 | `application-boundaries/22-financial-transaction-scenarios.md` | timeout, unknown state, settlement, reconciliation | 15,000자 | `domains/payment/*`, `domains/firmbanking/*` |
-| DU48 | `reliability-distribution/23-outbox-saga-2pc.md` | 2PC/XA/JTA vs saga/outbox | 15,000자 | `knowledge/cards/K-ASYNC-EVENTS-OUTBOX-INBOX-CLAIM-LEASE.md` |
-| DU49 | `operations/24-operations-observability-troubleshooting.md` | DB troubleshooting by symptom | 15,000자 | `database/replication_lag.md`, DB perf memories |
-| DU50 | `operations/24-operations-observability-troubleshooting.md` | metrics, logs, locks, slow query, capacity | 15,000자 | DB perf memories and official docs |
-| DU51 | `security-governance/25-security-access-control.md` | roles, users, privileges, grants, ownership | 15,000자 | official PostgreSQL/MySQL docs required |
-| DU52 | `security-governance/25-security-access-control.md` | row-level security, encryption, auditing, secret hygiene | 15,000자 | `database/elasticsearch/tools/esdump/auth.ini`, sensitive-source rules |
-| DU53 | `search-nosql-newsql/26-search-engine-internals.md` | Elasticsearch/OpenSearch mapping, indexing, query, scoring | 15,000자 | `database/elasticsearch/*`, `database/opensearch/*` |
-| DU54 | `search-nosql-newsql/26-search-engine-internals.md` | search pagination, reindexing, dump/restore, consistency boundary | 15,000자 | `database/elasticsearch/paginate.md`, `database/elasticsearch/elasticdump.md`, `database/opensearch/*` |
-| DU55 | `search-nosql-newsql/27-document-nosql-modeling.md` | Firestore/document modeling, consistency, security rules, cost | 15,000자 | `database/firebase/*`, `interviews/database-storage-search-nosql.md` |
-| DU56 | `search-nosql-newsql/28-newsql-distributed-sql.md` | NewSQL/distributed SQL, consensus, global transaction trade-offs | 15,000자 | `database/newsql.md`, `interviews/database-storage-search-nosql.md` |
+| DU01 | `foundations/01-database-mental-model.md` | DB는 어떤 문제를 해결하는 시스템인가 | 20,000자 이상 | `database/query.md`, `interviews/database-storage-search-nosql.md` |
+| DU02 | `foundations/01-database-mental-model.md` | 논리 모델과 물리 실행 모델을 분리해 읽기 | 20,000자 이상 | 전체 DB corpus |
+| DU03 | `foundations/02-relational-model-and-sql.md` | 관계 모델, tuple, relation, key, set/bag semantics | 20,000자 이상 | `database/join.md` |
+| DU04 | `foundations/02-relational-model-and-sql.md` | SELECT 문이 논리적으로 처리되는 순서 | 20,000자 이상 | `database/query.md` |
+| DU05 | `foundations/03-sql-semantics-types-null-collation.md` | NULL과 3-valued logic | 20,000자 이상 | existing SQL notes |
+| DU06 | `foundations/03-sql-semantics-types-null-collation.md` | type, charset, collation, comparison | 20,000자 이상 | `database/collation.md`, `database/mysql/types/mysql_varchar.md`, `database/mysql/charset.sql` |
+| DU07 | `foundations/03-sql-semantics-types-null-collation.md` | placeholder, escaping, prepared statement | 20,000자 이상 | `database/placeholder.md`, `database/prepared_statements.md`, `database/quote_and_escape.md` |
+| DU08 | `storage-index-optimizer/04-storage-files-pages-rows.md` | file, page, extent, row, tuple layout | 20,000자 이상 | `database/mvcc.md` partial |
+| DU09 | `storage-index-optimizer/04-storage-files-pages-rows.md` | heap table, clustered table, row movement, vacuum/purge | 20,000자 이상 | `database/mvcc.md`, MySQL/PostgreSQL sources |
+| DU10 | `storage-index-optimizer/05-buffer-pool-cache-io.md` | buffer pool과 OS page cache | 20,000자 이상 | storage notes to add |
+| DU11 | `storage-index-optimizer/05-buffer-pool-cache-io.md` | random/sequential I/O, fsync, flush, checkpoint pressure | 20,000자 이상 | `database/replication.md` partial |
+| DU12 | `storage-index-optimizer/06-wal-undo-redo-recovery.md` | WAL/redo/undo를 값 변화 trace로 이해하기 | 20,000자 이상 | `database/mvcc.md`, `database/replication.md` |
+| DU13 | `storage-index-optimizer/06-wal-undo-redo-recovery.md` | crash recovery, checkpoint, PITR | 20,000자 이상 | official PostgreSQL/MySQL docs required |
+| DU14 | `storage-index-optimizer/07-index-structures.md` | B+tree 구조와 탐색/삽입/분할 | 20,000자 이상 | MySQL/PostgreSQL docs required |
+| DU15 | `storage-index-optimizer/07-index-structures.md` | composite, covering, unique, partial/function index | 20,000자 이상 | `database/mysql/order.md` partial |
+| DU16 | `storage-index-optimizer/07-index-structures.md` | LSM/hash/bitmap/search index와 RDBMS index 비교 | 20,000자 이상 | `database/elasticsearch/*`, `database/opensearch/*` |
+| DU17 | `storage-index-optimizer/08-query-execution-operators.md` | scan, filter, projection, sort, aggregate | 20,000자 이상 | `database/query.md` |
+| DU18 | `storage-index-optimizer/08-query-execution-operators.md` | nested loop/hash/merge join | 20,000자 이상 | `database/join.md`, `database/mysql/explains/when_join.md` |
+| DU19 | `storage-index-optimizer/08-query-execution-operators.md` | subquery, CTE, window, pagination | 20,000자 이상 | `database/elasticsearch/paginate.md` for comparison |
+| DU20 | `storage-index-optimizer/09-optimizer-statistics-explain.md` | statistics, cardinality, selectivity, cost | 20,000자 이상 | explain docs required |
+| DU21 | `storage-index-optimizer/09-optimizer-statistics-explain.md` | EXPLAIN/EXPLAIN ANALYZE 읽기 | 20,000자 이상 | `database/mysql/explains/when_join.md`, memory DB perf preference |
+| DU22 | `storage-index-optimizer/09-optimizer-statistics-explain.md` | slow query diagnosis and plan regression | 20,000자 이상 | local DB perf memories |
+| DU23 | `schema-migration-ops/10-schema-design-constraints.md` | normalization, denormalization, keys, constraints | 20,000자 이상 | DB design docs to add |
+| DU24 | `schema-migration-ops/10-schema-design-constraints.md` | migration, schema diff, online DDL, Flyway | 20,000자 이상 | `database/db_diff.md`, `database/examples/db_diff/*`, `database/migration/flyway/flyway.md` |
+| DU25 | `transactions/11-transaction-lifecycle-acid.md` | transaction boundary, autocommit, savepoint, ACID | 20,000자 이상 | existing transaction plan |
+| DU26 | `transactions/11-transaction-lifecycle-acid.md` | consistency와 도메인 불변식 | 20,000자 이상 | existing transaction plan |
+| DU27 | `transactions/12-mvcc-snapshot-visibility.md` | MVCC 역사와 등장 배경 | 20,000자 이상 | `database/mvcc.md` |
+| DU28 | `transactions/12-mvcc-snapshot-visibility.md` | PostgreSQL tuple visibility와 vacuum | 20,000자 이상 | `database/mvcc.md`, official PostgreSQL docs |
+| DU29 | `transactions/12-mvcc-snapshot-visibility.md` | InnoDB read view, undo, purge | 20,000자 이상 | `database/mvcc.md`, official MySQL docs |
+| DU30 | `transactions/13-isolation-anomalies.md` | SQL 표준 isolation과 anomaly | 20,000자 이상 | `database/mvcc.md` |
+| DU31 | `transactions/13-isolation-anomalies.md` | PostgreSQL과 InnoDB 실제 차이 | 20,000자 이상 | official docs and two-session labs |
+| DU32 | `transactions/14-locks-latches-deadlocks.md` | lock vs latch, row/table/gap/next-key/predicate lock | 20,000자 이상 | `database/lock.md`, `database/postgresql/lock.md` |
+| DU33 | `transactions/14-locks-latches-deadlocks.md` | deadlock, wait graph, timeout, retry | 20,000자 이상 | two-session labs |
+| DU34 | `reliability-distribution/15-replication-backup-recovery.md` | replication log, binlog/WAL shipping, lag | 20,000자 이상 | `database/replication.md`, `database/replication_lag.md` |
+| DU35 | `reliability-distribution/15-replication-backup-recovery.md` | backup, restore, PITR, failover, consistency | 20,000자 이상 | official docs required |
+| DU36 | `reliability-distribution/16-partitioning-sharding-distribution.md` | partitioning and pruning | 20,000자 이상 | docs to add |
+| DU37 | `reliability-distribution/16-partitioning-sharding-distribution.md` | sharding, resharding, global transaction trade-off | 20,000자 이상 | `database/newsql.md` |
+| DU38 | `mysql/17-mysql-innodb-deep-dive.md` | InnoDB architecture: clustered index, buffer pool, redo/undo | 20,000자 이상 | `database/mysql/*`, `database/mvcc.md` |
+| DU39 | `mysql/17-mysql-innodb-deep-dive.md` | InnoDB locking/isolation/online DDL | 20,000자 이상 | `database/mysql/problems/mysql5_online_large_indexing.md` |
+| DU40 | `postgresql/18-postgresql-deep-dive.md` | PostgreSQL heap, tuple, xmin/xmax, vacuum | 20,000자 이상 | `database/mvcc.md`, `database/postgresql/*` |
+| DU41 | `postgresql/18-postgresql-deep-dive.md` | PostgreSQL planner, locks, WAL, replication | 20,000자 이상 | `database/postgresql/introspection.log` |
+| DU42 | `application-boundaries/19-application-boundaries.md` | connection, session, transaction manager, pooling | 20,000자 이상 | `jvm/spring/spring_transactional.md` |
+| DU43 | `application-boundaries/19-application-boundaries.md` | Spring/JPA/MyBatis transaction boundary | 20,000자 이상 | `jvm/spring/spring_transactional.md`, `interviews/spring-backend-frameworks.md` |
+| DU44 | `application-boundaries/20-idempotency-duplicate-request.md` | duplicate request and idempotency key | 20,000자 이상 | `knowledge/cards/K-IDEMPOTENT-EXECUTION-WINNER-ELECTION-REPLAY.md` |
+| DU45 | `application-boundaries/21-money-calculation.md` | decimal, rounding, allocation, minor unit | 20,000자 이상 | `math/*`, `domains/payment/*` |
+| DU46 | `application-boundaries/22-financial-transaction-scenarios.md` | ledger, balance, payment state machine | 20,000자 이상 | `domains/payment/*`, `domains/firmbanking/*` |
+| DU47 | `application-boundaries/22-financial-transaction-scenarios.md` | timeout, unknown state, settlement, reconciliation | 20,000자 이상 | `domains/payment/*`, `domains/firmbanking/*` |
+| DU48 | `reliability-distribution/23-outbox-saga-2pc.md` | 2PC/XA/JTA vs saga/outbox | 20,000자 이상 | `knowledge/cards/K-ASYNC-EVENTS-OUTBOX-INBOX-CLAIM-LEASE.md` |
+| DU49 | `operations/24-operations-observability-troubleshooting.md` | DB troubleshooting by symptom | 20,000자 이상 | `database/replication_lag.md`, DB perf memories |
+| DU50 | `operations/24-operations-observability-troubleshooting.md` | metrics, logs, locks, slow query, capacity | 20,000자 이상 | DB perf memories and official docs |
+| DU51 | `security-governance/25-security-access-control.md` | roles, users, privileges, grants, ownership | 20,000자 이상 | official PostgreSQL/MySQL docs required |
+| DU52 | `security-governance/25-security-access-control.md` | row-level security, encryption, auditing, secret hygiene | 20,000자 이상 | `database/elasticsearch/tools/esdump/auth.ini`, sensitive-source rules |
+| DU53 | `search-nosql-newsql/26-search-engine-internals.md` | Elasticsearch/OpenSearch mapping, indexing, query, scoring | 20,000자 이상 | `database/elasticsearch/*`, `database/opensearch/*` |
+| DU54 | `search-nosql-newsql/26-search-engine-internals.md` | search pagination, reindexing, dump/restore, consistency boundary | 20,000자 이상 | `database/elasticsearch/paginate.md`, `database/elasticsearch/elasticdump.md`, `database/opensearch/*` |
+| DU55 | `search-nosql-newsql/27-document-nosql-modeling.md` | Firestore/document modeling, consistency, security rules, cost | 20,000자 이상 | `database/firebase/*`, `interviews/database-storage-search-nosql.md` |
+| DU56 | `search-nosql-newsql/28-newsql-distributed-sql.md` | NewSQL/distributed SQL, consensus, global transaction trade-offs | 20,000자 이상 | `database/newsql.md`, `interviews/database-storage-search-nosql.md` |
 
 이 56개 DU는 시작 레지스트리입니다.
 작성 중 공식 근거와 기존 파일 조사에서 빠진 축이 발견되면 DU를 추가할 수는 있지만, 이미 등록된 DU를 조용히 삭제하거나 축약할 수 없습니다.
-만약 어떤 DU가 실제로 독립 15,000자 단위로 부적합하다고 드러나면, 삭제가 아니라 `merge proposal`을 만들고 무엇을 어느 DU가 흡수하는지 기록해야 합니다.
+만약 어떤 DU가 실제로 독립 20,000자 이상 단위로 부적합하다고 드러나면, 삭제가 아니라 `merge proposal`을 만들고 무엇을 어느 DU가 흡수하는지 기록해야 합니다.
 
 ## 7. 각 DU의 최소 내부 구조
 
@@ -326,10 +327,56 @@ whole request는 모든 `DU`가 작성되고 검증될 때만 닫힙니다.
 9. transfer:
    이 원리가 다른 DBMS나 애플리케이션 설계에서 어떻게 다시 나타나는지 연결합니다.
 
+### 7.1 20,000자 기준을 채우는 방식
+
+20,000자는 분량 목표가 아니라 설명 밀도의 하한선입니다.
+각 DU는 같은 말을 길게 반복해서 길이를 맞추면 FAIL입니다.
+본문은 최소한 아래 요소를 모두 자연스럽게 포함해야 합니다.
+
+1. 직접 진술과 읽은 뒤의 teach-back 목표
+    독자가 이 DU를 읽고 자기 말로 무엇을 설명할 수 있어야 하는지 첫머리에서 고정합니다.
+    예를 들어 MVCC라면 “여러 버전이 있으니 읽기와 쓰기가 덜 막힌다”가 아니라, “어떤 트랜잭션이 어떤 row version을 볼 수 있는지 snapshot과 version metadata로 판정할 수 있다”까지 말할 수 있어야 합니다.
+2. 등장 배경과 역사적 압력
+    개념이 왜 생겼는지 설명합니다.
+    단순 연표가 아니라, 이전 방식이 어떤 장애나 성능 한계를 만들었고 그 압력이 어떤 구조를 낳았는지 연결합니다.
+3. first brick
+    가장 작은 row, page, SQL, transaction schedule, log record, request trace 중 하나로 시작합니다.
+    독자가 추상 용어를 만나기 전에 손으로 따라갈 수 있는 첫 상태를 가져야 합니다.
+4. ASCII diagram 또는 trace
+    구조나 시간 흐름이 있는 DU는 `text` code fence, 표, timeline, before/after block 중 최소 하나를 포함합니다.
+    장식용 그림은 통과하지 않습니다.
+    그림은 “무엇이 바뀌고, 어떤 규칙이 바꾸고, 다음 소비자가 무엇을 읽는지”를 보여 줘야 합니다.
+5. worked example
+    SQL, row version, index lookup, EXPLAIN, lock wait, 금액 배분, outbox replay처럼 실제 값을 넣은 예시를 둡니다.
+6. senior practical failure traps
+    20~30년차 실무자가 후배에게 미리 짚어 주듯, 어떤 지뢰를 밟으면 장애가 나는지 설명합니다.
+    “주의해야 한다”가 아니라, 어떤 운영 증상으로 나타나고 어떤 잘못된 조치가 상황을 악화시키는지까지 적습니다.
+7. 반례와 오해 수리
+    그럴듯하지만 틀린 단축 이해를 하나 이상 공격하고, 왜 틀렸는지 작은 반례로 보여 줍니다.
+8. 관측과 검증
+    어떤 명령, 쿼리, 로그, metric, lab으로 확인할 수 있는지 PASS/FAIL 신호를 적습니다.
+9. 자연스러운 한국어 흐름
+    문장은 쉬워야 하지만 얕으면 안 됩니다.
+    문단은 `직접 진술 -> 이유 -> 작은 예 -> 메커니즘 -> 실패 지점 -> 검증`으로 이어져야 하며, 독자가 문장 사이를 다시 조립해야 하면 FAIL입니다.
+10. source boundary
+    공식 문서, 로컬 seed, 실험, 추론을 분리합니다.
+    vendor별 차이가 있는 내용은 PostgreSQL, MySQL/InnoDB, 검색/NoSQL, Spring 같은 경계를 섞지 않습니다.
+
+기계 validator는 길이와 일부 구조 신호를 검사하고, critic/humanize-korean/study-explanation review는 논리 흐름과 문장 품질을 검사합니다.
+두 축 중 하나라도 실패하면 해당 DU는 complete가 아닙니다.
+
+### 7.2 DU registry와 per-DU teaching spine
+
+canonical registry는 `database/deep-dive/du-registry.tsv`입니다.
+Markdown 표는 사람이 빠르게 보는 지도이고, TSV는 validator와 작업자가 읽는 실행 계약입니다.
+각 행은 `id`, `target`, `section`, `min_chars`, `source_requirement`, `teaching_spine`, `required_trap`을 가집니다.
+작성자는 DU 본문을 쓰기 전에 해당 행을 읽고, `source-map.tsv`의 local seed, official source, lab 또는 observability path, preservation disposition이 본문과 같은 목표를 닫는지 확인해야 합니다.
+whole-complete 시점에는 각 DU의 `source_status`가 `verified`여야 합니다.
+
 ## 8. source strategy
 
 공식 자료 없이 DB domain truth를 확정하지 않습니다.
-후속 작성 tranche에서 최소한 아래 source pack을 확인합니다.
+본문 작성 중 최소한 아래 source pack을 확인합니다.
 
 - PostgreSQL: SQL command reference, MVCC/concurrency control, transaction isolation, explicit locking, WAL, vacuum, planner statistics, EXPLAIN, replication, backup/PITR.
 - MySQL/InnoDB: InnoDB architecture, clustered index, buffer pool, redo/undo, transaction isolation, consistent read, locking read, gap/next-key lock, deadlock, online DDL, replication/binlog.
@@ -355,53 +402,36 @@ whole request는 모든 `DU`가 작성되고 검증될 때만 닫힙니다.
 - money lab: double 실패, `BigDecimal(String)`, rounding mode, allocation remainder.
 - idempotency/outbox lab: concurrent request winner election, response replay, worker claim race.
 
-검증 명령은 문서 작성 tranche에서 `database/deep-dive/validation.md`에 고정합니다.
-최소 검증은 다음입니다.
+검증 명령은 `database/deep-dive/validation.md`와 `database/deep-dive/validate_deep_dive.py`에 고정합니다.
+검증은 출력만 찍고 사람이 알아서 판단하는 방식이 아니라, 실패하면 non-zero로 종료하는 fail-closed validator여야 합니다.
 
 ```bash
-python3 - <<'PY'
-from pathlib import Path
-
-root = Path("database/deep-dive")
-excluded = {"00-index.md", "source-map.md", "validation.md"}
-targets = sorted(
-    p for p in root.rglob("*.md")
-    if p.name not in excluded and "labs" not in p.parts
-)
-for path in targets:
-    text = path.read_text(encoding="utf-8")
-    sections = []
-    lines = text.splitlines()
-    starts = [(i, line[3:].strip()) for i, line in enumerate(lines) if line.startswith("## ")]
-    if not starts:
-        body = "\n".join(lines[1:] if lines and lines[0].startswith("# ") else lines).strip()
-        print(path, "<file-body>", len(body))
-        continue
-    for idx, (start, title) in enumerate(starts):
-        end = starts[idx + 1][0] if idx + 1 < len(starts) else len(lines)
-        body = "\n".join(lines[start + 1:end]).strip()
-        print(path, title, len(body))
-PY
+python3 database/deep-dive/validate_deep_dive.py
 ```
 
 PASS 기준:
 
 - 등록된 DU 전부 존재.
-- 각 DU 본문 15,000자 이상.
-- source-map에서 각 DU의 로컬 seed, 공식 source, 실험 또는 검증 경로가 비어 있지 않음.
+- 각 DU 본문 20,000자 이상.
+- 각 DU에 ASCII/code/table trace가 있음.
+- 각 DU에 worked example, senior practical failure trap, 등장 배경, 관측/검증 경로, 자연스러운 문단 흐름을 확인할 수 있는 신호가 있음.
+- `source-map.tsv`에서 각 DU의 로컬 seed, 공식 source, 실험 또는 검증 경로, preservation disposition, source status가 비어 있지 않음.
+- whole-complete 검증에서 `source-map.tsv`의 모든 `source_status`가 `verified`.
 - duplicate long paragraph scan 0.
 - fenced code block 균형 PASS.
 - local link sanity PASS.
 - `git diff --check` PASS.
+- active plan과 WORK에 이전 길이 기준이 남아 있지 않음.
 
 FAIL 기준:
 
 - DU 하나라도 누락.
-- 15,000자 미만.
+- 20,000자 미만.
 - 반복 문단으로 분량을 채움.
+- ASCII trace, worked example, senior failure trap, history/origin, observability path 중 하나라도 빠짐.
 - 공식 근거가 필요한 엔진별 사실을 로컬 추론만으로 확정.
 - 기존 `database/` 내용을 살린다고 해 놓고 실제로는 원문을 추적 없이 덮어씀.
-- 전체 완료가 아닌 tranche를 whole complete처럼 표현.
+- 전체 완료가 아닌 실행 slice나 checkpoint를 whole complete처럼 표현.
 
 ## 10. dialectic claim cards
 
@@ -425,13 +455,13 @@ FAIL 기준:
 - support tier: T2 repo-structure inference.
 - admission lane: APPLY for planning.
 
-### C3. 15,000자 claim
+### C3. 20,000자 DU gate claim
 
-- claim: 최소 15,000자는 파일이 아니라 major DU 단위에 적용해야 한다.
+- claim: 최소 20,000자는 파일이 아니라 major DU 단위에 적용해야 한다.
 - premises: 사용자 표현은 `각 섹션`이고, 한 파일에 여러 큰 주제가 들어갈 수 있다. 파일 단위 검증은 특정 섹션이 얕아지는 것을 숨길 수 있다.
-- strongest attack: 모든 `##`에 15,000자를 강제하면 작은 연결 섹션까지 과도하게 커질 수 있다.
+- strongest attack: 모든 `##`에 20,000자를 강제하면 작은 연결 섹션까지 과도하게 커질 수 있다.
 - response lane: ACCEPT_REPAIR.
-- repaired claim: `DU registry`에 등록된 major learning section만 15,000자 hard gate로 둔다. 안내, 색인, source-map, validation 같은 운영 섹션은 길이 대상에서 제외한다.
+- repaired claim: `DU registry`에 등록된 major learning section만 20,000자 hard gate로 둔다. 안내, 색인, source-map, validation 같은 운영 섹션은 길이 대상에서 제외한다.
 - support tier: T1 for user requirement, T2 for section-unit design.
 - admission lane: APPLY for planning.
 
@@ -457,7 +487,7 @@ FAIL 기준:
 
 ## 11. multi-agent council record
 
-이번 계획 tranche의 topology:
+이번 whole-complete 실행의 topology:
 
 - Orchestrator: Codex main. 요청 재정의, write scope, synthesis, patch, verification, commit을 담당한다.
 - DB Curriculum Architect: DB 전체 topic map과 학습 순서의 충분성을 본다.
@@ -472,14 +502,14 @@ FAIL 기준:
 | R2 | evidence breadth | `database/` corpus inventory와 existing seed를 source-map 대상으로 고정 |
 | R3 | registry stress | 12개 transaction unit을 56개 DB-wide DU registry로 확장 |
 | R4 | validation repair | per-file 검증을 major DU 검증으로 강화 |
-| R5 | closure audit | 이번 tranche는 plan revision only, whole writing request는 REQUEST_PARTIAL |
+| R5 | closure audit | planning checkpoint는 historical artifact일 뿐이고, 현재 요청은 remaining count 0인 WHOLE_COMPLETE만 허용 |
 
 sub-agent 결과가 material하게 다른 누락을 찾으면 이 section은 최종 patch 전에 갱신해야 합니다.
 
-## 12. execution tranches
+## 12. execution slices
 
-전체 요청은 한 번에 작성 완료를 선언할 수 없습니다.
-하지만 내부 tranche는 전체 완료를 향한 실행 단위일 뿐이며, verified tranche 하나로 멈출 수 없습니다.
+전체 요청은 모든 등록 DU와 비-DU 운영 산출물이 닫힐 때만 완료됩니다.
+내부 slice는 작업을 나누기 위한 실행 단위일 뿐이며, verified slice 하나로 멈출 수 없습니다.
 
 권장 순서:
 
@@ -492,13 +522,13 @@ sub-agent 결과가 material하게 다른 누락을 찾으면 이 section은 최
 7. Tranche G: DU49-DU56, operations/security/search/NoSQL/NewSQL 작성.
 8. Tranche H: whole-corpus reverse audit, source-map closure, duplicate scan, local link sanity, final review, commit set 정리.
 
-각 tranche가 끝날 때마다 남은 DU count와 next immediate target을 갱신합니다.
+각 DU 또는 아주 작은 DU batch가 끝날 때마다 남은 DU count와 next immediate target을 갱신합니다.
 사용자가 `전체`, `완전`, `누락 없이`를 요구했으므로, 외부 blocker가 없다면 남은 DU가 있는 상태에서 whole complete를 말하지 않습니다.
 
 ## 13. downstream impact gate
 
 이 계획은 후속 작성자가 대량 파일 생성과 기존 파일 재구성을 하게 만드는 action surface입니다.
-예상 downstream actor는 다음 Codex tranche 또는 사용자입니다.
+예상 downstream actor는 현재 Codex 실행, 다음 continuation, 또는 사용자입니다.
 예상 행동은 `database/deep-dive/` 생성, 기존 `database/` 파일 source-map 작성, 56개 DU 작성, lab 추가, 검증, commit입니다.
 
 되돌림 가능성은 중간 정도입니다.
@@ -515,9 +545,9 @@ safer path:
 ## 14. closure control
 
 - requested whole objective: DB 전체를 완전 분해해 학습 가능한 장문 corpus로 정리한다.
-- current tranche: DB-wide plan repair.
-- achieved closure scope: DB-wide DU registry, `database/deep-dive/` topology, existing-source preservation policy, validation rules, dialectic/review surface.
-- whole-request completion verdict: REQUEST_PARTIAL.
-- remaining executable count: 56 DU plus index/source-map/labs/validation and final reverse audit.
-- next immediate target: `database/deep-dive/source-map.md` and `database/deep-dive/00-index.md`.
+- current execution scope: DB-wide whole-complete writing run.
+- achieved closure scope: DU01-DU56 본문, index/source-map/source-map.tsv, validator, validation contract, category lab scripts가 작성되었고 `python3 database/deep-dive/validate_deep_dive.py`가 PASS했다.
+- whole-request completion verdict: WHOLE_COMPLETE.
+- remaining executable count: 0.
+- next immediate target: none inside the requested corpus; final response records the resulting commit hash.
 - current-vs-historical evidence: 이전 transaction plan과 Linux/network monograph validation은 precedent일 뿐, DB domain truth는 작성 tranche에서 공식 자료와 실험으로 새로 닫아야 한다.
