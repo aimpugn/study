@@ -1,5 +1,7 @@
 package p42586;
 
+import support.TestCase2;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -264,24 +266,22 @@ class Solution {
 
 public class Main260511 {
     public static void main(String[] args) {
-        Solution solution = new Solution();
+        var solution = new Solution();
 
-        // System.out.println(Arrays.toString(solution.solution(...)));
         var testCases = List.of(
-            new TestCase(List.of(new int[]{93, 30, 55}, new int[]{1, 30, 5}), new int[]{2, 1}),
-            new TestCase(List.of(new int[]{95, 90, 99, 99, 80, 99}, new int[]{1, 1, 1, 1, 1, 1}), new int[]{1, 3, 2}),
-            new TestCase(List.of(new int[]{95, 90, 99, 99, 93, 99}, new int[]{1, 1, 1, 1, 1, 1}), new int[]{1, 5}),
-            new TestCase(List.of(new int[]{95, 90, 99, 99, 99, 80}, new int[]{1, 1, 1, 1, 1, 1}), new int[]{1, 4, 1}),
-            new TestCase(List.of(new int[]{99, 98, 97}, new int[]{1, 1, 1}), new int[]{1, 1, 1}),
-            new TestCase(List.of(new int[]{99, 99, 99}, new int[]{1, 1, 1}), new int[]{3}),
-            new TestCase(List.of(new int[]{99}, new int[]{1}), new int[]{1})
+            new TestCase2<>(new int[]{93, 30, 55}, new int[]{1, 30, 5}, new int[]{2, 1}),
+            new TestCase2<>(new int[]{95, 90, 99, 99, 80, 99}, new int[]{1, 1, 1, 1, 1, 1}, new int[]{1, 3, 2}),
+            new TestCase2<>(new int[]{95, 90, 99, 99, 93, 99}, new int[]{1, 1, 1, 1, 1, 1}, new int[]{1, 5}),
+            new TestCase2<>(new int[]{95, 90, 99, 99, 99, 80}, new int[]{1, 1, 1, 1, 1, 1}, new int[]{1, 4, 1}),
+            new TestCase2<>(new int[]{99, 98, 97}, new int[]{1, 1, 1}, new int[]{1, 1, 1}),
+            new TestCase2<>(new int[]{99, 99, 99}, new int[]{1, 1, 1}, new int[]{3}),
+            new TestCase2<>(new int[]{99}, new int[]{1}, new int[]{1})
         );
 
         for (var testCase : testCases) {
-            var input = testCase.input();
-            assertAnswer("현재 풀이", testCase.answer(), solution.solution(input.getFirst(), input.getLast()));
-            assertAnswer("명시적 인덱스 풀이", testCase.answer(), solution.solutionByExplicitStartIndex(input.getFirst(), input.getLast()));
-            assertAnswer("Queue 풀이", testCase.answer(), solution.solutionByQueue(input.getFirst(), input.getLast()));
+            assertAnswer("현재 풀이", testCase.answer(), solution.solution(testCase.input(), testCase.input2()));
+            assertAnswer("명시적 인덱스 풀이", testCase.answer(), solution.solutionByExplicitStartIndex(testCase.input(), testCase.input2()));
+            assertAnswer("Queue 풀이", testCase.answer(), solution.solutionByQueue(testCase.input(), testCase.input2()));
         }
 
         System.out.println("All p42586 Main260511 checks passed.");
@@ -294,8 +294,5 @@ public class Main260511 {
                     + ", actual=" + Arrays.toString(actual)
             );
         }
-    }
-
-    private record TestCase(List<int[]> input, int[] answer) {
     }
 }
