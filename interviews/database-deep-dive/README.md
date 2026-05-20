@@ -15,7 +15,7 @@
 5. [스키마, 제약, 마이그레이션](05-schema-constraints-migration.md)
 6. [트랜잭션과 ACID 경계](06-transaction-acid-boundary.md)
 7. [MVCC와 snapshot visibility](07-mvcc-snapshot-visibility.md)
-8. [격리 수준, lock, deadlock](08-isolation-lock-deadlock.md)
+8. [트랜잭션 전파, 격리 수준, lock, deadlock](08-isolation-lock-deadlock.md)
 9. [복제, 지연, 백업, failover](09-replication-lag-backup-failover.md)
 10. [파티셔닝, 샤딩, 분산 SQL](10-partition-sharding-distributed-sql.md)
 11. [MySQL/InnoDB와 PostgreSQL 엔진 비교](11-mysql-postgresql-engine-deep-dive.md)

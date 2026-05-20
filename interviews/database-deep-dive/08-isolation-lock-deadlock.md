@@ -1,12 +1,12 @@
-# 격리 수준, 락, 데드락은 어떤 동시성 실패를 막고 어떤 실패를 남기는가?
+# 트랜잭션 전파, 격리 수준, 락, 데드락은 동시성 실패에서 각각 무엇을 담당하는가?
 
-격리 수준은 transaction들이 서로의 변경을 어떤 방식으로 관측할 수 있는지 정하는 계약이고, lock은 그 계약을 실현하기 위해 DBMS가 row, index range, table, predicate, advisory key 같은 자원에 충돌 규칙을 붙이는 실행 수단이다. 둘은 같은 말이 아니다. Isolation은 사용자에게 약속하는 관측 결과이고, lock은 그 약속을 만들기 위해 쓰는 여러 도구 중 하나다. MVCC, predicate conflict tracking, next-key lock, serialization failure, retry도 모두 같은 목표 주변에 있다.
+트랜잭션 전파(transaction propagation)는 애플리케이션 호출 흐름에서 이미 열린 transaction에 참여할지, 새 transaction을 열지, savepoint를 만들지 정하는 경계 규칙이다. 격리 수준(isolation level)은 그렇게 만들어진 transaction들이 서로의 변경을 어떤 방식으로 관측할 수 있는지 정하는 계약이고, lock은 그 계약이나 업무 불변식을 실현하기 위해 DBMS가 row, index range, table, predicate, advisory key 같은 자원에 충돌 규칙을 붙이는 실행 수단이다. 셋은 같은 말이 아니다. 전파는 호출 경계와 commit/rollback 지점을 정하고, 격리는 관측 결과를 정하며, lock은 그 관측 계약과 쓰기 충돌을 실행 단계에서 조정한다. MVCC, predicate conflict tracking, next-key lock, serialization failure, retry도 모두 이 목표 주변에 있다.
 
-면접에서 이 주제를 잘 답하려면 dirty read, non-repeatable read, phantom read 표를 외운 뒤 멈추면 안 된다. `PostgreSQL READ COMMITTED`, `PostgreSQL REPEATABLE READ`, `PostgreSQL SERIALIZABLE`, `MySQL/InnoDB REPEATABLE READ`가 같은 이름과 다른 구현을 가질 수 있음을 말해야 한다. 또한 row lock, gap lock, next-key lock, predicate lock, advisory lock, table lock을 보호하는 대상별로 나누고, latch와 lock의 차이, deadlock wait graph와 retry boundary까지 이어야 한다.
+면접에서 이 주제를 잘 답하려면 dirty read, non-repeatable read, phantom read 표를 외운 뒤 멈추면 안 된다. `PostgreSQL READ COMMITTED`, `PostgreSQL REPEATABLE READ`, `PostgreSQL SERIALIZABLE`, `MySQL/InnoDB REPEATABLE READ`가 같은 이름과 다른 구현을 가질 수 있음을 말해야 한다. 또한 Spring의 `REQUIRED`, `REQUIRES_NEW`, `NESTED` 같은 전파 설정은 격리 수준이 아니라 transaction 경계를 호출 그래프에 어떻게 이어 붙일지 정하는 정책이라는 점을 분리해야 한다. 그 위에서 row lock, gap lock, next-key lock, predicate lock, advisory lock, table lock을 보호 대상별로 나누고, latch와 lock의 차이, deadlock wait graph, retry boundary, 경쟁 조건(race condition)까지 이어야 한다.
 
 ## 2-5분 개요
 
-짧게 답하면 이렇게 말할 수 있다. SQL isolation level은 동시 transaction이 서로 어떤 중간 결과나 새 row를 볼 수 있는지 정하는 계약이다. DBMS는 그 계약을 MVCC snapshot, row lock, range lock, predicate 성격의 conflict tracking, serialization failure 같은 방식으로 구현한다. Lock은 그중 하나의 실행 수단이고, deadlock은 여러 transaction이 서로 가진 자원을 기다리며 cycle을 만들 때 발생한다. MVCC의 version visibility 자체는 [MVCC와 snapshot visibility](07-mvcc-snapshot-visibility.md)에서 먼저 잡아 두면 이 문서의 lock 논리가 더 잘 보인다.
+짧게 답하면 이렇게 말할 수 있다. 트랜잭션 전파(transaction propagation)는 서비스 메서드 호출이 같은 물리 transaction을 공유할지 새 transaction을 열지 정한다. SQL 격리 수준(isolation level)은 만들어진 transaction들이 서로 어떤 중간 결과나 새 row를 볼 수 있는지 정하는 계약이다. DBMS는 그 계약을 MVCC snapshot, row lock, range lock, predicate 성격의 conflict tracking, serialization failure 같은 방식으로 구현한다. Lock은 그중 하나의 실행 수단이고, deadlock은 여러 transaction이 서로 가진 자원을 기다리며 cycle을 만들 때 발생한다. 경쟁 조건은 결과가 실행 타이밍에 따라 달라지는 더 넓은 이름이고, dirty read나 phantom read는 그중 DB transaction에서 관측되는 대표 현상이다. MVCC의 version visibility 자체는 [MVCC와 snapshot visibility](07-mvcc-snapshot-visibility.md)에서 먼저 잡아 두면 이 문서의 lock 논리가 더 잘 보인다.
 
 가장 흔한 오해는 `격리 수준을 높이면 안전하다`와 `lock을 걸면 안전하다`를 같은 말로 보는 것이다. 격리 수준을 높이면 anomaly를 줄일 수 있지만 abort/retry, lock wait, throughput 저하가 생긴다. Lock을 더 넓게 잡으면 특정 충돌은 막을 수 있지만 deadlock과 contention이 늘 수 있다. 반대로 lock을 너무 좁게 잡거나 index가 없어 range lock이 넓어지면, 의도와 다른 row까지 막거나 phantom을 놓칠 수 있다.
 
@@ -14,7 +14,7 @@ PostgreSQL은 MVCC 기반 plain read가 writer를 막지 않는 성격이 강하
 
 Deadlock은 DB가 이상한 상태가 되었다는 뜻이 아니라, 동시 transaction scheduling에서 생길 수 있는 정상적인 실패 모드다. T1이 A를 잡고 B를 기다리며, T2가 B를 잡고 A를 기다리면 cycle이 생긴다. DBMS는 deadlock을 감지하면 보통 한 transaction을 victim으로 골라 abort한다. 애플리케이션은 이 오류를 재시도 가능한 경계로 다뤄야 하고, 같은 자원을 항상 같은 순서로 잡는 설계로 빈도를 줄여야 한다.
 
-면접 답변의 핵심은 네 가지다. 첫째, isolation은 관측 계약이고 lock은 구현 수단이다. 둘째, DBMS별로 같은 isolation 이름의 실제 동작이 다르다. 셋째, lock은 보호 대상과 mode를 기준으로 말해야 한다. 넷째, deadlock은 wait graph cycle이며 retry와 lock ordering이 설계의 일부다.
+면접 답변의 핵심은 다섯 가지다. 첫째, 전파(propagation)는 호출 경계 정책이고 격리(isolation)는 관측 계약이며 lock은 구현 수단이다. 둘째, DBMS별로 같은 isolation 이름의 실제 동작이 다르다. 셋째, lock은 보호 대상과 mode를 기준으로 말해야 한다. 넷째, deadlock은 wait graph cycle이며 retry와 lock ordering이 설계의 일부다. 다섯째, 경쟁 조건(race condition)은 DB 용어 하나가 아니라 애플리케이션 상태 전이가 실행 순서에 의존한다는 더 넓은 문제 이름이다.
 
 ## 먼저 잡아야 할 작은 모델
 
@@ -36,6 +36,33 @@ T2
 ```
 
 만약 실제로 같은 seat row를 update한다면 row lock이나 write conflict가 둘 중 하나를 막을 수 있다. 하지만 invariant가 `남은 좌석 count > 0이면 예약 row를 추가한다`처럼 aggregate/predicate에 걸려 있으면 단일 row lock만으로 충분하지 않을 수 있다. 특히 예약 row만 insert하고 seat 상태를 늦게 바꾸거나, 조건이 range query로 표현되면 phantom과 write skew가 등장한다.
+
+이 좌석 예약을 Spring 서비스 호출로 감싸면 전파(propagation)가 별도 축으로 보인다.
+
+```text
+OrderService.reserveSeat()      @Transactional(REQUIRED)
+  -> SeatRepository.markSold()  같은 물리 transaction에 참여
+  -> AuditService.writeLog()    @Transactional(REQUIRES_NEW)
+  -> CouponService.useCoupon()  @Transactional(NESTED)
+```
+
+```text
+T0: reserveSeat 진입
+    REQUIRED가 물리 transaction P1을 연다.
+
+T1: markSold 호출
+    REQUIRED는 P1에 참여한다. commit은 아직 없다.
+
+T2: writeLog 호출
+    REQUIRES_NEW는 P1을 잠시 묶어 두고 물리 transaction P2를 새로 연다.
+    P2가 먼저 commit되면, 나중에 P1이 rollback되어도 audit row는 남을 수 있다.
+
+T3: useCoupon 호출
+    NESTED는 같은 P1 안에 savepoint를 만든다.
+    coupon 처리만 savepoint로 되돌려도 P1 전체를 계속 진행할 수 있다.
+```
+
+이 trace에서 전파는 `어떤 commit 경계가 생기는가`를 바꾼다. 그러나 P1과 P2가 동시에 다른 transaction과 부딪힐 때 어떤 값을 볼지는 isolation이 정하고, 어떤 row나 index range를 기다릴지는 lock이 정한다. 따라서 `REQUIRES_NEW를 쓰면 동시성 문제가 해결된다`가 아니라 `commit 경계가 분리되므로 성공/실패와 lock 보유 시간이 어떻게 달라지는가`를 물어야 한다. 특히 바깥 transaction이 connection을 붙잡은 채 안쪽 `REQUIRES_NEW`가 새 connection을 요구하면 connection pool 부족과 대기 문제가 생길 수 있다.
 
 다음 trace는 row lock과 predicate 보호의 차이를 보여 준다.
 
@@ -59,13 +86,37 @@ predicate 보호가 필요한 경우
 
 ## 깊은 메커니즘
 
-### Isolation level은 금지할 현상을 정하지만 제품별 의미가 다르다
+### 격리 수준은 금지할 현상을 정하지만 제품별 의미가 다르다
 
 SQL 표준은 isolation을 dirty read, non-repeatable read, phantom read 같은 현상으로 설명한다. Dirty read는 commit되지 않은 다른 transaction의 변경을 읽는 것이다. Non-repeatable read는 같은 row를 두 번 읽었는데 중간 commit 때문에 값이 달라지는 것이다. Phantom read는 같은 조건으로 다시 검색했을 때 새 row가 나타나는 것이다.
 
 하지만 실제 DBMS는 표준 표를 그대로 구현하는 것이 아니라 자기 저장 구조와 동시성 제어 방식에 맞게 isolation을 제공한다. PostgreSQL의 `READ COMMITTED`는 statement마다 snapshot을 새로 만들기 때문에 같은 transaction 안의 반복 SELECT가 다른 committed 값을 볼 수 있다. PostgreSQL의 `REPEATABLE READ`는 phantom까지 상당히 막는 snapshot isolation 성격을 가진다. PostgreSQL의 `SERIALIZABLE`은 SSI로 dependency cycle을 감지해 serialization failure를 낼 수 있다.
 
 MySQL/InnoDB는 기본 `REPEATABLE READ`에서 consistent read는 transaction read view를 유지하지만, locking read와 range scan에서는 next-key lock이 중요해진다. `READ COMMITTED`에서는 gap lock 사용이 줄어드는 등 lock behavior가 달라질 수 있다. 따라서 `REPEATABLE READ면 phantom이 발생한다/안 한다`처럼 제품 없이 단정하는 답은 위험하다.
+
+### 전파는 격리가 아니라 transaction 경계의 전파 규칙이다
+
+Spring 같은 프레임워크에서 말하는 트랜잭션 전파(transaction propagation)는 이미 시작된 transaction이 있을 때 안쪽 메서드가 그 transaction에 참여할지, 독립 transaction을 열지, transaction 없이 실행할지, savepoint를 만들지 정한다. 기본값인 `REQUIRED`는 현재 transaction이 있으면 참여하고 없으면 새로 시작한다. 이때 여러 메서드마다 논리적인 transaction scope가 생길 수 있지만, 보통 하나의 물리 transaction에 매핑된다.
+
+이 차이는 rollback에서 바로 드러난다. 안쪽 `REQUIRED` scope가 rollback-only 표시를 남기면 바깥 scope는 정상 commit을 시도하더라도 결국 commit되지 않는다. 그래서 Spring은 호출자가 commit됐다고 오해하지 않도록 `UnexpectedRollbackException`을 낼 수 있다. 반대로 `REQUIRES_NEW`는 바깥 transaction과 독립된 물리 transaction을 새로 열기 때문에 안쪽 commit/rollback이 바깥 transaction의 commit 여부와 분리된다. `NESTED`는 대개 같은 물리 transaction 안의 savepoint로 이해하는 편이 안전하다.
+
+```text
+REQUIRED
+  outer P1 시작
+  inner는 P1에 참여
+  commit/rollback은 바깥 P1 경계에서 결정
+
+REQUIRES_NEW
+  outer P1은 유지된 채 일시 중단
+  inner P2 새로 시작
+  P2는 먼저 commit/rollback 가능
+
+NESTED
+  outer P1 안에 savepoint 생성
+  inner 실패분만 savepoint로 되돌릴 수 있음
+```
+
+전파(propagation)는 transaction 경계와 connection 사용량, lock 보유 시간, rollback 전파 방식을 바꾸지만, dirty read나 phantom read를 직접 금지하는 설정은 아니다. 격리 수준(isolation level), timeout, read-only 같은 속성도 안쪽 메서드가 기존 transaction에 참여하는 경우에는 바깥 transaction의 성격을 따라갈 수 있다. 따라서 면접에서는 `propagation=REQUIRES_NEW라서 격리가 강해집니다`가 아니라 `새 물리 transaction이 생기므로 commit 경계, connection pool, lock release 시점, side effect 생존 여부가 달라집니다`라고 말해야 한다.
 
 ### Row lock은 논리 row가 아니라 접근 경로와 연결된다
 
@@ -167,6 +218,26 @@ write skew
   combined result breaks invariant
 ```
 
+### 경쟁 조건은 anomaly, lock wait, deadlock을 모두 품는 더 넓은 이름이다
+
+경쟁 조건(race condition)은 둘 이상의 실행 흐름이 같은 상태를 읽거나 바꾸는데, 최종 결과가 실행 순서와 타이밍에 의존하는 상황이다. DB isolation anomaly는 그 경쟁 조건이 transaction의 읽기/쓰기 관측에서 드러난 구체적인 모양이다. Deadlock은 결과가 틀리는 anomaly라기보다 서로의 lock을 기다리다 진행이 멈추는 scheduling 실패다. Lock wait는 아직 cycle은 아니지만 어떤 transaction이 다른 transaction의 자원 해제를 기다리는 관측 신호다.
+
+```text
+race condition
+  넓은 문제 이름: 실행 순서가 결과를 바꾼다.
+
+dirty / non-repeatable / phantom read
+  읽기 관측이 isolation 계약에 따라 달라진다.
+
+lost update / write skew
+  읽은 값을 근거로 쓴 결과가 업무 불변식을 깨뜨린다.
+
+lock wait / deadlock
+  DBMS가 충돌을 조정하는 과정에서 기다림 또는 cycle이 생긴다.
+```
+
+이 구분이 있어야 해결책도 정확해진다. 경쟁 조건(race condition)이라는 말만 듣고 무조건 `synchronized`나 distributed lock을 붙이면 DB가 이미 제공하는 constraint, conditional update, row lock, unique index, serializable retry를 놓칠 수 있다. 반대로 isolation level만 올리면 외부 API 중복 호출, 잘못 쪼개진 transaction boundary, cache 갱신 순서 같은 애플리케이션 경쟁은 남을 수 있다. 먼저 어떤 공유 상태가 어떤 순서에서 깨지는지 trace를 그린 뒤, 그 상태를 DB가 아는 invariant로 내릴지, 애플리케이션에서 직렬화할지, retry와 멱등성으로 흡수할지 고른다.
+
 ### Lock wait를 줄이는 일과 correctness를 지키는 일은 함께 봐야 한다
 
 운영에서 lock wait가 늘면 누구나 빨리 줄이고 싶어 한다. 하지만 lock을 줄이는 방향이 invariant를 깨면 안 된다. 예를 들어 `SELECT ... FOR UPDATE`를 제거하면 대기 시간은 줄 수 있지만, 같은 재고를 두 transaction이 동시에 차감할 수 있다. 반대로 모든 작업에 table lock을 걸면 correctness는 단순해질 수 있지만 throughput이 무너진다.
@@ -259,9 +330,15 @@ InnoDB에서는 index 설계가 lock 설계다. 같은 SQL이라도 적절한 in
 
 예를 들어 optimistic lock은 update 시 `WHERE id=? AND version=?` 조건으로 affected row count를 확인한다. 충돌이 나면 사용자가 다시 읽고 재시도해야 한다. 이것은 DB row lock을 오래 들고 있지 않는 장점이 있지만, conflict가 많은 hot row에서는 retry가 많아질 수 있다. Distributed lock은 lock service와 네트워크 failure, lease 만료, clock skew, fencing token을 봐야 한다. DB lock보다 무조건 낫다고 말하면 안 된다.
 
+Spring의 트랜잭션 전파(transaction propagation)는 이 애플리케이션 경계에 속한다. `REQUIRED`는 서비스 경계의 여러 repository 호출을 같은 commit 경계에 묶는 데 적합하고, `REQUIRES_NEW`는 audit log나 실패 기록처럼 바깥 transaction과 별도로 남겨야 하는 작업에 쓰일 수 있다. 하지만 `REQUIRES_NEW`는 새 connection을 요구하고, 바깥 transaction이 들고 있던 lock은 그대로 남을 수 있으며, 안쪽 commit이 바깥 rollback보다 먼저 영구화될 수 있다. 따라서 전파 선택은 `업무적으로 commit 생존 범위가 달라져도 되는가`, `connection pool이 버틸 수 있는가`, `재시도 때 side effect가 중복되지 않는가`를 함께 봐야 한다.
+
 ## 직접 재생해 보기
 
-1. Deadlock을 일부러 만든다.
+1. 전파 경계를 눈으로 그린다.
+
+    작은 Spring 서비스 세 개를 가정한다. A는 `REQUIRED`, B는 `REQUIRED`, C는 `REQUIRES_NEW` 또는 `NESTED`로 둔다. A가 시작한 transaction 안에서 B와 C를 호출할 때 commit 지점, rollback 전파, connection 수, lock release 시점을 표로 적는다. PASS 신호는 `REQUIRED는 같은 물리 transaction을 공유하고, REQUIRES_NEW는 독립 물리 transaction을 열며, NESTED는 savepoint 성격으로 설명할 수 있는 것`이다. FAIL 신호는 전파를 dirty read나 phantom read를 막는 격리 수준처럼 설명하는 것이다.
+
+2. Deadlock을 일부러 만든다.
 
     Session A:
 
@@ -282,23 +359,27 @@ InnoDB에서는 index 설계가 lock 설계다. 같은 SQL이라도 적절한 in
 
     PASS 신호는 DB가 deadlock을 감지하고 한 transaction을 abort하는 것이다. 그 다음 두 session 모두 A, B 순서로 update하도록 바꾸면 deadlock 가능성이 줄어드는지 확인한다.
 
-2. InnoDB range lock을 확인한다.
+3. InnoDB range lock을 확인한다.
 
     적절한 index가 있는 table에서 `SELECT ... WHERE score BETWEEN 10 AND 20 FOR UPDATE`를 실행하고 다른 session에서 score=15 row를 insert해 본다. 기다림이 발생하면 어떤 index range가 보호되는지 설명한다. Index를 제거하거나 다른 조건으로 바꾸었을 때 lock 범위가 달라지는지도 `EXPLAIN`과 lock view로 본다.
 
-3. PostgreSQL Serializable retry를 만든다.
+4. PostgreSQL Serializable retry를 만든다.
 
     Write skew 예시를 사용한다. 두 transaction이 같은 predicate를 읽고 서로 다른 row를 update해 invariant를 깨는 패턴을 만든다. `SERIALIZABLE`에서 한 transaction이 serialization failure로 실패하면 PASS다. 애플리케이션 관점에서는 같은 transaction function을 재실행해야 한다.
 
-4. Advisory lock 생명주기를 비교한다.
+5. Advisory lock 생명주기를 비교한다.
 
     PostgreSQL에서 transaction-level advisory lock과 session-level advisory lock을 각각 잡고 commit/rollback/connection close 때 어떻게 해제되는지 확인한다. Connection pool에서 session-level lock을 쓰면 왜 위험한지 설명할 수 있어야 한다.
 
-5. Latch와 lock 지표를 분리해 말한다.
+6. Latch와 lock 지표를 분리해 말한다.
 
     실제 환경이 없다면 wait event 예시를 표로 만든다. `row lock wait`, `metadata lock`, `buffer content lock`, `IO wait`가 모두 같은 해결책을 갖지 않는다는 점을 적는다. PASS는 대기 이름을 보고 바로 쿼리를 죽이는 것이 아니라 보호 대상과 owner를 먼저 찾는 것이다.
 
 ## 면접 꼬리 질문
+
+- 전파와 격리는 어떻게 다른가요?
+
+    전파(propagation)는 호출된 메서드가 기존 transaction에 참여할지 새 transaction을 열지 정하는 애플리케이션 경계 정책이다. 격리(isolation)는 이미 만들어진 transaction들이 서로 어떤 변경을 볼 수 있는지 정하는 DB 관측 계약이다. `REQUIRES_NEW`는 새 물리 transaction을 만들 수 있지만 그 자체가 dirty read나 phantom read를 막는 격리 수준은 아니다.
 
 - REPEATABLE READ면 phantom read가 항상 발생하나요?
 
@@ -324,6 +405,10 @@ InnoDB에서는 index 설계가 lock 설계다. 같은 SQL이라도 적절한 in
 
     같은 DB와 같은 규칙을 공유하는 참여자 사이에서는 유용하다. 하지만 DB 밖 시스템, session 생명주기, connection pool, timeout, fencing 문제는 별도로 봐야 한다. Advisory lock은 DB가 의미를 모르는 key에 대한 약속이다.
 
+- 경쟁 조건과 phantom read는 같은 말인가요?
+
+    아니다. 경쟁 조건(race condition)은 실행 순서와 타이밍에 따라 결과가 달라지는 넓은 문제 이름이다. Phantom read는 같은 predicate query를 다시 실행했을 때 새 row가 보이는 DB isolation 현상이다. Phantom read는 race condition의 한 형태로 볼 수 있지만, race condition은 cache 갱신 순서, 외부 API 중복 호출, lock ordering 문제처럼 DB isolation 표 밖에서도 생긴다.
+
 ## 함정 질문
 
 - Isolation level 표만 외우고 DBMS 차이를 무시하는 답
@@ -342,11 +427,17 @@ InnoDB에서는 index 설계가 lock 설계다. 같은 SQL이라도 적절한 in
 
     조건에 새 row가 들어오는 phantom이나 write skew는 기존 row 하나를 잡는 것만으로 막히지 않을 수 있다. Range/predicate 보호, serializable retry, guard row, constraint 설계를 봐야 한다.
 
+- 전파 설정을 격리 수준처럼 말하는 답
+
+    `REQUIRED`, `REQUIRES_NEW`, `NESTED`는 호출 경계가 물리 transaction을 어떻게 공유하거나 나누는지 정한다. Dirty read, non-repeatable read, phantom read를 어떤 수준까지 허용할지는 DB isolation level과 DBMS 구현이 정한다. 전파로 commit 경계를 분리하면 side effect 생존 범위와 connection pool 압박이 바뀔 수 있으므로 오히려 별도 검토가 필요하다.
+
 - Application distributed lock을 DB isolation의 상위 호환으로 말하는 답
 
     Distributed lock은 다른 실패 모드를 가진다. Lease 만료, lock service 장애, fencing token, clock 문제를 설계하지 않으면 DB lock보다 더 위험할 수 있다.
 
 ## 답변을 더 단단하게 만드는 판단 흐름
+
+이 주제는 먼저 축을 나누면 훨씬 덜 헷갈린다. 전파(propagation)는 `이 코드 호출이 어느 transaction 경계에 들어가는가`를 묻고, 격리(isolation)는 `동시에 실행되는 transaction끼리 무엇을 볼 수 있는가`를 묻고, lock은 `어떤 자원을 누가 기다리는가`를 묻는다. 경쟁 조건(race condition)은 `실행 순서가 결과를 바꾸는가`라는 더 넓은 질문이다. 이 네 질문을 섞으면 `REQUIRES_NEW를 쓰면 phantom이 막힌다`, `READ COMMITTED니까 deadlock이 없다`, `lock을 걸었으니 모든 경쟁 조건이 사라진다` 같은 답이 나온다.
 
 격리 수준과 lock 질문은 항상 `어떤 불변식이 동시에 깨질 수 있는가`에서 시작한다. 단일 row만 바뀌는 문제라면 row lock이나 조건부 update로 충분할 수 있다. 그러나 좌석 예약, 재고 총량, 당직 의사 최소 1명, 쿠폰 1회 사용처럼 여러 row나 predicate가 만드는 불변식은 단순 row lock만으로 닫히지 않을 수 있다. 면접에서는 먼저 불변식의 모양을 말한 뒤, 그 불변식을 어떤 자원 단위로 보호할지 설명해야 한다.
 
@@ -411,13 +502,17 @@ external side effect      -> idempotency, outbox, compensation, fencing token
 - [MySQL 8.4 Reference Manual: InnoDB Transaction Isolation Levels](https://dev.mysql.com/doc/refman/8.4/en/innodb-transaction-isolation-levels.html)
 - [MySQL 8.4 Reference Manual: InnoDB Locking](https://dev.mysql.com/doc/refman/8.4/en/innodb-locking.html)
 - [MySQL 8.4 Reference Manual: Deadlocks in InnoDB](https://dev.mysql.com/doc/refman/8.4/en/innodb-deadlocks.html)
+- [Spring Framework Reference: Transaction Propagation](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/tx-propagation.html)
+- [Spring Framework Reference: Using @Transactional](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html)
 
 저장소 안에서 이어 볼 자료:
 
+- [jvm/spring/spring_transactional.md](../../jvm/spring/spring_transactional.md)
+- [트랜잭션 경계와 ACID](06-transaction-acid-boundary.md)
 - [database/lock.md](../../database/lock.md)
 - [database/postgresql/lock.md](../../database/postgresql/lock.md)
 - [database/deep-dive/transactions/13-isolation-anomalies.md](../../database/deep-dive/transactions/13-isolation-anomalies.md)
 - [database/deep-dive/transactions/14-locks-latches-deadlocks.md](../../database/deep-dive/transactions/14-locks-latches-deadlocks.md)
 - [MVCC와 snapshot visibility](07-mvcc-snapshot-visibility.md)
 
-이 자료를 볼 때는 `무엇을 읽었고, 무엇을 썼고, 어떤 자원이 기다림을 만들었는가`를 계속 추적한다. 격리 수준은 관측 계약이고, lock은 그 계약을 만들기 위한 수단이며, deadlock은 기다림 관계의 cycle이라는 세 문장으로 다시 압축할 수 있으면 면접 답변의 중심이 잡힌 것이다.
+이 자료를 볼 때는 `어느 transaction 경계에 들어갔고, 무엇을 읽었고, 무엇을 썼고, 어떤 자원이 기다림을 만들었는가`를 계속 추적한다. 전파는 호출 경계 정책이고, 격리 수준은 관측 계약이며, lock은 그 계약을 만들기 위한 수단이고, deadlock은 기다림 관계의 cycle이라는 네 문장으로 다시 압축할 수 있으면 면접 답변의 중심이 잡힌 것이다.

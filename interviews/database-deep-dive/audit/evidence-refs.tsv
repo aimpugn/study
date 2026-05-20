@@ -27,6 +27,7 @@ official-pg-pitr	official-primary	https://www.postgresql.org/docs/current/contin
 official-pg-wal	official-primary	https://www.postgresql.org/docs/current/wal-intro.html	PostgreSQL WAL	current official reference used to bound DB interview deep-dive claims
 official-postgresql-pitr	official-primary	https://www.postgresql.org/docs/current/continuous-archiving.html	PostgreSQL PITR	PostgreSQL 18 current continuous archiving and PITR.
 official-postgresql-wal	official-primary	https://www.postgresql.org/docs/current/wal-intro.html	PostgreSQL WAL	PostgreSQL 18 current WAL intro. Write-ahead rule, redo, online backup/PITR connection.
+official-spring-propagation	official-primary	https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/tx-propagation.html	Spring transaction propagation	official Spring Framework reference for REQUIRED, REQUIRES_NEW, NESTED and physical/logical transaction boundary claims
 official-spring-txn	official-primary	https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html	Spring declarative transactions	official Spring Framework reference for application transaction boundary claims
 python-validator-plus-critic	tool-and-review	interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py	process	validator PASS가 충분조건이 아니라 critic review와 함께 쓰인다는 경계다.
 validator-required-sections	tool	interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py	structure	필수 섹션과 reader-facing 금지 패턴을 확인한다.
