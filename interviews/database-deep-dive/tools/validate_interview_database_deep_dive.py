@@ -83,6 +83,52 @@ def markdown_h3_titles(text: str) -> list[str]:
     return [line.strip() for line in text.splitlines() if line.startswith("### ")]
 
 
+def markdown_headings(text: str) -> list[tuple[int, str]]:
+    headings: list[tuple[int, str]] = []
+    for line in text.splitlines():
+        match = re.match(r"^(#{2,3})\s+(.+?)\s*$", line)
+        if match:
+            headings.append((len(match.group(1)), match.group(2)))
+    return headings
+
+
+def heading_slug(title: str) -> str:
+    value = title.strip().lower()
+    value = re.sub(r"`([^`]*)`", r"\1", value)
+    value = re.sub(r"<[^>]+>", "", value)
+    value = re.sub(r"[^\w가-힣ㄱ-ㅎㅏ-ㅣ\s-]", "", value)
+    value = re.sub(r"\s+", "-", value.strip())
+    return value
+
+
+def expected_toc_lines(text: str) -> list[str]:
+    lines: list[str] = []
+    for level, title in markdown_headings(text):
+        indent = "" if level == 2 else "    "
+        lines.append(f"{indent}- [{title}](#{heading_slug(title)})")
+    return lines
+
+
+def actual_toc_lines(text: str) -> list[str]:
+    lines = text.splitlines()
+    first_h2 = next((i for i, line in enumerate(lines) if line.startswith("## ")), None)
+    if first_h2 is None:
+        return []
+    return [
+        line.rstrip()
+        for line in lines[:first_h2]
+        if re.match(r"^\s*- \[[^\]]+\]\(#[^)]+\)\s*$", line)
+    ]
+
+
+def local_image_links(text: str) -> list[str]:
+    links = []
+    for match in re.findall(r"!\[[^\]]*\]\(([^)]+)\)", text):
+        if not match.startswith(("http://", "https://")):
+            links.append(match.split("#", 1)[0])
+    return links
+
+
 def repeated_long_paragraphs(text: str) -> list[str]:
     paragraphs = [
         re.sub(r"\s+", " ", paragraph.strip())
@@ -277,6 +323,30 @@ def main() -> int:
         duplicate_h3 = sorted({title for title in h3_titles if h3_titles.count(title) > 1})
         if duplicate_h3:
             fail(errors, f"{row['target']} contains duplicate H3 headings: {', '.join(duplicate_h3)}")
+        expected_toc = expected_toc_lines(text)
+        actual_toc = actual_toc_lines(text)
+        if actual_toc != expected_toc:
+            missing = [line for line in expected_toc if line not in actual_toc]
+            bad_indent = [
+                line
+                for line in actual_toc
+                if line.startswith("  - ") or line.startswith("\t- ")
+            ]
+            if missing:
+                fail(errors, f"{row['target']} TOC missing H2/H3 entries such as: {missing[0]}")
+            elif bad_indent:
+                fail(errors, f"{row['target']} TOC uses non-4-space nested indentation: {bad_indent[0]}")
+            else:
+                fail(errors, f"{row['target']} TOC order or anchor does not match headings")
+        for image_link in local_image_links(text):
+            image_path = (target.parent / image_link).resolve()
+            try:
+                image_path.relative_to(CANONICAL.resolve())
+            except ValueError:
+                fail(errors, f"{row['target']} image link escapes canonical root: {image_link}")
+                continue
+            if not image_path.exists():
+                fail(errors, f"{row['target']} image link does not exist: {image_link}")
         repeated_paragraphs = repeated_long_paragraphs(text)
         if repeated_paragraphs:
             preview = repeated_paragraphs[0][:90]

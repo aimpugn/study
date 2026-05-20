@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="650" viewBox="0 0 1040 650" role="img" aria-labelledby="title desc">
+  <title id="title">DB process to storage I/O stack</title>
+  <desc id="desc">A database request moves from SQL execution through the DB buffer pool, operating-system kernel, filesystem, block layer, device driver, controller cache, and persistent storage.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#2f3a45" />
+    </marker>
+    <style>
+      .bg { fill: #f8faf7; }
+      .band { fill: #eef3ef; stroke: #7b8a7b; stroke-width: 1.5; }
+      .box { fill: #ffffff; stroke: #2f3a45; stroke-width: 1.8; rx: 8; }
+      .db { fill: #e7f0ff; }
+      .kernel { fill: #f4ebff; }
+      .storage { fill: #fff2df; }
+      .text { font: 18px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; fill: #17202a; }
+      .small { font: 15px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; fill: #34495e; }
+      .label { font: 16px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; fill: #243746; font-weight: 700; }
+      .arrow { stroke: #2f3a45; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .dash { stroke: #64748b; stroke-width: 2; stroke-dasharray: 8 7; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1040" height="650" />
+  <text class="text" x="40" y="42" font-weight="700">DB I/O는 DBMS 안에서 끝나지 않고 OS kernel과 storage stack을 통과합니다</text>
+
+  <rect class="band" x="36" y="72" width="968" height="146" />
+  <text class="label" x="58" y="104">사용자 공간: DBMS process / thread</text>
+  <rect class="box db" x="70" y="126" width="210" height="58" />
+  <text class="text" x="92" y="161">SQL executor</text>
+  <rect class="box db" x="340" y="126" width="230" height="58" />
+  <text class="text" x="362" y="161">DB buffer pool</text>
+  <rect class="box db" x="635" y="126" width="245" height="58" />
+  <text class="text" x="657" y="151">WAL / redo buffer</text>
+  <text class="small" x="657" y="174">commit durability gate</text>
+
+  <rect class="band" x="36" y="250" width="968" height="190" />
+  <text class="label" x="58" y="282">커널 공간: 파일, 메모리, 스케줄링, 블록 I/O</text>
+  <rect class="box kernel" x="70" y="304" width="210" height="70" />
+  <text class="text" x="92" y="334">system call</text>
+  <text class="small" x="92" y="357">read / write / fsync</text>
+  <rect class="box kernel" x="326" y="304" width="210" height="70" />
+  <text class="text" x="348" y="334">page cache</text>
+  <text class="small" x="348" y="357">dirty page writeback</text>
+  <rect class="box kernel" x="582" y="304" width="210" height="70" />
+  <text class="text" x="604" y="334">filesystem</text>
+  <text class="small" x="604" y="357">block mapping</text>
+  <rect class="box kernel" x="815" y="304" width="145" height="70" />
+  <text class="text" x="837" y="334">scheduler</text>
+  <text class="small" x="837" y="357">CPU / wait</text>
+
+  <rect class="box kernel" x="326" y="388" width="210" height="36" />
+  <text class="small" x="348" y="411">block layer / I/O queue</text>
+  <rect class="box kernel" x="582" y="388" width="210" height="36" />
+  <text class="small" x="604" y="411">device driver</text>
+
+  <rect class="band" x="36" y="470" width="968" height="128" />
+  <text class="label" x="58" y="502">저장 장치: controller cache와 영구 매체</text>
+  <rect class="box storage" x="120" y="526" width="220" height="48" />
+  <text class="text" x="143" y="556">controller cache</text>
+  <rect class="box storage" x="430" y="526" width="220" height="48" />
+  <text class="text" x="466" y="556">SSD / NVMe</text>
+  <rect class="box storage" x="740" y="526" width="180" height="48" />
+  <text class="text" x="774" y="556">HDD / RAID</text>
+
+  <path class="arrow" d="M280,155 H340" />
+  <path class="arrow" d="M570,155 H635" />
+  <path class="arrow" d="M760,184 C760,230 175,238 175,304" />
+  <path class="arrow" d="M175,374 C175,400 266,406 326,406" />
+  <path class="arrow" d="M536,406 H582" />
+  <path class="arrow" d="M792,406 C870,426 882,470 650,526" />
+  <path class="dash" d="M431,304 C431,246 455,215 455,184" />
+  <path class="dash" d="M887,304 C887,245 840,209 760,184" />
+
+  <text class="small" x="66" y="626">읽기 지연은 buffer miss와 I/O queue에서, 쓰기 지연은 writeback과 fsync에서, CPU 지연은 runnable task가 scheduler를 기다리는 지점에서 드러납니다.</text>
+</svg>
