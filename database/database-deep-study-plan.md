@@ -1,5 +1,8 @@
 # 데이터베이스 완전 분해 학습 계획
 
+> 2026-05-20 정정: 이 계획은 `database/deep-dive/`를 정식 산출물 위치로 잡았다는 점에서 현재 인터뷰 프로젝트 요구와 맞지 않습니다.
+> `study/database`와 이 계획은 source/history로 보존하고, 면접 준비용 정식 DB 심화 문서는 `interviews/database-deep-dive/`에서 claim audit와 composition audit를 거쳐 새로 구성합니다.
+
 이 문서는 `database/` 아래에 흩어져 있는 기존 정리와 앞으로 작성할 장문 학습 문서를 하나의 DB 심화 학습 체계로 묶기 위한 계획서입니다.
 이전 계획은 DB 트랜잭션, MVCC, 고립 수준, 따닥 이슈, 금액 계산, 은행/결제 시나리오를 중심으로 세웠습니다.
 이번 요청의 보호 의도는 더 큽니다.
@@ -26,7 +29,8 @@ SQL 언어 모델, 관계 모델, 저장 포맷, 페이지와 버퍼, 인덱스,
 
 repair disposition:
 이 파일을 `database/database-deep-study-plan.md`로 승격하고, 기존 12개 트랜잭션 중심 단위는 전체 DB 체계의 `transaction/concurrency/application-integrity` 구간으로 흡수합니다.
-작성 위치는 `database/deep-dive/`를 기본값으로 두어 기존 짧은 메모와 새 정식 monograph가 섞이지 않게 합니다.
+당시 작성 위치는 `database/deep-dive/`를 기본값으로 두어 기존 짧은 메모와 새 정식 monograph가 섞이지 않게 한다고 기록했습니다.
+2026-05-20 이후 이 위치 판단은 면접용 정식 DB 심화 산출물에는 적용하지 않습니다.
 기존 `database/*.md` 파일은 삭제하거나 덮어쓰는 대상이 아니라 seed, legacy note, 또는 확장 대상입니다.
 
 evidence boundary:
@@ -42,9 +46,10 @@ DBMS별 세부 동작, 표준 SQL, PostgreSQL/MySQL/InnoDB/Oracle/SQL Server 차
 - must_keep: 기존 `database/mvcc.md` 같은 사용자 정리 내용을 최대한 살린다. 내용 누락, 열화, 타협을 허용하지 않는다. 단, `완벽`을 근거 없는 과장으로 쓰지 않고 fail-closed 검증 조건으로 바꾼다.
 - extra_checks: 각 major learning unit은 최소 20,000자 이상이어야 한다. 분량은 반복 문장으로 채우지 않고 first brick, worked trace, failure mode, observability, 공식 근거, 실험으로 채운다.
 
-## 3. canonical 배치
+## 3. 당시 배치, 현재는 history
 
-새 정식 문서 체계는 `database/deep-dive/` 아래에 둡니다.
+당시 새 정식 문서 체계는 `database/deep-dive/` 아래에 둔다고 기록했습니다.
+현재 이 문장은 historical record이며, 면접 준비용 정식 DB 심화 문서의 위치는 `interviews/database-deep-dive/`입니다.
 `database/` 루트에는 이미 `mvcc.md`, `collation.md`, `placeholder.md`, `prepared_statements.md`, `replication.md`, `lock.md`, `join.md`, `query.md` 같은 학습 메모가 있습니다.
 이 파일들을 무작정 한 곳에 합치면 기존 흔적이 깨지고, 새 장문 문서와 짧은 메모가 뒤섞입니다.
 따라서 새 체계는 평면 번호 목록이 아니라, 학습자가 어디를 공부하고 있는지 바로 알 수 있는 주제별 하위 디렉터리로 둡니다.
@@ -365,9 +370,10 @@ whole request는 모든 `DU`가 작성되고 검증될 때만 닫힙니다.
 기계 validator는 길이와 일부 구조 신호를 검사하고, critic/humanize-korean/study-explanation review는 논리 흐름과 문장 품질을 검사합니다.
 두 축 중 하나라도 실패하면 해당 DU는 complete가 아닙니다.
 
-### 7.2 DU registry와 per-DU teaching spine
+### 7.2 당시 DU registry와 per-DU teaching spine
 
-canonical registry는 `database/deep-dive/du-registry.tsv`입니다.
+당시 실행 계약은 `database/deep-dive/du-registry.tsv`에 두었습니다.
+현재 면접용 정식 재구성의 실행 계약은 `interviews/database-deep-dive/topic-registry.tsv`, `audit/claim-audit.tsv`, `audit/composition-audit.tsv`로 이동했습니다.
 Markdown 표는 사람이 빠르게 보는 지도이고, TSV는 validator와 작업자가 읽는 실행 계약입니다.
 각 행은 `id`, `target`, `section`, `min_chars`, `source_requirement`, `teaching_spine`, `required_trap`을 가집니다.
 작성자는 DU 본문을 쓰기 전에 해당 행을 읽고, `source-map.tsv`의 local seed, official source, lab 또는 observability path, preservation disposition이 본문과 같은 목표를 닫는지 확인해야 합니다.
@@ -402,7 +408,8 @@ whole-complete 시점에는 각 DU의 `source_status`가 `verified`여야 합니
 - money lab: double 실패, `BigDecimal(String)`, rounding mode, allocation remainder.
 - idempotency/outbox lab: concurrent request winner election, response replay, worker claim race.
 
-검증 명령은 `database/deep-dive/validation.md`와 `database/deep-dive/validate_deep_dive.py`에 고정합니다.
+당시 검증 명령은 `database/deep-dive/validation.md`와 `database/deep-dive/validate_deep_dive.py`에 고정했습니다.
+현재 면접용 정식 재구성 검증은 `interviews/database-deep-dive/validation.md`를 기준으로 합니다.
 검증은 출력만 찍고 사람이 알아서 판단하는 방식이 아니라, 실패하면 non-zero로 종료하는 fail-closed validator여야 합니다.
 
 ```bash
@@ -445,9 +452,10 @@ FAIL 기준:
 - support tier: T1 for user request and repo scope, T2 for exact DU split.
 - admission lane: APPLY for planning.
 
-### C2. 배치 claim
+### C2. 당시 배치 claim, 현재는 superseded
 
-- claim: 새 장문 체계는 `database/deep-dive/` 아래 주제별 하위 디렉터리에 둔다.
+- stale claim: 새 장문 체계는 `database/deep-dive/` 아래 주제별 하위 디렉터리에 둔다.
+- current repair: 면접용 정식 DB 심화 문서는 `interviews/database-deep-dive/`에 둔다. `database/deep-dive/`는 이전 생성 초안과 coverage 참고 자료다.
 - premises: `database/` 루트에는 이미 짧은 메모와 큰 원재료가 섞여 있다. 새 장문 체계를 루트에 대량 생성하면 기존 구조가 더 혼잡해진다.
 - strongest attack: 하위 디렉터리를 만들면 기존 파일과 새 문서가 분리되어 사용자가 기존 정리를 놓칠 수 있다.
 - response lane: ACCEPT_REPAIR.
@@ -502,7 +510,7 @@ FAIL 기준:
 | R2 | evidence breadth | `database/` corpus inventory와 existing seed를 source-map 대상으로 고정 |
 | R3 | registry stress | 12개 transaction unit을 56개 DB-wide DU registry로 확장 |
 | R4 | validation repair | per-file 검증을 major DU 검증으로 강화 |
-| R5 | closure audit | planning checkpoint는 historical artifact일 뿐이고, 현재 요청은 remaining count 0인 WHOLE_COMPLETE만 허용 |
+| R5 | closure audit | 당시 기록은 planning checkpoint가 아니라 전체 corpus 완료를 목표로 두었지만, 이 closure 표현은 현재 인터뷰 재구성에는 적용하지 않음 |
 
 sub-agent 결과가 material하게 다른 누락을 찾으면 이 section은 최종 patch 전에 갱신해야 합니다.
 
@@ -529,7 +537,8 @@ sub-agent 결과가 material하게 다른 누락을 찾으면 이 section은 최
 
 이 계획은 후속 작성자가 대량 파일 생성과 기존 파일 재구성을 하게 만드는 action surface입니다.
 예상 downstream actor는 현재 Codex 실행, 다음 continuation, 또는 사용자입니다.
-예상 행동은 `database/deep-dive/` 생성, 기존 `database/` 파일 source-map 작성, 56개 DU 작성, lab 추가, 검증, commit입니다.
+당시 예상 행동은 `database/deep-dive/` 생성, 기존 `database/` 파일 source-map 작성, 56개 DU 작성, lab 추가, 검증, commit이었습니다.
+현재 면접용 정식 재구성에서는 `interviews/database-deep-dive/` 아래의 topic registry, claim audit, composition audit, 검증 문서를 우선합니다.
 
 되돌림 가능성은 중간 정도입니다.
 새 파일 생성은 되돌리기 쉽지만, 기존 `database/mvcc.md` 같은 파일을 직접 고치면 사용자의 기존 정리 흔적이 손상될 수 있습니다.
@@ -542,12 +551,13 @@ safer path:
 3. 기존 파일은 원문 보존 상태에서 새 문서로 의미를 옮긴다.
 4. 기존 파일을 축약하거나 pointer로 바꾸는 일은 별도 review와 commit으로 분리한다.
 
-## 14. closure control
+## 14. closure control, stale verdict invalidated
 
-- requested whole objective: DB 전체를 완전 분해해 학습 가능한 장문 corpus로 정리한다.
-- current execution scope: DB-wide whole-complete writing run.
-- achieved closure scope: DU01-DU56 본문, index/source-map/source-map.tsv, validator, validation contract, category lab scripts가 작성되었고 `python3 database/deep-dive/validate_deep_dive.py`가 PASS했다.
-- whole-request completion verdict: WHOLE_COMPLETE.
-- remaining executable count: 0.
-- next immediate target: none inside the requested corpus; final response records the resulting commit hash.
+- stale requested whole objective: DB 전체를 완전 분해해 학습 가능한 장문 corpus로 정리한다.
+- stale execution scope: DB-wide whole-complete writing run.
+- stale achieved closure scope: DU01-DU56 본문, index/source-map/source-map.tsv, validator, validation contract, category lab scripts가 작성되었고 `python3 database/deep-dive/validate_deep_dive.py`가 PASS했다.
+- invalidated verdict: 이 `WHOLE_COMPLETE` 기록은 2026-05-20 사용자 피드백 이후 정식 면접 DB 심화 작업에는 적용하지 않습니다.
+- current status: `study/database`와 `database/deep-dive`는 source/history이고, 정식 면접 산출물은 `interviews/database-deep-dive/`에서 새로 재구성해야 합니다.
+- current remaining executable count: open-ended by topic registry and future DB interview corpus decomposition.
+- next immediate target: `interviews/database-deep-dive/`에서 파일럿과 후속 주제를 claim/composition audit로 닫는다.
 - current-vs-historical evidence: 이전 transaction plan과 Linux/network monograph validation은 precedent일 뿐, DB domain truth는 작성 tranche에서 공식 자료와 실험으로 새로 닫아야 한다.

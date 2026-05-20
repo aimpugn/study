@@ -1,0 +1,4 @@
+topic_id	status	target	title	source_units	audit_status	notes
+DBI-LOG-01	pilot-complete	wal-redo-undo-crash-recovery-pitr.md	WAL, redo, undo, crash recovery, PITR은 각각 무엇의 로그인가?	database/mvcc.md;database/replication.md;database/deep-dive/storage-index-optimizer/06-wal-undo-redo-recovery.md;database/deep-dive/reliability-distribution/15-replication-backup-recovery.md;interviews/database-storage-search-nosql.md	claim-and-composition-audited	첫 파일럿. source 문장 참과 전체 구성 참을 분리해 검토한다.
+DBI-TXN-01	planned	transactions-mvcc-snapshot-visibility.md	MVCC는 lock-free가 아니라 어떤 버전 가시성 계약인가?	database/mvcc.md;database/lock.md;database/deep-dive/transactions/12-mvcc-snapshot-visibility.md	planned	파일럿 검수 후 같은 audit 구조로 작성한다.
+DBI-REPL-01	planned	replication-lag-read-after-write.md	복제 지연은 왜 읽기 일관성 문제로 이어지는가?	database/replication.md;database/replication_lag.md;database/deep-dive/reliability-distribution/15-replication-backup-recovery.md	planned	복제 자체와 PITR/복구를 섞지 않도록 별도 문서로 분리한다.

@@ -1,9 +1,14 @@
 # Database deep-dive index
 
+> 2026-05-20 정정: 이 디렉터리는 이전 실행에서 만들어진 DB 장문 초안과 coverage 참고 자료입니다.
+> 면접 준비용 정식 DB 심화 학습 자산은 `interviews/database-deep-dive/`에서 claim audit와 composition audit를 거쳐 새로 작성합니다.
+> 이 파일의 DU 체계는 보존할 수 있는 원재료와 coverage map으로만 참고하고, 정식 산출물 위치나 완료 판정의 기준으로 사용하지 않습니다.
+
 이 디렉터리는 데이터베이스를 “기능 목록”이 아니라 하나의 작동 시스템으로 다시 조립해 이해하기 위한 장문 학습 축입니다.
 각 DU는 최소 20,000자 이상이어야 하며, 길이만 채우는 문서가 아니라 배경, 첫 번째 작동 단위, 손으로 따라가는 trace, 실무 장애 함정, 관측과 검증 경로, 자연스러운 한국어 설명 흐름을 모두 갖춰야 합니다.
 
-전체 완료 조건은 `database/deep-dive/validate_deep_dive.py`가 옵션 없이 PASS하고, critic review가 DU 전체에 대해 더 이상 material blocker를 내지 않는 것입니다.
+이전 초안 체계 안에서의 당시 완료 조건은 `database/deep-dive/validate_deep_dive.py`가 옵션 없이 PASS하고, critic review가 DU 전체에 대해 더 이상 material blocker를 내지 않는 것이었습니다.
+이 조건은 현재 `interviews/database-deep-dive/` 정식 재구성 작업의 완료 조건이 아니며, 과거 초안의 coverage를 참고할 때만 역사적 기준으로 봅니다.
 중간에 일부 DU가 작성되어도 그것은 checkpoint일 뿐이며, whole-complete가 아닙니다.
 
 ## 읽는 순서
@@ -17,7 +22,7 @@
 7. application-boundaries: Spring/JDBC transaction, 따닥 요청, 금액 계산, 금융 거래 복구, outbox를 DB 경계와 연결합니다.
 8. operations/security/search-nosql-newsql: 운영 진단, 접근 제어, 검색 엔진, document DB, NewSQL까지 확장합니다.
 
-## DU 목록
+## 이전 초안 DU 목록
 
 | DU | 파일 | 섹션 |
 |---|---|---|
@@ -78,7 +83,7 @@
 | DU55 | `search-nosql-newsql/27-document-nosql-modeling.md` | Firestore/document modeling, consistency, security rules, cost |
 | DU56 | `search-nosql-newsql/28-newsql-distributed-sql.md` | NewSQL/distributed SQL, consensus, global transaction trade-offs |
 
-## 검증
+## 이전 초안 검증
 
 중간 점검에서는 planned source를 허용할 수 있습니다.
 
@@ -92,4 +97,5 @@ python3 database/deep-dive/validate_deep_dive.py --allow-planned-sources
 python3 database/deep-dive/validate_deep_dive.py
 ```
 
-최종 명령이 PASS하려면 모든 DU 본문이 존재하고, 각 section body가 20,000자 이상이며, `source-map.tsv`의 모든 source status가 `verified`여야 합니다.
+이전 초안의 최종 명령이 PASS하려면 모든 DU 본문이 존재하고, 각 section body가 20,000자 이상이며, `source-map.tsv`의 모든 source status가 `verified`여야 했습니다.
+현재 면접용 정식 DB 심화 문서의 검증 계약은 `interviews/database-deep-dive/validation.md`와 그 하위 audit 파일을 기준으로 봅니다.

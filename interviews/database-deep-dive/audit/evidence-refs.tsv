@@ -1,0 +1,10 @@
+ref_id	source_type	url_or_path	scope	note
+validator-required-sections	tool	interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py	structure	필수 섹션과 reader-facing 금지 패턴을 확인한다.
+manual-diff-review	human-review	database/deep-dive/storage-index-optimizer/06-wal-undo-redo-recovery.md	composition	이전 생성 초안의 반복과 구성 왜곡을 사람이 확인한 증거다.
+python-validator-plus-critic	tool-and-review	interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py	process	validator PASS가 충분조건이 아니라 critic review와 함께 쓰인다는 경계다.
+official-postgresql-wal	official-primary	https://www.postgresql.org/docs/current/wal-intro.html	PostgreSQL WAL	PostgreSQL 18 current WAL intro. Write-ahead rule, redo, online backup/PITR connection.
+official-postgresql-pitr	official-primary	https://www.postgresql.org/docs/current/continuous-archiving.html	PostgreSQL PITR	PostgreSQL 18 current continuous archiving and PITR.
+official-mysql-redo	official-primary	https://dev.mysql.com/doc/refman/8.4/en/innodb-redo-log.html	MySQL InnoDB redo	MySQL 8.4 InnoDB redo log.
+official-mysql-undo	official-primary	https://dev.mysql.com/doc/refman/8.4/en/innodb-undo-logs.html	MySQL InnoDB undo	MySQL 8.4 InnoDB undo logs.
+official-mysql-pitr	official-primary	https://dev.mysql.com/doc/refman/8.4/en/point-in-time-recovery.html	MySQL PITR	MySQL 8.4 point-in-time recovery overview.
+official-mysql-pitr-binlog	official-primary	https://dev.mysql.com/doc/refman/8.4/en/point-in-time-recovery-binlog.html	MySQL binary log PITR	MySQL 8.4 point-in-time recovery using binary log.

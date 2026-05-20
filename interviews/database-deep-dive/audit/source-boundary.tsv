@@ -1,0 +1,116 @@
+path	classification	note
+database/.DS_Store	system-noise	macOS metadata; content excluded
+database/collation.md	database-source	existing study/database source
+database/database-deep-study-plan.md	historical-plan	prior plan; source for process history, not domain truth
+database/db_diff.md	database-source	existing study/database source
+database/deep-dive/00-index.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/application-boundaries/19-application-boundaries.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/application-boundaries/20-idempotency-duplicate-request.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/application-boundaries/21-money-calculation.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/application-boundaries/22-financial-transaction-scenarios.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/du-registry.tsv	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/foundations/01-database-mental-model.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/foundations/02-relational-model-and-sql.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/foundations/03-sql-semantics-types-null-collation.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/labs/README.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/labs/application-boundaries/application-money-idempotency-lab.sql	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/labs/foundations/sql-semantics-lab.sql	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/labs/mysql/innodb-observability-lab.sql	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/labs/operations/operations-security-lab.sql	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/labs/postgresql/postgresql-observability-lab.sql	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/labs/reliability-distribution/reliability-outbox-lab.sql	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/labs/search-nosql-newsql/search-nosql-newsql-lab.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/labs/storage-index-optimizer/storage-index-explain-lab.sql	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/labs/transactions/two-session-transaction-lab.sql	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/mysql/17-mysql-innodb-deep-dive.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/operations/24-operations-observability-troubleshooting.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/postgresql/18-postgresql-deep-dive.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/reliability-distribution/15-replication-backup-recovery.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/reliability-distribution/16-partitioning-sharding-distribution.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/reliability-distribution/23-outbox-saga-2pc.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/schema-migration-ops/10-schema-design-constraints.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/search-nosql-newsql/26-search-engine-internals.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/search-nosql-newsql/27-document-nosql-modeling.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/search-nosql-newsql/28-newsql-distributed-sql.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/security-governance/25-security-access-control.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/source-map.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/source-map.tsv	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/storage-index-optimizer/04-storage-files-pages-rows.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/storage-index-optimizer/05-buffer-pool-cache-io.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/storage-index-optimizer/06-wal-undo-redo-recovery.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/storage-index-optimizer/07-index-structures.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/storage-index-optimizer/08-query-execution-operators.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/storage-index-optimizer/09-optimizer-statistics-explain.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/transactions/11-transaction-lifecycle-acid.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/transactions/12-mvcc-snapshot-visibility.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/transactions/13-isolation-anomalies.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/transactions/14-locks-latches-deadlocks.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/validate_deep_dive.py	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/deep-dive/validation.md	generated-draft-noncanonical	previous generated DB deep-dive output; coverage/draft only
+database/elasticsearch/corret_json.py	database-source	existing study/database source
+database/elasticsearch/elasticdump.md	database-source	existing study/database source
+database/elasticsearch/es_via_curl.md	database-source	existing study/database source
+database/elasticsearch/mapping.md	database-source	existing study/database source
+database/elasticsearch/paginate.md	database-source	existing study/database source
+database/elasticsearch/queries/queries.md	database-source	existing study/database source
+database/elasticsearch/queries/range.md	database-source	existing study/database source
+database/elasticsearch/response.md	database-source	existing study/database source
+database/elasticsearch/tools/esdump/auth.ini	sensitive-source-do-not-promote	possible credential material; quote only after redaction
+database/elasticsearch/tools/esdump/auth.ini.bak	sensitive-source-do-not-promote	possible credential material; quote only after redaction
+database/elasticsearch/tools/esdump/query1.json	database-source	existing study/database source
+database/elasticsearch/tools/esdump/query2.json	database-source	existing study/database source
+database/elasticsearch/tools/esdump/query3.json	database-source	existing study/database source
+database/elasticsearch/update.md	database-source	existing study/database source
+database/examples/.DS_Store	system-noise	macOS metadata; content excluded
+database/examples/db_diff/.DS_Store	system-noise	macOS metadata; content excluded
+database/examples/db_diff/README.md	database-source	existing study/database source
+database/examples/db_diff/diff_db.sh	database-source	existing study/database source
+database/examples/db_diff/docker-compose.yaml	database-source	existing study/database source
+database/examples/db_diff/mysql-connector-j/mysql-connector-j-9.2.0.jar	binary-lab-dependency	binary artifact; inspect license/content before promotion
+database/examples/db_diff/start.sh	database-source	existing study/database source
+database/examples/db_diff/whendiff/dev/init.sql	database-source	existing study/database source
+database/examples/db_diff/whendiff/prod/init.sql	database-source	existing study/database source
+database/examples/db_diff/whendiff.result	database-source	existing study/database source
+database/examples/db_diff/whensame/dev/init.sql	database-source	existing study/database source
+database/examples/db_diff/whensame/prod/init.sql	database-source	existing study/database source
+database/examples/db_diff/whensame.result	database-source	existing study/database source
+database/firebase/firebase_model.md	database-source	existing study/database source
+database/firebase/firebase_price.md	database-source	existing study/database source
+database/firebase/firestore.md	database-source	existing study/database source
+database/firebase/firestore_sharded_timestamps.md	database-source	existing study/database source
+database/join.md	database-source	existing study/database source
+database/lock.md	database-source	existing study/database source
+database/migration/flyway/flyway.md	database-source	existing study/database source
+database/mvcc.md	database-source	existing study/database source
+database/mysql/charset.sql	database-source	existing study/database source
+database/mysql/dsn.md	database-source	existing study/database source
+database/mysql/explains/when_join.md	database-source	existing study/database source
+database/mysql/information.md	database-source	existing study/database source
+database/mysql/order.md	database-source	existing study/database source
+database/mysql/problems/mysql5_online_large_indexing.md	database-source	existing study/database source
+database/mysql/procedure.md	database-source	existing study/database source
+database/mysql/types/mysql_varchar.md	database-source	existing study/database source
+database/mysql/update.md	database-source	existing study/database source
+database/newsql.md	database-source	existing study/database source
+database/ogg.md	database-source	existing study/database source
+database/opensearch/log.schema.json	database-source	existing study/database source
+database/opensearch/queries.md	database-source	existing study/database source
+database/placeholder.md	database-source	existing study/database source
+database/postgresql/introspection.log	database-source	existing study/database source
+database/postgresql/lock.md	database-source	existing study/database source
+database/prepared_statements.md	database-source	existing study/database source
+database/query.md	database-source	existing study/database source
+database/quote_and_escape.md	database-source	existing study/database source
+database/replication.md	database-source	existing study/database source
+database/replication_lag.md	database-source	existing study/database source
+database/tmp/diff_db.md	database-source	existing study/database source
+interviews/database-storage-search-nosql.md	curated-placement-source	large existing batch; source reservoir, not final style exemplar
+interviews/source/README.md	raw-interview-source	raw reservoir for interview promotion
+interviews/source/_source-context-and-question-bank.md	raw-interview-source	raw reservoir for interview promotion
+interviews/source/interview_questions.md	raw-interview-source	raw reservoir for interview promotion
+interviews/source/interview_questions2.md	raw-interview-source	raw reservoir for interview promotion
+interviews/source/interview_questions3.md	raw-interview-source	raw reservoir for interview promotion
+interviews/source/interview_questions4.md	raw-interview-source	raw reservoir for interview promotion
+interviews/source/interview_s4.md	raw-interview-source	raw reservoir for interview promotion
+interviews/source/interviews.md	raw-interview-source	raw reservoir for interview promotion
+interviews/source/interviews2.md	raw-interview-source	raw reservoir for interview promotion
