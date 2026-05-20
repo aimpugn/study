@@ -2,7 +2,7 @@
 
 스키마 설계와 migration을 면접에서 설명할 때 흔한 약한 답변은 "정규화해서 중복을 줄이고, 필요하면 반정규화하고, Flyway로 버전 관리합니다"에서 멈추는 것이다. 이 답변은 키워드는 갖췄지만, 실제로 어떤 불변식을 보호하는지, constraint가 어떤 버그를 구조적으로 막는지, schema diff가 왜 위험 신호인지, online DDL이 왜 완전히 무중단을 의미하지 않는지 설명하지 못한다.
 
-이 문서는 normalization/denormalization, key/constraint, schema diff, online DDL, Flyway, migration verification, large-table change risk를 하나의 흐름으로 묶는다. 핵심은 schema가 단순한 저장 모양이 아니라 데이터 의미의 계약이라는 점이다. Migration은 그 계약을 이미 살아 있는 데이터와 실행 중인 애플리케이션 위에서 바꾸는 작업이다. 따라서 좋은 설계는 DDL 문장만 맞는 것이 아니라, 기존 데이터가 새 규칙을 만족하는지, 배포 순서가 안전한지, rollback 또는 forward fix가 가능한지, 대용량 table에서 lock과 rewrite 위험이 어느 정도인지까지 닫아야 한다.
+이 문서는 normalization/denormalization, key/constraint, schema diff, online DDL, Flyway, migration verification, large-table change risk를 하나의 흐름으로 묶는다. 핵심은 schema가 단순한 저장 모양이 아니라 데이터 의미의 계약이라는 점이다. Migration은 그 계약을 이미 살아 있는 데이터와 실행 중인 애플리케이션 위에서 바꾸는 작업이다. 따라서 좋은 설계는 DDL 문장만 맞는 것이 아니라, 기존 데이터가 새 규칙을 만족하는지, 배포 순서가 안전한지, rollback 또는 forward fix가 가능한지, 대용량 table에서 lock과 rewrite 위험이 어느 정도인지까지 닫아야 한다. Large table 변경이 page, WAL/redo, checkpoint를 어떻게 흔드는지는 [storage page와 buffer I/O](02-storage-pages-buffer-io.md)와 [WAL/redo 복구](03-wal-redo-undo-crash-recovery-pitr.md), 새 index가 plan을 어떻게 바꾸는지는 [인덱스와 옵티마이저](04-index-query-optimizer.md), transaction 경계에서 constraint가 왜 마지막 방어선이 되는지는 [transaction과 ACID boundary](06-transaction-acid-boundary.md)로 이어진다.
 
 - [2-5분 개요](#2-5분-개요)
 - [먼저 잡아야 할 작은 모델](#먼저-잡아야-할-작은-모델)
@@ -92,7 +92,7 @@ orders
   application requires status
 ```
 
-한 번에 `ADD COLUMN status NOT NULL`을 하면 기존 row가 값을 갖지 않아 실패하거나, DBMS가 table rewrite를 하거나, 긴 lock을 잡을 수 있다. 더 안전한 흐름은 보통 contract를 넓힌 뒤 좁히는 방식이다.
+한 번에 `ADD COLUMN status NOT NULL` 또는 `ADD COLUMN status NOT NULL DEFAULT 'CREATED'`로 목표 모양까지 가려 하면 DBMS와 version, default 표현식에 따라 결과가 크게 갈린다. 기존 row 때문에 즉시 실패할 수도 있고, metadata-only로 끝날 수도 있고, table rewrite나 긴 metadata lock, validation scan이 생길 수도 있다. 더 안전한 흐름은 보통 contract를 넓힌 뒤 좁히는 방식이다.
 
 ```text
 1. expand
@@ -213,7 +213,7 @@ CREATE TABLE orders (
 
 이 구조는 존재하지 않는 user의 order를 막는다. 하지만 운영 결합도 만든다. parent row delete/update는 child row와 연결되고, cascade policy를 정해야 한다. `ON DELETE CASCADE`는 편리하지만, user 삭제 하나가 대량 order 삭제로 이어질 수 있다. `RESTRICT`나 `NO ACTION`은 무결성을 지키지만 삭제 작업이 실패할 수 있다. soft delete를 쓰는 시스템에서는 foreign key와 logical deletion 정책이 어긋날 수도 있다.
 
-대용량 table에 foreign key를 나중에 추가할 때는 기존 데이터 검증 scan과 lock을 고려해야 한다. PostgreSQL에는 `NOT VALID`로 constraint를 추가한 뒤 나중에 `VALIDATE CONSTRAINT`를 수행하는 흐름이 있다. MySQL InnoDB는 foreign key 추가가 table rebuild나 metadata lock과 연결될 수 있다. 그러므로 "참조 무결성을 위해 FK를 추가합니다"라는 말 뒤에는 기존 데이터가 이미 깨져 있지 않은지, 추가 중 write가 어떻게 처리되는지, rollback path가 무엇인지가 따라와야 한다.
+대용량 table에 foreign key를 나중에 추가할 때는 기존 데이터 검증 scan과 lock을 고려해야 한다. PostgreSQL에는 `NOT VALID`로 constraint를 추가한 뒤 나중에 `VALIDATE CONSTRAINT`를 수행하는 흐름이 있다. 이 방식은 기존 row 검증을 분리해 주지만 lock이 전혀 없다는 뜻은 아니므로, 정확한 lock mode와 validation 시점을 확인해야 한다. MySQL InnoDB는 foreign key 추가가 table rebuild나 metadata lock과 연결될 수 있다. 그러므로 "참조 무결성을 위해 FK를 추가합니다"라는 말 뒤에는 기존 데이터가 이미 깨져 있지 않은지, 추가 중 write가 어떻게 처리되는지, rollback path가 무엇인지가 따라와야 한다.
 
 ### check, not null, default는 application invariant를 DB에 내리는 방법이다
 
@@ -274,7 +274,7 @@ risk
   rollback cost?
 ```
 
-이 체크를 통해 DDL은 개발 환경에서 빨리 끝났더라도 운영에서 위험할 수 있음을 설명할 수 있다. 개발 DB의 row 수가 1000개이고 production이 3억 row라면 같은 DDL 문장도 완전히 다른 사건이다.
+이 체크를 통해 DDL은 개발 환경에서 빨리 끝났더라도 운영에서 위험할 수 있음을 설명할 수 있다. 개발 DB의 row 수가 1000개이고 production이 3억 row라면 같은 DDL 문장도 완전히 다른 사건이다. 운영 영향은 schema 문법만이 아니라 page rewrite, index rebuild, WAL/redo 증가, checkpoint와 replication lag까지 이어지므로 앞선 [storage I/O 모델](02-storage-pages-buffer-io.md)을 같이 가져와야 한다.
 
 ### Flyway는 migration 순서와 이력을 관리하지만 안전성 판단을 대신하지 않는다
 
@@ -300,7 +300,7 @@ flyway validate
 
 이 구조는 팀이 어떤 migration이 적용되었는지 공유하는 데 매우 유용하다. 하지만 `V3__add_order_status.sql` 안에 위험한 DDL이 들어 있으면 Flyway가 자동으로 안전하게 바꿔 주지는 않는다. 대용량 backfill, lock timeout, retry, data verification, online DDL algorithm hint, rollback/forward fix 전략은 script 작성자가 설계해야 한다.
 
-이미 적용된 versioned migration file을 수정하는 것은 위험하다. 로컬 파일은 바뀌었지만 production에는 예전 내용이 적용되어 있을 수 있고, checksum mismatch가 생긴다. 일반적으로 새 migration을 추가해 forward fix를 만든다. `repair`는 이력을 고치는 강한 도구이므로, 실제 DB 상태와 repository migration file의 관계가 검증된 상황에서만 써야 한다.
+이미 적용된 versioned migration file을 수정하는 것은 위험하다. 로컬 파일은 바뀌었지만 production에는 예전 내용이 적용되어 있을 수 있고, checksum mismatch가 생긴다. 일반적으로 새 migration을 추가해 forward fix를 만든다. `repair`는 이력을 고치는 강한 도구이므로, 실제 DB 상태와 repository migration file의 관계가 검증된 상황에서만 써야 한다. 이 판단은 "이력 표를 맞춘다"가 아니라 "운영 DB가 어떤 변경을 실제로 겪었는지 감사 가능하게 남긴다"는 문제다.
 
 ### large-table change는 expand, backfill, constrain, cleanup으로 나누면 안전해진다
 

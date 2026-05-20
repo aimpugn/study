@@ -6,7 +6,7 @@
 
 ## 2-5분 개요
 
-애플리케이션에서 transaction을 설명할 때 가장 먼저 잡아야 할 모델은 "비즈니스 메서드 하나가 논리 transaction처럼 보여도, 실제 DB에서는 connection 하나의 session 상태와 commit/rollback 경계로 실행된다"이다. Spring은 proxy와 transaction manager를 통해 connection을 thread-bound resource처럼 묶고, JPA는 persistence context와 flush timing을 통해 SQL 실행 시점을 늦출 수 있으며, MyBatis는 mapper 호출 시점에 SQL이 직접 나가되 Spring transaction에 참여할 수 있다. 그래서 `@Transactional`은 마법 문구가 아니라 "어떤 호출이 proxy를 통과했고, 어떤 transaction manager가 어떤 connection을 언제 bind했고, 언제 flush/commit/rollback했는가"라는 실행 경계다.
+애플리케이션에서 transaction을 설명할 때 가장 먼저 잡아야 할 모델은 "비즈니스 메서드 하나가 논리 transaction처럼 보여도, 실제 DB에서는 connection 하나의 session 상태와 commit/rollback 경계로 실행된다"이다. Spring은 proxy와 transaction manager를 통해 connection을 thread-bound resource처럼 묶고, JPA는 persistence context와 flush timing을 통해 SQL 실행 시점을 늦출 수 있으며, MyBatis는 mapper 호출 시점에 SQL이 직접 나가되 Spring transaction에 참여할 수 있다. 그래서 `@Transactional`은 마법 문구가 아니라 "어떤 호출이 proxy를 통과했고, 어떤 transaction manager가 어떤 connection을 언제 bind했고, 언제 flush/commit/rollback했는가"라는 실행 경계다. DB 내부 transaction의 의미는 [트랜잭션과 ACID 경계](06-transaction-acid-boundary.md)를 먼저 고정해 두면 더 안전하게 이어 읽을 수 있다.
 
 Connection pool은 성능 최적화 장치이면서 session contamination의 위험 지점이다. DB connection은 단순 TCP socket이 아니라 transaction isolation, autocommit, timezone, search_path, role, temporary object, prepared statement 같은 session state를 가질 수 있다. 애플리케이션이 raw SQL로 session setting을 바꾸고 되돌리지 않으면 다음 borrower가 그 상태를 이어받을 수 있다. Pool이 connection을 재사용하기 때문에 빠르지만, 그만큼 "반납 시 깨끗한 상태"라는 계약이 중요하다.
 
@@ -64,7 +64,7 @@ reconciliation이 최종 사실을 맞춘다
 
 여기서 중요한 단어는 "intent"와 "state"다. 결제처럼 외부 side effect가 있는 업무에서는 DB transaction 하나로 세계 전체를 rollback할 수 없다. 대신 내부 DB에는 어떤 일을 하려 했는지, 지금 어디까지 확정됐는지, 어떤 외부 식별자로 다시 조회할 수 있는지, 재시도해도 같은 결과로 수렴하는지를 남긴다.
 
-Connection boundary도 같은 방식으로 본다.
+Connection boundary도 같은 방식으로 본다. 실제 lock 대기와 isolation 증상은 이 boundary 위에서 드러나므로, 증상이 DB 안에서 어떻게 보이는지는 [격리 수준, lock, deadlock](08-isolation-lock-deadlock.md)과 함께 봐야 한다.
 
 ```text
 HTTP request thread
@@ -89,7 +89,7 @@ Pool의 장점은 connection 생성 비용을 줄이고 DB 동시 접속 수를 
 
 좋은 pool 설정은 max pool size 숫자 하나가 아니다. Minimum idle, maximum lifetime, idle timeout, connection timeout, validation query, leak detection, max open prepared statement, DB server connection limit을 함께 본다. 애플리케이션 thread 수보다 pool이 너무 작으면 thread가 connection을 기다리며 latency가 커진다. Pool이 너무 크면 DB가 과도한 active query를 처리하다 context switching과 lock contention으로 느려진다. Pool은 "DB를 더 빠르게 만드는 장치"가 아니라 "DB 동시성의 상한을 애플리케이션에서 명확히 거는 장치"이기도 하다.
 
-Transaction 경계에서 connection을 빌리는 시점도 중요하다. Spring은 transaction 시작 시 connection을 즉시 얻을 수도 있고, 실제 SQL이 나갈 때까지 지연될 수도 있다. JPA persistence context가 열려 있어도 DB connection이 항상 물려 있는 것은 아니다. 반대로 long transaction 안에서 외부 API를 호출하면 connection이 오래 점유될 수 있다. HTTP call, file upload, remote service call을 DB transaction 안에 넣으면 pool starvation과 lock 대기, timeout이 함께 발생할 수 있다.
+Transaction 경계에서 connection을 빌리는 시점도 중요하다. Spring은 transaction 시작 시 connection을 즉시 얻을 수도 있고, 실제 SQL이 나갈 때까지 지연될 수도 있다. JPA persistence context가 열려 있어도 DB connection이 항상 물려 있는 것은 아니다. 반대로 long transaction 안에서 외부 API를 호출하면 connection이 오래 점유될 수 있다. HTTP call, file upload, remote service call을 DB transaction 안에 넣으면 pool starvation과 lock 대기, timeout이 함께 발생할 수 있다. 이런 증상은 애플리케이션 코드 문제처럼 시작해도 운영에서는 [운영 관측, 보안, troubleshooting](13-operations-security-troubleshooting.md)의 pool wait, blocker, timeout 지표로 확인된다.
 
 ### Spring transaction은 proxy, transaction manager, resource binding의 합성이다
 
@@ -103,7 +103,7 @@ Rollback rule도 면접 단골 함정이다. Spring의 기본 declarative transa
 
 ### JPA와 MyBatis는 SQL 실행 시점과 상태 관리가 다르다
 
-JPA는 persistence context를 둔다. Entity를 조회하면 managed state가 되고, 변경 감지는 flush 시점에 SQL로 변환된다. Transaction commit 전에 flush가 일어날 수 있고, query 실행 전에 flush가 발생할 수도 있다. 그래서 `save`를 호출한 줄과 실제 INSERT가 DB로 나가는 시점이 다를 수 있다. Lazy loading은 transaction/session 경계 밖에서 접근하면 실패하거나, open-session-in-view 같은 설정 때문에 web view 단계까지 persistence context가 살아 남아 예상 못한 query가 나갈 수 있다.
+JPA는 persistence context를 둔다. Entity를 조회하면 managed state가 되고, 변경 감지는 flush 시점에 SQL로 변환된다. Transaction commit 전에 flush가 일어날 수 있고, query 실행 전에 flush가 발생할 수도 있다. 그래서 `save`를 호출한 줄과 실제 INSERT가 DB로 나가는 시점이 다를 수 있다. Lazy loading은 transaction/session 경계 밖에서 접근하면 실패하거나, open-session-in-view 같은 설정 때문에 web view 단계까지 persistence context가 살아 남아 예상 못한 query가 나갈 수 있다. 이때 DBMS 엔진이 실제로 어떤 lock과 version을 남기는지는 [MySQL/InnoDB와 PostgreSQL 엔진 비교](11-mysql-postgresql-engine-deep-dive.md)의 저장 구조 차이와 함께 봐야 한다.
 
 MyBatis는 mapper method와 SQL이 더 직접적으로 연결된다. XML 또는 annotation SQL이 호출 시점에 실행되고, result mapping이 객체로 돌아온다. 하지만 MyBatis도 Spring transaction 안에서는 같은 connection에 참여할 수 있다. 같은 service method에서 JPA와 MyBatis를 섞으면 flush timing과 직접 SQL 실행 시점이 어긋날 수 있다. 예를 들어 JPA entity 변경이 아직 flush되지 않았는데 MyBatis select가 같은 row를 읽으면 예상과 다른 값을 볼 수 있다. 이때는 명시적 flush나 경계 분리가 필요하다.
 

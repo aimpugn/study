@@ -6,11 +6,11 @@
 
 ## 2-5분 개요
 
-짧게 답하면 이렇게 말할 수 있다. SQL isolation level은 동시 transaction이 서로 어떤 중간 결과나 새 row를 볼 수 있는지 정하는 계약이다. DBMS는 그 계약을 MVCC snapshot, row lock, range lock, predicate 성격의 conflict tracking, serialization failure 같은 방식으로 구현한다. Lock은 그중 하나의 실행 수단이고, deadlock은 여러 transaction이 서로 가진 자원을 기다리며 cycle을 만들 때 발생한다.
+짧게 답하면 이렇게 말할 수 있다. SQL isolation level은 동시 transaction이 서로 어떤 중간 결과나 새 row를 볼 수 있는지 정하는 계약이다. DBMS는 그 계약을 MVCC snapshot, row lock, range lock, predicate 성격의 conflict tracking, serialization failure 같은 방식으로 구현한다. Lock은 그중 하나의 실행 수단이고, deadlock은 여러 transaction이 서로 가진 자원을 기다리며 cycle을 만들 때 발생한다. MVCC의 version visibility 자체는 [MVCC와 snapshot visibility](07-mvcc-snapshot-visibility.md)에서 먼저 잡아 두면 이 문서의 lock 논리가 더 잘 보인다.
 
 가장 흔한 오해는 `격리 수준을 높이면 안전하다`와 `lock을 걸면 안전하다`를 같은 말로 보는 것이다. 격리 수준을 높이면 anomaly를 줄일 수 있지만 abort/retry, lock wait, throughput 저하가 생긴다. Lock을 더 넓게 잡으면 특정 충돌은 막을 수 있지만 deadlock과 contention이 늘 수 있다. 반대로 lock을 너무 좁게 잡거나 index가 없어 range lock이 넓어지면, 의도와 다른 row까지 막거나 phantom을 놓칠 수 있다.
 
-PostgreSQL은 MVCC 기반 plain read가 writer를 막지 않는 성격이 강하다. Serializable에서는 Serializable Snapshot Isolation 계열로 위험한 read/write dependency를 감지해 serialization failure를 낼 수 있다. MySQL/InnoDB는 index record lock, gap lock, next-key lock을 통해 range conflict와 phantom을 다룬다. InnoDB의 `row lock`은 실제로 index record와 range에 걸리는 경우가 많으므로, 어떤 index로 접근했는지가 lock 범위를 바꾼다.
+PostgreSQL은 MVCC 기반 plain read가 writer를 막지 않는 성격이 강하다. Serializable에서는 Serializable Snapshot Isolation 계열로 위험한 read/write dependency를 감지해 serialization failure를 낼 수 있다. 이때 PostgreSQL 문서의 predicate lock은 InnoDB gap lock처럼 writer를 직접 막는 물리적 range lock으로만 이해하면 안 되고, serialization anomaly 가능성을 추적하는 장치로 봐야 한다. MySQL/InnoDB는 index record lock, gap lock, next-key lock을 통해 range conflict와 phantom을 다룬다. InnoDB의 `row lock`은 실제로 index record와 range에 걸리는 경우가 많으므로, 어떤 index로 접근했는지가 lock 범위를 바꾼다.
 
 Deadlock은 DB가 이상한 상태가 되었다는 뜻이 아니라, 동시 transaction scheduling에서 생길 수 있는 정상적인 실패 모드다. T1이 A를 잡고 B를 기다리며, T2가 B를 잡고 A를 기다리면 cycle이 생긴다. DBMS는 deadlock을 감지하면 보통 한 transaction을 victim으로 골라 abort한다. 애플리케이션은 이 오류를 재시도 가능한 경계로 다뤄야 하고, 같은 자원을 항상 같은 순서로 잡는 설계로 빈도를 줄여야 한다.
 
@@ -105,7 +105,7 @@ PostgreSQL은 InnoDB식 gap/next-key lock 용어로 설명하지 않는다. Seri
 
 Predicate는 `status='FREE'인 좌석`, `balance < 0인 계좌`, `doctor on_call=true인 row`처럼 row 하나가 아니라 조건이다. Serializable isolation이 진짜 serial execution처럼 보이려면 transaction이 읽은 predicate와 나중에 들어오는 write 사이의 충돌도 다뤄야 한다.
 
-PostgreSQL Serializable Snapshot Isolation은 단순히 모든 predicate를 물리적으로 잠그는 방식이 아니라, snapshot isolation 위에서 read/write dependency를 추적해 serialization anomaly 가능성이 있는 구조를 감지한다. 감지되면 한 transaction을 abort시켜 실제 serial order를 만들 수 없는 결과를 막는다. 이때 애플리케이션은 serialization failure를 retry해야 한다.
+PostgreSQL Serializable Snapshot Isolation은 단순히 모든 predicate를 물리적으로 잠그는 방식이 아니라, snapshot isolation 위에서 read/write dependency를 추적해 serialization anomaly 가능성이 있는 구조를 감지한다. 감지되면 한 transaction을 abort시켜 실제 serial order를 만들 수 없는 결과를 막는다. PostgreSQL 문서에서는 이 추적 정보를 predicate lock으로 설명하지만, 이 lock은 일반 row lock처럼 다른 transaction을 막아서 deadlock을 만드는 lock과는 성격이 다르다. 이때 애플리케이션은 serialization failure를 retry해야 한다.
 
 이 지점이 면접에서 좋다. `Serializable이면 lock을 많이 걸어서 느립니다`라고만 말하면 PostgreSQL의 SSI를 놓친다. `Serializable이면 retry가 필요 없습니다`라고 말하면 더 틀린다. Strong isolation을 제공하려면 DB가 어떤 transaction을 실패시킬 수 있고, 애플리케이션은 그 실패를 정상 경로로 설계해야 한다.
 
@@ -211,7 +211,7 @@ retry-risk boundary
   deadlock -> rollback -> retry calls payment API again
 ```
 
-이 구분을 하면 isolation-lock 주제가 transaction boundary 문서와 연결된다. DB가 한 transaction을 abort시키는 것은 correctness를 지키기 위한 정상 동작일 수 있다. 애플리케이션이 그 abort를 재실행할 수 없는 형태로 side effect를 섞어 놓으면, DB의 correctness mechanism이 사용자 장애로 바뀐다.
+이 구분을 하면 isolation-lock 주제가 [트랜잭션 경계와 ACID](06-transaction-acid-boundary.md)로 연결된다. DB가 한 transaction을 abort시키는 것은 correctness를 지키기 위한 정상 동작일 수 있다. 애플리케이션이 그 abort를 재실행할 수 없는 형태로 side effect를 섞어 놓으면, DB의 correctness mechanism이 사용자 장애로 바뀐다. 재시도 경계 밖의 메시지와 결제 호출은 [애플리케이션 경계, 멱등성, 금액 처리, outbox](12-application-boundaries-idempotency-money-outbox.md)의 문제로 분리해야 한다.
 
 ### Deadlock 분석은 victim query 하나로 끝나지 않는다
 
@@ -414,10 +414,10 @@ external side effect      -> idempotency, outbox, compensation, fencing token
 
 저장소 안에서 이어 볼 자료:
 
-- `database/lock.md`
-- `database/postgresql/lock.md`
-- `database/deep-dive/transactions/13-isolation-anomalies.md`
-- `database/deep-dive/transactions/14-locks-latches-deadlocks.md`
-- `interviews/database-deep-dive/07-mvcc-snapshot-visibility.md`
+- [database/lock.md](../../database/lock.md)
+- [database/postgresql/lock.md](../../database/postgresql/lock.md)
+- [database/deep-dive/transactions/13-isolation-anomalies.md](../../database/deep-dive/transactions/13-isolation-anomalies.md)
+- [database/deep-dive/transactions/14-locks-latches-deadlocks.md](../../database/deep-dive/transactions/14-locks-latches-deadlocks.md)
+- [MVCC와 snapshot visibility](07-mvcc-snapshot-visibility.md)
 
 이 자료를 볼 때는 `무엇을 읽었고, 무엇을 썼고, 어떤 자원이 기다림을 만들었는가`를 계속 추적한다. 격리 수준은 관측 계약이고, lock은 그 계약을 만들기 위한 수단이며, deadlock은 기다림 관계의 cycle이라는 세 문장으로 다시 압축할 수 있으면 면접 답변의 중심이 잡힌 것이다.

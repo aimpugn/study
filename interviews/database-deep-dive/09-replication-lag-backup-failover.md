@@ -12,7 +12,7 @@
 
 Backup은 replica와 목적이 다르다. Replica는 primary의 현재 변경을 따라간다. 누군가 실수로 `DELETE FROM orders`를 실행하고 commit하면 replica도 그 delete를 따라갈 수 있다. Backup은 그 이전 상태로 돌아가기 위한 재료다. Delayed replica는 일정 시간 늦게 따라가므로 실수 대응에 도움이 될 수 있지만, 별도의 backup 보존과 restore 검증을 완전히 대체하지 않는다.
 
-PITR은 `어제 밤 백업을 복원한다`보다 더 세밀하다. 예를 들어 14:03에 잘못된 delete가 발생했다면 14:02:59까지 복원하고 싶다. 이를 위해서는 기준 full/base backup과 그 이후의 연속 WAL archive 또는 binary log가 필요하다. 로그가 하나라도 빠지면 목표 시점까지 재생할 수 없다.
+PITR은 `어제 밤 백업을 복원한다`보다 더 세밀하다. 예를 들어 14:03에 잘못된 delete가 발생했다면 14:02:59까지 복원하고 싶다. 이를 위해서는 기준 full/base backup과 그 이후의 연속 WAL archive 또는 binary log가 필요하다. 로그가 하나라도 빠지면 목표 시점까지 재생할 수 없다. WAL과 redo/binlog 역할을 섞기 쉽다면 먼저 [WAL, redo, undo, crash recovery, PITR](03-wal-redo-undo-crash-recovery-pitr.md)을 같이 봐야 한다.
 
 Failover는 promote보다 넓다. 새 primary를 승격한 뒤 application이 어디로 쓰기를 보낼지, old primary가 살아 돌아왔을 때 split-brain을 막을지, 새 primary에 없는 transaction이 있었는지, replica들을 새 topology에 어떻게 붙일지 정해야 한다. 그래서 고가용성 답변에는 RPO, RTO, lag, fencing, divergence check가 함께 들어가야 한다.
 
@@ -99,7 +99,7 @@ primary transaction commit
   -> replica exposes changed state to reads
 ```
 
-이 흐름에서 commit과 replica apply는 같은 순간이 아닐 수 있다. 비동기 복제에서는 primary가 replica apply를 기다리지 않고 client에게 commit success를 반환할 수 있다. 동기 또는 semi-sync 계열은 더 강한 확인을 요구하지만 latency와 availability tradeoff가 생긴다. Consensus 기반 distributed SQL은 또 다른 모델로, quorum commit을 통해 replica agreement를 commit 경로에 넣을 수 있다. 이 문서에서는 전통적인 primary-replica 복제와 backup/failover 경계를 중심으로 다룬다.
+이 흐름에서 commit과 replica apply는 같은 순간이 아닐 수 있다. 비동기 복제에서는 primary가 replica apply를 기다리지 않고 client에게 commit success를 반환할 수 있다. 동기 또는 semi-sync 계열은 더 강한 확인을 요구하지만 latency와 availability tradeoff가 생긴다. Consensus 기반 distributed SQL은 또 다른 모델로, quorum commit을 통해 replica agreement를 commit 경로에 넣을 수 있다. 이 문서에서는 전통적인 primary-replica 복제와 backup/failover 경계를 중심으로 다루고, consensus와 shard/partition 경계는 [파티션, 샤딩, 분산 SQL](10-partition-sharding-distributed-sql.md)로 넘긴다.
 
 ### Lag는 초 단위 지연이 아니라 읽기 계약의 틈이다
 
@@ -149,7 +149,7 @@ backup/PITR
   restore test 없이는 실제 RTO를 알 수 없다.
 ```
 
-운영에서 backup 검증은 restore를 포함해야 한다. Backup file checksum만 맞아도, 복원 대상 DB version이 다르거나 extension이 없거나, encryption key가 없거나, log chain이 끊겼거나, application migration과 시간이 맞지 않으면 서비스 복구는 실패한다.
+운영에서 backup 검증은 restore를 포함해야 한다. Backup file checksum만 맞아도, 복원 대상 DB version이 다르거나 extension이 없거나, encryption key가 없거나, log chain이 끊겼거나, application migration과 시간이 맞지 않으면 서비스 복구는 실패한다. 복구 절차가 실제 운영 runbook으로 내려가면 [운영, 보안, 트러블슈팅](13-operations-security-troubleshooting.md)의 관측과 권한 경계까지 함께 확인해야 한다.
 
 ### PITR은 기준 백업과 연속 로그가 모두 있어야 한다
 
@@ -208,7 +208,7 @@ archive recovery / PITR
   backup에서 시작해 과거 목표 시점까지 log를 재생한다.
 ```
 
-이 세 경로를 구분하면 `WAL이 있으니 backup이 필요 없나요?`, `replica가 있으니 PITR이 되나요?`, `failover하면 crash recovery도 끝난 건가요?` 같은 함정 질문에 흔들리지 않는다.
+이 세 경로를 구분하면 `WAL이 있으니 backup이 필요 없나요?`, `replica가 있으니 PITR이 되나요?`, `failover하면 crash recovery도 끝난 건가요?` 같은 함정 질문에 흔들리지 않는다. WAL record와 checkpoint, crash recovery 자체는 [WAL, redo, undo, crash recovery, PITR](03-wal-redo-undo-crash-recovery-pitr.md)의 주제이고, 이 문서는 그 로그를 복제·복구·전환 절차가 어떻게 소비하는지에 집중한다.
 
 
 ### Read routing은 데이터 신선도 요구를 먼저 분류해야 한다
@@ -286,7 +286,7 @@ PostgreSQL failover에서는 timeline이 중요하다. Standby를 promote하면 
 
 MySQL replication은 binary log와 relay log, replica SQL applier를 중심으로 설명한다. GTID를 쓰면 transaction identity와 failover/rejoin을 관리하기 쉬워진다. Statement-based, row-based, mixed logging 같은 binlog format 차이도 복제 정확성과 디버깅에 영향을 준다. 현대 OLTP에서는 row-based가 예측 가능할 때가 많지만, 실제 설정을 확인해야 한다.
 
-MySQL에서 InnoDB redo log와 binary log는 역할이 다르다. Redo log는 InnoDB crash recovery와 durability에 중요하고, binary log는 replication과 point-in-time recovery에 중요하다. Commit path에서는 둘 사이의 정합성을 맞추기 위해 two-phase commit 성격의 조정이 필요하다. 면접에서 redo와 binlog를 섞으면 replication/PITR 답변이 흔들린다.
+MySQL에서 InnoDB redo log와 binary log는 역할이 다르다. Redo log는 InnoDB crash recovery와 durability에 중요하고, binary log는 replication과 point-in-time recovery에 중요하다. Commit path에서는 둘 사이의 정합성을 맞추기 위해 two-phase commit 성격의 조정이 필요하다. 면접에서 redo와 binlog를 섞으면 replication/PITR 답변이 흔들린다. 이 차이는 [WAL, redo, undo, crash recovery, PITR](03-wal-redo-undo-crash-recovery-pitr.md)의 로그 역할 구분과 함께 보면 더 선명하다.
 
 관측값으로는 replica lag, relay log position, retrieved/executed GTID set, replication applier errors, delayed replication 설정, `SHOW REPLICA STATUS` 계열 출력, backup tool의 binlog coordinates를 본다.
 
@@ -439,10 +439,10 @@ client received commit success -> primary log position advanced -> replica recei
 
 저장소 안에서 이어 볼 자료:
 
-- `database/replication.md`
-- `database/replication_lag.md`
-- `database/deep-dive/reliability-distribution/15-replication-backup-recovery.md`
-- `interviews/database-deep-dive/03-wal-redo-undo-crash-recovery-pitr.md`
-- `interviews/distributed-systems-architecture.md`
+- [database/replication.md](../../database/replication.md)
+- [database/replication_lag.md](../../database/replication_lag.md)
+- [database/deep-dive/reliability-distribution/15-replication-backup-recovery.md](../../database/deep-dive/reliability-distribution/15-replication-backup-recovery.md)
+- [WAL, redo, undo, crash recovery, PITR](03-wal-redo-undo-crash-recovery-pitr.md)
+- [distributed-systems-architecture.md](../distributed-systems-architecture.md)
 
 WAL record 구조와 crash recovery 세부는 WAL 문서에서 깊게 보고, 이 문서에서는 WAL이나 binlog가 어떤 소비 경로에서 replication, PITR, failover 판단으로 이어지는지에 집중한다. 같은 log라도 crash recovery, standby replay, PITR의 목적과 실패 경계는 다르다.

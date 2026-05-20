@@ -2,7 +2,7 @@
 
 데이터베이스를 면접에서 설명할 때 가장 위험한 답변은 "SQL을 받아서 데이터를 저장하고 조회합니다"에서 멈추는 답변이다. 이 말은 틀리지는 않지만, 데이터베이스가 실제로 어려워지는 지점을 거의 설명하지 못한다. SQL 문장은 사람이 읽는 인터페이스이고, 그 뒤에는 관계 모델의 논리 규칙, 타입과 NULL의 판단 규칙, 문자열 비교 규칙, 실행 계획, 페이지와 인덱스, 동시성 제어, 장애 복구가 한꺼번에 맞물린다.
 
-이 문서는 데이터베이스를 하나의 층으로 보지 않고, SQL 인터페이스가 논리 모델과 물리 저장 사이에서 어떤 계약을 만들고, 실행 계획과 동시성, 복구가 그 계약을 어떻게 지키는지 설명한다. 핵심은 "같은 결과표를 돌려준다"와 "같은 방식으로 찾는다"가 전혀 다른 말이라는 점이다. `SELECT * FROM orders WHERE user_id = ?`라는 한 줄은 논리적으로는 조건을 만족하는 행의 집합을 요구하지만, 실제 엔진은 어떤 인덱스를 탈지, 어떤 문자열 비교 규칙을 쓸지, NULL을 어떻게 판단할지, 현재 transaction snapshot에서 어떤 version을 볼지, crash 뒤에도 commit 결과를 보존할 수 있는지를 따로 결정해야 한다.
+이 문서는 데이터베이스를 하나의 층으로 보지 않고, SQL 인터페이스가 논리 모델과 물리 저장 사이에서 어떤 계약을 만들고, 실행 계획과 동시성, 복구가 그 계약을 어떻게 지키는지 설명한다. 핵심은 "같은 결과표를 돌려준다"와 "같은 방식으로 찾는다"가 전혀 다른 말이라는 점이다. `SELECT * FROM orders WHERE user_id = ?`라는 한 줄은 논리적으로는 조건을 만족하는 행의 집합을 요구하지만, 실제 엔진은 어떤 인덱스를 탈지, 어떤 문자열 비교 규칙을 쓸지, NULL을 어떻게 판단할지, 현재 transaction snapshot에서 어떤 version을 볼지, crash 뒤에도 commit 결과를 보존할 수 있는지를 따로 결정해야 한다. 물리 I/O가 궁금해지면 [page와 buffer 흐름](02-storage-pages-buffer-io.md), plan 선택이 궁금해지면 [인덱스와 옵티마이저](04-index-query-optimizer.md), snapshot과 version 판단이 궁금해지면 [MVCC와 snapshot visibility](07-mvcc-snapshot-visibility.md), crash 뒤 commit 보존이 궁금해지면 [WAL과 crash recovery](03-wal-redo-undo-crash-recovery-pitr.md)로 바로 이어서 보면 된다.
 
 - [2-5분 개요](#2-5분-개요)
 - [먼저 잡아야 할 작은 모델](#먼저-잡아야-할-작은-모델)
@@ -67,7 +67,7 @@ response
   result set: id, display_name column을 가진 row stream
 ```
 
-이 trace에서 첫 번째로 붙잡을 점은 `?`가 "SQL 문장의 빈칸"이 아니라 "값 자리"라는 점이다. `WHERE email = ?`에서 parameter는 `'kim@example.com'`이라는 값으로 들어간다. 반대로 `ORDER BY ?`에 `created_at DESC`를 넣어 정렬 구조를 바꾸거나, `FROM ?`에 테이블 이름을 넣는 식으로 SQL 구조를 바인딩한다고 생각하면 경계가 무너진다. 구조를 바꿔야 하는 경우에는 허용된 identifier 목록을 애플리케이션에서 고르고, DBMS별 quoting 규칙에 맞게 안전하게 조립해야 한다.
+이 trace에서 첫 번째로 붙잡을 점은 `?`가 "SQL 문장의 빈칸"이 아니라 "값 자리"라는 점이다. `WHERE email = ?`에서 parameter는 `'kim@example.com'`이라는 값으로 들어간다. 반대로 `ORDER BY ?`에 `created_at DESC`를 넣어 정렬 구조를 바꾸거나, `FROM ?`에 테이블 이름을 넣는 식으로 SQL 구조를 바인딩한다고 생각하면 경계가 무너진다. 많은 DBMS와 driver에서 placeholder는 literal 값이 들어갈 수 있는 위치에만 의미가 있고, identifier나 keyword 조합을 대신 만들어 주지 않는다. 구조를 바꿔야 하는 경우에는 허용된 identifier 목록을 애플리케이션에서 고르고, DBMS별 quoting 규칙에 맞게 안전하게 조립해야 한다.
 
 두 번째로 붙잡을 점은 relation과 file이 다르다는 점이다. `users`라는 relation은 SQL이 보는 논리 객체다. 그 relation의 row가 디스크에서 어떤 순서로 놓이는지는 논리 결과의 일부가 아니다. `ORDER BY created_at DESC`를 적었기 때문에 결과 순서가 생긴다. `ORDER BY`가 없다면, primary key가 있다고 해도 결과 순서를 약속받은 것이 아니다. MySQL InnoDB에서 clustered index 때문에 primary key 순서로 읽히는 것처럼 보이는 경우가 있어도, 그것은 현재 실행 계획과 저장 구조가 만든 관측이지 SQL 의미 계약이 아니다.
 
@@ -91,7 +91,7 @@ response
      조건과 정렬을 index scan 자체에서 많이 해결할 수 있다.
 ```
 
-옵티마이저는 의미를 바꾸지 않는 범위에서 비용이 낮아 보이는 경로를 고른다. 비용 추정에는 통계가 들어간다. `kim@example.com`이 거의 유일하면 index lookup이 유리할 수 있고, 조건이 너무 넓어서 대부분의 row를 가져와야 한다면 순차 scan이 더 나을 수 있다. 그래서 "index가 있으면 무조건 빠르다"는 답변은 약하다. 더 정확한 답변은 "index는 후보 위치를 줄이는 물리 경로를 제공하지만, 그 경로가 이 query와 데이터 분포에서 실제로 싸야 옵티마이저가 선택한다"이다.
+옵티마이저는 의미를 바꾸지 않는 범위에서 비용이 낮아 보이는 경로를 고른다. 비용 추정에는 통계가 들어간다. `kim@example.com`이 거의 유일하면 index lookup이 유리할 수 있고, 조건이 너무 넓어서 대부분의 row를 가져와야 한다면 순차 scan이 더 나을 수 있다. 그래서 "index가 있으면 무조건 빠르다"는 답변은 약하다. 더 정확한 답변은 "index는 후보 위치를 줄이는 물리 경로를 제공하지만, 그 경로가 이 query와 데이터 분포에서 실제로 싸야 옵티마이저가 선택한다"이다. 이 판단을 더 깊게 읽을 때는 [인덱스와 옵티마이저](04-index-query-optimizer.md)의 `EXPLAIN`과 통계 설명으로 이어진다.
 
 ## 깊은 메커니즘
 
@@ -260,7 +260,7 @@ Limit
 
 데이터베이스는 혼자 실행되는 계산기가 아니다. 동시에 여러 transaction이 같은 row를 읽고 쓰고, 중간에 crash가 날 수도 있다. 동시성 제어는 같은 SQL이 어느 시점의 데이터를 보는지 정한다. PostgreSQL은 MVCC tuple visibility를 통해 snapshot마다 보이는 row version을 판단하고, InnoDB는 undo log와 read view를 이용해 consistent read를 제공한다. 자세한 구현은 다르지만, 공통 질문은 같다. "이 statement 또는 transaction은 어떤 시간의 데이터베이스를 보고 있는가?"
 
-복구는 commit 성공 응답의 의미를 crash 뒤에도 지키는 장치다. commit이 client에게 성공으로 돌아간 뒤 서버가 죽었는데 변경이 사라진다면 SQL semantics보다 더 근본적인 durability가 깨진다. 그래서 WAL, redo log, checkpoint, fsync 같은 하위 구조가 필요하다. 이 파일은 복구 내부를 깊게 다루지는 않지만, 정신 모델에서는 꼭 연결해야 한다. SQL 한 줄이 성공했다는 말은 단지 executor가 row를 찾았다는 뜻이 아니라, transaction과 storage가 정한 durability rule까지 만족했다는 뜻이다.
+복구는 commit 성공 응답의 의미를 crash 뒤에도 지키는 장치다. commit이 client에게 성공으로 돌아간 뒤 서버가 죽었는데 변경이 사라진다면 SQL semantics보다 더 근본적인 durability가 깨진다. 그래서 WAL, redo log, checkpoint, fsync 같은 하위 구조가 필요하다. 이 파일은 복구 내부를 깊게 다루지는 않지만, 정신 모델에서는 꼭 연결해야 한다. 다만 durable하다고 말할 수 있는 지점은 단순한 statement 실행 성공 전체가 아니라 autocommit DML의 성공 응답이나 명시적 `COMMIT` 성공 응답이다. `SELECT`에는 durability 의미가 없고, 명시적 transaction 안의 DML은 statement가 성공해도 이후 `ROLLBACK`될 수 있다. 이 경계는 [transaction과 ACID 경계](06-transaction-acid-boundary.md)에서, crash 뒤 재적용 시간축은 [WAL, redo, undo, crash recovery, PITR](03-wal-redo-undo-crash-recovery-pitr.md)에서 따로 추적한다.
 
 ## DBMS별 경계
 

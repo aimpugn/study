@@ -92,6 +92,10 @@ def repeated_long_paragraphs(text: str) -> list[str]:
     return sorted({paragraph for paragraph in paragraphs if paragraphs.count(paragraph) > 1})
 
 
+def cross_doc_links(text: str) -> list[str]:
+    return re.findall(r"\]\(((?!#)(?:\d{2}-)[^)#]+\.md)(?:#[^)]+)?\)", text)
+
+
 def get_boundary_map(rows: list[dict[str, str]]) -> dict[str, str]:
     return {row["path"]: row["classification"] for row in rows}
 
@@ -230,6 +234,8 @@ def main() -> int:
     claim_target_refs = {row.get("target_section", "").split("#", 1)[0] for row in claim_rows}
 
     completed = [r for r in registry_rows if r.get("status") in ALLOWED_COMPLETE_STATUSES]
+    completed_targets = {r["target"] for r in completed}
+    cross_doc_paragraphs: dict[str, list[str]] = {}
     for index, row in enumerate(completed, start=1):
         expected_prefix = f"{index:02d}-"
         if not row["target"].startswith(expected_prefix):
@@ -275,6 +281,18 @@ def main() -> int:
         if repeated_paragraphs:
             preview = repeated_paragraphs[0][:90]
             fail(errors, f"{row['target']} contains repeated long paragraph: {preview}")
+        outbound_links = [link for link in cross_doc_links(text) if link != row["target"]]
+        if len(set(outbound_links)) < 2:
+            fail(errors, f"{row['target']} must link to at least two related deep-dive docs")
+        for link in outbound_links:
+            if link not in completed_targets:
+                fail(errors, f"{row['target']} links to unknown deep-dive doc: {link}")
+        for paragraph in [
+            re.sub(r"\s+", " ", paragraph.strip())
+            for paragraph in text.split("\n\n")
+            if len(paragraph.strip()) >= 160 and not paragraph.lstrip().startswith("- [")
+        ]:
+            cross_doc_paragraphs.setdefault(paragraph, []).append(row["target"])
         if len(text) < 20000:
             fail(errors, f"{row['target']} is shorter than pilot deep-dive floor: {len(text)} chars")
         if row["target"] not in composition_targets:
@@ -296,6 +314,15 @@ def main() -> int:
     extra_docs = sorted(canonical_docs - registry_docs)
     if extra_docs:
         fail(errors, f"canonical docs not listed in topic-registry.tsv: {', '.join(extra_docs)}")
+
+    repeated_cross_doc = {
+        paragraph: targets
+        for paragraph, targets in cross_doc_paragraphs.items()
+        if len(set(targets)) > 1
+    }
+    if repeated_cross_doc:
+        paragraph, targets = next(iter(repeated_cross_doc.items()))
+        fail(errors, f"repeated long paragraph across docs ({', '.join(sorted(set(targets)))}): {paragraph[:90]}")
 
     risk_counts: dict[str, int] = {}
     for row in composition_rows:

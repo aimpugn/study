@@ -2,7 +2,7 @@
 
 대용량 DB 질문에서 "파티셔닝하면 됩니다" 또는 "샤딩하면 됩니다"라고 답하면 바로 꼬리 질문이 따라온다. 파티션 pruning은 어떤 조건에서 실제로 스캔 범위를 줄이는가. 수동 파티셔닝은 애플리케이션 쿼리와 운영 배치에 어떤 비용을 넘기는가. 샤딩은 데이터를 여러 노드에 나누지만 join, transaction, resharding, hot shard 문제를 어떻게 다루는가. NewSQL 또는 distributed SQL은 SQL과 트랜잭션을 분산 환경에 올리지만 consensus, global transaction, timestamp, locality 비용을 어떻게 치르는가.
 
-이 문서는 네 단계를 분리한다. Partition은 한 DBMS 안에서 큰 table을 더 작은 물리 단위로 나누는 방법이다. Sharding은 여러 노드에 데이터를 나누는 방법이다. Distributed SQL은 SQL 표면과 트랜잭션을 유지하려고 분산 저장과 합의 프로토콜을 내부화한 계열이다. 세 방법 모두 "큰 데이터를 나눈다"는 공통점은 있지만, query planner, routing, transaction, 운영 책임의 위치가 다르다.
+이 문서는 네 가지 선택지를 분리한다. Native partition은 한 DBMS 안에서 큰 table을 더 작은 물리 단위로 나누는 방법이고, 수동 파티셔닝은 여러 table과 application routing으로 비슷한 효과를 직접 만드는 방식이다. Sharding은 여러 노드에 데이터를 나누는 방법이다. Distributed SQL은 SQL 표면과 트랜잭션을 유지하려고 분산 저장과 합의 프로토콜을 내부화한 계열이다. 모두 "큰 데이터를 나눈다"는 공통점은 있지만, query planner, routing, transaction, 운영 책임의 위치가 다르다.
 
 ## 2-5분 개요
 
@@ -78,7 +78,7 @@ query by created_at last hour without user_id
   scatter to all shards and merge results
 ```
 
-이 작은 모델에서 key 질문은 바로 보인다. Partition key나 shard key가 query predicate에 있으면 범위를 줄일 수 있다. 없으면 여러 partition이나 shard를 다 건드린다. 따라서 "데이터를 나누면 빨라진다"가 아니라 "나눈 기준으로 자주 묻는 질문을 좁힐 수 있을 때 빨라진다"가 정확하다.
+이 작은 모델에서 key 질문은 바로 보인다. Partition key나 shard key가 query predicate에 있으면 범위를 줄일 수 있다. 없으면 여러 partition이나 shard를 다 건드린다. 따라서 "데이터를 나누면 빨라진다"가 아니라 "나눈 기준으로 자주 묻는 질문을 좁힐 수 있을 때 빨라진다"가 정확하다. 이 판단은 [인덱스와 optimizer](04-index-query-optimizer.md)에서 다룬 access path 판단과 이어진다. partition이나 shard는 더 큰 단위의 access path를 만드는 선택이기 때문이다.
 
 Distributed SQL은 이 routing과 replication을 DBMS 내부로 옮기려는 모델이다.
 
@@ -169,11 +169,11 @@ Resharding은 단순 data copy가 아니다. 이동 중에는 old shard와 new s
 
 Cross-shard query는 비용이 크다. User profile과 user orders가 같은 shard key를 쓰면 local join이 가능할 수 있다. 그러나 order by created_at global feed처럼 shard key와 다른 축으로 묻는 query는 모든 shard에 scatter하고 결과를 merge해야 한다. 이때 pagination, sorting, limit pushdown, duplicate handling이 어려워진다. 그래서 샤딩 설계에서는 query shape를 먼저 inventory해야 한다. 나중에 "어떤 shard를 봐야 하는지 모르는 query"가 많으면 scale-out 이점이 사라진다.
 
-Cross-shard transaction도 어렵다. 두 shard에 걸친 원자성을 보장하려면 2PC 같은 coordination이 필요하고, coordinator failure, lock hold time, participant timeout, heuristic outcome 같은 복잡도가 생긴다. 많은 시스템은 cross-shard transaction을 피하기 위해 aggregate boundary를 shard key와 맞추거나, saga/outbox로 eventual consistency를 선택한다. 금융 원장처럼 강한 원자성이 필요한 경우에는 shard key 설계가 더 중요해진다.
+Cross-shard transaction도 어렵다. 두 shard에 걸친 원자성을 보장하려면 2PC 같은 coordination이 필요하고, coordinator failure, lock hold time, participant timeout, heuristic outcome 같은 복잡도가 생긴다. 많은 시스템은 cross-shard transaction을 피하기 위해 aggregate boundary를 shard key와 맞추거나, saga/outbox로 eventual consistency를 선택한다. 금융 원장처럼 강한 원자성이 필요한 경우에는 shard key 설계가 더 중요해진다. 이 판단은 [트랜잭션과 ACID 경계](06-transaction-acid-boundary.md)와 [애플리케이션 경계, 멱등성, 돈, outbox](12-application-boundaries-idempotency-money-outbox.md)를 함께 봐야 안전하다.
 
 Distributed SQL은 이런 문제 일부를 DBMS 내부로 가져온다. CockroachDB는 SQL layer 아래에 key-value ranges와 Raft replication을 두고, range leaseholder/leader를 통해 읽기와 쓰기를 조율한다. YugabyteDB도 DocDB, tablet, Raft consensus 같은 구조를 갖는다. Google Spanner는 TrueTime 기반 timestamp와 Paxos replication으로 외부 일관성(external consistency)을 제공한다. 세부 구현은 vendor-specific이지만, 공통적으로 data range, replica, consensus, transaction timestamp, retry가 핵심 단어다.
 
-Consensus는 durability와 failover를 강하게 만들지만 latency를 만든다. 단일 노드 DB의 commit은 로컬 WAL flush가 핵심일 수 있다. 분산 SQL의 write는 leader가 replica quorum에 log를 복제해야 할 수 있다. Cross-region quorum이면 network round trip이 commit latency에 직접 들어온다. Multi-region availability를 얻으려면 쓰기 지연과 locality를 설계해야 한다. 읽기도 follower read, bounded staleness, leaseholder locality 같은 선택에 따라 최신성과 latency가 달라진다.
+Consensus는 durability와 failover를 강하게 만들지만 latency를 만든다. 단일 노드 DB의 commit은 로컬 WAL flush가 핵심일 수 있다. 분산 SQL의 write는 leader가 replica quorum에 log를 복제해야 할 수 있다. Cross-region quorum이면 network round trip이 commit latency에 직접 들어온다. Multi-region availability를 얻으려면 쓰기 지연과 locality를 설계해야 한다. 읽기도 follower read, bounded staleness, leaseholder locality 같은 선택에 따라 최신성과 latency가 달라진다. 복제와 장애 전환의 기본 감각은 [복제, 지연, 백업, failover](09-replication-lag-backup-failover.md)에서 먼저 잡아 두면 distributed SQL의 비용을 더 정확히 읽을 수 있다.
 
 Global transaction은 편리하지만 공짜가 아니다. Transaction이 한 range 또는 한 shard 안에서 끝나면 비교적 싸다. 여러 range와 region을 건드리면 coordinator, timestamp uncertainty, write intent cleanup, conflict detection, retry가 필요해진다. Distributed SQL 제품은 SQL 표면에서 transaction을 제공하지만, 애플리케이션은 transaction retry를 정상 경로로 받아들여야 한다. Serializable retry가 자주 나면 query shape, key locality, hot key, transaction size를 의심해야 한다.
 
@@ -183,7 +183,7 @@ Locality 설계는 분산 SQL의 성패를 크게 좌우한다. 사용자와 가
 
 PostgreSQL은 declarative partitioning을 제공한다. Range, list, hash partitioning을 사용할 수 있고, planner는 partition pruning을 통해 관련 없는 partition을 제외할 수 있다. Partition-wise join/aggregate 같은 최적화도 있지만 조건이 있다. Unique constraint와 primary key는 partition key 포함 여부 등 제약이 있으므로, 전역 uniqueness 요구를 설계할 때 확인해야 한다. 또한 너무 많은 partition은 planning과 maintenance 비용을 만든다.
 
-MySQL 8.4도 partitioning과 pruning을 제공한다. RANGE, LIST, HASH, KEY partitioning 계열이 있고, query optimizer가 WHERE 조건을 이용해 필요한 partition만 선택할 수 있다. 하지만 foreign key, unique key, generated column, engine support 같은 세부 제약을 확인해야 한다. MySQL partitioning은 table 하나의 물리 배치를 나누는 기능이지 여러 server에 자동 분산하는 sharding이 아니다.
+MySQL 8.4도 partitioning과 pruning을 제공한다. RANGE, LIST, HASH, KEY partitioning 계열이 있고, query optimizer가 WHERE 조건을 이용해 필요한 partition만 선택할 수 있다. 하지만 InnoDB에서는 foreign key와 user-defined partitioning의 경계가 특히 강한 설계 제약이다. 공식 문서 기준으로 partitioned InnoDB table은 foreign key를 가질 수 없고, 다른 table의 foreign key가 partitioned InnoDB table의 column을 참조할 수도 없다. 따라서 FK-heavy schema에서 MySQL partitioning을 제안한다면 무결성 강제 책임이 DBMS에서 application이나 다른 설계로 밀리는지 먼저 판단해야 한다. MySQL partitioning은 table 하나의 물리 배치를 나누는 기능이지 여러 server에 자동 분산하는 sharding이 아니다.
 
 Vitess는 MySQL sharding middleware 계열로 볼 수 있다. VSchema와 vindex를 통해 query routing과 resharding을 돕지만, 모든 MySQL query가 아무 비용 없이 그대로 분산되는 것은 아니다. Cross-shard query와 transaction에는 제약과 비용이 있다. 이 문서에서는 vendor-specific 세부를 깊게 다루지 않지만, "MySQL을 쓰면서 sharding 운영을 middleware로 보조한다"는 선택지로 분리해 볼 수 있다.
 
@@ -347,7 +347,7 @@ SQL 문법과 wire protocol 호환은 도움이 되지만 충분하지 않다. T
 
 ### 마지막 연결: 데이터를 나눴을 때 query와 transaction이 어디까지 한 조각에 머무는가
 
-이 문서의 답변을 더 단단하게 만들려면 `partition key, shard key, routing, pruning, rebalance, consensus`를 한 줄로 이어서 말할 수 있어야 한다. 이 나열은 암기용 키워드가 아니라 상태 변화의 경로다. 먼저 요청이나 row가 들어오고, 그 요청이 어떤 기준으로 분류되며, 그 기준이 어떤 내부 구조를 움직이고, 마지막에 어떤 관측값으로 결과를 확인하는지 말해야 한다. 이렇게 말하면 단어는 짧아도 설명의 깊이가 생긴다.
+이 주제의 답변은 `어떤 key로 나누는가 -> 그 key로 query가 좁혀지는가 -> 좁혀지지 않을 때 fan-out과 transaction 비용을 누가 감당하는가`로 이어져야 한다. `partition key, shard key, routing, pruning, rebalance, consensus`는 암기용 키워드가 아니라 같은 row가 어느 물리 조각으로 이동하고, 어느 coordinator가 그 조각을 찾아가며, 어떤 합의나 검증을 거쳐 결과를 닫는지 보여 주는 경로다. 면접에서는 이 경로를 말해야 "큰 table을 나눴다"는 말이 실제 설계 판단으로 바뀐다.
 
 작은 반례는 `created_at partition은 월별 조회에는 좋지만 user_id 전체 이력 조회에는 모든 partition을 읽는 상황`이다. 이 반례를 처리하지 못하면 앞의 설명이 부분적으로 맞더라도 큰 설명은 틀린다. 그래서 답변은 항상 공통 원리에서 시작하되 곧바로 범위를 좁혀야 한다. 어느 DBMS인지, 어느 version인지, 어떤 isolation이나 일관성 요구인지, 이 작업이 운영 중 변경인지 장애 복구인지에 따라 같은 단어가 다른 위험을 만든다.
 
@@ -359,7 +359,7 @@ DBMS별로는 PostgreSQL/MySQL partitioning은 주로 한 시스템 안의 pruni
 incoming query -> choose partition/shard from key -> local scan or fan-out -> aggregate/commit -> rebalance or archive operation
 ```
 
-이 trace를 손으로 다시 그리면, 단순히 용어를 외웠는지와 실제로 시스템을 이해했는지가 갈린다. 각 화살표마다 질문을 붙인다. 이 단계의 입력은 무엇인가, 어떤 규칙이 적용되는가, 무엇이 바뀌는가, 다음 단계가 무엇을 믿고 움직이는가. 답이 막히는 화살표가 있으면 그 부분이 추가 학습 지점이다.
+이 trace를 손으로 다시 그리면, partition과 sharding을 단순 분할 기법으로 외웠는지, 아니면 query와 transaction이 실제로 어느 조각까지 머무는지 이해했는지가 드러난다. 각 화살표마다 `이 key로 한 조각을 고를 수 있는가`, `fan-out이 필요하면 누가 merge하는가`, `commit이 여러 조각을 건드리면 누가 재시도와 검증을 맡는가`를 붙여 본다. 답이 막히는 화살표가 있으면 그 부분이 설계와 운영에서 가장 먼저 깨질 지점이다.
 
 면접에서는 최종적으로 이렇게 압축할 수 있다. partition은 물리 조각 관리, sharding은 node 분산, distributed SQL은 그 위에서 SQL 의미를 유지하려는 시도라고 말한다. 그 다음 꼬리 질문이 오면, 이 문장의 한 단어를 골라 작은 trace로 내려가면 된다. 이 방식은 외운 답을 길게 늘이는 것이 아니라, 짧은 답을 근거 있는 구조로 확장하는 방식이다.
 
@@ -369,6 +369,7 @@ incoming query -> choose partition/shard from key -> local scan or fan-out -> ag
 - [PostgreSQL 18 문서: Partition Pruning](https://www.postgresql.org/docs/current/ddl-partitioning.html#DDL-PARTITION-PRUNING) - planner가 partition을 제외하는 조건을 볼 수 있다.
 - [MySQL 8.4 문서: Partitioning](https://dev.mysql.com/doc/refman/8.4/en/partitioning.html) - MySQL partitioning 기능과 제약의 공식 입구다.
 - [MySQL 8.4 문서: Partition Pruning](https://dev.mysql.com/doc/refman/8.4/en/partitioning-pruning.html) - `EXPLAIN PARTITIONS`로 pruning을 확인하는 방법을 볼 수 있다.
+- [MySQL 8.4 문서: Partitioning Limitations Relating to Storage Engines](https://dev.mysql.com/doc/refman/8.4/en/partitioning-limitations-storage-engines.html) - InnoDB partitioning과 foreign key의 hard caveat를 확인할 수 있다.
 - [CockroachDB 문서: Architecture Overview](https://www.cockroachlabs.com/docs/stable/architecture/overview) - range, replica, leaseholder, Raft 등 CockroachDB-specific 구조를 확인할 수 있다.
 - [YugabyteDB 문서: Architecture](https://docs.yugabyte.com/preview/architecture/) - tablet, DocDB, Raft replication 등 YugabyteDB-specific 구조를 확인할 수 있다.
 - [Google Spanner paper](https://research.google/pubs/spanner-googles-globally-distributed-database/) - TrueTime과 external consistency를 다룬 원 논문이다.
