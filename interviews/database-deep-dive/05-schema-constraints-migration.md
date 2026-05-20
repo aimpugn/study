@@ -94,7 +94,17 @@ orders
 
 여기서 핵심은 "정규화가 항상 좋고 반정규화가 항상 나쁘다"가 아닙니다. 어떤 값이 현재 user profile의 사실인지, 주문 당시 계약의 사실인지 구분해야 합니다. 주문 당시 배송지는 user profile의 중복이 아니라 order의 독립적인 이력 사실일 수 있습니다. 반대로 단순히 목록 조회를 빠르게 하려고 user email을 orders에 복사했다면, 그 값은 원본과 동기화 규칙이 필요한 반정규화입니다.
 
-이제 migration trace를 보자. 이미 운영 중인 `orders` table에 `status` column을 추가하고 싶습니다.
+같은 문자열 값도 어떤 사실을 대표하느냐에 따라 schema 위치가 달라집니다.
+
+| 값 | 사실의 소유자 | 값이 바뀔 때 따라와야 하는 질문 | 자연스러운 저장 방식 |
+| --- | --- | --- | --- |
+| 사용자의 현재 기본 배송지 | `users` 또는 `addresses` | 사용자가 프로필을 고치면 즉시 바뀌어도 되는가 | 현재 상태 table에 두고 주문은 참조만 합니다. |
+| 주문 당시 배송지 | `orders` | 프로필 변경 뒤에도 과거 주문 증빙이 유지되어야 하는가 | 주문 row에 snapshot으로 저장합니다. |
+| 목록 조회용 사용자 이름 | 읽기 모델 또는 projection | 원본 변경 뒤 얼마나 늦게 따라가도 되는가 | 반정규화하되 갱신 경로와 검증 query를 둡니다. |
+
+이 표가 중요한 이유는 column 이름이 곧 업무 의미를 설명하지 못하기 때문입니다. `address_id`라는 이름만 보면 현재 주소를 참조하는지, 주문 당시 주소를 가리키는지 알기 어렵습니다. 그래서 schema 설계에서는 column을 어디에 둘지보다 먼저 "이 값은 나중에 바뀌어도 되는 현재 상태인가, 아니면 그 시점의 사실로 남아야 하는 이력인가"를 정해야 합니다. 이 질문이 닫히면 정규화와 반정규화는 취향 문제가 아니라 데이터 의미의 배치 문제가 됩니다.
+
+다음 migration trace는 이미 운영 중인 `orders` table에 `status` column을 추가하는 상황을 기준으로 합니다.
 
 ```text
 현재
@@ -243,6 +253,25 @@ CREATE TABLE products (
 
 이 constraint는 애플리케이션 bug가 있어도 음수 가격이 들어가는 것을 막습니다. 하지만 모든 business rule을 check로 내릴 수는 없습니다. 다른 table을 조회해야 하는 rule, 시간에 따라 달라지는 rule, 외부 시스템 상태와 연결된 rule은 DB constraint만으로 표현하기 어렵습니다. 이때도 DB constraint로 표현 가능한 핵심 invariant는 DB에 두고, 나머지는 transaction boundary와 application service에서 지키는 식으로 책임을 나눠야 합니다.
 
+`NOT NULL`과 `CHECK`가 서로 다른 일을 한다는 점은 작은 입력으로 보면 더 분명합니다.
+
+```text
+INSERT price = NULL
+  -> NOT NULL이 먼저 "값이 없음"을 거절합니다.
+  -> CHECK (price > 0)만 있으면 SQL의 NULL 판정 때문에 통과할 수 있습니다.
+
+INSERT price = -10
+  -> NOT NULL은 통과합니다. 값은 존재하기 때문입니다.
+  -> CHECK (price > 0)이 "가격은 0보다 커야 한다"는 의미를 거절합니다.
+
+INSERT price = 1000
+  -> NOT NULL 통과
+  -> CHECK 통과
+  -> row가 table에 들어갑니다.
+```
+
+이 trace의 핵심은 constraint를 "입력 검증을 DB에 한 번 더 둔다" 정도로 작게 보지 않는 것입니다. `NOT NULL`은 존재 여부를, `CHECK`는 row 내부 값의 의미를, `UNIQUE`는 여러 row 사이의 business identity를, `FOREIGN KEY`는 table 사이의 존재 관계를 지킵니다. 서로 보호하는 실패 모드가 다르므로, 하나를 넣었다고 다른 규칙까지 자동으로 닫히지는 않습니다.
+
 ### schema diff는 차이를 보여 주지만 위험도를 대신 판단하지 않는다
 
 Schema diff는 기대 schema와 실제 schema의 차이를 찾습니다. 개발 DB, staging DB, production DB가 다르면 migration 적용 누락, hotfix, 수동 변경, tool 설정 차이가 드러납니다. 하지만 diff는 "무엇이 다르다"를 보여 줄 뿐, "이 차이가 안전한가"는 별도 판단입니다.
@@ -261,6 +290,17 @@ must ask
 ```
 
 `db_diff.md` 같은 로컬 자료는 diff 도구와 직접 비교 script의 방향을 제공합니다. 그러나 운영 판단에서는 diff 결과를 migration plan과 연결해야 합니다. 특히 대용량 table에서는 "column 하나 차이"가 table rewrite, index rebuild, long metadata lock으로 이어질 수 있습니다. Diff를 보고 곧바로 DDL을 실행하는 것이 아니라, 차이의 의미와 적용 경로를 분리해야 합니다.
+
+Diff 한 줄은 보통 여러 검증 질문으로 풀어야 합니다.
+
+| diff에 보이는 변화 | 바로 묻는 질문 | 확인 예시 |
+| --- | --- | --- |
+| `status`가 nullable입니다. | 기존 row와 old application이 아직 null을 만들 수 있나요? | `SELECT count(*) FROM orders WHERE status IS NULL;` |
+| expected index가 없습니다. | 실제 plan이 느린 scan으로 가나요, 아니면 다른 index로 충분한가요? | 대표 query `EXPLAIN`과 production cardinality 확인 |
+| foreign key가 없습니다. | 이미 orphan row가 있나요, 추가 중 write는 어떻게 막거나 검증하나요? | child에서 parent를 못 찾는 anti-join 확인 |
+| column type이 다릅니다. | 변환이 lossless인가요, table rewrite나 index rebuild가 필요한가요? | sample cast, max length, lock/rewrite 알고리즘 확인 |
+
+이렇게 풀어 보면 diff는 "운영 DB가 틀렸다"는 판결문이 아니라 "어떤 계약이 아직 목표와 다르다"는 탐지 결과입니다. 적용 판단은 데이터 값, application 배포 상태, DBMS별 DDL 알고리즘, lock과 I/O 비용을 합쳐야 닫힙니다.
 
 ### online DDL은 알고리즘과 lock 수준을 확인해야 한다
 
@@ -365,6 +405,17 @@ phase 5 cleanup
 ```
 
 이 흐름은 모든 변경에 기계적으로 맞는 답은 아니지만, 실패 모드를 줄이는 강한 기본값입니다. 특히 column rename, type change, large index creation, foreign key validation, table split, backfill은 application version과 DB schema version이 잠시 공존하는 시간을 고려해야 합니다. 이 공존을 생각하지 않으면 배포 중간에 old app이 새 schema를 못 읽거나, new app이 old schema에 쓰려다 실패합니다.
+
+단계별로 "무엇이 아직 허용되는가"를 적어 두면 rollback과 forward fix 판단이 쉬워집니다.
+
+| 단계 | DB schema | old app | new app | 실패했을 때 안전한 방향 |
+| --- | --- | --- | --- | --- |
+| expand 직후 | 새 column은 있지만 필수는 아닙니다. | 기존처럼 읽고 씁니다. | 새 column을 채워 쓰기 시작할 수 있습니다. | old app과 new app을 모두 견디므로 되돌리거나 다시 배포할 수 있습니다. |
+| backfill 중 | 일부 row만 새 값을 가집니다. | 여전히 호환되어야 합니다. | null 가능성을 방어해야 합니다. | batch를 멈추고 원인 row를 고칩니다. |
+| constrain 직전 | 모든 row가 새 규칙을 만족해야 합니다. | 더 이상 null을 만들면 안 됩니다. | 새 규칙을 전제로 동작할 수 있습니다. | 검증 query가 0이 아니면 constrain을 보류합니다. |
+| cleanup 이후 | 새 규칙이 유일한 계약입니다. | 남아 있으면 실패할 수 있습니다. | 정상 경로입니다. | rollback보다 forward fix가 더 안전한 경우가 많습니다. |
+
+이 표의 목적은 migration을 느리게 만들자는 것이 아닙니다. 배포 중간의 어느 순간에도 DB와 애플리케이션이 서로를 이해할 수 있는지 확인하는 것입니다. 이 확인 없이 한 번에 최종 schema로 이동하면, SQL은 성공했는데 old application이 장애를 내거나, application은 배포됐는데 replica lag 때문에 read model이 늦게 따라오는 식의 문제가 생깁니다.
 
 ## DBMS별 경계
 

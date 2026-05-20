@@ -4,7 +4,7 @@
 
 이 문서는 데이터베이스 로그를 파일 이름이 아니라 "누가 읽고, 어떤 상태를 만들기 위해 쓰는가"로 나누어 설명합니다. 여기서 다루는 중심 질문은 네 가지입니다. WAL이 왜 데이터 파일보다 먼저 안정화되어야 하는지, redo가 crash 뒤 어떤 변경을 다시 적용하는지, undo가 rollback과 일관된 읽기에서 어떤 이전 상태를 제공하는지, PITR이 왜 백업 파일 하나가 아니라 백업 이후의 로그 흐름까지 요구하는지를 차례로 설명합니다.
 
-본문은 PostgreSQL과 MySQL/InnoDB를 중심으로 씁니다. Oracle, SQL Server, RocksDB 계열처럼 다른 저장 엔진과 DBMS에도 비슷한 원리가 있지만, 같은 이름을 그대로 옮기면 틀릴 수 있습니다. 이 파일의 목표는 모든 제품의 내부 구조를 다 외우는 것이 아니라, 면접에서 "로그로 복구한다"는 말을 했을 때 그 말이 어떤 계층의 어떤 소비자를 가리키는지 끝까지 설명할 수 있게 만드는 것입니다. Dirty page와 checkpoint의 물리 흐름은 [page와 buffer I/O](02-storage-pages-buffer-io.md), 오래된 version을 누가 볼 수 있는지는 [MVCC와 snapshot visibility](07-mvcc-snapshot-visibility.md), 복제 lag와 failover는 [replication, backup, failover](09-replication-lag-backup-failover.md), DB 밖으로 나간 side effect는 [outbox와 애플리케이션 경계](12-application-boundaries-idempotency-money-outbox.md)로 이어집니다.
+본문은 PostgreSQL과 MySQL/InnoDB를 중심으로 씁니다. Oracle, SQL Server, RocksDB 계열처럼 다른 저장 엔진과 DBMS에도 비슷한 원리가 있지만, 같은 이름을 그대로 옮기면 틀릴 수 있습니다. 이 파일의 목표는 모든 제품의 내부 구조를 다 외우는 것이 아니라, 면접에서 "로그로 복구한다"는 말을 했을 때 그 말이 어떤 계층의 어떤 소비자를 가리키는지 끝까지 설명할 수 있게 만드는 것입니다. Dirty page와 checkpoint의 물리 흐름은 [page와 buffer I/O](02-storage-pages-buffer-io.md), 오래된 version을 누가 볼 수 있는지는 [MVCC와 snapshot visibility](07-mvcc-snapshot-visibility.md), 복제 lag와 failover는 [replication, backup, failover](09-replication-lag-backup-failover.md), DB 밖으로 나간 외부 부작용(side effect)은 [outbox와 애플리케이션 경계](12-application-boundaries-idempotency-money-outbox.md)로 이어집니다.
 - [2-5분 개요](#2-5분-개요)
 - [먼저 잡아야 할 작은 모델](#먼저-잡아야-할-작은-모델)
 - [깊은 메커니즘](#깊은-메커니즘)
@@ -74,6 +74,17 @@ T1 실행
 
 이 모델은 transaction 처리 이론에서 흔히 force/no-force, steal/no-steal로 설명됩니다. force는 commit 때 바뀐 data page를 반드시 디스크에 쓰는 정책입니다. no-force는 commit이 되어도 data page flush를 나중으로 미룰 수 있는 정책입니다. steal은 아직 commit되지 않은 transaction의 dirty page라도 buffer가 필요하면 디스크에 쓸 수 있는 정책입니다. 실제 엔진은 성능 때문에 no-force와 steal 쪽 성질을 섞어 쓰는 경우가 많습니다. 그러면 crash 뒤에는 "commit되었지만 data file에 아직 없는 변경"과 "commit되지 않았는데 data file 어딘가에 내려간 변경"을 모두 설명해야 합니다. redo와 undo라는 두 질문이 여기서 나옵니다.
 
+정책 조합을 작게 펼치면 왜 redo와 undo가 함께 등장하는지 보입니다.
+
+| 정책 감각 | commit된 변경이 data file에 없을 수 있는가 | commit 안 된 변경이 data file에 있을 수 있는가 | crash 뒤 필요한 질문 |
+| --- | --- | --- | --- |
+| force + no-steal | 거의 없게 만들려는 정책 | 없게 만들려는 정책 | 단순하지만 정상 실행 I/O가 큽니다. |
+| no-force | 예 | 정책에 따라 다름 | commit된 변경을 redo할 수 있어야 합니다. |
+| steal | 정책에 따라 다름 | 예 | commit 안 된 변경을 undo하거나 보이지 않게 해야 합니다. |
+| no-force + steal | 예 | 예 | redo와 undo/visibility 판단이 모두 필요합니다. |
+
+실제 제품이 이 표의 칸 하나에 딱 맞는다고 외우기보다, 면접에서는 먼저 질문을 분리하는 편이 안전합니다. "commit된 변경이 빠졌는가"는 redo 질문이고, "commit되지 않은 변경이 보이면 안 되는가"는 undo 또는 visibility 질문입니다. PostgreSQL과 InnoDB는 이 질문에 답하는 자료 구조가 다릅니다.
+
 redo는 commit된 변경이 data file에 없으면 다시 적용하는 질문입니다. undo는 commit되지 않은 변경이 이미 보이거나 page에 남아 있으면 되돌리거나, 다른 transaction이 봐야 하는 이전 버전을 찾는 질문입니다. WAL은 이 두 질문을 가능하게 만드는 더 넓은 원칙 또는 로그 체계로 쓰입니다. PostgreSQL에서는 WAL 자체가 crash recovery의 redo 재료이고, archiving을 통해 PITR과 standby에도 쓰입니다. InnoDB에서는 redo log와 undo log가 역할을 나누고, MySQL server 계층의 binary log가 replication과 특정 시점 복구의 중요한 재료가 됩니다.
 
 이 구분을 잡으면 "로그"라는 단어가 더 이상 하나로 보이지 않습니다. 같은 update라도 네 가지 관점이 생깁니다.
@@ -91,7 +102,7 @@ redo는 commit된 변경이 data file에 없으면 다시 적용하는 질문입
 
 ### 정상 commit 경로
 
-정상 commit 경로를 먼저 보겠습니다. 애플리케이션이 update를 보내면 DBMS는 논리적으로 row 하나를 바꾸는 것처럼 보입니다. 하지만 저장 엔진은 row를 page 안에서 찾고, 그 page를 buffer에 올리고, page 안의 record나 tuple을 바꾸고, 그 변경을 설명하는 log record를 만듭니다. 이때 data page가 디스크에 내려가는 시점과 log가 내려가는 시점은 다릅니다.
+정상 commit 경로는 애플리케이션의 update 요청에서 시작합니다. 애플리케이션이 update를 보내면 DBMS는 논리적으로 row 하나를 바꾸는 것처럼 보입니다. 하지만 저장 엔진은 row를 page 안에서 찾고, 그 page를 buffer에 올리고, page 안의 record나 tuple을 바꾸고, 그 변경을 설명하는 log record를 만듭니다. 이때 data page가 디스크에 내려가는 시점과 log가 내려가는 시점은 다릅니다.
 
 아래 그림은 commit 성공 응답이 단순한 `write()` 성공이 아니라 WAL bytes가 OS와 storage 경계를 어디까지 통과했는지에 걸려 있음을 보여 줍니다. PostgreSQL처럼 `wal_sync_method=fdatasync` 또는 `fsync` 계열을 쓰는 경우에는 `write()`가 WAL bytes를 kernel cache로 옮기고, 별도 sync 단계가 그 bytes를 영구 저장 장치까지 밀어 내려 commit durability 경계를 닫습니다.
 
@@ -117,6 +128,17 @@ redo는 commit된 변경이 data file에 없으면 다시 적용하는 질문입
 5. checkpoint or background flush
    dirty P10 is eventually written to data file
 ```
+
+정상 commit 경로를 상태별로 보면, "로그가 있다"라는 말 안에도 여러 중간 상태가 있음을 알 수 있습니다.
+
+| 단계 | P10 data page | log bytes | transaction 결과 | crash가 여기서 나면 |
+| --- | --- | --- | --- | --- |
+| update 직후 | buffer에서 dirty | DBMS log buffer에 있을 수 있음 | 아직 commit 아님 | commit되지 않았으므로 보이면 안 됩니다. |
+| commit 결정 직전 | dirty일 수 있음 | commit 관련 record가 준비됨 | 아직 client success 아님 | DBMS 정책상 commit 성공으로 말하지 않은 상태입니다. |
+| log flush 완료 | dirty일 수 있음 | durable boundary 통과 | client에게 success 가능 | data page가 오래되어도 redo로 복원해야 합니다. |
+| page flush 완료 | data file도 새 page 반영 | log는 여전히 복구/replication/PITR 재료일 수 있음 | success 이후 상태 | recovery 부담이 줄어듭니다. |
+
+이 표에서 data page와 log bytes를 나란히 보는 이유는 commit의 안전성이 data page flush가 아니라 log flush에 기대는 경우가 많기 때문입니다. 다만 어떤 flush를 commit 성공 조건으로 삼는지는 DBMS와 설정에 따라 달라집니다.
 
 여기서 LSN(Log Sequence Number)은 로그 안에서의 위치 또는 순서를 나타내는 값입니다. 실제 제품마다 이름과 단위는 다르지만, "이 page가 어느 log 위치까지 반영되었는가"를 판단하는 데 중요합니다. page가 이미 최신 LSN을 반영하고 있으면 redo를 다시 적용할 필요가 없습니다. page가 더 오래된 LSN에 머물러 있으면 recovery는 log를 읽고 빠진 변경을 다시 적용합니다. 이 성질 때문에 redo는 보통 idempotent, 즉 이미 적용된 변경을 다시 만났을 때도 pageLSN 같은 기준으로 중복 적용을 피할 수 있게 설계됩니다.
 
@@ -155,6 +177,46 @@ client receives commit success
 
 Linux `fsync(2)` manual은 `fsync()`가 파일의 수정된 in-core data와 metadata를 영구 저장 장치로 flush하고, disk cache가 있으면 그것까지 flush한다고 설명합니다. Linux block layer 문서도 volatile write-back cache가 있는 장치는 OS에 I/O completion을 먼저 알릴 수 있으므로, filesystem이 data integrity operation에서 forced cache flush나 FUA(Force Unit Access)를 사용할 수 있다고 설명합니다. 따라서 commit latency는 단순히 SQL 실행 시간이 아닙니다. DBMS log flusher가 CPU를 언제 받는지, kernel writeback과 filesystem journal이 어떤 ordering을 요구하는지, block queue와 device cache flush가 얼마나 걸리는지가 모두 commit 지연에 들어갈 수 있습니다.
 
+아래 trace는 하나의 transaction이 commit success를 받기 전까지 통과할 수 있는 경계를 더 잘게 나눈 것입니다.
+
+```text
+T1 commit wants LSN 510 durable
+
+DBMS memory
+  WAL buffer contains bytes up to LSN 510
+  commit is not yet safe against process crash
+
+DBMS WAL writer/flusher
+  issues write for WAL file range
+  bytes leave DBMS buffer
+
+kernel/filesystem
+  accepts write
+  may keep dirty file pages or submit I/O
+  filesystem metadata/order rules may matter
+
+block layer/device
+  request reaches storage queue
+  volatile controller cache may acknowledge early unless flush/FUA is used
+
+sync completion
+  DBMS durability policy says required boundary is satisfied
+  T1 can receive commit success
+```
+
+group commit은 이 경로를 여러 transaction이 공유하게 만드는 최적화입니다.
+
+```text
+T1 commit waits for LSN 510
+T2 commit waits for LSN 520
+T3 commit waits for LSN 530
+
+one flush completes durable up to LSN 530
+  T1, T2, T3 can all be released
+```
+
+이 구조는 commit latency를 줄일 수 있지만, 원리를 없애지는 않습니다. 성공 응답을 받은 transaction의 log 위치가 DBMS가 요구하는 flush boundary를 통과해야 crash 뒤 redo 재료가 남습니다.
+
 면접에서는 이 경계를 한 문장으로 압축할 수 있습니다. "WAL/redo가 안전하다는 말은 log record가 DBMS 메모리에 생겼다는 뜻이 아니라, 해당 DBMS 설정이 commit 성공으로 인정하는 flush 경계까지 내려갔다는 뜻입니다." 이 문장을 말한 뒤에는 제품별 설정으로 내려가야 합니다. PostgreSQL은 `synchronous_commit`, `fsync`, `wal_sync_method`, group commit을 봅니다. InnoDB는 `innodb_flush_log_at_trx_commit`, redo log writer/flusher, doublewrite와 checkpoint 압력을 함께 봅니다. 설정이 성능을 위해 flush 경계를 약하게 만들면 crash 때 잃을 수 있는 window도 같이 달라집니다.
 
 ### crash recovery는 최신 일관성 회복이다
@@ -188,13 +250,24 @@ after recovery
   disk page P10: balance = 9000, pageLSN >= 500
 ```
 
+crash recovery 판단은 보통 다음 네 가지 상태를 구분하는 일입니다.
+
+| disk data page | log에 commit 증거 | recovery 판단 | 이유 |
+| --- | --- | --- | --- |
+| 최신 | 있음 | redo를 건너뛰거나 idempotent하게 확인 | pageLSN 등이 이미 반영을 보여 줍니다. |
+| 오래됨 | 있음 | redo 적용 | client에게 성공한 변경이 data file에 빠져 있습니다. |
+| 일부 변경 흔적 | 없음 또는 commit 아님 | undo/visibility 정리 필요 | commit되지 않은 변경이 확정 상태처럼 보이면 안 됩니다. |
+| log chain이 끊김 | 판단 불가 | 복구를 멈추고 원인과 대체 복원 지점을 다시 확인해야 하는 위험 | 필요한 증거가 없으면 이후 상태를 신뢰하기 어렵습니다. |
+
+이 표가 중요한 이유는 recovery가 "마지막 메모리 상태를 복원한다"가 아니라는 점입니다. 복구는 사라진 메모리를 되살리는 작업이 아니라, 디스크에 남은 page와 log 증거를 읽어 transaction 규칙에 맞는 새 일관 상태를 만드는 작업입니다.
+
 만약 commit되지 않은 T2가 있었다면 이야기가 달라집니다. InnoDB에서는 undo log가 rollback과 consistent read에 쓰이며, recovery 과정에서도 완료되지 않은 transaction의 영향을 정리하는 데 관여합니다. PostgreSQL에서는 transaction visibility 정보와 tuple version 규칙 때문에 commit되지 않은 tuple은 정상 조회에서 보이지 않습니다. 두 제품 모두 "commit되지 않은 변경이 사용자에게 확정된 상태처럼 보이면 안 된다"는 목표는 공유하지만, 이전 버전을 어디에 어떻게 두는지는 다릅니다.
 
 ### undo는 이전 상태를 제공하는 장치다
 
 undo를 redo의 반대말로만 외우면 반쯤만 맞습니다. InnoDB undo log는 transaction의 최근 변경을 되돌리는 정보를 담습니다. 그런데 그 정보는 rollback에만 쓰이지 않습니다. 다른 transaction이 consistent read, 즉 자기 snapshot 기준으로 일관된 읽기를 해야 할 때도 unmodified data를 undo log record에서 가져올 수 있습니다. MySQL 8.4 공식 문서도 undo log record가 transaction의 최신 변경을 undo하는 정보를 담고, 다른 transaction이 일관된 읽기의 일부로 원래 데이터를 봐야 할 때 그 unmodified data를 undo log record에서 가져온다고 설명합니다.
 
-작은 예를 보자.
+다음 작은 예시는 undo가 rollback과 consistent read에 어떻게 동시에 연결되는지 보여 줍니다.
 
 ```text
 초기
@@ -212,6 +285,18 @@ T1 reads again at 10:02
   T1 still needs the 10:00 snapshot
   InnoDB can follow undo information to reconstruct balance = 10000
 ```
+
+이 예를 더 작게 쪼개면 undo가 정상 읽기 경로에도 들어온다는 점이 보입니다.
+
+| 시간 | 현재 clustered record | undo 쪽에 남은 정보 | T1 snapshot이 봐야 하는 값 |
+| --- | --- | --- | --- |
+| 10:00 | balance=10000 | 없음 | 10000 |
+| 10:01 update | balance=9000 | 이전 값 10000을 되돌릴 정보 | 10000 |
+| 10:01 commit | balance=9000 | 오래된 snapshot이 필요하면 아직 보존 | 10000 |
+| 10:02 T1 read | 최신 record는 9000 | undo를 따라 이전 상태 재구성 | 10000 |
+| T1 종료 후 purge 가능 시점 | 최신 record 9000 | 더 이상 필요 없으면 정리 후보 | 새 snapshot은 9000 |
+
+그래서 오래 열린 transaction은 단순히 lock만의 문제가 아닙니다. 오래된 snapshot이 남아 있으면 이전 버전이나 undo 정보를 빨리 버릴 수 없고, purge 또는 vacuum이 밀립니다. "undo는 rollback용"이라는 설명은 이 정상 실행 중 읽기 비용을 놓칩니다.
 
 이 예에서 undo는 "장애가 났을 때만 쓰는 로그"가 아닙니다. 정상 실행 중에도 오래된 snapshot을 재구성하는 데 쓰입니다. 그래서 long transaction이 오래 살아 있으면 undo를 빨리 지울 수 없고, purge가 밀릴 수 있습니다. 면접에서 InnoDB MVCC를 설명할 때 undo log와 read view를 함께 말해야 하는 이유가 여기에 있습니다.
 
@@ -266,6 +351,18 @@ restore
   5. decide whether and how to replace or extract data
 ```
 
+PITR에서 실제로 확인해야 하는 것은 "복구 명령을 실행했다"가 아니라 chain이 끊기지 않았고 목표 시점이 맞다는 점입니다.
+
+| 확인 항목 | PASS 신호 | FAIL 신호 |
+| --- | --- | --- |
+| 기준 backup | 목표 시점보다 이전이며 restore 가능한 backup이 있습니다. | backup은 있지만 restore rehearsal을 해 본 적이 없습니다. |
+| log continuity | backup 시작/종료 경계부터 목표 시점까지 WAL archive 또는 binary log가 연속입니다. | 중간 segment/file이 빠졌거나 보존 기간이 지나 삭제되었습니다. |
+| target boundary | time, LSN, transaction id, binlog position 중 목표가 명확합니다. | timezone, commit 순서, 잘못된 작업의 정확한 경계가 불분명합니다. |
+| business validation | 핵심 row와 업무 invariant가 목표 시점 상태와 맞습니다. | server가 켜진 것만 보고 성공으로 판단합니다. |
+| external effects | DB 밖으로 나간 결제, 메시지, 파일, cache를 어떻게 맞출지 계획이 있습니다. | DB만 되돌리면 전체 시스템도 돌아간다고 가정합니다. |
+
+특히 목표 시간이 wall-clock time이면 더 조심해야 합니다. 사용자가 본 "10:31"과 DB server timezone, binary log event time, transaction commit 순서가 어긋날 수 있습니다. 가능한 경우에는 업무 event id, LSN, binlog position, transaction boundary 같은 더 명확한 기준을 함께 잡는 편이 안전합니다.
+
 여기서 "backup이 있다"와 "원하는 시점으로 복구할 수 있다"는 같은 말이 아닙니다. backup만 있으면 backup 시점으로 돌아갈 수 있을 뿐입니다. backup 이후 목표 시점까지의 log chain이 연속으로 있어야 합니다. log가 일부 빠졌거나, archive command가 실패했거나, binary log 보존 기간이 지나 삭제되었거나, 목표 시각의 timezone과 transaction boundary가 불명확하면 PITR은 곧바로 위험해집니다. 복구 가능성은 문서상 정책이 아니라 실제 restore rehearsal, 즉 격리된 환경에서 복원하고 업무 검증 쿼리를 돌려 본 결과로 닫아야 합니다.
 
 ### replication log와 recovery log를 섞지 않기
@@ -274,11 +371,22 @@ restore
 
 같은 재료가 여러 소비자에게 읽힐 수 있으므로, "WAL은 replication log다"처럼 한 용도로만 이름 붙이면 틀립니다. 반대로 MySQL의 InnoDB redo log와 MySQL binary log를 모두 "로그"라고 묶어 버리면, crash recovery와 PITR의 재료를 섞게 됩니다. InnoDB redo log는 storage engine이 page 변경을 crash 뒤 재적용하는 데 쓰는 물리적 성격의 로그입니다. MySQL binary log는 server 계층에서 데이터 변경 event를 기록하며 replication과 PITR에 쓰입니다. 실제 운영에서 복구 절차를 만들 때 이 둘의 책임을 혼동하면, redo log만 보고 특정 시점 복구가 된다고 믿거나, binary log만 있으면 engine crash consistency가 해결된다고 착각할 수 있습니다.
 
+같은 update 하나도 소비자에 따라 다르게 읽힙니다.
+
+| 소비자 | 읽는 질문 | 대표적으로 필요한 순서 |
+| --- | --- | --- |
+| crash recovery | data file이 commit된 page 상태를 빠뜨렸는가 | checkpoint 이후 WAL/redo 순서 |
+| standby/replica | primary/source 변경을 어디까지 따라왔는가 | receive position과 replay/apply position |
+| PITR restore | backup 이후 목표 지점까지 무엇을 적용하고 어디서 멈출 것인가 | backup base와 archived WAL/binlog chain |
+| old snapshot reader | 이 transaction이 봐야 할 이전 version은 무엇인가 | undo chain 또는 tuple visibility |
+
+이 표처럼 "누가 읽는가"를 먼저 정하면 로그 이름이 헷갈려도 복구 질문을 다시 잡을 수 있습니다.
+
 ### 애플리케이션 경계까지 보기
 
-DB를 특정 시점으로 되돌리는 일은 DB 안에서만 끝나지 않습니다. 결제 승인, 외부 메시지 발행, 검색 색인, 캐시, 파일 업로드, 이메일 발송처럼 DB 밖에 이미 나간 side effect가 있으면, DB만 10:30:59로 되돌려도 시스템 전체가 10:30:59로 돌아가지 않습니다. PITR은 database state를 되돌리는 강력한 도구지만, 외부 시스템과의 reconciliation을 자동으로 해결하지 않습니다. 이 경계는 [outbox, idempotency, money flow](12-application-boundaries-idempotency-money-outbox.md)를 함께 봐야 면접 답변이 DB 내부 설명에서 멈추지 않습니다.
+DB를 특정 시점으로 되돌리는 일은 DB 안에서만 끝나지 않습니다. 결제 승인, 외부 메시지 발행, 검색 색인, 캐시, 파일 업로드, 이메일 발송처럼 DB 밖에 이미 나간 외부 부작용이 있으면, DB만 10:30:59로 되돌려도 시스템 전체가 10:30:59로 돌아가지 않습니다. PITR은 database state를 되돌리는 강력한 도구지만, 외부 시스템과의 정합성 맞춤(reconciliation)을 자동으로 해결하지 않습니다. 이 경계는 [outbox, idempotency, money flow](12-application-boundaries-idempotency-money-outbox.md)를 함께 봐야 면접 답변이 DB 내부 설명에서 멈추지 않습니다.
 
-예를 들어 주문 DB를 잘못된 DELETE 직전으로 복원했다고 하자. 그 사이 결제 PG에는 이미 승인된 거래가 있고, Kafka나 SQS에는 발행된 이벤트가 있고, 검색 인덱스에는 삭제나 수정이 반영되었을 수 있습니다. 이때 복구 판단은 "DB가 복원되었는가"만이 아니라 "외부 side effect와 다시 맞출 계획이 있는가"까지 포함해야 합니다. 면접에서 senior하게 답하려면 DB 내부 로그 설명 뒤에 이 경계를 짧게라도 붙이는 편이 좋습니다. 복구는 저장소의 시간 이동이면서 동시에 시스템 경계의 정합성 문제입니다.
+예를 들어 주문 DB를 잘못된 DELETE 직전으로 복원했다고 하자. 그 사이 결제 PG에는 이미 승인된 거래가 있고, Kafka나 SQS에는 발행된 이벤트가 있고, 검색 인덱스에는 삭제나 수정이 반영되었을 수 있습니다. 이때 복구 판단은 "DB가 복원되었는가"만이 아니라 "외부 부작용과 다시 맞출 계획이 있는가"까지 포함해야 합니다. 면접에서 더 성숙하게 답하려면 DB 내부 로그 설명 뒤에 이 경계를 짧게라도 붙이는 편이 좋습니다. 복구는 저장소의 시간 이동이면서 동시에 시스템 경계의 정합성 문제입니다.
 
 ## DBMS별 경계
 
@@ -440,7 +548,7 @@ PASS는 checkpoint age, history list length, transaction 상태 같은 신호를
 
 답
   목표 시점까지의 log chain이 연속이고 restore rehearsal이 통과하면 가능합니다.
-  하지만 wrong DELETE 직전인지, timezone과 transaction boundary가 맞는지, 외부 side effect가 어떻게 정리되는지는 별도 검증해야 합니다.
+  하지만 wrong DELETE 직전인지, timezone과 transaction boundary가 맞는지, 외부 부작용이 어떻게 정리되는지는 별도 검증해야 합니다.
 ```
 
 이 손 replay가 가능한 상태가 되면 면접 답변이 단단해집니다. 외운 문장은 꼬리 질문을 만나면 흔들리지만, 상태 전이를 손으로 다시 그릴 수 있으면 질문이 변해도 같은 원리로 내려갈 수 있습니다.
@@ -485,7 +593,7 @@ PASS는 checkpoint age, history list length, transaction 상태 같은 신호를
 
 10. DB만 PITR하면 서비스 전체도 그 시점으로 돌아가나요?
 
-    아닙니다. DB 밖으로 나간 결제 승인, 메시지, 검색 색인, 캐시, 이메일 같은 side effect는 자동으로 되돌아가지 않습니다. 그래서 PITR 계획에는 복구 DB 검증뿐 아니라 외부 시스템 reconciliation 계획이 함께 있어야 합니다.
+    아닙니다. DB 밖으로 나간 결제 승인, 메시지, 검색 색인, 캐시, 이메일 같은 외부 부작용은 자동으로 되돌아가지 않습니다. 그래서 PITR 계획에는 복구 DB 검증뿐 아니라 외부 시스템 정합성 맞춤 계획이 함께 있어야 합니다.
 
 ## 함정 질문
 
@@ -534,4 +642,4 @@ PASS는 checkpoint age, history list length, transaction 상태 같은 신호를
 - [Linux block layer writeback cache control](https://docs.kernel.org/block/writeback_cache_control.html): volatile write-back cache, forced cache flush, FUA가 durability 경계에 왜 필요한지 확인합니다.
 - `study/database/mvcc.md`: InnoDB read view와 undo, PostgreSQL tuple visibility 차이를 다시 읽을 때 source로 씁니다.
 - `study/database/replication.md`, `study/database/replication_lag.md`: replication log와 lag를 recovery log와 섞지 않기 위한 source로 씁니다.
-- `study/database/deep-dive/storage-index-optimizer/06-wal-undo-redo-recovery.md`: 이전 장문 초안입니다. 좋은 trace seed와 반복/경계 흐림이 함께 있으므로, 정식 문서로 바로 복사하지 말고 claim 단위로 선별해 읽습니다.
+- `study/database/deep-dive/storage-index-optimizer/06-wal-undo-redo-recovery.md`: 이전 장문 초안입니다. 좋은 trace seed와 반복/경계 흐림이 함께 있으므로, 정식 문서로 바로 복사하지 말고 주장 단위로 선별해 읽습니다.

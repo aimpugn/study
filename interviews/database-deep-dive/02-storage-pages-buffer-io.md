@@ -101,6 +101,17 @@ P10: balance=9000, page_lsn=120
 P10: clean
 ```
 
+이 상태 전이를 더 정확히 말하려면 "P10이 어디에 있고, 누가 그 상태를 믿는가"를 나눠야 합니다.
+
+| 순간 | DB buffer의 P10 | WAL/redo | data file의 P10 | client가 믿어도 되는 것 |
+| --- | --- | --- | --- | --- |
+| read 직후 | clean, balance=10000 | 아직 새 record 없음 | balance=10000 | 아직 변경 없음 |
+| update 직후 | dirty, balance=9000 | 변경 record가 buffer에 생김 | balance=10000일 수 있음 | transaction 내부에서만 새 값 |
+| commit 직후 | dirty일 수 있음 | commit에 필요한 log가 durable boundary 통과 | balance=10000일 수 있음 | commit 성공이면 새 값은 복구되어야 함 |
+| checkpoint/flush 뒤 | clean 또는 evict 가능 | 더 오래된 log는 재사용 후보 | balance=9000 | data file도 새 값을 반영 |
+
+이 표는 "commit이 성공했다"와 "data file page가 새 값을 담고 있다"를 분리합니다. DBMS는 commit 성공 시점에 data file을 반드시 최신으로 만들 필요가 없습니다. 대신 crash 뒤 새 값을 다시 만들 수 있는 log를 먼저 안전하게 남깁니다.
+
 이 모델은 왜 DBMS가 log를 필요로 하는지도 보여 줍니다. commit 뒤 data page가 아직 disk에 내려가지 않았는데 서버가 죽어도, durable log가 있으면 recovery가 P10을 다시 고칠 수 있습니다. 반대로 data page를 매 commit마다 강제로 모두 내려보내면 recovery는 단순해질 수 있지만 정상 처리 성능이 크게 떨어집니다. 그래서 저장 엔진은 log를 먼저 안전하게 남기고 page flush를 지연시키는 설계를 많이 씁니다.
 
 또 하나의 작은 모델은 read path입니다.
@@ -122,6 +133,16 @@ physical read
   storage device reads block/page
   DBMS receives page and places it in buffer
 ```
+
+이 read path에서는 "읽었다"라는 말도 세 단계로 나뉩니다.
+
+| 관측 문장 | 실제 의미 | 아직 모르는 것 |
+| --- | --- | --- |
+| DB buffer hit | DBMS가 자기 buffer frame에서 page를 찾았습니다. | OS cache나 device 상태는 이번 요청에서 보지 않았습니다. |
+| DB buffer miss, OS cache hit | DBMS buffer에는 없었지만 커널 page cache에는 파일 block이 있었습니다. | 물리 장치까지 내려가지 않았더라도 DBMS buffer로 복사하는 비용은 있습니다. |
+| physical read | OS page cache에도 없어 storage에서 block을 읽었습니다. | 장치 queue, filesystem layout, read-ahead 정책에 따라 지연이 달라집니다. |
+
+따라서 "cache hit ratio가 높다"는 지표를 볼 때는 어느 cache의 hit인지 먼저 물어야 합니다. DBMS buffer hit가 높으면 executor가 page를 빠르게 얻었을 가능성이 크지만, 동시에 checkpoint나 fsync가 밀리는 write 병목이 없다는 뜻은 아닙니다. OS cache hit가 높으면 물리 read는 줄었을 수 있지만, DBMS는 그 page를 자기 buffer에 올려 page header, visibility, latch 같은 내부 의미를 다시 관리해야 합니다.
 
 따라서 "디스크를 안 읽었다"는 말도 층위를 나눠야 합니다. DBMS buffer에서는 miss였지만 OS cache hit였을 수 있습니다. OS cache에서도 miss라면 storage device I/O가 일어납니다. direct I/O를 쓰는 설정에서는 OS cache를 덜 쓰는 경로도 있습니다. 면접에서는 특정 제품과 설정을 모른다면 "어느 cache 기준인지 확인해야 한다"고 말하는 편이 정확합니다.
 
@@ -199,6 +220,8 @@ DB buffer lookup
         miss -> storage device read -> OS cache -> DB buffer
 ```
 
+여기서 DBMS buffer와 OS page cache는 같은 데이터를 두 번 들고 있을 수도 있습니다. 이를 double buffering이라고 부르기도 합니다. 이것이 항상 낭비라는 뜻은 아닙니다. DBMS buffer는 page의 dirty 여부, pageLSN, replacement 정책, latch와 transaction visibility 같은 DBMS 의미를 붙잡습니다. OS page cache는 file offset과 block 단위 재사용, read-ahead, writeback을 관리합니다. 두 계층의 목적이 다르기 때문에, 어떤 DBMS와 storage 설정에서는 buffered I/O를 쓰고, 어떤 구성에서는 direct I/O나 유사 설정으로 OS cache 경로를 줄이기도 합니다. 제품과 설정을 모르면 "DBMS가 OS cache를 완전히 우회한다"고 단정하지 않는 편이 안전합니다.
+
 운영에서 "cache hit ratio가 높다"는 지표를 볼 때는 어떤 층의 hit인지 확인해야 합니다. InnoDB buffer pool hit가 높으면 storage read pressure가 낮다는 좋은 신호일 수 있습니다. PostgreSQL shared buffer hit가 높아도, checkpoint fsync나 OS writeback에서 latency가 생길 수 있습니다. 반대로 DBMS buffer hit가 낮아도 OS cache가 흡수하고 있다면 물리 device read는 적을 수 있습니다. 하지만 DBMS는 OS cache 내부 상태를 transaction 의미와 직접 연결하지 못하므로, 안정성은 WAL/fsync 같은 명시적 flush 경계로 닫아야 합니다.
 
 ### OS는 page cache, filesystem, block layer를 거쳐 I/O를 보낸다
@@ -225,6 +248,24 @@ kernel page cache
             v
           storage returns bytes
 ```
+
+읽기 경로는 "요청이 아래로 내려가고 bytes가 위로 올라오는" 왕복입니다. DBMS가 원하는 것은 page `P10`이지만, 커널은 파일 offset과 block mapping으로 봅니다.
+
+```text
+DBMS term
+  relation file + page number P10
+
+kernel/filesystem term
+  file descriptor + byte offset range
+
+block layer term
+  block device + sector/block request
+
+device term
+  controller command + media read
+```
+
+이 변환 때문에 DBMS 관측과 OS 관측을 맞춰 읽어야 합니다. DBMS에서는 "heap block 1234 read"처럼 보인 일이 OS에서는 특정 파일의 offset read이고, block layer에서는 여러 bio/request로 쪼개질 수 있습니다. 반대로 `iostat`에서 await가 높다고 해서 곧바로 특정 SQL 하나가 문제라고 말할 수도 없습니다. 같은 device queue를 checkpoint, temp file spill, 다른 process가 함께 쓰고 있을 수 있습니다.
 
 쓰기 경로도 같은 층을 지나지만, 읽기보다 더 조심해야 합니다. `write`가 성공했다는 말은 커널이 데이터를 받았다는 뜻일 수 있고, 장치의 비휘발성 저장소에 반드시 도착했다는 뜻은 아닙니다. Linux `fsync(2)` manual은 `fsync()`가 파일의 수정된 in-core data와 metadata를 disk device 또는 영구 저장 장치로 flush하고, disk cache가 있으면 그것까지 write-through 또는 flush한다고 설명합니다. Linux block layer 문서도 volatile write-back cache가 있는 장치는 운영체제에 I/O 완료를 먼저 알릴 수 있으므로, `fsync`, `sync`, unmount 같은 data integrity operation에서 비휘발성 저장소로 강제 flush해야 한다고 설명합니다.
 
@@ -255,6 +296,17 @@ fsync/fdatasync
   may issue cache flush/FUA so completion means a stronger durability boundary
 ```
 
+쓰기에서 자주 헷갈리는 acknowledgement도 분리해야 합니다.
+
+| 완료처럼 보이는 사건 | 강한 정도 | DB 관점의 의미 |
+| --- | --- | --- |
+| DBMS log buffer에 record 생성 | 가장 약함 | crash가 나면 메모리와 함께 사라질 수 있습니다. |
+| `write()`가 성공 | 중간 | 커널 또는 direct I/O 경로로 bytes를 넘겼지만, 장치의 비휘발성 저장까지 보장한다고 단정하면 안 됩니다. |
+| `fdatasync`/`fsync`가 성공 | 더 강함 | 해당 파일 data와 필요한 metadata가 durable boundary를 통과했다고 보는 지점입니다. 실제 강도는 OS, filesystem, device cache 신뢰성에 의존합니다. |
+| storage가 forced flush/FUA를 완료 | 장치 경계 | volatile write-back cache가 비워졌다고 기대하는 지점입니다. 장치와 controller가 거짓 완료를 알리면 DBMS도 속을 수 있습니다. |
+
+따라서 durability는 DBMS 코드만의 성질이 아니라, DBMS 설정, 커널 sync 동작, filesystem, storage cache 정책이 함께 만드는 계약입니다. 면접 답변에서는 `fsync`를 "느린 함수"로만 말하지 말고, commit 성공 응답이 어느 durable boundary 뒤에 나가는지와 연결해야 합니다.
+
 이 경로는 왜 DB 운영에서 CPU scheduler와 memory pressure도 중요해지는지 보여 줍니다. DBMS background writer나 checkpointer가 runnable 상태여도 CPU를 받지 못하면 flush가 늦어질 수 있습니다. 메모리가 부족하면 커널 writeback이나 reclaim이 DBMS foreground query와 겹쳐 지연을 만들 수 있습니다. block queue가 길어지면 DBMS 내부에서는 단순한 `fsync` 지연처럼 보이지만, 실제 원인은 filesystem journal, block scheduler, driver, 장치 cache flush 중 하나일 수 있습니다. 그래서 storage 장애를 볼 때는 DB 지표와 함께 `iostat`, `pidstat`, `vmstat`, `perf`, filesystem mount option, device cache 정책을 함께 봐야 합니다.
 
 ### dirty page는 commit과 다른 시간축에 산다
@@ -277,6 +329,17 @@ background writer/checkpoint
 crash can happen between commit and flush
   recovery uses WAL/redo to bring data file forward
 ```
+
+이 시간축을 네 개의 시계로 나누면 더 안전합니다.
+
+| 시계 | 진행을 보여 주는 대표 단서 | 늦어지면 생기는 현상 |
+| --- | --- | --- |
+| transaction clock | statement 시작, commit, rollback | lock wait, snapshot 보존, undo/vacuum 지연 |
+| log clock | WAL/redo write LSN, flushed LSN | commit latency, recovery에 필요한 log 범위 증가 |
+| dirty page clock | dirty buffer count, checkpoint age | checkpoint spike, eviction 지연, writeback 압력 |
+| OS/device clock | writeback, block queue, cache flush | `fsync` 지연, read/write latency 증가 |
+
+한 transaction이 commit되었다고 해서 네 시계가 모두 같은 지점에 도착한 것은 아닙니다. commit 시계는 client 응답까지 갔지만 dirty page 시계는 아직 뒤에 있을 수 있습니다. 이 간격을 허용하려고 WAL/redo가 있고, 이 간격이 너무 커지면 checkpoint와 recovery 시간이 문제가 됩니다.
 
 이 구조가 가능한 이유는 write-ahead rule입니다. data page 변경이 disk data file에 늦게 내려가더라도, 그 변경을 다시 만들 수 있는 log가 먼저 안정화되면 crash recovery가 빠진 변경을 redo할 수 있습니다. PostgreSQL WAL reliability 문서는 committed transaction의 data가 power loss 등에도 안전한 nonvolatile area에 저장되어야 한다고 설명하고, OS buffer cache와 disk/controller cache 같은 여러 cache layer 때문에 강제 flush가 단순하지 않다고 설명합니다. 그래서 `fsync`나 sync method, storage write cache 신뢰성이 실제 durability와 연결됩니다.
 
@@ -303,6 +366,28 @@ recovery:
   redo changes after checkpoint if data page is older
 ```
 
+checkpoint는 한 번에 "모든 것을 깨끗하게 만든다"라기보다, 복구가 다시 읽어야 할 출발선을 앞으로 당기는 작업입니다.
+
+```text
+before checkpoint
+  dirty pages:
+    P1 pageLSN=100
+    P2 pageLSN=120
+  WAL durable:
+    up to LSN 150
+
+during checkpoint
+  write P1/P2 data pages
+  fsync data files as required by engine policy
+  write checkpoint record
+
+after checkpoint
+  recovery can usually start near checkpoint record
+  new updates after LSN 150 still need WAL/redo
+```
+
+여기서 `usually`라고 조심스럽게 말하는 이유는 제품별로 checkpoint record, restart point, fuzzy checkpoint, full-page image, doublewrite 같은 세부가 다르기 때문입니다. 공통 원리는 "복구가 처음부터 모든 log를 읽지 않도록, data file이 어느 지점까지 따라왔는지 표시한다"입니다. 세부 구현은 PostgreSQL과 InnoDB 문서로 나눠 확인해야 합니다.
+
 checkpoint는 정상 처리에도 비용을 만듭니다. PostgreSQL 문서는 checkpoint가 dirty buffer를 쓰기 때문에 상당한 I/O load를 일으킬 수 있고, checkpoint를 더 자주 하면 crash recovery는 빨라질 수 있지만 dirty page flush 비용이 늘어난다고 설명합니다. InnoDB에서도 log file size와 checkpointing은 disk I/O와 recovery time 사이의 trade-off를 만듭니다. 따라서 checkpoint spike를 "갑자기 디스크가 느려졌다"로만 보면 부족하고, dirty page accumulation과 log checkpoint age를 함께 봐야 합니다.
 
 ### fsync는 write system call이 끝났다와 전원이 나가도 남는다 사이의 경계다
@@ -310,6 +395,29 @@ checkpoint는 정상 처리에도 비용을 만듭니다. PostgreSQL 문서는 c
 애플리케이션이 파일에 write를 호출했다고 해서 data가 durable storage에 도착했다는 뜻은 아닙니다. OS buffer cache, controller cache, disk cache가 사이에 있습니다. PostgreSQL reliability 문서도 disk와 main memory 사이에 여러 cache layer가 있고, OS는 application이 buffer cache에서 disk로 강제 write할 방법을 제공하며 PostgreSQL이 그것을 사용한다고 설명합니다. 하지만 drive/controller write-back cache가 power loss를 견디지 못하면 reliability hazard가 될 수 있습니다.
 
 DBMS의 durability 설정은 이 경계를 조정합니다. PostgreSQL의 `synchronous_commit`, `wal_sync_method`, storage cache 설정, MySQL의 `innodb_flush_log_at_trx_commit` 같은 설정은 commit latency와 crash loss window 사이의 trade-off를 만듭니다. 면접에서는 숫자를 외우기보다 원리를 말해야 합니다. "commit 성공을 언제 client에게 말할 것인가"와 "그 시점에 어떤 durable write가 끝났다고 믿는가"가 핵심입니다.
+
+이 절의 핵심을 손으로 그리면 다음과 같습니다.
+
+```text
+T1 commit wants to say "success"
+
+weak path
+  WAL record in DBMS memory
+    -> client success
+    -> power loss
+    -> record may be gone
+
+stronger path
+  WAL record in DBMS memory
+    -> write WAL file
+    -> fsync/fdatasync according to DBMS policy
+    -> device acknowledges required flush
+    -> client success
+    -> power loss
+    -> recovery can read WAL record
+```
+
+실제 DBMS는 group commit처럼 여러 transaction의 log flush를 묶어 commit latency를 줄일 수 있습니다. 이 최적화도 원리를 바꾸지는 않습니다. 여러 transaction이 한 번의 flush boundary를 공유할 수 있을 뿐, 성공이라고 답한 transaction의 log가 DBMS가 요구한 durable boundary를 통과해야 한다는 질문은 남습니다.
 
 ### random I/O와 sequential I/O는 plan 선택과 연결된다
 
@@ -328,6 +436,17 @@ Sequential scan path:
   filter every row
   predictable sequential read
 ```
+
+이 차이는 OS와 storage 층에서도 다르게 보입니다.
+
+| 접근 패턴 | DBMS 내부 증상 | OS/storage 쪽 기대 |
+| --- | --- | --- |
+| 많은 random lookup | buffer miss가 여러 relation page로 흩어집니다. | read-ahead가 덜 맞고 queue가 작은 요청으로 채워질 수 있습니다. |
+| sequential scan | 많은 page를 읽지만 순서가 예측 가능합니다. | readahead와 더 큰 연속 I/O가 맞을 수 있습니다. |
+| bitmap heap scan | 먼저 row 위치를 모은 뒤 heap page 순서로 방문합니다. | random 방문을 줄이는 대신 memory bitmap 비용이 생깁니다. |
+| sort/hash spill | temp file page가 추가로 생깁니다. | query plan 문제가 OS write/read 병목처럼 보일 수 있습니다. |
+
+따라서 느린 query를 볼 때 index 유무만 묻지 말고, `EXPLAIN (ANALYZE, BUFFERS)`의 buffer read/hit, temp read/write, OS의 read latency와 queue도 같이 봅니다. 같은 SQL도 cache가 따뜻할 때와 checkpoint가 몰리는 때의 실제 시간은 달라질 수 있습니다.
 
 SSD에서는 random read가 HDD보다 훨씬 싸지만, random access가 완전히 무료인 것은 아닙니다. page miss가 많아지면 buffer churn이 생기고, CPU cache locality도 나빠질 수 있습니다. write 쪽에서는 random update가 dirty page를 넓게 퍼뜨려 checkpoint flush와 write amplification을 키울 수 있습니다. 따라서 optimizer의 cost model이 `seq_page_cost`, `random_page_cost` 같은 추상 비용을 쓰는 이유도 여기에 있습니다. 실제 hardware, cache 상태, table size, selectivity에 따라 선택이 달라집니다.
 

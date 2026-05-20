@@ -113,6 +113,17 @@ predicate 보호가 필요한 경우
 
 이 모델은 격리 수준 표보다 강합니다. Dirty read, non-repeatable read, phantom read, write skew가 모두 `무엇을 읽고 그 읽은 결과를 근거로 무엇을 쓰는가`라는 질문으로 돌아오기 때문입니다. Lock도 마찬가지입니다. 어떤 row를 잡았는지, 어떤 index range를 잡았는지, table 전체를 막았는지, advisory key만 잡았는지에 따라 보호하는 invariant가 달라집니다.
 
+같은 좌석 예약 예시도 실패 모양을 나누면 해결책이 달라집니다.
+
+| 실패 모양 | 읽은 것 | 쓴 것 | 주된 방어 후보 |
+| --- | --- | --- | --- |
+| 같은 좌석을 두 번 팝니다. | `seat_no='A1'` row | 같은 row의 `status` | 조건부 update, row lock, unique reservation key |
+| 남은 좌석 수를 초과합니다. | `status='FREE'`인 row 집합 | 서로 다른 reservation row | guard row, range/predicate 보호, serializable retry |
+| 같은 쿠폰을 두 번 씁니다. | coupon 사용 이력 | `(coupon_id, user_id)` 사용 row | unique constraint, idempotency key |
+| 결제 API가 두 번 호출됩니다. | DB row만으로는 외부 호출 여부를 완전히 모릅니다. | 외부 PG 상태 | outbox, idempotency key, 보상/조회 API |
+
+이 표의 목적은 "락을 걸면 됩니다"를 더 작은 판단으로 쪼개는 것입니다. 읽은 대상과 쓴 대상이 같은 row인지, 여러 row의 조건인지, DB 밖 상태인지에 따라 DB lock, constraint, retry, outbox 중 무엇이 중심이 될지 달라집니다.
+
 ## 깊은 메커니즘
 
 ### 격리 수준은 금지할 현상을 정하지만 제품별 의미가 다르다
@@ -178,6 +189,25 @@ record 20과 그 주변 gap을 잠그면
 ```
 
 이 설명에서 index가 중요합니다. Range를 어떤 index로 읽었는지에 따라 gap과 next-key lock 범위가 달라집니다. Unique index로 정확히 하나의 record를 찾는 경우와 non-unique range scan은 lock 범위가 다릅니다. Index가 없으면 DBMS가 더 많은 record를 검사해야 하고, 그만큼 충돌 범위가 넓어질 수 있습니다.
+
+같은 조건도 index가 있느냐에 따라 lock 후보가 달라질 수 있습니다.
+
+```text
+index(score): 10 | 20 | 30 | 40
+
+query: score BETWEEN 11 AND 29 FOR UPDATE
+
+candidate range:
+  gap (10,20) + record 20 + gap (20,30)
+
+insert score=15
+  -> query가 보호한 gap에 들어가므로 기다릴 수 있습니다.
+
+insert score=35
+  -> 이 range 밖이므로 다른 조건이 없다면 영향이 작을 수 있습니다.
+```
+
+이 그림은 InnoDB를 설명할 때 특히 유용합니다. `row lock`이라는 단어만 들으면 이미 있는 row만 잠그는 것처럼 느껴지지만, phantom을 막으려는 range 읽기에서는 "아직 존재하지 않는 값이 들어올 자리"도 보호 대상이 될 수 있습니다.
 
 PostgreSQL은 InnoDB식 gap/next-key lock 용어로 설명하지 않습니다. Serializable에서는 predicate 성격의 read/write dependency를 추적하고, 위험한 구조가 발견되면 serialization failure를 냅니다. 그래서 PostgreSQL과 InnoDB를 비교할 때는 `phantom을 막는다`는 목표와 `gap을 잠근다`, `dependency를 감지하고 abort한다`는 구현을 분리해야 합니다.
 
@@ -292,6 +322,18 @@ T2 symptom:
 
 이 구분은 운영 대응을 바꿉니다. T1이 다른 lock을 기다리는 중이면 wait graph를 따라가야 하고, T1이 `fsync`나 storage I/O를 기다리는 중이면 WAL sync time, checkpoint, dirty page writeback, disk queue를 봐야 합니다. T1이 외부 API를 transaction 안에서 기다리고 있으면 DB 튜닝보다 transaction boundary를 줄이는 쪽이 먼저입니다. 따라서 `blocked query -> blocker transaction -> blocker가 지금 무엇을 기다리는가 -> lock을 줄일지, I/O를 줄일지, transaction 경계를 줄일지` 순서로 보셔야 합니다.
 
+운영에서 이 구분은 다음 표처럼 분해할 수 있습니다.
+
+| 질문 | 확인할 것 | 판단이 바뀌는 이유 |
+| --- | --- | --- |
+| 누가 막혔나요? | blocked query, wait event, lock type | 사용자 증상과 직접 연결됩니다. |
+| 누가 잡고 있나요? | blocker transaction, query, transaction age | kill 또는 수정 대상이 blocked query가 아닐 수 있습니다. |
+| blocker는 무엇을 기다리나요? | CPU runnable, DB lock, I/O wait, 외부 호출 | root cause가 DB lock 밖에 있을 수 있습니다. |
+| 어떤 불변식을 보호하나요? | row, range, table, advisory key, 외부 resource | lock을 줄여도 되는지 판단합니다. |
+| 재시도해도 안전한가요? | idempotency key, outbox, side effect 분리 | deadlock victim을 다시 실행할 수 있는지 결정합니다. |
+
+이 표를 채우면 "락이 걸렸으니 쿼리를 죽인다"보다 더 나은 결정을 할 수 있습니다. 특히 blocker가 `fsync`나 외부 API를 기다리는 중이면 SQL만 튜닝해서는 같은 장애가 반복됩니다.
+
 ### Index 설계는 lock 설계이기도 하다
 
 InnoDB에서 range 조건을 locking read로 실행할 때 usable index가 없으면 많은 record와 gap을 검사하며 넓은 lock을 만들 수 있습니다. PostgreSQL에서도 index가 없으면 더 많은 row를 방문하고 더 오래 transaction이 유지될 수 있습니다. Lock 문제를 해결하려고 timeout만 늘리면 근본 원인을 놓칩니다. Query가 어떤 index를 사용해 어떤 후보 row를 읽는지 확인해야 합니다.
@@ -331,6 +373,17 @@ retry-risk boundary
 ```
 
 이 구분을 하면 isolation-lock 주제가 [트랜잭션 경계와 ACID](06-transaction-acid-boundary.md)로 연결됩니다. DB가 한 transaction을 abort시키는 것은 correctness를 지키기 위한 정상 동작일 수 있습니다. 애플리케이션이 그 abort를 재실행할 수 없는 형태로 side effect를 섞어 놓으면, DB의 correctness mechanism이 사용자 장애로 바뀝니다. 재시도 경계 밖의 메시지와 결제 호출은 [애플리케이션 경계, 멱등성, 금액 처리, outbox](12-application-boundaries-idempotency-money-outbox.md)의 문제로 분리해야 합니다.
+
+Retry를 설계할 때는 transaction 함수가 "처음부터 다시 실행해도 같은 의미인가"를 확인해야 합니다.
+
+| 재시도 대상 | 안전한 조건 | 위험 신호 |
+| --- | --- | --- |
+| DB row update | 조건부 update와 affected row count로 결과를 판정합니다. | update 전에 읽은 값을 application memory에 오래 들고 있습니다. |
+| unique key insert | 같은 request id가 있으면 기존 결과를 조회합니다. | retry마다 새 id를 만들어 중복 row를 만듭니다. |
+| outbox insert | event id가 안정적이고 consumer가 멱등적입니다. | retry 때 같은 업무 event가 다른 id로 여러 번 발행됩니다. |
+| 외부 PG/API 호출 | provider idempotency key 또는 상태 조회가 있습니다. | DB deadlock retry가 외부 승인 API를 다시 호출합니다. |
+
+Deadlock과 serialization failure는 DBMS가 정합성을 지키려고 transaction 하나를 포기시키는 경우가 많습니다. 애플리케이션이 재시도할 수 있게 만들려면 DB 내부 변경은 같은 request id로 다시 적용 가능해야 하고, 외부 행동은 transaction 밖의 멱등성 계약으로 분리되어야 합니다.
 
 ### Deadlock 분석은 victim query 하나로 끝나지 않는다
 

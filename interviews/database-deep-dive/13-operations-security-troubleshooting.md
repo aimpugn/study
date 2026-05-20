@@ -74,10 +74,36 @@ user request
 
 latency는 이 경로의 어느 지점에서도 생길 수 있습니다. 사용자가 "DB가 느리다"고 말해도 실제로는 application이 pool에서 connection을 기다렸을 수 있습니다. DB query가 실행되기도 전에 queueing이 생긴 것입니다. 반대로 DB 안에서는 query가 CPU를 쓰는 중일 수도 있고, lock을 기다리는 중일 수도 있고, disk page read를 기다리는 중일 수도 있습니다. 운영자는 먼저 대기 위치를 찾아야 합니다.
 
+같은 5초 지연도 위치에 따라 완전히 다른 장애입니다.
+
+```text
+trace A: pool 대기
+  request_id=R1
+  app thread waits 4.8s for connection
+  DB query runs 80ms
+  -> DB 인덱스가 아니라 pool/transaction 길이를 봅니다.
+
+trace B: lock 대기
+  request_id=R2
+  connection borrowed immediately
+  DB session waits 4.7s on row lock
+  blocker is idle in transaction
+  -> timeout을 늘리기보다 blocker와 transaction boundary를 고칩니다.
+
+trace C: I/O 대기
+  request_id=R3
+  plan is stable
+  DB waits on data/WAL read or sync
+  OS shows high await and queue depth
+  -> query plan과 함께 storage path를 확인합니다.
+```
+
+그래서 운영 대응의 첫 단계는 "느린 query를 고친다"가 아니라 request id, DB session, wait state, OS resource를 같은 시간축에 놓는 일입니다. 시간축이 맞지 않으면 애플리케이션 대기와 DB 내부 대기, 장치 대기를 서로 오해하게 됩니다.
+
 작은 진단 표를 머리에 둡니다.
 
 | 증상 | 먼저 볼 관측값 | 흔한 원인 후보 | 바로 하면 위험한 조치 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 특정 query만 느림 | 실행 계획, actual rows, buffers, slow log | 인덱스 누락, 통계 오류, plan regression, parameter skew | 인덱스만 무작정 추가 |
 | 전체 DB가 느림 | CPU, I/O, active session, wait event, pool metrics | 부하 증가, lock storm, checkpoint, connection 폭증 | max connection만 증가 |
 | write가 느림 | WAL/binlog fsync, dirty page, lock, replication sync | disk latency, checkpoint, hot row, synchronous replication | durability 설정 무작정 완화 |
@@ -92,6 +118,18 @@ Lock의 작은 모델은 "blocker, waiter, resource"입니다. 누가 어떤 row
 Capacity의 작은 모델은 "평균이 아니라 tail과 saturation"입니다. CPU 50% 평균이어도 single hot query나 I/O queue가 tail latency를 만들 수 있습니다. connection 수가 넉넉해 보여도 active transaction이 늘면 lock graph가 복잡해질 수 있습니다. disk 사용률이 70%라도 WAL burst나 temp file spill이 생기면 순간적으로 장애가 납니다. 운영에서는 평균값 하나보다 queue length, p95/p99 latency, active session, wait breakdown, growth rate를 봅니다.
 
 Security의 작은 모델은 "identity -> permission -> object -> row -> audit"입니다. 누가 접속했는가, 그 role이 어떤 schema/table/function에 어떤 권한을 갖는가, 객체 owner는 누구인가, row-level policy가 어떤 조건을 적용하는가, 접근 기록이 남는가를 순서대로 봅니다. secret은 이 흐름의 입구를 여는 열쇠입니다. secret 값은 코드, 문서, 로그, ticket, screenshot에 남기지 않고, secret manager와 rotation 절차로 관리해야 합니다.
+
+초기 대응은 가능한 한 읽기 전용 관측에서 시작합니다.
+
+| 단계 | 먼저 확인할 것 | 아직 하지 않는 것 |
+| --- | --- | --- |
+| 1. 영향 범위 | 어떤 API, tenant, 화면, 시간대가 영향을 받는가 | 전체 DB 재시작 |
+| 2. 대기 위치 | pool wait, DB wait event, blocker, OS queue 중 어디인가 | timeout과 pool size 즉시 증가 |
+| 3. 원인 후보 축소 | plan 변화, 통계, lock graph, replica lag, 권한 변경 이력 | 인덱스/권한/설정 무작정 변경 |
+| 4. 가역적 완화 | 특정 query 차단, primary read fallback, blocker 종료 검토 | durability나 권한 경계를 약화 |
+| 5. 재발 방지 | transaction 축소, index/통계/권한/I/O 설계 보강 | 임시 수동 조치만 문서화 |
+
+이 순서가 느려 보일 수 있지만, 실제로는 잘못된 빠른 조치를 줄입니다. 운영에서는 조치 자체가 두 번째 장애가 될 수 있기 때문입니다.
 
 ## 깊은 메커니즘
 
@@ -138,16 +176,28 @@ Checkpoint와 background write도 tail latency에 영향을 줍니다. Dirty pag
 DB observability는 CPU dashboard 하나로 충분하지 않습니다. 최소한 네 층이 필요합니다.
 
 1. Query 층
-느린 query fingerprint, 호출 횟수, total time, mean/p95 time, rows examined/returned, plan 변화가 필요합니다. PostgreSQL의 `pg_stat_statements`, MySQL Performance Schema와 slow log가 여기에 해당합니다.
+    느린 query fingerprint, 호출 횟수, total time, mean/p95 time, rows examined/returned, plan 변화가 필요합니다. PostgreSQL의 `pg_stat_statements`, MySQL Performance Schema와 slow log가 여기에 해당합니다.
 
 2. Wait 층
-DB session이 CPU를 쓰는지, lock을 기다리는지, I/O를 기다리는지, client read/write를 기다리는지 봅니다. PostgreSQL wait_event와 MySQL Performance Schema wait instrumentation이 여기에 해당합니다.
+    DB session이 CPU를 쓰는지, lock을 기다리는지, I/O를 기다리는지, client read/write를 기다리는지 봅니다. PostgreSQL wait_event와 MySQL Performance Schema wait instrumentation이 여기에 해당합니다.
 
 3. Resource 층
-CPU, memory, disk latency, IOPS, network, WAL/binlog volume, connection count, buffer cache, temp file 사용량을 봅니다.
+    CPU, memory, disk latency, IOPS, network, WAL/binlog volume, connection count, buffer cache, temp file 사용량을 봅니다.
 
 4. Business 층
-결제 성공률, 주문 생성 latency, 로그인 실패율, reconciliation backlog, outbox lag 같은 업무 지표를 봅니다. DB 지표가 정상이더라도 business 지표가 나쁘면 사용자 장애입니다.
+    결제 성공률, 주문 생성 latency, 로그인 실패율, reconciliation backlog, outbox lag 같은 업무 지표를 봅니다. DB 지표가 정상이더라도 business 지표가 나쁘면 사용자 장애입니다.
+
+네 층은 따로 보는 표가 아니라 같은 사건을 다른 각도에서 보는 방법입니다.
+
+```text
+business: 결제 성공률 하락
+  -> query: payment_update fingerprint p95 증가
+  -> wait: row lock wait 증가
+  -> resource: CPU는 여유, disk도 정상
+  -> root direction: hot row 또는 transaction boundary 의심
+```
+
+반대로 `wait`가 I/O 쪽이고 OS에서 disk queue가 같이 늘었다면 인덱스나 lock보다 checkpoint, WAL/binlog, temp spill, storage latency를 먼저 의심합니다. 관측 층을 연결해야 "원인을 좁힌다"는 말이 실제 행동이 됩니다.
 
 ### OS 지표는 DB wait event의 바깥쪽 원인을 보여 준다
 
@@ -173,6 +223,18 @@ hardware / virtualization signal
 
 이 구분을 놓치면 위험한 조치를 하게 됩니다. `fsync` 지연이 보인다고 durability 설정을 바로 낮추면 장애는 줄어들 수 있지만 crash safety를 잃을 수 있습니다. Connection pool 대기가 보인다고 pool size를 키우면 DB process는 더 많은 runnable task와 lock contention을 떠안을 수 있습니다. Replica lag가 보인다고 replica만 재시작하면 실제 원인인 primary WAL 폭증이나 replica disk flush 병목은 그대로 남습니다. 면접 답변에서는 DB 지표를 먼저 잡고, 그 지표가 OS의 CPU scheduling, memory reclaim, block I/O queue, storage flush 중 어디와 만나는지까지 한 단계 더 내려가야 합니다.
 
+DB wait와 OS 지표를 한 줄로 대응시키면 다음처럼 볼 수 있습니다. 실제 이름은 DBMS와 OS에 따라 다르므로, 이 표는 진단 방향을 잡는 용도입니다.
+
+| DB에서 보이는 신호 | OS/장치에서 같이 볼 후보 | 방향 |
+| --- | --- | --- |
+| WAL/redo sync 지연 | `iostat` await, flush request, device queue depth | commit durability 경계가 느린지 확인 |
+| checkpoint spike | dirty/writeback page, write bandwidth, CPU steal | background write가 몰렸는지 확인 |
+| temp file spill | disk write 증가, free space, memory pressure | sort/hash memory와 query shape 확인 |
+| replica flush/replay lag | replica disk latency, CPU run queue, network retransmit | 전송 문제와 적용 문제를 분리 |
+| pool wait 증가 | DB active session, app thread dump, lock wait | DB에 들어가기 전 queue인지 확인 |
+
+이 대응표의 핵심은 "DB 지표가 OS 지표로 환원된다"가 아닙니다. DB는 statement와 transaction의 의미를 알고, OS는 CPU와 I/O queue의 물리 상태를 압니다. 두 관측을 맞춰야 의미 있는 조치가 나옵니다.
+
 로그는 재구성 가능해야 하지만 민감값을 담으면 안 됩니다. Query parameter 전체를 그대로 남기면 주민번호, 카드번호, access token 같은 값이 노출될 수 있습니다. 좋은 로그는 request id, transaction id, query fingerprint, duration, rows, error code, sanitized parameters, application command id를 남깁니다. 민감값은 masking 또는 redaction하고, 필요할 때도 별도 보안 절차를 거쳐 제한적으로 조회합니다.
 
 ### Roles, grants, ownership: 권한은 계층으로 설계한다
@@ -182,6 +244,35 @@ DB 권한 설계의 첫 단계는 identity 분리입니다. application runtime 
 Ownership과 privileges는 다릅니다. 객체 owner는 그 객체를 변경할 수 있는 강한 권한을 갖고, privileges는 다른 role에게 부여된 사용 권한입니다. PostgreSQL에서는 schema usage와 table privileges, sequence privileges가 따로 필요할 수 있습니다. MySQL에서는 global, database, table, column, routine 권한이 계층적으로 있습니다. 권한 오류를 broad grant로 덮으면 당장은 해결돼도 최소 권한 원칙이 깨집니다.
 
 Default privileges도 놓치기 쉽습니다. 새 table을 만들 때 runtime role에 권한이 자동으로 부여되지 않으면 배포 후 특정 table만 접근 실패가 납니다. 반대로 default로 과도한 권한을 주면 새 object가 자동으로 노출됩니다. 권한은 migration과 함께 versioned artifact로 관리하고, production에서 수동 grant를 반복하지 않는 편이 좋습니다.
+
+권한 장애도 작은 trace로 보면 즉흥적인 `GRANT ALL`을 피할 수 있습니다.
+
+```text
+application error
+  permission denied for relation app.orders
+    |
+    v
+current_user 확인
+  app_runtime
+    |
+    v
+schema 권한 확인
+  app schema USAGE 있음?
+    |
+    v
+object 권한 확인
+  orders SELECT/INSERT/UPDATE 있음?
+    |
+    v
+sequence/function 권한 확인
+  insert가 sequence를 쓰는가?
+    |
+    v
+default privileges 확인
+  새 table에도 같은 grant가 자동 적용되는가?
+```
+
+이 경로에서 필요한 권한이 하나 빠진 것과 owner 권한이 필요한 것은 다른 문제입니다. Runtime role을 owner로 올리면 오류는 사라질 수 있지만, 애플리케이션 취약점이 schema 변경 권한으로 확대됩니다.
 
 ### Row-Level Security와 tenant boundary
 
@@ -202,7 +293,7 @@ Auditing은 두 가지 질문에 답해야 합니다. 누가 어떤 데이터에
 ## DBMS별 경계
 
 | 운영 주제 | MySQL 8.4 / InnoDB | PostgreSQL current | 판단 경계 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | slow query 수집 | slow query log, Performance Schema statement tables, `EXPLAIN ANALYZE` | `log_min_duration_statement`, `pg_stat_statements`, `EXPLAIN (ANALYZE, BUFFERS)` | query text보다 runtime plan과 wait/resource를 함께 본다 |
 | lock 관측 | `SHOW PROCESSLIST`, Performance Schema data locks/metadata locks, `SHOW ENGINE INNODB STATUS` | `pg_stat_activity`, `pg_locks`, `pg_blocking_pids`, wait_event | blocker/waiter/resource graph를 만든다 |
 | MVCC 정리 | undo history와 purge 지연 | dead tuple, autovacuum, freeze, visibility map | long transaction의 증상이 다르게 나타난다 |

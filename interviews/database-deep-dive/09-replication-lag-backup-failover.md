@@ -70,6 +70,18 @@ t4 replica
 
 이 모델에서 복제 지연은 `t1`부터 `t3`까지의 간격입니다. 물리적으로는 network transfer, receiver buffer, relay log, WAL receiver, apply worker, disk flush, conflict, long query 등 여러 원인이 있을 수 있습니다. 사용자에게는 `방금 쓴 데이터가 보이지 않는다`로 나타납니다.
 
+복제 지연과 사용자에게 stale read처럼 보이는 문제는 한 덩어리 숫자로 보이지만, 실제로는 여러 구간으로 나뉩니다.
+
+| 구간 | 멈추면 보이는 현상 | 먼저 확인할 것 |
+| --- | --- | --- |
+| primary가 log를 만들고 flush하는 구간 | commit 자체가 느려지거나 log 전송이 늦게 시작됩니다. | WAL/binlog write와 fsync 지연, checkpoint, storage latency |
+| network 전송 구간 | replica가 아직 log를 받지 못합니다. | sender/receiver 위치, network throughput, replication connection |
+| replica가 log를 저장하는 구간 | 받은 위치는 앞서지만 flush 위치가 뒤처질 수 있습니다. | relay/WAL receiver flush, replica disk I/O |
+| replica apply 구간 | 받았지만 replay/executed 위치가 뒤처집니다. | applier thread, long query conflict, lock conflict, schema mismatch |
+| read routing 구간 | replica는 따라잡았지만 application이 stale replica로 보낼 수 있습니다. 이 경우는 복제 지연 자체가 아니라 routing 오류에 가깝습니다. | router policy, session token, lag threshold |
+
+이 표를 사용하면 `lag가 10초입니다`라는 숫자를 원인으로 착각하지 않게 됩니다. 같은 stale read라도 network 병목, replica disk 병목, apply conflict, 잘못된 read routing은 서로 다른 장애입니다.
+
 Backup 모델은 다릅니다.
 
 ```text
@@ -155,6 +167,23 @@ backup at same time
 
 이 그림은 `lag가 늘었습니다`라는 증상을 더 잘 나눠 줍니다. Network가 느려서 log를 못 받는 지연, replica가 받은 log를 disk에 flush하지 못하는 지연, apply worker가 lock conflict나 long query 때문에 못 따라가는 지연, backup이 같은 storage bandwidth를 써서 생기는 지연은 처방이 다릅니다. PostgreSQL의 sent/write/flush/replay LSN이나 MySQL의 retrieved/executed GTID 차이를 볼 때도 이 단계 구분을 붙여야 합니다. OS 관점에서는 page cache가 memory pressure를 받고 dirty page writeback이 밀리는지, block queue가 포화되었는지, storage가 fsync 완료를 늦게 돌려주는지를 같이 봅니다.
 
+백업이 복제와 같은 시간대에 돌 때는 I/O의 방향도 함께 봅니다.
+
+```text
+primary
+  foreground commit: WAL/binlog fsync
+  checkpoint: dirty data page flush
+  backup: data file read + archive write
+
+replica
+  receive: log write/flush
+  apply: data page read/write
+  restartpoint/checkpoint: dirty page flush
+  read traffic: user query page read
+```
+
+이 흐름에서 backup은 단순히 "읽기 작업"이 아닐 수 있습니다. 압축, 암호화, object storage 업로드, WAL/binlog archive 보존, checksum 검증이 붙으면 CPU, network, disk write도 함께 씁니다. 그래서 복제 지연이 백업 시간대에만 증가한다면 DBMS 지표와 함께 OS page cache, dirty writeback, block queue, network egress를 같이 확인해야 합니다.
+
 ### Lag는 초 단위 지연이 아니라 읽기 계약의 틈이다
 
 Replication lag를 `몇 초 늦습니다`라고만 말하면 부족합니다. Lag는 어떤 사용자가 어떤 read를 했을 때 어떤 history를 보는가를 바꿉니다. 방금 주문한 사용자는 주문 상세 페이지에서 자기 주문을 기대합니다. Replica가 늦으면 `주문이 없습니다`가 나오고, 사용자는 결제가 실패했다고 생각할 수 있습니다.
@@ -169,6 +198,17 @@ next read asks router:
 ```
 
 이 방식은 제품별로 구현 세부가 다릅니다. PostgreSQL에서는 LSN과 replay location, MySQL에서는 GTID set이나 binlog position을 볼 수 있습니다. 중요한 것은 `어떤 위치까지 반영되면 내 write가 보인다고 말할 수 있는가`입니다.
+
+Application 입장에서는 이 위치 값을 사용자 경험으로 번역해야 합니다.
+
+| read 상황 | 허용 가능한 신선도 | routing 예시 | 사용자에게 보이는 위험 |
+| --- | --- | --- | --- |
+| 결제 직후 주문 상세 | 방금 commit한 위치 이상 | primary 또는 caught-up replica | 결제했는데 주문이 없다고 보일 수 있습니다. |
+| 본인 게시글 작성 직후 | session write 위치 이상 | session stickiness 또는 LSN/GTID token | 사용자가 재등록을 시도할 수 있습니다. |
+| 관리자 통계 | 몇 분 지연 허용 가능 | lag threshold 이하 replica | 숫자가 늦을 수 있으므로 freshness 표시가 필요합니다. |
+| 대량 리포트 | eventual consistency 허용 | replica 또는 analytical store | 최신 거래 누락을 업무가 허용하는지 명시해야 합니다. |
+
+이 분류가 있으면 replica routing은 단순 부하 분산이 아니라 read 계약 선택이 됩니다. 모든 read를 primary로 보내면 일관성은 단순하지만 확장성이 줄고, 모든 read를 replica로 보내면 사용자 직후 읽기에서 신뢰가 깨질 수 있습니다.
 
 ### Async replication은 RPO를 만든다
 
@@ -226,6 +266,25 @@ recovery target: T2.5
 
 PITR 뒤에는 timeline/history 개념도 중요합니다. 특정 과거 시점으로 돌아간 뒤 새 write를 받으면 원래 history와 다른 가지가 생깁니다. PostgreSQL은 timeline으로 이런 history를 구분합니다. 이 경계를 모르면 복구 후 어떤 WAL을 이어 적용할지, 기존 replica를 그대로 붙일 수 있는지 혼동합니다.
 
+로그 체인이 끊기는 실패는 작은 timeline으로 보면 바로 드러납니다.
+
+```text
+base backup B0 at 00:00
+
+WAL/binlog:
+  S1 00:00 -> 01:00  exists
+  S2 01:00 -> 02:00  missing
+  S3 02:00 -> 03:00  exists
+
+target recovery time: 02:30
+
+result:
+  B0 + S1까지는 재생할 수 있습니다.
+  S2가 없으므로 S3로 건너뛰어 02:30 상태를 만들 수 없습니다.
+```
+
+이 예시는 backup retention을 "며칠 보관"으로만 정하면 부족한 이유를 보여 줍니다. 복구 가능한 시간 범위는 기준 백업과 그 이후 연속 로그가 함께 결정합니다. 둘 중 하나만 보존되면 원하는 목표 시점으로 돌아갈 수 없습니다.
+
 ### Failover는 promotion, routing, fencing, divergence audit의 합이다
 
 Failover를 한 줄 명령으로 이해하면 운영에서 크게 다칩니다. 새 primary 승격은 시작일 뿐입니다. Client write endpoint를 바꾸고, connection pool과 DNS/load balancer를 갱신하고, old primary가 살아 돌아와도 write를 받지 못하게 fencing해야 합니다. Replica들은 새 primary를 따라가도록 재구성해야 합니다.
@@ -246,6 +305,33 @@ result
 이를 막으려면 health check만으로 primary를 판단하지 않고, quorum, fencing token, STONITH, cloud volume detach, orchestrator lease 같은 운영 장치가 필요할 수 있습니다. 어떤 장치를 쓰는지는 환경별로 다르지만, 답변에는 `old primary를 어떻게 쓰기 불능으로 만들었는가`가 들어가야 합니다.
 
 Divergence audit도 필요합니다. Failover 시점에 old primary의 last committed position과 new primary의 replay/applied position을 비교합니다. Async replication이면 데이터 손실 가능성을 disclose해야 합니다. MySQL GTID, PostgreSQL LSN/timeline 같은 위치 식별자가 이때 쓰입니다.
+
+Failover runbook은 보통 다음 상태 전이를 모두 닫아야 합니다.
+
+```text
+detect
+  primary가 죽었는지, 느린 것인지, network partition인지 판정합니다.
+
+choose candidate
+  가장 최신이고 일관된 replica를 고릅니다.
+
+fence old primary
+  old primary가 다시 write를 받지 못하게 만듭니다.
+
+promote
+  candidate를 new primary로 올립니다.
+
+route
+  application write endpoint와 connection pool을 new primary로 돌립니다.
+
+audit
+  old/new log position을 비교하고 손실 가능 commit 범위를 공개합니다.
+
+rebuild
+  나머지 replica를 new primary 기준으로 다시 붙입니다.
+```
+
+이 순서에서 `promote`만 성공해도 failover가 끝난 것은 아닙니다. 특히 detect와 fence가 약하면 split-brain 위험이 남고, route가 약하면 일부 client가 여전히 old endpoint로 write를 보낼 수 있습니다.
 
 ### Replication과 WAL/PITR 문서는 연결하되 중복하지 않는다
 

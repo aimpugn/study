@@ -81,6 +81,17 @@ T1 visible version:
 
 이 모델에서 `snapshot`은 사진처럼 table을 물리적으로 복사한 결과가 아닙니다. Snapshot은 보이는 transaction과 보이지 않는 transaction을 판정하기 위한 기준입니다. PostgreSQL에서는 snapshot이 active transaction id 범위와 목록을 담고, tuple의 `xmin`과 `xmax`를 비교합니다. InnoDB에서는 read view가 transaction id 경계를 담고, 필요하면 undo chain을 따라 이전 값을 재구성합니다.
 
+같은 trace도 isolation level에 따라 독자가 예상해야 하는 결과가 달라집니다.
+
+| 상황 | T1 두 번째 SELECT가 볼 가능성이 큰 값 | 이유 |
+| --- | --- | --- |
+| PostgreSQL `READ COMMITTED` | `900` | statement마다 새 snapshot을 만들 수 있으므로 T2 commit 뒤 값을 볼 수 있습니다. |
+| PostgreSQL `REPEATABLE READ` | `1000` | transaction snapshot을 유지하므로 T1 시작 기준의 visible version을 계속 봅니다. |
+| InnoDB consistent read의 `REPEATABLE READ` | 보통 `1000` | read view를 transaction 동안 유지하는 방향으로 동작합니다. 단 locking read는 다른 경로입니다. |
+| Locking read 또는 update | 단순 snapshot 읽기와 다릅니다. | current row와 lock conflict를 다루므로 wait, timeout, retry가 생길 수 있습니다. |
+
+이 표는 제품별 세부를 모두 외우기 위한 표가 아닙니다. 같은 `SELECT`라도 statement snapshot인지 transaction snapshot인지, consistent read인지 locking read인지에 따라 "어느 version을 현재로 볼 것인가"가 달라진다는 점을 눈에 보이게 하려는 것입니다.
+
 이 모델을 모르면 MVCC 설명은 두 방향으로 틀어집니다. 하나는 `lock이 없으니 빠르다`라는 성능 구호로 끝나는 것입니다. 다른 하나는 PostgreSQL의 heap tuple 방식을 모든 MVCC 구현에 그대로 적용하는 것입니다. 면접에서는 둘 다 위험합니다. 공통 원리는 version visibility이고, 제품별 구현 차이는 그 visibility를 어떤 metadata와 저장 구조로 실현하느냐에서 나옵니다. 이 visibility가 실제 업무 경계와 만나는 지점은 [트랜잭션 경계와 ACID](06-transaction-acid-boundary.md)에서 다시 이어집니다.
 
 ## 깊은 메커니즘
@@ -101,6 +112,21 @@ PostgreSQL의 단순화된 visibility 질문은 다음과 같습니다.
 실제 규칙은 hint bit, frozen xid, command id, subtransaction 같은 세부를 더 가집니다. 하지만 면접 답변의 중심은 이 정도면 충분합니다. Tuple header의 transaction metadata와 reader snapshot이 만나 visible version을 고른다는 것입니다.
 
 InnoDB의 consistent read는 read view를 만듭니다. Read view는 대략 `이 read가 시작될 때 아직 active였던 transaction들`, `내 read view보다 확실히 과거에 완료된 transaction`, `내 기준에서는 아직 보이면 안 되는 transaction`을 가르는 경계입니다. 단순히 transaction id 숫자가 작으면 항상 보인다고 외우면 안 되고, active 목록과 commit 상태를 함께 봐야 합니다. Reader가 현재 clustered record를 보았는데 그 record를 만든 transaction이 자기 read view에서 보이지 않으면, undo log를 따라 과거 모습을 재구성합니다. 그래서 InnoDB MVCC를 말할 때는 undo log가 단순 rollback 자료가 아니라 consistent read의 과거 version 재구성에도 쓰인다는 점을 말해야 합니다.
+
+Snapshot 판정은 다음처럼 한 row마다 반복되는 작은 결정으로 생각하면 됩니다.
+
+```text
+reader snapshot/read view
+  -> current version을 봅니다.
+  -> 만든 transaction이 내 기준에서 visible한가?
+       yes -> 그 version을 후보로 둡니다.
+       no  -> old version으로 이동합니다.
+  -> 그 version을 삭제/대체한 transaction이 내 기준에서 visible한가?
+       yes -> 더 과거 version을 찾거나 invisible입니다.
+       no  -> 이 reader에게는 아직 살아 있는 version입니다.
+```
+
+실제 엔진은 이보다 훨씬 많은 최적화와 예외를 가집니다. 그래도 이 작은 결정 순서를 기억하면 `snapshot은 복사본`이라는 비유에서 벗어나, version metadata와 reader 기준이 만나는 판정 과정으로 설명할 수 있습니다.
 
 ### PostgreSQL은 새 tuple을 만들고 old tuple을 나중에 치운다
 
@@ -201,11 +227,35 @@ long read transaction
 
 이 흐름을 알면 `MVCC 때문에 디스크가 찼습니다`라는 말을 더 정확히 풀 수 있습니다. 단순히 vacuum 설정을 키우는 문제가 아니라, 누가 오래된 snapshot을 붙잡고 있는지, update/delete 생성 속도가 cleanup 속도를 넘는지, checkpoint와 writeback이 storage를 밀어붙이는지, replica나 backup 작업이 같은 I/O 경로를 공유하는지 봐야 합니다. PostgreSQL에서는 오래 열린 transaction, dead tuple, autovacuum 지연, WAL/checkpoint I/O를 함께 보고, InnoDB에서는 history list length, purge lag, undo tablespace, dirty page flushing을 함께 봅니다.
 
+MVCC cleanup 압력은 DB 내부 지표와 OS 지표가 서로 다른 말을 하는 것처럼 보일 때가 많습니다.
+
+| DB에서 보이는 신호 | OS/스토리지에서 같이 볼 수 있는 신호 | 연결해서 세울 수 있는 가설 |
+| --- | --- | --- |
+| dead tuple 또는 undo history가 증가합니다. | disk 사용량과 read amplification이 늘 수 있습니다. | old version 생성 속도가 정리 속도를 넘습니다. |
+| 오래 열린 transaction이 있습니다. | CPU는 한가해도 I/O가 계속 늘 수 있습니다. | cleanup이 안전하게 지울 수 있는 하한선이 내려오지 않습니다. |
+| checkpoint/writeback 시간이 길어집니다. | dirty page writeback, device queue, fsync latency가 커질 수 있습니다. | update/delete와 cleanup이 같은 storage 경로를 밀어붙입니다. |
+| query plan이 갑자기 나빠집니다. | page cache hit가 흔들리거나 디스크 읽기가 늘 수 있습니다. | bloat 때문에 통계와 실제 접근 비용이 어긋났을 수 있습니다. |
+
+이 표는 DB 지표와 OS 지표를 서로 대체하자는 뜻이 아닙니다. MVCC 문제를 볼 때 "old version을 누가 붙잡고 있는가"와 "그 결과 어떤 page와 log I/O가 늘었는가"를 함께 묻기 위한 연결 지도입니다.
+
 ### Index와 visibility는 함께 움직인다
 
 MVCC는 heap이나 clustered record만의 문제가 아닙니다. Query는 보통 index를 통해 후보 row를 찾고, 그 다음 visibility를 확인합니다. PostgreSQL에서 index entry가 가리키는 heap tuple이 현재 snapshot에서 visible하지 않을 수 있습니다. 이때 DB는 다른 tuple version을 확인하거나, index-only scan이 가능하더라도 visibility map을 확인해야 합니다. Visibility map은 page 안의 tuple들이 모두 visible하다고 판단할 수 있는지 알려 주어 index-only scan의 heap 접근을 줄이는 데 도움을 줍니다. 따라서 `index-only scan이면 heap을 절대 보지 않는다`는 답도 과장입니다. Visibility 확인 조건이 맞을 때 heap 방문이 줄어드는 것입니다.
 
 InnoDB에서는 secondary index entry가 clustered primary key를 통해 clustered record로 이어집니다. Consistent read가 필요한 경우 현재 record가 read view에서 invisible하면 undo를 따라 과거 version을 재구성합니다. Secondary index만 보고 끝낼 수 있는지, clustered record를 봐야 하는지, undo를 따라가야 하는지는 query와 version 상태에 따라 달라집니다. 그래서 MVCC는 optimizer와 storage engine의 경계에도 영향을 줍니다. 오래된 snapshot이 많고 update가 잦으면 단순 SELECT도 더 많은 version 판단을 하게 될 수 있습니다.
+
+Index scan을 MVCC 관점으로 다시 그리면 다음 흐름입니다.
+
+```text
+index search finds candidate key
+  -> points to heap tuple or clustered record
+  -> visibility check asks "is this version visible to my snapshot?"
+       visible     -> row can be returned
+       invisible   -> find another version or reconstruct from undo
+       dead/unused -> cleanup may later remove it when safe
+```
+
+따라서 index는 "row를 빨리 찾는 구조"이면서 동시에 "visibility 판정을 시작할 후보를 고르는 구조"입니다. 후보를 빨리 찾더라도 visible하지 않은 version이 많으면 추가 확인 비용이 생깁니다. 반대로 cleanup이 잘 되고 visibility map이나 purge 상태가 안정적이면 같은 index도 훨씬 가볍게 동작할 수 있습니다.
 
 ### Old version은 삭제 대상이 아니라 아직 누군가의 현재일 수 있다
 
@@ -237,6 +287,17 @@ T2 snapshot: A=true, B=true -> B=false로 update
 면접에서 운영 경험을 묻는다면 지표 이름만 나열하지 말고 문장으로 바꿔야 합니다. PostgreSQL에서 `dead tuples가 늘고 oldest transaction age가 크며 autovacuum이 반복적으로 지연된다`면, 오래 열린 transaction이 old tuple 정리를 막는다는 가설을 세웁니다. InnoDB에서 `history list length가 계속 늘고 purge thread가 따라가지 못한다`면, undo history 생성 속도와 purge 가능 조건을 봅니다. Serialization failure가 증가하면 hot predicate, transaction 크기, retry backoff를 봅니다.
 
 좋은 관측 문장은 `무엇이 생성되고`, `무엇이 정리를 막고`, `어떤 사용자 증상으로 보이는지`를 포함합니다. 예를 들어 `장시간 read transaction이 snapshot을 잡고 있어 update/delete가 만든 old version을 purge하지 못하고, 그 결과 table bloat와 cache 효율 저하로 query latency가 오른다`라고 말할 수 있어야 합니다.
+
+관측 문장을 만들 때는 지표 이름을 바로 결론으로 쓰지 말고, 다음 세 칸을 채우면 좋습니다.
+
+| 생성되는 것 | 정리를 막는 것 | 사용자에게 보이는 증상 |
+| --- | --- | --- |
+| PostgreSQL dead tuple, index bloat | 오래 열린 transaction, autovacuum 지연 | 같은 query가 더 많은 page를 읽고 느려집니다. |
+| InnoDB undo history | 오래된 read view, purge 지연 | consistent read가 더 많은 undo를 따라갈 수 있습니다. |
+| WAL/redo와 dirty page | update/delete 폭증, checkpoint 압박 | commit latency와 I/O wait가 증가할 수 있습니다. |
+| serialization failure | hot predicate, 긴 transaction | 사용자는 재시도 후 성공하거나, 재시도 설계가 없으면 오류를 봅니다. |
+
+이 형태로 말하면 "지표가 높습니다"에서 멈추지 않습니다. 어떤 과거 version이 생겼고, 누가 그 과거를 아직 필요로 하며, 그 비용이 어떤 지연이나 실패로 보이는지까지 이어집니다.
 
 ## DBMS별 경계
 

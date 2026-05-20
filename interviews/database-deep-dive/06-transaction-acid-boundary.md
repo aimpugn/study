@@ -101,6 +101,19 @@ Durability
 
 2, 3, 4는 같은 DB transaction 안에 넣을 수 있습니다. 1과 5는 DB 내부 변경이 아닙니다. PG 승인은 외부 시스템에 이미 반영될 수 있고, 메시지 발행은 broker의 durable log에 들어갈 수 있습니다. 따라서 이 흐름에서 transaction boundary는 `어디까지 DB가 rollback할 수 있는가`와 `rollback할 수 없는 행동은 어떤 보상 또는 멱등성으로 다룰 것인가`로 나누어야 합니다.
 
+같은 결제 처리라도 각 단계가 기대는 영속성 경계는 다릅니다.
+
+| 단계 | 주로 남는 위치 | DB rollback으로 되돌릴 수 있는가 | 안전하게 만들 때 필요한 보조 계약 |
+| --- | --- | --- | --- |
+| PG 승인 API 호출 | PG사의 거래 시스템 | 아닙니다. 취소 API나 정산 보정이 필요할 수 있습니다. | idempotency key, 승인 상태 조회, 보상 호출 |
+| `payment` row insert | 현재 DB transaction | 같은 transaction 안이면 rollback됩니다. | unique request id, constraint, retry-safe SQL |
+| 주문 상태 변경 | 현재 DB transaction | 같은 transaction 안이면 rollback됩니다. | 상태 전이 constraint, affected row count 확인 |
+| 재고 차감 | 현재 DB transaction | 같은 transaction 안이면 rollback됩니다. | 조건부 update, 음수 방지, 충돌 retry |
+| outbox row insert | 현재 DB transaction | 같은 transaction 안이면 rollback됩니다. | event id, publisher retry, consumer 멱등성 |
+| broker 직접 발행 | broker의 durable log | DB rollback으로는 되돌리지 못합니다. | outbox 전환, producer idempotency, 보상/중복 처리 |
+
+이 표를 보면 `결제 처리는 transaction으로 묶습니다`라는 말이 너무 넓다는 점이 보입니다. DB가 되돌릴 수 있는 상태와 외부 시스템에 이미 남은 상태를 나누어야, 실패 후 재시도와 보상 절차를 설계할 수 있습니다.
+
 ## 깊은 메커니즘
 
 ### Autocommit은 보이지 않는 BEGIN/COMMIT을 만든다
@@ -176,6 +189,17 @@ client thread
 ```
 
 이 그림은 `COMMIT이 느립니다`라는 증상을 해석할 때 중요합니다. 원인이 row lock이면 blocker transaction을 봐야 하지만, WAL fsync 시간이 길면 storage latency, checkpoint, dirty page pressure, write cache 설정을 봐야 합니다. CPU scheduler 관점도 들어옵니다. DB backend가 runnable인데 CPU를 못 받는 상태와, `fsync` 안에서 I/O completion을 기다리며 sleep하는 상태는 증상이 모두 latency로 보이지만 원인과 처방이 다릅니다. 그래서 좋은 답변은 `transaction이 오래 걸렸습니다`가 아니라 `lock wait인지, CPU run queue 지연인지, WAL fsync/I/O wait인지, 외부 API 대기인지`를 나누어 관측한다고 말해야 합니다.
+
+COMMIT 지연을 볼 때는 다음처럼 "누가 무엇을 기다리는가"로 나누면 좋습니다.
+
+| 관측 문장 | 가능성이 큰 대기 위치 | 먼저 볼 것 |
+| --- | --- | --- |
+| row lock wait가 큽니다. | 다른 transaction이 같은 row/range를 잡고 있습니다. | blocker transaction, lock order, transaction age |
+| WAL sync 시간이 큽니다. | commit record를 영구 저장소에 밀어 넣는 경로가 느립니다. | WAL write/sync 지표, storage latency, checkpoint |
+| CPU 사용률은 높고 run queue가 깁니다. | backend가 실행 기회를 기다립니다. | CPU quota, scheduler/run queue, 실행 중 query 수 |
+| transaction duration이 길지만 DB wait가 작습니다. | 애플리케이션이 외부 API나 사용자 입력을 기다릴 수 있습니다. | service trace, 외부 호출 시간, transaction 안의 코드 범위 |
+
+이 표의 목적은 DBMS와 OS를 억지로 섞는 것이 아닙니다. 같은 `느린 COMMIT`처럼 보여도 DB lock manager, WAL flush, CPU scheduling, 외부 API 대기는 서로 다른 층의 원인이므로 관측값을 나누어야 한다는 뜻입니다.
 
 ### ROLLBACK은 DB 내부 변경을 되돌리지만 시간은 되돌리지 않는다
 
@@ -257,6 +281,32 @@ class OrderService {
 
 또 다른 함정은 async boundary입니다. Transaction context가 thread-local에 묶여 있는데 `@Async`나 별도 executor로 넘어가면 같은 connection과 transaction이 이어지지 않을 수 있습니다. 메시지 listener, scheduler, web request, batch step도 각자 transaction boundary를 어떻게 여는지 확인해야 합니다. 면접 답변에서 annotation 이름만 말하면 부족하고, `어떤 호출이 proxy를 지나고 어떤 connection이 commit되는가`까지 내려가야 합니다.
 
+호출 경계는 작은 call graph로 그리면 더 잘 보입니다.
+
+```text
+HTTP request thread
+  -> proxy intercepts OrderService.pay()
+       -> acquire connection C1
+       -> BEGIN on C1
+       -> PaymentRepository.insert() uses C1
+       -> InventoryRepository.decrease() uses C1
+       -> method returns normally
+       -> COMMIT on C1
+
+same class internal call
+  OrderService.pay()
+    -> this.savePayment()
+       proxy interception may be skipped
+       expected transaction rule may not run
+
+async boundary
+  OrderService.pay() on thread A, connection C1
+    -> @Async publisher on thread B
+       thread B does not automatically inherit C1 transaction
+```
+
+이 trace의 핵심은 annotation이 source code에 붙어 있다는 사실보다 runtime에서 어떤 호출이 interceptor를 지나고 어떤 connection이 commit되는지입니다. 프레임워크별 세부는 다를 수 있지만, 면접 답변은 항상 `호출 경로`, `connection`, `commit/rollback 신호`를 분리해 말해야 안전합니다.
+
 ### Application invariant는 DB constraint와 transaction boundary를 함께 써야 닫힌다
 
 DB constraint는 강력합니다. Unique key는 중복 요청 방지에 좋고, foreign key는 부모 없는 자식 row를 막으며, check constraint는 단일 row의 값 범위를 지킬 수 있습니다. 하지만 모든 invariant가 constraint 하나로 표현되지는 않습니다. 여러 row의 합계, 외부 시스템 상태, 시간 순서, 이벤트 발행 여부 같은 규칙은 transaction과 애플리케이션 로직이 함께 지켜야 합니다.
@@ -284,6 +334,34 @@ separate publisher
 트랜잭션을 넓게 잡으면 atomicity는 커지지만 비용도 커집니다. 긴 transaction은 lock을 오래 들고, MVCC old version 정리를 늦추며, connection pool을 점유합니다. 사용자가 결제 화면에서 오래 머무는 동안 DB transaction을 열어 두거나, 외부 API 응답을 기다리는 동안 row lock을 잡고 있으면 다른 요청이 불필요하게 기다릴 수 있습니다. 따라서 좋은 boundary는 `업무상 함께 commit되어야 하는 최소 DB 상태`를 묶고, 느린 외부 작업은 멱등성과 보상 흐름으로 분리하는 쪽을 먼저 검토합니다.
 
 예를 들어 재고 차감과 주문 상태 변경은 같은 transaction에 둘 수 있지만, 이메일 발송을 같은 transaction 안에서 기다릴 필요는 보통 없습니다. 결제 승인도 도메인에 따라 순서가 갈립니다. 먼저 PG 승인 후 DB commit을 한다면 승인 성공 후 DB 실패를 보상해야 하고, 먼저 DB에 승인 요청 상태를 commit한 뒤 worker가 PG를 호출한다면 pending 상태와 재시도 UX를 설계해야 합니다. 둘 중 어느 쪽이든 핵심은 DB rollback이 닿는 범위와 닿지 않는 범위를 숨기지 않는 것입니다.
+
+긴 transaction의 비용은 시간축으로 보면 더 직관적입니다.
+
+```text
+bad boundary
+  BEGIN
+    lock order row
+    call PG API and wait 2s
+    update inventory
+  COMMIT
+
+  다른 요청은 2초 동안 order row 또는 관련 index/range를 기다릴 수 있습니다.
+  그동안 connection도 점유되고, MVCC old version cleanup도 늦어질 수 있습니다.
+
+smaller DB boundary
+  write payment_request PENDING
+  COMMIT
+
+  worker calls PG with idempotency key
+
+  BEGIN
+    mark payment APPROVED
+    update order/inventory
+    insert outbox event
+  COMMIT
+```
+
+두 번째 흐름이 항상 정답은 아닙니다. 사용자 경험, 승인 취소 가능성, 재고 보류 정책, timeout 정책에 따라 달라집니다. 하지만 이 trace는 transaction을 길게 잡는 선택이 단순히 "안전한 묶음"이 아니라 lock 보유 시간, connection 점유, 외부 실패 보상까지 함께 키운다는 점을 보여 줍니다.
 
 ### Transaction boundary는 관측 가능한 값으로 검증해야 한다
 
