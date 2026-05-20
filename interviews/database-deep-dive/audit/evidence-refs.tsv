@@ -1,10 +1,32 @@
 ref_id	source_type	url_or_path	scope	note
-validator-required-sections	tool	interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py	structure	필수 섹션과 reader-facing 금지 패턴을 확인한다.
+full-corpus-validator	tool	interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py	structural validation	checks complete status, section presence, audit linkage, source link presence, and reader-facing forbidden patterns
 manual-diff-review	human-review	database/deep-dive/storage-index-optimizer/06-wal-undo-redo-recovery.md	composition	이전 생성 초안의 반복과 구성 왜곡을 사람이 확인한 증거다.
-python-validator-plus-critic	tool-and-review	interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py	process	validator PASS가 충분조건이 아니라 critic review와 함께 쓰인다는 경계다.
-official-postgresql-wal	official-primary	https://www.postgresql.org/docs/current/wal-intro.html	PostgreSQL WAL	PostgreSQL 18 current WAL intro. Write-ahead rule, redo, online backup/PITR connection.
-official-postgresql-pitr	official-primary	https://www.postgresql.org/docs/current/continuous-archiving.html	PostgreSQL PITR	PostgreSQL 18 current continuous archiving and PITR.
-official-mysql-redo	official-primary	https://dev.mysql.com/doc/refman/8.4/en/innodb-redo-log.html	MySQL InnoDB redo	MySQL 8.4 InnoDB redo log.
-official-mysql-undo	official-primary	https://dev.mysql.com/doc/refman/8.4/en/innodb-undo-logs.html	MySQL InnoDB undo	MySQL 8.4 InnoDB undo logs.
+official-elastic-pit	official-primary	https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-open-point-in-time	Elasticsearch point in time	current official reference used to bound DB interview deep-dive claims
+official-elastic-reindex	official-primary	https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-reindex	Elasticsearch reindex API	current official reference used to bound DB interview deep-dive claims
+official-firestore-model	official-primary	https://firebase.google.com/docs/firestore/data-model	Cloud Firestore data model	current official reference used to bound DB interview deep-dive claims
+official-firestore-shard	official-primary	https://firebase.google.com/docs/firestore/solutions/shard-timestamp	Cloud Firestore sharded timestamps	current official reference used to bound DB interview deep-dive claims
+official-firestore-txn	official-primary	https://firebase.google.com/docs/firestore/manage-data/transactions	Cloud Firestore transactions	current official reference used to bound DB interview deep-dive claims
+official-flyway-migrations	official-primary	https://documentation.red-gate.com/flyway/flyway-concepts/migrations	Flyway migrations	official Flyway documentation for migration ordering and repeatability claims
+official-java-bigdecimal	official-primary	https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigDecimal.html	Java BigDecimal	official Java API reference for decimal arithmetic terminology
+official-mysql-locks	official-primary	https://dev.mysql.com/doc/refman/8.4/en/innodb-locking.html	MySQL InnoDB locking	current official reference used to bound DB interview deep-dive claims
+official-mysql-online-ddl	official-primary	https://dev.mysql.com/doc/refman/8.4/en/innodb-online-ddl-operations.html	MySQL InnoDB online DDL operations	current official reference used to bound large table DDL claims
 official-mysql-pitr	official-primary	https://dev.mysql.com/doc/refman/8.4/en/point-in-time-recovery.html	MySQL PITR	MySQL 8.4 point-in-time recovery overview.
 official-mysql-pitr-binlog	official-primary	https://dev.mysql.com/doc/refman/8.4/en/point-in-time-recovery-binlog.html	MySQL binary log PITR	MySQL 8.4 point-in-time recovery using binary log.
+official-mysql-redo	official-primary	https://dev.mysql.com/doc/refman/8.4/en/innodb-redo-log.html	MySQL InnoDB redo log	current official reference used to bound DB interview deep-dive claims
+official-mysql-ref	official-primary	https://dev.mysql.com/doc/refman/8.4/en/	MySQL 8.4 Reference Manual	current official reference used to bound DB interview deep-dive claims
+official-mysql-rep	official-primary	https://dev.mysql.com/doc/refman/8.4/en/replication.html	MySQL replication	current official reference used to bound DB interview deep-dive claims
+official-mysql-txn	official-primary	https://dev.mysql.com/doc/refman/8.4/en/innodb-transaction-model.html	MySQL InnoDB transaction model	current official reference used to bound DB interview deep-dive claims
+official-mysql-undo	official-primary	https://dev.mysql.com/doc/refman/8.4/en/innodb-undo-logs.html	MySQL InnoDB undo logs	current official reference used to bound DB interview deep-dive claims
+official-pg-constraints	official-primary	https://www.postgresql.org/docs/current/ddl-constraints.html	PostgreSQL constraints	current official reference used to bound schema and constraint claims
+official-pg-explain	official-primary	https://www.postgresql.org/docs/current/using-explain.html	PostgreSQL EXPLAIN	current official reference used to bound DB interview deep-dive claims
+official-pg-indexes	official-primary	https://www.postgresql.org/docs/current/indexes.html	PostgreSQL indexes	current official reference used to bound DB interview deep-dive claims
+official-pg-locks	official-primary	https://www.postgresql.org/docs/current/explicit-locking.html	PostgreSQL explicit locking	current official reference used to bound DB interview deep-dive claims
+official-pg-mvcc	official-primary	https://www.postgresql.org/docs/current/mvcc-intro.html	PostgreSQL MVCC introduction	current official reference used to bound DB interview deep-dive claims
+official-pg-partition	official-primary	https://www.postgresql.org/docs/current/ddl-partitioning.html	PostgreSQL table partitioning	current official reference used to bound DB interview deep-dive claims
+official-pg-pitr	official-primary	https://www.postgresql.org/docs/current/continuous-archiving.html	PostgreSQL PITR	current official reference used to bound DB interview deep-dive claims
+official-pg-wal	official-primary	https://www.postgresql.org/docs/current/wal-intro.html	PostgreSQL WAL	current official reference used to bound DB interview deep-dive claims
+official-postgresql-pitr	official-primary	https://www.postgresql.org/docs/current/continuous-archiving.html	PostgreSQL PITR	PostgreSQL 18 current continuous archiving and PITR.
+official-postgresql-wal	official-primary	https://www.postgresql.org/docs/current/wal-intro.html	PostgreSQL WAL	PostgreSQL 18 current WAL intro. Write-ahead rule, redo, online backup/PITR connection.
+official-spring-txn	official-primary	https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html	Spring declarative transactions	official Spring Framework reference for application transaction boundary claims
+python-validator-plus-critic	tool-and-review	interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py	process	validator PASS가 충분조건이 아니라 critic review와 함께 쓰인다는 경계다.
+validator-required-sections	tool	interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py	structure	필수 섹션과 reader-facing 금지 패턴을 확인한다.

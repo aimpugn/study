@@ -475,6 +475,10 @@ PASS 신호는 pending migration이 적용되고 schema history에 version, desc
 
     FK는 참조 존재를 보장하지만 business state machine, 금액 합계, cross-database reference, soft delete visibility, 외부 시스템 상태는 보장하지 못한다. 가능한 invariant는 DB constraint로 내리고, 나머지는 transaction/application verification으로 닫아야 한다.
 
+### 전이 질문: 데이터 의미와 배포 시간축을 함께 바꾸는 문제
+
+다른 플랫폼으로 옮겨도 schema 변경은 `데이터 의미 변경`과 `배포 순서 변경`이 함께 움직입니다. document store의 field 추가, search index의 mapping 변경, API response shape 변경도 같은 질문을 받습니다. old reader와 new writer가 동시에 존재하는 동안 어떤 형태가 안전한지 먼저 정해야 합니다.
+
 ## 더 깊게 볼 자료
 
 공식 문서는 constraint와 DDL 동작의 1차 근거다. 이 저장소의 기존 `database/` 문서는 schema diff, Flyway, 대용량 indexing 운영 감각을 제공하지만, DBMS별 DDL 가능 여부와 lock 경계는 공식 문서로 다시 확인해야 한다.

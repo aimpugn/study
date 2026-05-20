@@ -1,32 +1,17 @@
-# Database interview deep-dive validation
+# Validation
 
-이 검증은 정식 인터뷰 DB 심화 문서가 최소 구조와 금지 패턴을 지키는지 확인하는 보조 장치다.
-사용자가 지적한 것처럼, 작은 claim이 맞는지 보는 일은 필요조건이고, 큰 설명이 맞는지 보는 일은 별도 조건이다.
-따라서 이 validator가 PASS해도 전체 품질이 자동으로 complete가 되지는 않는다.
+이 디렉터리의 검증은 세 층으로 나뉩니다.
 
-## 실행
+1. 구조 검증
 
-```bash
-python3 interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py --allow-planned
-```
+    `python3 interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py`를 실행합니다. 이 명령은 정식 문서가 모두 topic 목록에 들어 있고, planned 상태가 남아 있지 않으며, 각 문서가 필수 섹션과 source 링크, audit 연결, reader-facing 금지 패턴 검사를 통과하는지 확인합니다. 반복 문구, 중복 H3 heading, 긴 문단 반복, 민감 source unit, 반복된 composition risk도 실패로 봅니다.
 
-`--allow-planned`는 현재처럼 파일럿과 구조를 검증하는 중간 상태에서만 쓴다.
-전체 코퍼스 완료를 주장하려면 옵션 없이 실행해야 하며, 그때는 planned topic이 남아 있으면 실패해야 한다.
+2. claim 검증
 
-## 통과 조건
+    `audit/claim-audit.tsv`는 문서의 하중을 지탱하는 claim을 source, support tier, 적용 범위, 반례와 함께 기록합니다. 모든 문장을 표에 복제하는 것이 목적이 아니라, 문서 전체 판단을 바꾸는 claim이 근거 없이 본문에 들어가지 않게 하는 것이 목적입니다.
 
-- canonical root가 `interviews/database-deep-dive`에 존재한다.
-- source boundary, claim audit, composition audit가 parseable TSV로 존재한다.
-- `database/deep-dive`는 source가 아니라 generated draft/noncanonical 자료로 분류된다.
-- generated draft/noncanonical 자료는 문서 구성, 반복, coverage 증거로는 쓸 수 있지만, domain truth를 지탱하는 `T1 Direct Evidence`로는 쓸 수 없다.
-- claim audit의 `verification_ref`는 `audit/evidence-refs.tsv`에서 해소되어야 한다.
-- composition audit가 참조하는 claim id는 `audit/claim-audit.tsv`에 존재해야 한다.
-- reader-facing 본문에 `DU12`, `source-map`, `registry`, `20,000자 하한` 같은 이전 제작 메타가 새지 않는다.
-- completed topic은 필수 section을 가진다.
-- completed topic은 `2-5분 개요`, 깊은 메커니즘, 직접 재생 경로, 꼬리 질문, 함정 질문, 더 깊게 볼 자료를 포함한다.
-- completed topic은 claim audit와 composition audit에 연결된다.
+3. composition 검증
 
-## 한계
+    `audit/composition-audit.tsv`는 각 문서의 필수 섹션이 어떤 thesis를 맡는지, 어떤 claim을 지지하는지, 어떤 큰 단위 오류를 막는지 기록합니다. 작은 문장이 맞아도 전체 설명이 틀릴 수 있으므로 이 검증이 필요합니다.
 
-이 검증은 문서의 구조, 금지 패턴, audit 연결을 확인한다.
-문장이 실제로 자연스러운지, 작은 claim이 큰 설명 안에서 오해 없이 엮였는지, 면접 답변으로 말했을 때 설득력이 있는지는 review-kernel, study-explanation, humanize-korean 관점의 사람이 읽는 검수로 다시 닫아야 한다.
+완료 판정은 validator PASS만으로 닫지 않습니다. 전체 문서 수, planned 상태 0개, source boundary 갱신, claim/composition audit 연결, 다중 검수 결과, path-limited commit/push가 함께 닫혀야 합니다.

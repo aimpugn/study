@@ -2,75 +2,75 @@
 
 ## Verdict
 
-`REWORK -> PARTIAL APPLY -> REVIEWED ALIGN for this tranche`.
+`REWORK -> REPAIRED -> READY_FOR_FINAL_COMMIT`.
 
 정식 경로는 `interviews/database-deep-dive/`다. `database/deep-dive/`는 이전 실행에서 만들어진 장문 초안과 coverage 자료로 보존하되, 정식 인터뷰 학습 산출물로 그대로 승격하지 않는다.
 
 ## Multi-agent synthesis
 
-- Source Architect: source와 generated draft의 경계를 먼저 나누지 않으면 잘못된 위치 문제를 반복한다. `source-boundary.tsv`, `claim-audit.tsv`, `composition-audit.tsv`가 필요하다.
-- Composition Critic: 작은 claim이 각각 맞아도 반복, 순서, DBMS 경계, log 소비자 경계가 흐리면 큰 설명은 틀린다. 첫 파일럿은 WAL/redo/undo/crash recovery/PITR처럼 반례가 강한 주제가 적합하다.
-- Protocol Sentinel: 이미 push된 `database/deep-dive` commit은 되돌리거나 rewriting하지 않는다. path-limited corrective commit으로 정식 경로와 noncanonical 표시를 남기고, whole-complete를 주장하지 않는다.
+- Source Architect: source와 generated draft의 경계를 먼저 나누지 않으면 잘못된 위치 문제와 T1 근거 과장을 반복한다. `database/deep-dive/**`는 generated draft/noncanonical로만 쓴다.
+- Composition Critic: 작은 claim이 각각 맞아도 반복, 순서, DBMS 경계, log 소비자 경계가 흐리면 큰 설명은 틀린다. 반복 filler 제거와 topic-specific composition risk가 필요하다.
+- Protocol Sentinel: validator PASS, WORK ledger, staged path, commit/push 상태가 서로 맞아야 한다. dirty working tree가 크므로 path-limited staging이 closure 조건이다.
+- Builders: 14개 canonical 문서를 병렬로 작성했다. 최종 오케스트레이션에서 반복 문구, sensitive source unit, audit/validator mismatch를 수리했다.
 
-## Frozen checklist
+## Final corpus
 
-- [x] `interviews/database-deep-dive/`를 canonical 위치로 만든다.
-- [x] `database/deep-dive/`를 이전 생성 초안/coverage 자료로 표시한다.
-- [x] source 문장 claim audit와 composition audit의 파일 구조를 둔다.
-- [x] 파일럿 주제를 하나 골라 실제 본문에 적용한다.
-- [x] 구조 validator를 둔다.
-- [ ] 전체 DB 면접 심화 코퍼스를 전부 작성한다.
-- [ ] 전체 planned topic의 claim/composition audit를 닫는다.
-- [ ] 모든 문서에 대해 critic review와 직접 재생 경로를 닫는다.
+- `database-system-mental-model.md`
+- `storage-pages-buffer-io.md`
+- `wal-redo-undo-crash-recovery-pitr.md`
+- `index-query-optimizer.md`
+- `schema-constraints-migration.md`
+- `transaction-acid-boundary.md`
+- `mvcc-snapshot-visibility.md`
+- `isolation-lock-deadlock.md`
+- `replication-lag-backup-failover.md`
+- `partition-sharding-distributed-sql.md`
+- `mysql-postgresql-engine-deep-dive.md`
+- `application-boundaries-idempotency-money-outbox.md`
+- `operations-security-troubleshooting.md`
+- `search-document-nosql-engine.md`
 
-## Claim cards
+## Material findings and repairs
 
-### C-001
+### Source boundary finding
 
-- claim: 정식 산출물 위치는 `interviews/database-deep-dive/`여야 한다.
-- reason: `interviews` 프로젝트의 목적은 면접 질문에 짧게 답하고 깊게 설명할 수 있는 정식 답변 자산을 만드는 것이다.
-- evidence: `interviews/PROJECT_INTENT.md`, `interviews/USECASE.md`, 사용자 피드백.
-- attack: `study/database`에 이미 초안이 있으므로 그대로 두는 편이 빠르다는 반론.
-- response: `ACCEPT_REPAIR`. 기존 초안은 보존하되 canonical 권한은 낮춘다.
-- status: APPLY.
+- finding: `DBI-OPS-01` listed a sensitive source file as a completed topic source unit.
+- repair: removed the sensitive source from `topic-registry.tsv`; source boundary still classifies it as `sensitive-source-do-not-promote` so future audits can see why it is excluded.
+- validator: completed topics now fail if any source unit is classified as sensitive.
 
-### C-002
+### Repetition finding
 
-- claim: sentence-level truth audit만으로는 충분하지 않고 composition-level audit가 필요하다.
-- reason: WAL, redo, undo, PITR 같은 개념은 각각의 문장이 맞아도 조합 순서와 DBMS 경계가 틀리면 잘못된 mental model을 만든다.
-- evidence: 사용자 피드백, old generated draft의 반복/경계 흐림, `composition-audit.tsv`.
-- attack: claim audit가 충분히 세밀하면 composition audit가 중복일 수 있다는 반론.
-- response: `REBUT`. claim audit는 작은 단위의 사실 여부를 보지만, section thesis와 bridge claim의 전체 효과를 판정하지 못한다.
-- status: APPLY.
+- finding: several generated sections previously used repeated generic transfer, pass/fail, tail-answer, and trap-answer paragraphs.
+- repair: removed repeated generic paragraphs and added topic-specific mechanism and scenario sections where length dropped below the deep-dive floor.
+- validator: reader docs now fail on known generic repeated phrases, duplicate H3 headings, and repeated long paragraphs.
 
-### C-003
+### Composition audit finding
 
-- claim: 현재 작업은 corrective structural plus pilot closure이며 whole-complete가 아니다.
-- reason: planned topic 전체가 작성되지 않았고, 모든 source 문장의 claim audit도 닫히지 않았다.
-- evidence: `topic-registry.tsv`, frozen checklist.
-- attack: 첫 파일럿과 validator가 PASS하면 완료로 볼 수 있지 않냐는 반론.
-- response: `DOWNGRADE`. validator PASS는 구조적 필요조건이고 파일럿 완료는 전체 완료가 아니다.
-- status: APPLY as PARTIAL.
+- finding: `composition-audit.tsv` repeated the same large-unit risk across many sections and therefore did not prove topic-specific composition review.
+- repair: regenerated composition audit rows with topic-specific large-unit risks, counterexamples, missing context checks, and repair actions for all 14 topics.
+- validator: composition audit now fails if the same large-unit risk is repeated across too many rows.
 
-## Review Repair Log
+### Evidence finding
 
-### Source Architect finding
+- finding: a few claim rows used official references that were too broad for the exact claim.
+- repair: added narrower official evidence rows for PostgreSQL constraints, MySQL online DDL, Flyway migrations, Spring transactions, and Java BigDecimal; downgraded application/reliability synthesis claims where they combine multiple official references and design inference.
+- validator: claim verification refs must resolve in `audit/evidence-refs.tsv`.
 
-- finding: generated draft rows were incorrectly allowed to appear as `T1 Direct Evidence` for domain mechanism claims.
-- repair: `claim-audit.tsv` now has `source_class`; generated draft domain claims are downgraded to `T2 Strong Inference` or used only as composition/process direct evidence. Official source rows were added for PostgreSQL WAL, InnoDB redo, and MySQL binary-log PITR.
-- validator: `validate_interview_database_deep_dive.py` now fails if generated draft material is used as `T1` domain evidence.
+### Protocol finding
 
-### Source line trace finding
+- finding: WORK still described a pilot/partial state while the current corpus had advanced to 14 complete topics.
+- repair: WORK now records the whole-request objective, finite corpus, repaired critic findings, validator result, remaining count 0 inside the requested canonical corpus, and path-limited final stage requirement.
 
-- finding: one PITR row cited the wrong old-draft line span.
-- repair: LOG-C05 now points to the matching `backup, restore, PITR` section line, and local raw spans are checked against cited line ranges.
+## Verification result
 
-### Protocol Sentinel finding
+- structural/source/audit validator: `python3 interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py` -> PASS.
+- repeated generic phrase scan -> PASS.
+- duplicate H3 scan -> PASS.
+- repeated long paragraph scan -> PASS.
+- required heading order scan -> PASS for all 14 canonical documents.
+- reader-facing generation meta scan -> PASS for canonical reader docs.
 
-- finding: old `database/database-deep-study-plan.md` still contained active-looking canonical path and whole-complete language.
-- repair: stale path and closure sections now explicitly say they are historical and invalid for the current `interviews/database-deep-dive/` reconstruction.
+## Residual risk
 
-### Validation result
-
-- partial structural validation: `python3 interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py --allow-planned` passes.
-- whole validation: the same command without `--allow-planned` fails because planned topics remain. This is the intended fail-closed result.
+- Official docs are linked as current primary sources, but actual production DB versions can differ. The final documents state or imply current-doc grounding and keep version-specific implementation details as DBMS-specific boundaries.
+- `interviews/database-storage-search-nosql.md` remains a source reservoir and currently has unrelated dirty changes in the worktree. It is intentionally not part of the final canonical corpus commit.

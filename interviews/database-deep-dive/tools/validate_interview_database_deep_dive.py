@@ -16,6 +16,16 @@ FORBIDDEN_READER_PATTERNS = [
     re.compile(r"\bregistry\b", re.IGNORECASE),
     re.compile(r"20,000자\s*하한"),
 ]
+FORBIDDEN_GENERIC_READER_PHRASES = [
+    "이 설명을 다른 주제에 옮길 때도 같은 질문을 씁니다",
+    "면접에서는 이 주제를 처음부터 내부 구조 전체로 펼치면",
+    "이 주제에서 가장 흔한 실수는 이름이 같은 것을",
+    "실무에서는 개념의 이름보다 관측 가능한 신호가 중요합니다",
+    "PASS 신호는 관측값이 설명한 경계와 맞는 것입니다",
+    "답할 때는 먼저 한 문장으로 결론을 말하고",
+    "이 답은 부분적으로 그럴듯할 수 있지만",
+    "여기서 조심할 점은 공통 용어를 구현 세부까지 같은 것으로 착각하지 않는 것입니다",
+]
 REQUIRED_SECTIONS = [
     "## 2-5분 개요",
     "## 먼저 잡아야 할 작은 모델",
@@ -26,6 +36,8 @@ REQUIRED_SECTIONS = [
     "## 함정 질문",
     "## 더 깊게 볼 자료",
 ]
+ALLOWED_COMPLETE_STATUSES = {"complete"}
+ALLOWED_IN_PROGRESS_STATUSES = {"planned"}
 
 
 def read_tsv(path: Path) -> list[dict[str, str]]:
@@ -53,6 +65,31 @@ def validate_tsv(path: Path, required_headers: list[str], errors: list[str]) -> 
 
 def split_refs(value: str) -> list[str]:
     return [item.strip() for item in value.split(";") if item.strip()]
+
+
+def expand_source_unit(value: str) -> set[str]:
+    if "*" not in value:
+        return {value}
+    expanded: set[str] = set()
+    for path in ROOT.glob(value):
+        if path.is_dir():
+            expanded.update(p.relative_to(ROOT).as_posix() for p in path.rglob("*") if p.is_file())
+        elif path.exists():
+            expanded.add(path.relative_to(ROOT).as_posix())
+    return expanded or {value}
+
+
+def markdown_h3_titles(text: str) -> list[str]:
+    return [line.strip() for line in text.splitlines() if line.startswith("### ")]
+
+
+def repeated_long_paragraphs(text: str) -> list[str]:
+    paragraphs = [
+        re.sub(r"\s+", " ", paragraph.strip())
+        for paragraph in text.split("\n\n")
+        if len(paragraph.strip()) >= 120
+    ]
+    return sorted({paragraph for paragraph in paragraphs if paragraphs.count(paragraph) > 1})
 
 
 def get_boundary_map(rows: list[dict[str, str]]) -> dict[str, str]:
@@ -176,8 +213,40 @@ def main() -> int:
         planned = [r["topic_id"] for r in registry_rows if r["status"] == "planned"]
         if planned:
             fail(errors, f"planned topics remain without --allow-planned: {', '.join(planned)}")
+        non_complete = [
+            f"{r['topic_id']}={r['status']}"
+            for r in registry_rows
+            if r.get("status") not in ALLOWED_COMPLETE_STATUSES
+        ]
+        if non_complete:
+            fail(errors, f"non-complete topic statuses remain: {', '.join(non_complete)}")
 
-    completed = [r for r in registry_rows if r.get("status") in {"pilot-complete", "complete"}]
+    for row in registry_rows:
+        status = row.get("status", "")
+        if status not in ALLOWED_COMPLETE_STATUSES | ALLOWED_IN_PROGRESS_STATUSES:
+            fail(errors, f"{row.get('topic_id', '<unknown>')} has unsupported status: {status}")
+
+    composition_targets = {row.get("target_path", "") for row in composition_rows}
+    claim_target_refs = {row.get("target_section", "").split("#", 1)[0] for row in claim_rows}
+
+    completed = [r for r in registry_rows if r.get("status") in ALLOWED_COMPLETE_STATUSES]
+    sensitive_sources = {
+        path
+        for path, classification in boundary_map.items()
+        if classification == "sensitive-source-do-not-promote"
+    }
+    for row in completed:
+        source_units = split_refs(row.get("source_units", ""))
+        expanded_units: set[str] = set()
+        for source_unit in source_units:
+            expanded_units.update(expand_source_unit(source_unit))
+        sensitive_used = sorted(expanded_units & sensitive_sources)
+        if sensitive_used:
+            fail(
+                errors,
+                f"{row['topic_id']} lists sensitive source_units: {', '.join(sensitive_used)}",
+            )
+
     for row in completed:
         target = CANONICAL / row["target"]
         if not target.exists():
@@ -190,8 +259,45 @@ def main() -> int:
         for pattern in FORBIDDEN_READER_PATTERNS:
             if pattern.search(text):
                 fail(errors, f"{row['target']} contains reader-facing generation meta: {pattern.pattern}")
+        for phrase in FORBIDDEN_GENERIC_READER_PHRASES:
+            if phrase in text:
+                fail(errors, f"{row['target']} contains generic repeated reader phrase: {phrase}")
+        h3_titles = markdown_h3_titles(text)
+        duplicate_h3 = sorted({title for title in h3_titles if h3_titles.count(title) > 1})
+        if duplicate_h3:
+            fail(errors, f"{row['target']} contains duplicate H3 headings: {', '.join(duplicate_h3)}")
+        repeated_paragraphs = repeated_long_paragraphs(text)
+        if repeated_paragraphs:
+            preview = repeated_paragraphs[0][:90]
+            fail(errors, f"{row['target']} contains repeated long paragraph: {preview}")
         if len(text) < 20000:
             fail(errors, f"{row['target']} is shorter than pilot deep-dive floor: {len(text)} chars")
+        if row["target"] not in composition_targets:
+            fail(errors, f"{row['target']} has no composition-audit row")
+        if row["target"] not in claim_target_refs and row["target"] != "README.md":
+            fail(errors, f"{row['target']} has no claim-audit target reference")
+        if "https://www.postgresql.org/docs/current/" not in text and "https://dev.mysql.com/doc/refman/8.4/" not in text and row["target"] != "search-document-nosql-engine.md":
+            fail(errors, f"{row['target']} lacks a primary PostgreSQL/MySQL source link")
+        if row["target"] == "search-document-nosql-engine.md" and "https://www.elastic.co/" not in text and "https://firebase.google.com/" not in text:
+            fail(errors, f"{row['target']} lacks a primary search/document-store source link")
+
+    canonical_docs = {
+        path.name
+        for path in CANONICAL.glob("*.md")
+        if path.name not in {"README.md", "validation.md"}
+    }
+    registry_docs = {row["target"] for row in registry_rows}
+    extra_docs = sorted(canonical_docs - registry_docs)
+    if extra_docs:
+        fail(errors, f"canonical docs not listed in topic-registry.tsv: {', '.join(extra_docs)}")
+
+    risk_counts: dict[str, int] = {}
+    for row in composition_rows:
+        risk = row.get("large_unit_risk", "")
+        risk_counts[risk] = risk_counts.get(risk, 0) + 1
+    repeated_risks = [risk for risk, count in risk_counts.items() if risk and count > 8]
+    if repeated_risks:
+        fail(errors, "composition-audit.tsv repeats the same large_unit_risk across multiple topics")
 
     if errors:
         for error in errors:

@@ -383,6 +383,10 @@ JPA에서는 persistence context와 flush timing이 있다. `save`가 managed en
 
 아니다. 2PC는 atomic commit 문제를 줄여 주지만, coordinator failure, prepared transaction cleanup, participant blocking, timeout, 운영 복구라는 다른 비용을 만든다. 모든 resource가 XA를 잘 지원해야 하고, prepared 상태가 오래 남으면 lock과 resource를 잡을 수 있다. 2PC 선택은 프로토콜뿐 아니라 운영 절차 선택이다.
 
+### 전이 질문: DB transaction 밖으로 새는 실패
+
+다른 업무에서도 외부 side effect가 있으면 같은 구조가 반복됩니다. 이메일, 배송 요청, 포인트 적립, 쿠폰 발급은 DB rollback으로 자동 취소되지 않습니다. 전이 질문은 `중복 요청이 들어오면 무엇을 새로 하지 말아야 하는가`, `응답을 잃으면 무엇을 조회해야 하는가`, `최종 증거는 어디에 남는가`입니다.
+
 ## 더 깊게 볼 자료
 
 - [Spring Framework Reference - Declarative Transaction Management](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html): `@Transactional`, proxy, rollback rule, transaction manager 경계를 확인한다.
