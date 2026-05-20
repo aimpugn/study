@@ -437,7 +437,7 @@ UPDATE inventory
 - `database/deep-dive/transactions/11-transaction-lifecycle-acid.md`
 - `database/mvcc.md`
 - `database/lock.md`
-- `interviews/database-deep-dive/mvcc-snapshot-visibility.md`
-- `interviews/database-deep-dive/isolation-lock-deadlock.md`
+- `interviews/database-deep-dive/07-mvcc-snapshot-visibility.md`
+- `interviews/database-deep-dive/08-isolation-lock-deadlock.md`
 
 자료를 읽을 때는 용어를 그대로 모으기보다 같은 질문을 반복한다. 이 기능은 어떤 상태 전이를 한 경계로 묶는가, 실패하면 무엇이 rollback되고 무엇이 남는가, commit 결과를 어떤 관측값으로 확인하는가. 이 세 질문이 닫히면 transaction boundary 답변은 단순 암기가 아니라 설계 판단으로 바뀐다.

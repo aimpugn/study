@@ -371,6 +371,6 @@ MVCC를 제대로 이해했는지는 장애 시나리오로 검산하면 금방 
 - `database/deep-dive/transactions/12-mvcc-snapshot-visibility.md`
 - `database/lock.md`
 - `database/postgresql/lock.md`
-- `interviews/database-deep-dive/isolation-lock-deadlock.md`
+- `interviews/database-deep-dive/08-isolation-lock-deadlock.md`
 
 이 자료를 읽을 때는 `어디에 old version이 있는가`, `snapshot은 어떤 transaction을 visible로 보는가`, `cleanup은 무엇을 기다리는가`를 계속 묻는다. 이 세 질문을 잡으면 MVCC 답변은 lock-free 구호가 아니라 버전 가시성 계약으로 닫힌다.

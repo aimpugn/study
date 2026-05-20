@@ -4,26 +4,28 @@
 
 정식 문서는 한 곳에 모읍니다. DB 면접 준비에서 바로 참고할 본문은 이 디렉터리의 문서들을 보면 되고, 기존 `study/database` 자료는 더 오래된 학습 기록이나 원자료를 추적할 때 사용합니다.
 
-## 문서 목록
+## 권장 읽기 순서
 
-- [데이터베이스 시스템 mental model](database-system-mental-model.md)
-- [저장소, page, buffer pool, I/O](storage-pages-buffer-io.md)
-- [WAL, redo, undo, crash recovery, PITR](wal-redo-undo-crash-recovery-pitr.md)
-- [인덱스, 실행 계획, optimizer](index-query-optimizer.md)
-- [스키마, 제약, 마이그레이션](schema-constraints-migration.md)
-- [트랜잭션과 ACID 경계](transaction-acid-boundary.md)
-- [MVCC와 snapshot visibility](mvcc-snapshot-visibility.md)
-- [격리 수준, lock, deadlock](isolation-lock-deadlock.md)
-- [복제, 지연, 백업, failover](replication-lag-backup-failover.md)
-- [파티셔닝, 샤딩, 분산 SQL](partition-sharding-distributed-sql.md)
-- [MySQL/InnoDB와 PostgreSQL 엔진 비교](mysql-postgresql-engine-deep-dive.md)
-- [애플리케이션 경계, 멱등성, 돈, outbox](application-boundaries-idempotency-money-outbox.md)
-- [운영 관측, 보안, troubleshooting](operations-security-troubleshooting.md)
-- [검색 엔진과 document NoSQL](search-document-nosql-engine.md)
+파일명 앞의 번호가 기본 읽기 순서입니다. 처음에는 DBMS 전체 mental model에서 시작해 저장/복구/조회/동시성의 내부 구조를 잡고, 그 뒤 운영·분산·애플리케이션 경계와 검색/document store로 확장합니다.
+
+1. [데이터베이스 시스템 mental model](01-database-system-mental-model.md)
+2. [저장소, page, buffer pool, I/O](02-storage-pages-buffer-io.md)
+3. [WAL, redo, undo, crash recovery, PITR](03-wal-redo-undo-crash-recovery-pitr.md)
+4. [인덱스, 실행 계획, optimizer](04-index-query-optimizer.md)
+5. [스키마, 제약, 마이그레이션](05-schema-constraints-migration.md)
+6. [트랜잭션과 ACID 경계](06-transaction-acid-boundary.md)
+7. [MVCC와 snapshot visibility](07-mvcc-snapshot-visibility.md)
+8. [격리 수준, lock, deadlock](08-isolation-lock-deadlock.md)
+9. [복제, 지연, 백업, failover](09-replication-lag-backup-failover.md)
+10. [파티셔닝, 샤딩, 분산 SQL](10-partition-sharding-distributed-sql.md)
+11. [MySQL/InnoDB와 PostgreSQL 엔진 비교](11-mysql-postgresql-engine-deep-dive.md)
+12. [애플리케이션 경계, 멱등성, 돈, outbox](12-application-boundaries-idempotency-money-outbox.md)
+13. [운영 관측, 보안, troubleshooting](13-operations-security-troubleshooting.md)
+14. [검색 엔진과 document NoSQL](14-search-document-nosql-engine.md)
 
 ## 읽는 순서
 
-처음 읽을 때는 `database-system-mental-model.md`에서 DBMS를 하나의 시스템으로 잡고, `storage-pages-buffer-io.md`와 `wal-redo-undo-crash-recovery-pitr.md`로 page와 log의 시간축을 잡는 편이 좋습니다. 그 뒤 `index-query-optimizer.md`, `transaction-acid-boundary.md`, `mvcc-snapshot-visibility.md`, `isolation-lock-deadlock.md`를 읽으면 성능과 동시성 질문을 하나의 흐름으로 연결할 수 있습니다.
+처음 읽을 때는 `01-database-system-mental-model.md`에서 DBMS를 하나의 시스템으로 잡고, `02-storage-pages-buffer-io.md`와 `03-wal-redo-undo-crash-recovery-pitr.md`로 page와 log의 시간축을 잡는 편이 좋습니다. 그 뒤 `04-index-query-optimizer.md`, `06-transaction-acid-boundary.md`, `07-mvcc-snapshot-visibility.md`, `08-isolation-lock-deadlock.md`를 읽으면 성능과 동시성 질문을 하나의 흐름으로 연결할 수 있습니다.
 
 운영과 실무 면접 질문은 뒤쪽 문서에서 이어집니다. 복제와 백업, partition과 sharding, MySQL/PostgreSQL 엔진 차이, 애플리케이션의 멱등성/돈/outbox, 운영 troubleshooting, 검색/NoSQL 저장소를 차례대로 보면 됩니다.
 

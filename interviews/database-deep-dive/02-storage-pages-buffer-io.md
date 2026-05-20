@@ -490,5 +490,5 @@ PASS 신호는 DELETE 직후 relation size가 기대만큼 바로 줄지 않을 
   - `database/deep-dive/storage-index-optimizer/04-storage-files-pages-rows.md`
   - `database/deep-dive/storage-index-optimizer/05-buffer-pool-cache-io.md`
   - `database/deep-dive/storage-index-optimizer/06-wal-undo-redo-recovery.md`
-  - `interviews/database-deep-dive/wal-redo-undo-crash-recovery-pitr.md`
+  - `interviews/database-deep-dive/03-wal-redo-undo-crash-recovery-pitr.md`
   - `interviews/database-storage-search-nosql.md`

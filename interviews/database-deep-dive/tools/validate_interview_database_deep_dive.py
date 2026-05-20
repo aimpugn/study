@@ -230,6 +230,11 @@ def main() -> int:
     claim_target_refs = {row.get("target_section", "").split("#", 1)[0] for row in claim_rows}
 
     completed = [r for r in registry_rows if r.get("status") in ALLOWED_COMPLETE_STATUSES]
+    for index, row in enumerate(completed, start=1):
+        expected_prefix = f"{index:02d}-"
+        if not row["target"].startswith(expected_prefix):
+            fail(errors, f"{row['topic_id']} target must start with reading-order prefix {expected_prefix}: {row['target']}")
+
     sensitive_sources = {
         path
         for path, classification in boundary_map.items()
@@ -276,9 +281,10 @@ def main() -> int:
             fail(errors, f"{row['target']} has no composition-audit row")
         if row["target"] not in claim_target_refs and row["target"] != "README.md":
             fail(errors, f"{row['target']} has no claim-audit target reference")
-        if "https://www.postgresql.org/docs/current/" not in text and "https://dev.mysql.com/doc/refman/8.4/" not in text and row["target"] != "search-document-nosql-engine.md":
+        is_search_document_topic = row["target"].endswith("search-document-nosql-engine.md")
+        if "https://www.postgresql.org/docs/current/" not in text and "https://dev.mysql.com/doc/refman/8.4/" not in text and not is_search_document_topic:
             fail(errors, f"{row['target']} lacks a primary PostgreSQL/MySQL source link")
-        if row["target"] == "search-document-nosql-engine.md" and "https://www.elastic.co/" not in text and "https://firebase.google.com/" not in text:
+        if is_search_document_topic and "https://www.elastic.co/" not in text and "https://firebase.google.com/" not in text:
             fail(errors, f"{row['target']} lacks a primary search/document-store source link")
 
     canonical_docs = {

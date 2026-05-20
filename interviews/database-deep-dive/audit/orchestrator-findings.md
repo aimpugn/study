@@ -15,20 +15,20 @@
 
 ## Final corpus
 
-- `database-system-mental-model.md`
-- `storage-pages-buffer-io.md`
-- `wal-redo-undo-crash-recovery-pitr.md`
-- `index-query-optimizer.md`
-- `schema-constraints-migration.md`
-- `transaction-acid-boundary.md`
-- `mvcc-snapshot-visibility.md`
-- `isolation-lock-deadlock.md`
-- `replication-lag-backup-failover.md`
-- `partition-sharding-distributed-sql.md`
-- `mysql-postgresql-engine-deep-dive.md`
-- `application-boundaries-idempotency-money-outbox.md`
-- `operations-security-troubleshooting.md`
-- `search-document-nosql-engine.md`
+- `01-database-system-mental-model.md`
+- `02-storage-pages-buffer-io.md`
+- `03-wal-redo-undo-crash-recovery-pitr.md`
+- `04-index-query-optimizer.md`
+- `05-schema-constraints-migration.md`
+- `06-transaction-acid-boundary.md`
+- `07-mvcc-snapshot-visibility.md`
+- `08-isolation-lock-deadlock.md`
+- `09-replication-lag-backup-failover.md`
+- `10-partition-sharding-distributed-sql.md`
+- `11-mysql-postgresql-engine-deep-dive.md`
+- `12-application-boundaries-idempotency-money-outbox.md`
+- `13-operations-security-troubleshooting.md`
+- `14-search-document-nosql-engine.md`
 
 ## Material findings and repairs
 

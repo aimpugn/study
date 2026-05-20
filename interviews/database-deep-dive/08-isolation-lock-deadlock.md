@@ -418,6 +418,6 @@ external side effect      -> idempotency, outbox, compensation, fencing token
 - `database/postgresql/lock.md`
 - `database/deep-dive/transactions/13-isolation-anomalies.md`
 - `database/deep-dive/transactions/14-locks-latches-deadlocks.md`
-- `interviews/database-deep-dive/mvcc-snapshot-visibility.md`
+- `interviews/database-deep-dive/07-mvcc-snapshot-visibility.md`
 
 이 자료를 볼 때는 `무엇을 읽었고, 무엇을 썼고, 어떤 자원이 기다림을 만들었는가`를 계속 추적한다. 격리 수준은 관측 계약이고, lock은 그 계약을 만들기 위한 수단이며, deadlock은 기다림 관계의 cycle이라는 세 문장으로 다시 압축할 수 있으면 면접 답변의 중심이 잡힌 것이다.

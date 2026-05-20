@@ -442,7 +442,7 @@ client received commit success -> primary log position advanced -> replica recei
 - `database/replication.md`
 - `database/replication_lag.md`
 - `database/deep-dive/reliability-distribution/15-replication-backup-recovery.md`
-- `interviews/database-deep-dive/wal-redo-undo-crash-recovery-pitr.md`
+- `interviews/database-deep-dive/03-wal-redo-undo-crash-recovery-pitr.md`
 - `interviews/distributed-systems-architecture.md`
 
 WAL record 구조와 crash recovery 세부는 WAL 문서에서 깊게 보고, 이 문서에서는 WAL이나 binlog가 어떤 소비 경로에서 replication, PITR, failover 판단으로 이어지는지에 집중한다. 같은 log라도 crash recovery, standby replay, PITR의 목적과 실패 경계는 다르다.
