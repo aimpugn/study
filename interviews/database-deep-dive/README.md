@@ -1,6 +1,8 @@
 # Database interview deep dive
 
-이 디렉터리는 데이터베이스 면접 주제를 정식 deep-dive 학습 자산으로 모아 둔 canonical 위치입니다. `study/database` 아래의 기존 자료와 `database/deep-dive`의 이전 장문 초안은 버릴 자료가 아니라 source와 coverage 참고 자료입니다. 다만 그 문장들을 그대로 옮기지는 않습니다. 각 문서는 source의 작은 claim을 다시 검토하고, 그 claim들이 하나의 큰 설명 안에서 올바른 지식으로 이어지는지 재구성한 결과입니다.
+이 디렉터리는 데이터베이스 면접 주제를 번호 순서대로 읽고 복습하는 학습 경로입니다. 처음에는 SQL 한 줄이 DBMS 내부에서 어떤 계층을 지나 결과가 되는지 잡고, 그다음 page, log, index, transaction, MVCC, lock, replication, partition, engine 차이, 애플리케이션 경계, 운영, 검색/NoSQL로 넓혀 갑니다.
+
+기존 `study/database` 자료와 `database/deep-dive`의 이전 장문 초안은 버릴 자료가 아니라 원자료와 학습 기록입니다. 다만 이 디렉터리의 문서는 그 문장들을 그대로 옮긴 것이 아닙니다. 작은 주장들을 다시 검토하고, 면접 답변으로 말할 수 있는 작은 모델, 상태 trace, 제품별 경계, 함정 질문으로 재구성한 본문입니다.
 
 정식 문서는 한 곳에 모읍니다. DB 면접 준비에서 바로 참고할 본문은 이 디렉터리의 문서들을 보면 되고, 기존 `study/database` 자료는 더 오래된 학습 기록이나 원자료를 추적할 때 사용합니다.
 
@@ -19,9 +21,9 @@
 9. [복제, 지연, 백업, failover](09-replication-lag-backup-failover.md)
 10. [파티셔닝, 샤딩, 분산 SQL](10-partition-sharding-distributed-sql.md)
 11. [MySQL/InnoDB와 PostgreSQL 엔진 비교](11-mysql-postgresql-engine-deep-dive.md)
-12. [애플리케이션 경계, 멱등성, 돈, outbox](12-application-boundaries-idempotency-money-outbox.md)
-13. [운영 관측, 보안, troubleshooting](13-operations-security-troubleshooting.md)
-14. [검색 엔진과 document NoSQL](14-search-document-nosql-engine.md)
+12. [애플리케이션 경계, 멱등성, 금액 처리, 아웃박스](12-application-boundaries-idempotency-money-outbox.md)
+13. [운영, 보안, 장애 분석](13-operations-security-troubleshooting.md)
+14. [검색 엔진과 문서형 NoSQL](14-search-document-nosql-engine.md)
 
 ## 읽는 순서
 
@@ -29,8 +31,8 @@
 
 운영과 실무 면접 질문은 뒤쪽 문서에서 이어집니다. 복제와 백업, partition과 sharding, MySQL/PostgreSQL 엔진 차이, 애플리케이션의 멱등성/돈/outbox, 운영 troubleshooting, 검색/NoSQL 저장소를 차례대로 보면 됩니다.
 
-## 검증 방식
+## 품질 기준
 
-기계 검증은 구조적 필요조건입니다. `tools/validate_interview_database_deep_dive.py`는 모든 정식 문서가 필수 섹션, 최소 설명량, source 링크, audit 연결, reader-facing 금지 패턴을 지키는지 확인합니다. 하지만 이 검증만으로 좋은 문서라고 판단하지 않습니다. `audit/claim-audit.tsv`와 `audit/composition-audit.tsv`는 작은 claim의 근거와 큰 문서 흐름의 적합성을 함께 확인하기 위한 표면입니다.
+이 문서 묶음은 구조 검사만 통과하면 끝나는 자료가 아닙니다. 좋은 문서인지의 최종 기준은 독자가 작은 모델을 다시 그리고, trace를 따라가며, 제품별 경계와 함정 질문을 자기 말로 설명할 수 있는가입니다.
 
-좋은 문서는 면접장에서 먼저 짧게 말할 수 있고, 꼬리 질문을 받으면 작은 모델에서 실제 메커니즘과 DBMS별 경계까지 내려갈 수 있어야 합니다. 이 디렉터리의 문서는 그 기준을 만족하도록 작성되었습니다.
+검증 스크립트는 목차, 필수 섹션, 링크, 기본 구조가 무너지지 않았는지 확인하는 보조 장치입니다. 실제 학습 품질은 본문 안에서 구체 예시, 상태 변화, 실패 신호, DBMS별 차이가 함께 닫히는지로 다시 봐야 합니다.

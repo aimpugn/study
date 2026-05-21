@@ -557,7 +557,26 @@ PASS 신호는 pending migration이 적용되고 schema history에 version, desc
 
 4. "ADD COLUMN은 항상 가벼운 작업인가요?"
 
-    DBMS version과 column definition에 따라 다릅니다. nullable metadata-only일 수 있고, default나 type change 때문에 table rewrite가 필요할 수 있습니다. MySQL InnoDB에서는 INSTANT/INPLACE/COPY 가능 여부를 확인해야 하고, PostgreSQL도 version별 최적화가 다릅니다.
+    아닙니다. 같은 `ADD COLUMN`이라도 column 정의와 DBMS version에 따라 metadata만 바꾸고 끝날 수도 있고, 기존 row를 다시 쓰는 큰 작업이 될 수도 있습니다.
+
+    가장 가벼운 형태는 보통 nullable column을 추가하는 경우입니다.
+
+    ```sql
+    ALTER TABLE orders ADD COLUMN memo text;
+    ```
+
+    기존 row는 실제 값이 없고 읽을 때 `NULL`로 보이면 되므로, 많은 DBMS에서 metadata 변경에 가깝게 처리할 수 있습니다. 하지만 다음처럼 default, NOT NULL, type change가 섞이면 질문이 달라집니다.
+
+    ```sql
+    ALTER TABLE orders ADD COLUMN status text NOT NULL DEFAULT 'READY';
+    ALTER TABLE orders ALTER COLUMN amount TYPE numeric(19, 4);
+    ```
+
+    PostgreSQL은 version별로 최적화가 다릅니다. 현재 문서 기준으로, volatile하지 않은 constant default를 가진 column 추가는 기존 row를 즉시 모두 rewrite하지 않고 metadata에 default를 저장하는 최적화가 있습니다. 반대로 type 변경은 값 변환이 필요하면 table rewrite가 될 수 있습니다. 따라서 PostgreSQL에서는 `ADD COLUMN` 자체보다 `default가 volatile한가`, `NOT NULL 검증을 언제 하는가`, `type change가 binary coercible한가`, `lock이 어느 수준으로 잡히는가`를 봐야 합니다.
+
+    MySQL/InnoDB에서는 `INSTANT`, `INPLACE`, `COPY` 중 어떤 알고리즘이 가능한지가 핵심입니다. MySQL 8.4 문서는 `INSTANT`가 기본 알고리즘이라고 설명하지만, 모든 column operation이 instant인 것은 아닙니다. `INSTANT`면 table row를 대량 복사하지 않는 쪽에 가깝고, `COPY`면 새 table을 만들어 데이터를 복사하는 쪽이므로 시간, redo/undo, replication lag, metadata lock 위험이 커집니다.
+
+    운영에서 안전한 답변은 "DDL 문장 하나"가 아니라 관측 항목으로 닫힙니다. 변경 전에는 staging에서 같은 크기 분포의 table로 `ALGORITHM` 가능 여부, lock wait, 실행 시간, WAL/redo 증가, replica lag를 봅니다. 변경 중에는 metadata lock 대기와 long transaction을 봅니다. 변경 후에는 old application version이 새 column을 몰라도 동작하는지, backfill batch가 replica를 밀어내지 않는지 확인합니다.
 
 5. "이미 적용된 Flyway migration을 수정하고 checksum repair하면 되나요?"
 

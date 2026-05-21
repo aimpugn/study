@@ -1,8 +1,8 @@
 # 인덱스와 옵티마이저는 "빨리 찾기"가 아니라 row stream을 싸게 만드는 협상이다
 
-인덱스를 설명할 때 "B-tree 계열이라서 검색이 O(log N)입니다"라고 말하면 시작은 했지만 아직 면접 답변이 아닙니다. 실제 query는 하나의 key를 찾는 문제만이 아닙니다. scan, filter, sort, aggregate, join, pagination이 함께 움직이고, 옵티마이저는 통계를 바탕으로 여러 실행 경로의 비용을 추정합니다. 인덱스는 그 경로 후보를 늘려 주지만, 항상 선택되는 것도 아니고 항상 빠른 것도 아닙니다.
+인덱스는 "행을 빨리 찾는 장식"이 아니라 실행기가 읽을 후보 행의 흐름을 줄이고, 정렬이나 조인에 필요한 비용을 낮추는 물리 구조입니다. "B-tree 계열이라서 검색이 O(log N)입니다"라고 말하면 시작은 했지만 아직 면접 답변이 아닙니다. 실제 query는 하나의 key를 찾는 문제만이 아닙니다. 후보를 찾고, 조건으로 걸러 내고, 정렬하고, 묶고, 다른 table과 합치고, 다음 페이지를 이어 읽는 과정이 함께 움직입니다. 옵티마이저는 통계를 바탕으로 이 여러 실행 경로의 비용을 추정합니다. 인덱스는 그 경로 후보를 늘려 주지만, 항상 선택되는 것도 아니고 항상 빠른 것도 아닙니다.
 
-이 문서는 B-tree/B+tree 계열 구조를 중심으로 composite, covering, partial, function index를 설명하고, hash, bitmap, LSM 계열과의 차이를 경계로 둡니다. 이어서 scan/filter/sort/aggregate/join이 row stream을 어떻게 바꾸는지, statistics와 `EXPLAIN`이 왜 plan regression 진단의 언어가 되는지, pagination에서 offset과 keyset이 왜 다른 비용 구조를 가지는지 설명합니다. Index lookup이 page와 buffer를 어떻게 움직이는지는 [storage page와 buffer I/O](02-storage-pages-buffer-io.md), index-only scan이 visibility map에 기대는 이유는 [MVCC와 snapshot visibility](07-mvcc-snapshot-visibility.md), index를 추가하거나 바꾸는 운영 위험은 [schema와 migration](05-schema-constraints-migration.md)으로 이어서 보면 됩니다.
+이 문서는 먼저 정렬된 key 구조가 후보 행을 어떻게 좁히는지 보여 주고, 그다음 여러 column을 묶은 index, table 방문을 줄이는 index, 일부 row만 담는 index, 계산 결과를 담는 index로 확장합니다. Hash, bitmap, LSM 계열은 같은 "index"라는 이름 아래 어떤 질문에 답하는지가 다르므로 별도 경계로 둡니다. 이어서 scan/filter/sort/aggregate/join이 row stream을 어떻게 바꾸는지, statistics와 `EXPLAIN`이 왜 plan regression 진단의 언어가 되는지, pagination에서 offset과 keyset이 왜 다른 비용 구조를 가지는지 설명합니다. Index lookup이 page와 buffer를 어떻게 움직이는지는 [storage page와 buffer I/O](02-storage-pages-buffer-io.md), index-only scan이 visibility map에 기대는 이유는 [MVCC와 snapshot visibility](07-mvcc-snapshot-visibility.md), index를 추가하거나 바꾸는 운영 위험은 [schema와 migration](05-schema-constraints-migration.md)으로 이어서 보면 됩니다.
 - [2-5분 개요](#2-5분-개요)
 - [먼저 잡아야 할 작은 모델](#먼저-잡아야-할-작은-모델)
 - [깊은 메커니즘](#깊은-메커니즘)
@@ -688,7 +688,34 @@ PASS 신호는 offset이 앞 row를 건너뛰는 비용을 만들 수 있고, ke
 
 3. "hash index가 B+tree보다 빠르니 equality 검색에는 무조건 hash가 좋은가요?"
 
-    DBMS별 구현과 WAL/recovery 지원, concurrency, range/order 요구, optimizer maturity를 봐야 합니다. PostgreSQL과 InnoDB 일반 workload에서는 B-tree가 기본 선택인 경우가 많습니다. hash는 equality 중심 질문에 맞지만 범위와 정렬에는 맞지 않습니다.
+    무조건은 아닙니다. Hash index의 강점은 `=` 비교처럼 key 하나를 바로 찾는 경우에 있습니다. 하지만 범위 조회, 정렬, prefix 조건, 다중 column ordering을 함께 쓰는 순간 B-tree가 훨씬 넓은 query를 처리합니다.
+
+    같은 `users(email, created_at)` table을 생각해 보겠습니다.
+
+    ```sql
+    -- equality만 있으면 hash index가 후보가 될 수 있습니다.
+    SELECT *
+    FROM users
+    WHERE email = 'a@example.com';
+
+    -- 범위와 정렬이 들어오면 B-tree가 더 자연스러운 후보입니다.
+    SELECT *
+    FROM users
+    WHERE created_at >= timestamp '2026-05-01'
+    ORDER BY created_at
+    LIMIT 100;
+
+    -- equality 뒤에 정렬까지 요구하면 composite B-tree가 더 직접적인 답일 수 있습니다.
+    SELECT *
+    FROM users
+    WHERE status = 'ACTIVE'
+    ORDER BY created_at DESC
+    LIMIT 100;
+    ```
+
+    PostgreSQL의 현재 문서는 hash index가 equality scan 중심 workload에 최적화되어 있고 crash recoverable하다고 설명합니다. 그렇다고 모든 equality 검색에 hash를 고르면 되는 것은 아닙니다. B-tree도 equality를 처리하고, 동시에 range/order에도 쓰입니다. MySQL/InnoDB에서는 일반 secondary index가 B-tree 구조이고, adaptive hash index는 InnoDB가 관측한 접근 패턴을 바탕으로 내부적으로 보조하는 기능에 가깝습니다. 사용자가 `CREATE INDEX ... USING HASH` 하나로 InnoDB 일반 table의 모든 equality 문제를 해결한다고 말하면 제품 경계를 놓친 답입니다.
+
+    면접에서는 "hash는 equality에 맞지만, 운영 index 선택은 query family 전체를 본다"고 답하는 편이 안전합니다. 이메일 exact lookup 하나만 따로 매우 크고 equality-heavy라면 PostgreSQL hash index를 실험해 볼 수 있습니다. 하지만 같은 column이 range, order, join, covering index 후보로도 쓰이면 B-tree가 더 넓은 계약을 가집니다. 검증은 `EXPLAIN (ANALYZE, BUFFERS)`로 equality, range, order by query를 각각 돌려 actual row, buffer, sort 여부를 비교해야 합니다.
 
 4. "bitmap index scan은 bitmap index가 있다는 뜻인가요?"
 

@@ -478,7 +478,45 @@ Spring의 트랜잭션 전파(transaction propagation)는 이 애플리케이션
 
 5. Advisory lock 생명주기를 비교합니다.
 
-    PostgreSQL에서 transaction-level advisory lock과 session-level advisory lock을 각각 잡고 commit/rollback/connection close 때 어떻게 해제되는지 확인합니다. Connection pool에서 session-level lock을 쓰면 왜 위험한지 설명할 수 있어야 합니다.
+    PostgreSQL advisory lock은 애플리케이션이 숫자 key에 의미를 부여해 쓰는 DB lock입니다. Row를 잠그는 것이 아니라, 예를 들어 `room:2026-05-22`를 hash한 숫자 key를 모두가 같은 약속으로 잡는 방식입니다. PostgreSQL 공식 문서는 advisory lock에 session-level과 transaction-level이 있고, 현재 잡힌 advisory lock은 `pg_locks`에서 볼 수 있다고 설명합니다.
+
+    Transaction-level lock은 commit이나 rollback 때 자동 해제되는지 봅니다.
+
+    ```sql
+    -- session A
+    BEGIN;
+    SELECT pg_advisory_xact_lock(4242);
+
+    SELECT locktype, objid, mode, granted
+    FROM pg_locks
+    WHERE locktype = 'advisory';
+
+    COMMIT;
+
+    SELECT locktype, objid, mode, granted
+    FROM pg_locks
+    WHERE locktype = 'advisory';
+    ```
+
+    PASS 신호는 `COMMIT` 뒤 같은 session에서 advisory lock row가 사라지는 것입니다. 같은 실험을 `ROLLBACK`으로 반복해도 transaction-level lock은 풀려야 합니다.
+
+    Session-level lock은 transaction이 끝나도 남는지 봅니다.
+
+    ```sql
+    -- session A
+    SELECT pg_advisory_lock(4242);
+
+    BEGIN;
+    ROLLBACK;
+
+    SELECT locktype, objid, mode, granted
+    FROM pg_locks
+    WHERE locktype = 'advisory';
+
+    SELECT pg_advisory_unlock(4242);
+    ```
+
+    PASS 신호는 `ROLLBACK` 뒤에도 session-level lock이 남고, `pg_advisory_unlock(4242)` 또는 connection close 때 풀리는 것입니다. FAIL 신호는 session-level lock을 transaction scope처럼 생각하는 것입니다. Connection pool에서는 물리 connection이 다음 요청에 재사용될 수 있으므로, session-level lock을 풀지 않으면 "이전 요청이 잡은 lock"이 다음 요청의 connection에 남아 있을 수 있습니다. 그래서 업무 invariant 보호에는 가능하면 transaction-level advisory lock을 먼저 검토하고, session-level lock을 써야 한다면 unlock과 pool reset 책임을 명시해야 합니다.
 
 6. Latch와 lock 지표를 분리해 말합니다.
 
@@ -522,27 +560,131 @@ Spring의 트랜잭션 전파(transaction propagation)는 이 애플리케이션
 
 - Isolation level 표만 외우고 DBMS 차이를 무시하는 답
 
-    표는 출발점일 뿐입니다. 같은 이름도 PostgreSQL과 InnoDB에서 snapshot, lock, phantom, retry behavior가 다를 수 있습니다. 제품별 공식 문서와 재생 실험으로 닫아야 합니다.
+    표는 출발점일 뿐입니다. 표준 격리 수준 표는 `READ COMMITTED`, `REPEATABLE READ`, `SERIALIZABLE` 같은 이름을 현상 단위로 비교하게 해 주지만, 실제 면접 답변은 거기서 한 단계 더 내려가야 합니다. PostgreSQL의 `READ COMMITTED`는 statement마다 snapshot을 새로 만들 수 있고, PostgreSQL의 `SERIALIZABLE`은 위험한 의존성을 감지해 한 transaction을 실패시킬 수 있습니다. MySQL/InnoDB의 기본 `REPEATABLE READ`에서는 consistent read와 locking read를 나누어 봐야 하고, range 조건에서는 next-key lock이 등장할 수 있습니다.
+
+    예를 들어 같은 `REPEATABLE READ`라는 이름을 보고 "phantom이 생긴다" 또는 "phantom이 안 생긴다"라고 단정하면 답이 약해집니다. Plain `SELECT`로 읽는지, `SELECT ... FOR UPDATE`처럼 앞으로 쓸 row를 잠그는지, 조건에 맞는 index range가 있는지에 따라 관측과 대기가 달라집니다. 강한 답은 `표준 표에서는 이 현상을 이렇게 부르지만, PostgreSQL과 InnoDB는 snapshot 생성 시점, range 보호 방식, 실패를 retry로 돌려주는 방식이 다릅니다`라고 제품 경계를 함께 말합니다.
 
 - Lock을 많이 걸면 안전하고 비용은 없다고 말하는 답
 
-    넓은 lock은 anomaly를 줄일 수 있지만 contention과 deadlock, throughput 저하를 만듭니다. 필요한 invariant를 가장 좁고 명확한 경계로 보호하는 것이 중요합니다.
+    넓은 lock은 일부 anomaly를 줄일 수 있지만 공짜가 아닙니다. 같은 공연의 모든 예약을 하나의 guard row로 직렬화하면 중복 예약은 막기 쉽습니다. 대신 같은 공연에 대한 모든 예약 요청이 그 row 앞에서 줄을 서므로 처리량이 줄고, transaction이 길어지면 lock wait와 timeout이 늘어납니다.
+
+    반대로 너무 좁은 lock은 보호하려는 불변식을 놓칠 수 있습니다. `reservation id=10` row만 잠갔는데 실제 규칙이 `room_id='A'에서 10:00~11:00 예약은 하나만 있어야 한다`라면, 새 예약 row가 아직 없어서 잠글 대상이 없을 수 있습니다. 따라서 면접에서는 `lock을 세게 겁니다`가 아니라 `이 업무 규칙은 단일 row, 범위, 집합, 외부 side effect 중 어디에 걸려 있고, 그중 가장 좁게 보호할 수 있는 자원은 무엇인가`라고 말해야 합니다.
 
 - Deadlock을 timeout과 같은 말로 보는 답
 
-    Timeout은 오래 기다려서 포기하는 것이고, deadlock은 wait graph cycle입니다. Deadlock은 한쪽을 abort해야 진행됩니다. 로그와 wait graph를 보고 구분해야 합니다.
+    Timeout은 오래 기다렸기 때문에 포기하는 것입니다. Deadlock은 더 구체적입니다. T1이 account A row를 잡고 account B row를 기다리며, T2가 account B row를 잡고 account A row를 기다리면 wait-for graph에 cycle이 생깁니다. 이 상태는 아무리 기다려도 스스로 풀리지 않으므로 DBMS가 한 transaction을 victim으로 골라 abort해야 합니다.
+
+    ```text
+    T1 holds A -> waits B
+    T2 holds B -> waits A
+
+    wait-for graph:
+      T1 -> T2
+      T2 -> T1
+      cycle exists
+    ```
+
+    그래서 로그를 볼 때도 질문이 달라집니다. Timeout이면 `왜 이렇게 오래 기다렸는가`, `lock timeout 값을 넘긴 blocker는 누구인가`를 봅니다. Deadlock이면 `각 transaction이 어떤 순서로 자원을 잡았는가`, `같은 자원 집합을 반대 순서로 잡는 code path가 있는가`, `retry가 transaction 전체를 다시 실행하는가`를 봅니다. 해결책도 단순히 timeout을 늘리는 것이 아니라 lock order 정렬, transaction 축소, index 보강, retry 설계로 이어져야 합니다.
 
 - Predicate 문제를 row lock 하나로 해결하려는 답
 
-    조건에 새 row가 들어오는 phantom이나 write skew는 기존 row 하나를 잡는 것만으로 막히지 않을 수 있습니다. Range/predicate 보호, serializable retry, guard row, constraint 설계를 봐야 합니다.
+    핵심은 row lock이 보통 이미 존재하는 row를 잡는다는 점입니다. 그런데 많은 업무 규칙은 `어떤 조건에 맞는 row가 없다`거나 `조건에 맞는 row 수가 N보다 작다`는 사실을 믿고 진행합니다. 이때 아직 존재하지 않는 row, 또는 조건 범위 전체를 보호하지 못하면 동시성 버그가 납니다.
+
+    회의실 예약을 예로 들 수 있습니다.
+
+    ```text
+    reservations
+      id
+      room_id
+      start_at
+      end_at
+
+    업무 규칙:
+      같은 room_id에서 시간이 겹치는 예약은 2개 이상 존재하면 안 됩니다.
+    ```
+
+    두 사용자가 동시에 회의실 A를 10:00부터 11:00까지 예약한다고 하겠습니다.
+
+    ```sql
+    -- T1
+    SELECT *
+    FROM reservations
+    WHERE room_id = 'A'
+      AND start_at < '11:00'
+      AND end_at > '10:00';
+    -- 결과 없음
+
+    -- T2
+    SELECT *
+    FROM reservations
+    WHERE room_id = 'A'
+      AND start_at < '11:00'
+      AND end_at > '10:00';
+    -- 결과 없음
+
+    -- T1
+    INSERT INTO reservations(room_id, start_at, end_at)
+    VALUES ('A', '10:00', '11:00');
+
+    -- T2
+    INSERT INTO reservations(room_id, start_at, end_at)
+    VALUES ('A', '10:00', '11:00');
+    ```
+
+    결과는 겹치는 예약 2개입니다. 여기서 문제는 `잠글 row가 없었다`는 점입니다. 처음 조회 결과가 비어 있으니 `SELECT ... FOR UPDATE`를 걸어도 기존 row lock으로 잡을 대상이 없을 수 있습니다. 하지만 업무적으로 보호해야 한 것은 기존 row 하나가 아니라 `room_id='A'이고 10:00~11:00과 겹치는 예약이 없다`는 조건 자체였습니다. 이것이 조건에 새 row가 끼어드는 phantom 문제입니다.
+
+    Write skew는 조금 다릅니다. 두 transaction이 같은 조건을 읽고, 서로 다른 row를 수정해서 전체 규칙을 깨는 상황입니다. 예를 들어 당직 의사는 항상 최소 1명 있어야 한다고 하겠습니다.
+
+    ```text
+    doctors
+      A: on_call = true
+      B: on_call = true
+
+    T1 reads A=true, B=true -> A는 빠져도 된다고 판단
+    T2 reads A=true, B=true -> B는 빠져도 된다고 판단
+
+    T1 updates A=false
+    T2 updates B=false
+
+    final:
+      A=false
+      B=false
+      on_call 의사 0명
+    ```
+
+    두 transaction은 같은 row를 동시에 수정하지 않았습니다. 그래서 단순 row lock 충돌이 나지 않을 수 있습니다. 하지만 최종 상태는 `최소 1명 당직`이라는 집합 단위 불변식을 깨뜨립니다. 이 상황을 `같은 row를 안 건드렸으니 안전하다`고 답하면 실패입니다.
+
+    방어 수단은 보호할 불변식에 맞춰 골라야 합니다.
+
+    1. Range 또는 predicate 보호
+
+        기존 row 하나가 아니라 조건 범위 전체를 보호합니다. InnoDB에서는 적절한 index와 locking read, isolation level 조합에 따라 record 사이 빈 공간을 포함하는 gap/next-key lock이 phantom insert를 막을 수 있습니다. 단, index가 없거나 조건이 넓으면 잠금 범위도 넓어져 예상보다 많은 insert가 기다릴 수 있습니다. PostgreSQL에서는 InnoDB식 gap lock이라는 말보다 `SERIALIZABLE`에서 predicate 성격의 read/write dependency를 추적하고 위험한 구조를 abort할 수 있다는 식으로 설명하는 편이 안전합니다.
+
+    2. Serializable retry
+
+        DB가 `이 동시 실행은 어떤 순서로 직렬 실행한 결과처럼 볼 수 없다`고 판단하면 한 transaction을 실패시키게 하는 방식입니다. PostgreSQL `SERIALIZABLE`에서 serialization failure가 날 수 있고, 애플리케이션은 transaction 전체를 다시 실행할 수 있어야 합니다. 이때 외부 API 호출, 메시지 발행, 결제 승인처럼 되돌리기 어려운 side effect를 transaction retry 안에 섞으면 중복 실행 위험이 생깁니다.
+
+    3. Guard row
+
+        아직 존재하지 않는 row를 직접 잠글 수 없으니 일부러 대표 row를 만들어 잠급니다. 예를 들어 `reservation_guards(room_id, date)` table을 두고, 예약 생성 전에 `room_id='A', date='2026-05-22'` row를 `FOR UPDATE`로 잡습니다. 그러면 같은 회의실/날짜 예약 생성은 이 guard row 앞에서 순서가 생깁니다. 구현은 이해하기 쉽지만, 범위를 넓게 잡는 만큼 처리량이 줄 수 있습니다.
+
+    4. Constraint 설계
+
+        규칙을 DB constraint로 표현할 수 있으면 애플리케이션 체크보다 강합니다. 단순 중복은 `UNIQUE (user_id, coupon_id)`로 막을 수 있습니다. PostgreSQL에서는 `active=true`인 row만 하나로 제한하는 partial unique index나, 시간 범위 overlap을 막는 exclusion constraint를 검토할 수 있습니다. MySQL/InnoDB에서는 같은 형태의 exclusion constraint가 없으므로 모델을 unique key로 표현 가능한 형태로 바꾸거나, guard row, locking read, serializable/재시도 조합을 검토해야 합니다.
+
+    그래서 이 함정 질문의 좋은 답은 `row lock을 걸겠습니다`가 아닙니다. 좋은 답은 `이 규칙이 기존 row 하나를 보호하면 되는지, 아직 없는 row가 들어올 조건 범위를 보호해야 하는지, 여러 row의 집합 불변식을 보호해야 하는지 먼저 나누고, 그에 맞춰 range/predicate 보호, serializable retry, guard row, constraint 중 가장 좁고 검증 가능한 수단을 고르겠습니다`입니다.
 
 - 전파 설정을 격리 수준처럼 말하는 답
 
-    `REQUIRED`, `REQUIRES_NEW`, `NESTED`는 호출 경계가 물리 transaction을 어떻게 공유하거나 나누는지 정합니다. Dirty read, non-repeatable read, phantom read를 어떤 수준까지 허용할지는 DB isolation level과 DBMS 구현이 정합니다. 전파로 commit 경계를 분리하면 side effect 생존 범위와 connection pool 압박이 바뀔 수 있으므로 오히려 별도 검토가 필요합니다.
+    `REQUIRED`, `REQUIRES_NEW`, `NESTED`는 호출 경계가 물리 transaction을 어떻게 공유하거나 나누는지 정합니다. Dirty read, non-repeatable read, phantom read를 어떤 수준까지 허용할지는 DB isolation level과 DBMS 구현이 정합니다. 이 둘을 섞으면 `REQUIRES_NEW를 쓰면 격리가 강해집니다` 같은 답이 나옵니다.
+
+    실제로 `REQUIRES_NEW`가 바꾸는 것은 commit 생존 범위와 connection 사용입니다. 바깥 주문 transaction이 rollback되어도 안쪽 audit transaction이 먼저 commit되면 audit row는 남을 수 있습니다. 또한 바깥 transaction이 connection을 잡은 상태에서 안쪽 transaction이 새 connection을 요구하므로, pool이 작고 동시 요청이 많으면 connection starvation이 생길 수 있습니다. 따라서 전파 설정은 격리 수준의 상위 호환이 아니라 `실패가 어디까지 전파되는가`, `lock을 언제 놓는가`, `side effect 기록이 살아남는가`, `pool이 버티는가`를 따로 묻는 경계 정책입니다.
 
 - Application distributed lock을 DB isolation의 상위 호환으로 말하는 답
 
-    Distributed lock은 다른 실패 모드를 가집니다. Lease 만료, lock service 장애, fencing token, clock 문제를 설계하지 않으면 DB lock보다 더 위험할 수 있습니다.
+    Distributed lock은 DB isolation보다 위에 있는 만능 안전장치가 아닙니다. Redis나 ZooKeeper 같은 외부 lock service로 `user:1` key를 잡으면 애플리케이션 여러 인스턴스 사이에 순서를 만들 수는 있습니다. 하지만 lease가 만료된 뒤 느린 holder가 계속 작업하거나, lock service와 DB commit 순서가 어긋나거나, network partition 때문에 서로 다른 참여자가 자신이 lock을 가졌다고 믿으면 DB lock과 다른 실패가 생깁니다.
+
+    그래서 distributed lock을 말할 때는 fencing token을 함께 말해야 합니다. Fencing token은 lock을 얻을 때마다 증가하는 번호이고, 실제 write를 받는 쪽은 더 오래된 token의 write를 거절합니다. 이 장치가 없으면 lease가 만료된 예전 holder가 늦게 도착한 write로 최신 holder의 결과를 덮을 수 있습니다. DB row나 외부 storage가 이 token을 검증하지 않는다면, 애플리케이션 lock은 `서로 조심하자`는 약속에 가까워집니다. 면접에서는 `분산락을 쓰면 됩니다`가 아니라 `lease, timeout, fencing token, idempotency, DB constraint 중 어느 계층이 최종 쓰기를 거절하는가`까지 말해야 합니다.
 
 ## 답변을 더 단단하게 만드는 판단 흐름
 

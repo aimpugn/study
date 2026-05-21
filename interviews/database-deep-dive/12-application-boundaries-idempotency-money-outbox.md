@@ -1,8 +1,8 @@
-# Application Boundary, Idempotency, Money, Outbox Deep Dive
+# 애플리케이션 경계, 멱등성, 금액 처리, 아웃박스
 
 데이터베이스 면접에서 "transaction을 어디에 건다"는 질문은 DB 문법 질문이 아닙니다. 실제 장애는 DBMS 하나의 내부 원리보다 애플리케이션 경계에서 자주 생깁니다. connection을 빌렸는데 session state가 남아 있고, Spring `@Transactional`이 걸렸다고 믿었지만 proxy를 지나지 않았고, 외부 결제 API timeout 후 성공 여부를 모르는 상태에서 재시도했으며, 금액 반올림이 한 줄씩 달라 ledger와 balance가 어긋나는 식입니다.
 
-이 문서는 application boundary를 DB 바깥의 부수적인 주제로 보지 않습니다. connection/session/pool은 transaction의 물리적 통로이고, Spring/JPA/MyBatis는 그 통로를 추상화하는 계층이며, idempotency와 outbox는 "한 번만 일어난 것처럼 보이게 만드는" 운영 계약입니다. money 계산은 단순 `BigDecimal` 사용법이 아니라 ledger, balance, payment state, reconciliation이 함께 맞아야 하는 회계 경계입니다.
+이 문서는 애플리케이션 경계를 DB 바깥의 부수적인 주제로 보지 않습니다. DB 연결은 transaction이 지나가는 물리 통로이고, connection pool은 그 통로를 여러 요청이 빌려 쓰게 하는 장치입니다. Spring, JPA, MyBatis는 연결을 빌리고 transaction에 묶고 SQL을 보내는 시점을 추상화합니다. 멱등성과 아웃박스는 중복 요청, 재시도, worker crash가 있어도 "업무적으로 한 번 처리된 것처럼" 보이게 만드는 운영 계약입니다. 금액 처리는 단순 `BigDecimal` 사용법이 아니라 원장, 잔액, 결제 상태, 대사 작업이 함께 맞아야 하는 회계 경계입니다.
 - [2-5분 개요](#2-5분-개요)
 - [먼저 잡아야 할 작은 모델](#먼저-잡아야-할-작은-모델)
 - [깊은 메커니즘](#깊은-메커니즘)
@@ -43,7 +43,9 @@
 
 ## 2-5분 개요
 
-애플리케이션에서 transaction을 설명할 때 가장 먼저 잡아야 할 모델은 "비즈니스 메서드 하나가 논리 transaction처럼 보여도, 실제 DB에서는 connection 하나의 session 상태와 commit/rollback 경계로 실행된다"입니다. Spring은 proxy와 transaction manager를 통해 connection을 thread-bound resource처럼 묶고, JPA는 persistence context와 flush timing을 통해 SQL 실행 시점을 늦출 수 있으며, MyBatis는 mapper 호출 시점에 SQL이 직접 나가되 Spring transaction에 참여할 수 있습니다. 그래서 `@Transactional`은 마법 문구가 아니라 "어떤 호출이 proxy를 통과했고, 어떤 transaction manager가 어떤 connection을 언제 bind했고, 언제 flush/commit/rollback했는가"라는 실행 경계입니다. DB 내부 transaction의 의미는 [트랜잭션과 ACID 경계](06-transaction-acid-boundary.md)를 먼저 고정해 두면 더 안전하게 이어 읽을 수 있습니다.
+애플리케이션에서 transaction을 설명할 때 먼저 봐야 하는 것은 메서드 이름이 아니라 실제 DB 연결과 commit 경계입니다. 서비스 메서드 하나가 논리 transaction처럼 보여도, DBMS 입장에서는 connection 하나의 session 상태, SQL 실행 순서, commit/rollback 호출이 실제 경계를 만듭니다.
+
+Spring은 proxy와 transaction manager를 통해 connection을 thread-bound resource처럼 묶습니다. JPA는 persistence context와 flush timing 때문에 SQL 실행 시점을 늦출 수 있고, MyBatis는 mapper 호출 시점에 SQL이 직접 나가되 Spring transaction에 참여할 수 있습니다. 그래서 `@Transactional`은 마법 문구가 아니라 "어떤 호출이 proxy를 통과했고, 어떤 transaction manager가 어떤 connection을 언제 묶었고, 언제 flush/commit/rollback했는가"라는 실행 경계입니다. DB 내부 transaction의 의미는 [트랜잭션과 ACID 경계](06-transaction-acid-boundary.md)를 먼저 고정해 두면 더 안전하게 이어 읽을 수 있습니다.
 
 Connection pool은 성능 최적화 장치이면서 session contamination의 위험 지점입니다. DB connection은 단순 TCP socket이 아니라 transaction isolation, autocommit, timezone, search_path, role, temporary object, prepared statement 같은 session state를 가질 수 있습니다. 애플리케이션이 raw SQL로 session setting을 바꾸고 되돌리지 않으면 다음 borrower가 그 상태를 이어받을 수 있습니다. Pool이 connection을 재사용하기 때문에 빠르지만, 그만큼 "반납 시 깨끗한 상태"라는 계약이 중요합니다.
 

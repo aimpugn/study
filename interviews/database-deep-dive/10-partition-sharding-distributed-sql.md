@@ -1,11 +1,16 @@
 # 파티셔닝, 샤딩, 분산 SQL은 어떤 확장 문제를 서로 다르게 푸는가?
 
-대용량 DB 질문에서 "파티셔닝하면 됩니다" 또는 "샤딩하면 됩니다"라고 답하면 바로 꼬리 질문이 따라옵니다. 파티션 pruning은 어떤 조건에서 실제 스캔 범위를 줄일 수 있을까요. 수동 파티셔닝은 애플리케이션 쿼리와 운영 배치에 어떤 비용을 넘길까요. 샤딩은 데이터를 여러 노드에 나누지만 join, transaction, resharding, hot shard 문제를 어떻게 다뤄야 할까요. NewSQL 또는 distributed SQL은 SQL과 트랜잭션을 분산 환경에 올리지만 consensus, global transaction, timestamp, locality 비용을 어디에서 치를까요.
+대용량 DB 질문에서 "테이블을 나누면 됩니다"라고 답하면 바로 다음 질문이 따라옵니다. 어떤 행이 어느 조각에 들어가나요. 쿼리는 그중 필요한 조각만 읽을 수 있나요. 조각 하나가 너무 커지거나 특정 조각에 쓰기가 몰리면 어떻게 다시 나누나요. 여러 조각을 한 transaction이 함께 바꾸면 누가 commit을 조율하나요. 파티션 pruning, sharding, resharding, hot shard, consensus 같은 용어는 모두 이 질문들에 붙는 공식 이름입니다.
 
-이 문서는 네 가지 선택지를 분리합니다. Native partition은 한 DBMS 안에서 큰 table을 더 작은 물리 단위로 나누는 방법이고, 수동 파티셔닝은 여러 table과 application routing으로 비슷한 효과를 직접 만드는 방식입니다. Sharding은 여러 노드에 데이터를 나누는 방법입니다. Distributed SQL은 SQL 표면과 트랜잭션을 유지하려고 분산 저장과 합의 프로토콜을 내부화한 계열입니다. 모두 "큰 데이터를 나눈다"는 공통점은 있지만, query planner, routing, transaction, 운영 책임의 위치가 다릅니다.
+이 문서는 네 가지 선택지를 분리합니다. Native partition은 한 DBMS 안에서 큰 table을 더 작은 물리 단위로 나누는 방법이고, 수동 파티셔닝은 여러 table과 애플리케이션 분기로 비슷한 효과를 직접 만드는 방식입니다. Sharding은 여러 노드에 데이터 소유권을 나누는 방법입니다. Distributed SQL은 SQL 표면과 transaction 경험을 유지하려고 분산 저장과 합의 프로토콜을 DBMS 내부에 넣은 계열입니다. 모두 "큰 데이터를 나눈다"는 공통점은 있지만, query planner, routing, transaction, 운영 책임의 위치가 다릅니다.
 - [2-5분 개요](#2-5분-개요)
 - [먼저 잡아야 할 작은 모델](#먼저-잡아야-할-작은-모델)
 - [깊은 메커니즘](#깊은-메커니즘)
+    - [Native partition pruning과 lifecycle](#native-partition-pruning과-lifecycle)
+    - [수동 파티셔닝과 drift](#수동-파티셔닝과-drift)
+    - [Sharding: key, routing table, resharding](#sharding-key-routing-table-resharding)
+    - [Cross-shard query와 transaction](#cross-shard-query와-transaction)
+    - [Distributed SQL: range, consensus, retry, locality](#distributed-sql-range-consensus-retry-locality)
     - [분산 DB write도 결국 커널과 디스크를 지난다](#분산-db-write도-결국-커널과-디스크를-지난다)
 - [DBMS별 경계](#dbms별-경계)
 - [직접 재생해 보기](#직접-재생해-보기)
@@ -145,7 +150,9 @@ write to key in range A:
 
 ## 깊은 메커니즘
 
-Partition pruning은 partition 설계의 핵심입니다. PostgreSQL 문서는 declarative partitioning에서 query 조건이 partition constraint와 맞으면 planner가 관련 없는 partition을 제외할 수 있다고 설명합니다. MySQL도 partition pruning을 통해 WHERE 조건에 맞지 않는 partition을 읽지 않을 수 있습니다. 하지만 pruning은 마법이 아닙니다. Query predicate가 partition key와 호환되어야 하고, planner가 조건을 정적으로 또는 실행 시점에 해석할 수 있어야 합니다.
+### Native partition pruning과 lifecycle
+
+Partition pruning은 partition 설계의 첫 번째 관문입니다. PostgreSQL 문서는 declarative partitioning에서 query 조건이 partition constraint와 맞으면 planner가 관련 없는 partition을 제외할 수 있다고 설명합니다. MySQL도 partition pruning을 통해 WHERE 조건에 맞지 않는 partition을 읽지 않을 수 있습니다. 하지만 pruning은 마법이 아닙니다. Query predicate가 partition key와 호환되어야 하고, planner가 조건을 정적으로 또는 실행 시점에 해석할 수 있어야 합니다.
 
 예를 들어 `created_at` range partition인데 query가 `WHERE date(created_at) = '2026-05-20'`처럼 partition key를 함수로 감싸면 planner가 partition bounds와 바로 연결하지 못할 수 있습니다. DBMS별 expression handling과 generated column, functional index, constraint exclusion이 다르므로 실제 `EXPLAIN`으로 확인해야 합니다. 안전한 predicate는 가능하면 half-open range입니다.
 
@@ -194,6 +201,10 @@ Lifecycle을 손으로 그리면 운영 책임이 더 분명해집니다.
 
 이 순서에서 `partition 생성`, `write 경로`, `archive 검증`, `drop`은 서로 다른 checkpoint입니다. 새 partition을 만들지 못하면 insert가 실패할 수 있고, archive 검증 없이 drop하면 복구 가능한 보관본이 사라질 수 있습니다. Partitioning은 쿼리 최적화 기능이면서 동시에 시간 단위 운영 절차입니다.
 
+이 축에서 깨지는 신호는 `EXPLAIN`에 예상보다 많은 partition이 나오거나, 새 기간 partition이 없어 insert가 실패하거나, 오래된 partition을 drop했는데 복구 drill에서 대표 row를 찾지 못하는 경우입니다. Pruning 실패는 query predicate와 partition bound의 연결이 끊긴 것이고, lifecycle 실패는 운영 절차의 checkpoint가 닫히지 않은 것입니다.
+
+### 수동 파티셔닝과 drift
+
 수동 파티셔닝은 native partition 기능이 부족하거나 legacy schema를 크게 바꾸기 어려울 때 등장합니다. 예를 들어 `orders_current`, `orders_archive`, `orders_2026_05`처럼 table을 나누고 애플리케이션이 query를 분기하거나 view가 `UNION ALL`로 묶습니다. 이 방식은 특정 table을 독립적으로 백업하거나 drop하기 쉬울 수 있습니다. 하지만 optimizer가 native partition만큼 정보를 얻지 못할 수 있고, 모든 table에 같은 schema, index, constraint, trigger를 유지해야 합니다.
 
 ```text
@@ -227,6 +238,8 @@ Sharding은 partition보다 더 큰 경계 이동입니다. Partition은 보통 
 | schema migration은 한 catalog에서 수행한다 | 모든 shard에 같은 순서와 버전으로 적용됐는가 |
 
 이 표 때문에 shard key는 해시 함수 선택보다 먼저 업무 경계 선택입니다. 한 주문, 한 사용자, 한 tenant, 한 지갑처럼 같이 읽고 같이 commit되어야 하는 aggregate가 어느 key 주변에 모이는지 먼저 정해야 합니다.
+
+### Sharding: key, routing table, resharding
 
 Routing table은 샤딩의 핵심 운영 자산입니다. 단순 modulo sharding은 `user_id % N`으로 shard를 고르기 쉬우나 shard 수 N이 바뀌면 많은 key가 이동합니다. Consistent hashing이나 virtual bucket을 쓰면 이동 범위를 줄일 수 있습니다. Range sharding은 범위 query에 좋지만 hot range가 생길 수 있습니다. Directory-based sharding은 key-to-shard mapping table을 두어 유연하지만 routing table 일관성과 cache invalidation을 관리해야 합니다.
 
@@ -273,11 +286,19 @@ T3 cutover
 
 이 trace에서 가장 위험한 구간은 T2와 T3 사이입니다. Data copy는 끝났지만 router 일부가 아직 A를 보고, 일부는 E를 볼 수 있습니다. 그래서 routing table 배포, router cache 만료, idempotent write, rollback window를 함께 설계해야 합니다. "버킷을 옮겼다"는 말은 이 네 상태가 모두 닫혔다는 뜻이어야 합니다.
 
+이 축에서 깨지는 신호는 특정 shard의 QPS와 lock wait만 튀거나, bucket 이동 뒤 row count와 checksum이 맞지 않거나, router cache가 old shard와 new shard를 동시에 바라보는 경우입니다. Sharding 장애는 대개 "데이터가 여러 곳에 있다" 자체보다, 어떤 key가 어느 shard의 소유인지에 대한 정보가 늦게 바뀌거나 서로 다르게 전파될 때 생깁니다.
+
+### Cross-shard query와 transaction
+
 Cross-shard query는 비용이 큽니다. User profile과 user orders가 같은 shard key를 쓰면 local join이 가능할 수 있습니다. 그러나 order by created_at global feed처럼 shard key와 다른 축으로 묻는 query는 모든 shard에 scatter하고 결과를 merge해야 합니다. 이때 pagination, sorting, limit pushdown, duplicate handling이 어려워집니다. 그래서 샤딩 설계에서는 query shape를 먼저 inventory해야 합니다. 나중에 "어떤 shard를 봐야 하는지 모르는 query"가 많으면 scale-out 이점이 사라집니다.
 
 Cross-shard transaction도 어렵습니다. 두 shard에 걸친 원자성을 보장하려면 2PC 같은 coordination이 필요하고, coordinator failure, lock hold time, participant timeout, heuristic outcome 같은 복잡도가 생깁니다. 많은 시스템은 cross-shard transaction을 피하기 위해 aggregate boundary를 shard key와 맞추거나, saga/outbox로 eventual consistency를 선택합니다. 금융 원장처럼 강한 원자성이 필요한 경우에는 shard key 설계가 더 중요해집니다. 이 판단은 [트랜잭션과 ACID 경계](06-transaction-acid-boundary.md)와 [애플리케이션 경계, 멱등성, 돈, outbox](12-application-boundaries-idempotency-money-outbox.md)를 함께 봐야 안전합니다.
 
-Distributed SQL은 이런 문제 일부를 DBMS 내부로 가져옵니다. CockroachDB는 SQL layer 아래에 key-value ranges와 Raft replication을 두고, range leaseholder/leader를 통해 읽기와 쓰기를 조율합니다. YugabyteDB도 DocDB, tablet, Raft consensus 같은 구조를 갖습니다. Google Spanner는 TrueTime 기반 timestamp와 Paxos replication으로 외부 일관성(external consistency)을 제공합니다. 세부 구현은 vendor-specific이지만, 공통적으로 data range, replica, consensus, transaction timestamp, retry가 핵심 단어입니다.
+이 축에서 깨지는 신호는 single-shard query라고 생각했던 요청이 실제로 모든 shard에 흩어지거나, global sort와 pagination이 coordinator memory를 크게 쓰거나, 두 shard를 건드리는 transaction의 timeout과 retry가 급증하는 경우입니다. `LIMIT 20`이 각 shard의 `LIMIT 20`을 모아 다시 정렬해야 한다면 전체 의미는 이미 한 shard 안에 머무르지 않습니다.
+
+### Distributed SQL: range, consensus, retry, locality
+
+Distributed SQL은 이런 문제 일부를 DBMS 내부로 가져옵니다. 먼저 데이터를 key 범위나 tablet 같은 작은 단위로 나누고, 각 조각을 여러 노드에 복제합니다. 쓰기는 보통 그 조각의 leader가 받아 복제본 다수의 확인(quorum)을 얻은 뒤 commit 가능한 상태로 올립니다. 동시에 transaction이 어떤 시간 순서로 보일지 정하고, 충돌이 나면 transaction을 다시 시도하게 만듭니다. CockroachDB는 SQL layer 아래에 key-value ranges와 Raft replication을 두고, range leaseholder/leader를 통해 읽기와 쓰기를 조율합니다. YugabyteDB도 DocDB, tablet, Raft consensus 같은 구조를 갖습니다. Google Spanner는 TrueTime 기반 timestamp와 Paxos replication으로 외부 일관성(external consistency)을 제공합니다. 제품마다 세부 구현은 다르지만, 공통 질문은 "데이터 조각이 어디에 있고, 누가 leader이며, 몇 복제본이 확인해야 하고, 충돌이 나면 누가 retry하는가"입니다.
 
 Distributed SQL이 등장한 배경에는 두 요구가 같이 있습니다. 하나는 RDBMS의 SQL, schema, transaction 의미를 버리기 어렵다는 요구입니다. 다른 하나는 단일 노드나 단일 region에 모든 write와 장애 복구를 맡기기 어렵다는 요구입니다. 한쪽 극단은 전통적인 단일 노드 RDBMS처럼 강한 관계형 의미를 보존하지만 확장과 region 장애 대응이 어렵고, 다른 극단은 단순 key-value나 document store처럼 분산은 쉬워도 join과 transaction 의미를 애플리케이션이 크게 떠안습니다. Distributed SQL은 이 둘 사이에서 SQL 표면을 유지하려고 하지만, 내부적으로는 range split, replica placement, consensus, timestamp ordering이라는 분산 시스템 비용을 치릅니다.
 
@@ -320,6 +341,8 @@ case B: 서로 다른 region/range
 그래서 distributed SQL에서 transaction이 "지원된다"는 말은 "항상 같은 비용으로 실행된다"는 뜻이 아닙니다. 같은 SQL transaction이라도 key locality가 맞으면 단일 조각에 가까운 비용으로 끝나고, global hot key를 건드리면 합의와 충돌 비용이 커집니다.
 
 Locality 설계는 분산 SQL의 성패를 크게 좌우합니다. 사용자와 가까운 region에서 읽고 쓸 수 있으면 latency가 줄지만, 강한 일관성을 요구하는 global write는 멀리 있는 replica와 합의를 해야 할 수 있습니다. Tenant나 region을 key에 포함해 data placement를 맞추는 전략이 중요합니다. 반대로 모든 region에서 같은 global counter를 갱신하면 hot range와 cross-region consensus가 겹쳐 병목이 됩니다.
+
+이 축에서 깨지는 신호는 `SQL은 성공하지만 p99 commit latency가 특정 key에서만 튀는 경우`, `40001 계열 serialization/retry error가 hot key 주변에서 늘어나는 경우`, `멀리 있는 region에서 strong read/write가 모두 느린 경우`입니다. Distributed SQL은 shard router를 덜 직접 쓰게 해 줄 수 있지만, hot key와 locality, retry contract를 없애지는 않습니다.
 
 ### 분산 DB write도 결국 커널과 디스크를 지난다
 
@@ -461,17 +484,58 @@ Resharding drill은 실제 데이터 이동 순서로 점검합니다.
 
 PASS는 cutover 시점에 source of truth가 하나로 정해지고, checksum과 routing이 맞는 것입니다. FAIL은 data copy 완료만 보고 router를 바꾸거나, dual-write 실패를 검증하지 않는 것입니다.
 
-Distributed SQL은 로컬에서 제품별 demo cluster로 transaction retry를 관측해 볼 수 있습니다. 일반적인 재생 목표는 다음과 같습니다.
+Distributed SQL은 제품 하나를 고정해 로컬 demo cluster에서 재생해야 실제 감각이 생깁니다. 아래 예시는 CockroachDB를 기준으로 한 최소 절차입니다. CockroachDB 공식 문서의 `cockroach demo --nodes=3`는 임시 multi-node demo cluster를 만들고, transaction retry 문서는 `SERIALIZABLE` 환경에서 동시 write 충돌이 client-visible retry error로 올라올 수 있다고 설명합니다.
 
 ```text
-1. 같은 hot key를 여러 client가 동시에 update합니다.
-2. transaction retry 또는 serialization failure가 증가하는지 봅니다.
-3. key를 tenant/locality 기준으로 나누었을 때 conflict가 줄어드는지 비교합니다.
-4. cross-region setting에서 commit latency가 어떻게 바뀌는지 측정합니다.
-5. follower read 또는 stale read 옵션이 최신성과 latency를 어떻게 바꾸는지 확인합니다.
+terminal 1
+  cockroach demo --nodes=3 --no-example-database
+  \demo ls
+  -- 표시된 sql URL을 terminal 2, 3에서 각각 사용합니다.
+
+session A/B 공통 준비
+  CREATE DATABASE IF NOT EXISTS lab;
+  USE lab;
+  CREATE TABLE IF NOT EXISTS account_balance (
+    account_id INT PRIMARY KEY,
+    balance INT NOT NULL
+  );
+  UPSERT INTO account_balance VALUES (1, 1000), (2, 1000);
 ```
 
-제품별 명령은 다르므로 공식 문서를 따라야 합니다. 중요한 것은 retry를 비정상 장애로만 보지 않는 것입니다. 분산 Serializable 계열에서는 충돌을 감지하고 다시 시도하는 일이 정상적인 correctness mechanism일 수 있습니다.
+Hot key 충돌은 두 session에서 같은 row를 동시에 갱신해 봅니다.
+
+```sql
+-- session A
+BEGIN;
+UPDATE account_balance
+SET balance = balance + 1
+WHERE account_id = 1;
+-- 아직 COMMIT하지 않습니다.
+
+-- session B
+BEGIN;
+UPDATE account_balance
+SET balance = balance - 1
+WHERE account_id = 1;
+COMMIT;
+
+-- session A
+COMMIT;
+```
+
+PASS 신호는 둘 중 한 transaction이 대기하거나, conflict가 커질 때 retry 가능한 오류가 관측되고, 애플리케이션이 transaction 전체를 다시 실행해야 한다는 결론까지 이어지는 것입니다. FAIL 신호는 오류 코드를 한 번 보고 "DB 장애"라고만 판단하거나, `UPDATE` 한 문장만 다시 보내도 된다고 생각하는 것입니다. Transaction 안에 `잔액 조회 -> 한도 판단 -> 변경 -> outbox 기록` 같은 여러 단계가 있으면, retry 단위는 SQL 한 줄이 아니라 전체 판단 흐름이어야 합니다.
+
+Locality와 stale read는 multi-region demo에서 별도로 봅니다.
+
+```text
+1. cockroach demo --global --nodes=9 로 region locality가 있는 임시 cluster를 엽니다.
+2. SHOW REGIONS FROM CLUSTER; 로 cluster region을 확인합니다.
+3. read-mostly table과 자주 갱신되는 table을 나누어 table locality를 다르게 설정합니다.
+4. 가까운 region에서 읽을 때와 먼 region의 leader/leaseholder를 거칠 때 latency를 비교합니다.
+5. stale follower read를 허용한 read와 최신값이 필요한 strong read를 같은 의미로 말하지 않습니다.
+```
+
+PASS 신호는 `이 화면은 약간 오래된 값을 읽어도 된다`, `이 결제/잔액 경로는 최신 write를 읽어야 한다`처럼 업무 의미별로 read policy가 나뉘는 것입니다. CockroachDB의 follower read 문서는 가까운 replica에서 과거의 일관된 시점을 읽어 latency를 줄일 수 있지만 최신성 trade-off를 가진다고 설명합니다. 따라서 distributed SQL 검증은 `SQL이 실행된다`가 아니라 `retry, locality, stale read, global write latency가 업무 계약 안에 들어오는가`로 닫아야 합니다.
 
 ## 면접 꼬리 질문
 
@@ -519,17 +583,28 @@ Key 분포가 균등하면 도움이 되지만 hot user, hot tenant, global coun
 
 1. PostgreSQL 호환 distributed SQL이면 기존 PostgreSQL 앱을 그대로 옮기면 되나요?
 
-SQL 문법과 wire protocol 호환은 도움이 되지만 충분하지 않습니다. Transaction retry, sequence/identity behavior, locking semantics, query plan, latency, unsupported extensions, DDL support, operational tooling이 다를 수 있습니다. 호환성은 migration proof로 검증해야 합니다.
+SQL 문법과 wire protocol 호환은 출발점일 뿐입니다. 기존 PostgreSQL 앱을 옮길 때는 "접속된다"가 아니라 "기존 업무 계약이 분산 실행에서도 유지된다"를 증명해야 합니다.
+
+| 검증 축 | 이전 전에 만들어야 하는 작은 시험 | 깨지는 신호 |
+| --- | --- | --- |
+| Transaction retry | 결제 승인, 재고 차감, 포인트 적립처럼 여러 SQL과 판단이 묶인 transaction을 일부러 충돌시킨 뒤 전체 transaction retry가 가능한지 봅니다 | `40001`류 retry error 뒤 일부 side effect만 남거나, retry가 SQL 한 줄 단위로만 구현됩니다 |
+| Sequence/identity | 주문 번호, 전표 번호처럼 단조 증가를 기대하는 값을 insert concurrency와 rollback 상황에서 확인합니다 | 값이 건너뛰는 것을 장애로 오해하거나, commit 순서와 번호 순서를 같은 뜻으로 사용합니다 |
+| Lock/savepoint 의미 | `SELECT ... FOR UPDATE`, savepoint rollback, advisory lock에 기대는 코드를 분리해 제품 문서와 실험으로 확인합니다 | PostgreSQL에서 되던 row lock release나 wait 패턴을 그대로 가정합니다 |
+| Query plan과 latency | 가장 중요한 10개 query를 실제 데이터 분포와 비슷한 샘플에서 `EXPLAIN`과 p95/p99 latency로 비교합니다 | 단일 노드에서는 local index scan이던 query가 distributed lookup, remote scan, fan-out으로 바뀝니다 |
+| Extension과 DDL | 사용하는 extension, trigger, partial index, generated column, online DDL을 목록화하고 지원 여부와 migration 절차를 확인합니다 | 배포 당일 unsupported feature나 긴 schema change job이 발견됩니다 |
+| 운영 도구 | backup/restore, PITR, metric, alert, slow query 수집, 권한 모델, 장애 전환 runbook을 새 제품 기준으로 재작성합니다 | 장애 때 기존 PostgreSQL runbook을 실행했지만 관측 지표와 복구 명령이 맞지 않습니다 |
+
+좋은 답변은 "PostgreSQL compatible이니까 대부분 됩니다"가 아니라, compatibility를 문법, driver, transaction, lock, plan, 운영 절차로 나누어 증명한다고 말하는 것입니다. 특히 transaction retry와 외부 side effect의 경계를 [애플리케이션 경계, 멱등성, 돈, outbox](12-application-boundaries-idempotency-money-outbox.md)에서 다시 확인해야 합니다.
 
 ### 마지막 연결: 데이터를 나눴을 때 query와 transaction이 어디까지 한 조각에 머무는가
 
 이 주제의 답변은 `어떤 key로 나누는가 -> 그 key로 query가 좁혀지는가 -> 좁혀지지 않을 때 fan-out과 transaction 비용을 누가 감당하는가`로 이어져야 합니다. `partition key, shard key, routing, pruning, rebalance, consensus`는 암기용 키워드가 아니라 같은 row가 어느 물리 조각으로 이동하고, 어느 coordinator가 그 조각을 찾아가며, 어떤 합의나 검증을 거쳐 결과를 닫는지 보여 주는 경로입니다. 면접에서는 이 경로를 말해야 "큰 table을 나눴다"는 말이 실제 설계 판단으로 바뀝니다.
 
-작은 반례는 `created_at partition은 월별 조회에는 좋지만 user_id 전체 이력 조회에는 모든 partition을 읽는 상황`입니다. 이 반례를 처리하지 못하면 앞의 설명이 부분적으로 맞더라도 큰 설명은 틀립니다. 그래서 답변은 항상 공통 원리에서 시작하되 곧바로 범위를 좁혀야 합니다. 어느 DBMS인지, 어느 version인지, 어떤 isolation이나 일관성 요구인지, 이 작업이 운영 중 변경인지 장애 복구인지에 따라 같은 단어가 다른 위험을 만듭니다.
+반례를 하나 놓고 보면 경계가 선명해집니다. `created_at` partition은 월별 조회에는 좋지만 user_id 전체 이력 조회에는 모든 partition을 읽을 수 있습니다. 반대로 `user_id` hash shard는 사용자별 point lookup에는 좋지만, "최근 1시간 전체 주문 TOP 100"에는 모든 shard의 local TOP N을 모아 다시 정렬해야 합니다. 그래서 답변은 "나누었다"에서 끝나면 안 되고, 실제 query가 한 조각을 고를 수 있는지까지 내려가야 합니다.
 
-DBMS별로는 PostgreSQL/MySQL partitioning은 주로 한 시스템 안의 pruning과 관리 단위이고, sharding과 distributed SQL은 node 간 routing, replication, consensus, cross-shard transaction 문제를 만듭니다. 이 차이는 세부 취향이 아니라 실제 장애 대응과 설계 판단을 바꿉니다. 면접에서 제품 이름을 들었다면, 그 제품의 문서와 운영 지표로 돌아가야 합니다. 제품 이름이 없다면 일반 원리를 말하되, 일반 원리가 제품별 구현을 덮어쓴다고 말하면 안 됩니다.
+DBMS별로는 PostgreSQL/MySQL partitioning은 주로 한 시스템 안의 pruning과 관리 단위이고, sharding과 distributed SQL은 node 간 routing, replication, consensus, cross-shard transaction 문제를 만듭니다. 이 차이는 장애 대응도 바꿉니다. PostgreSQL partition에서 오래된 데이터를 지우는 문제라면 `DETACH/DROP partition, archive 검증, autovacuum 영향`을 봅니다. Sharding에서 같은 증상이 나오면 `어떤 shard가 뜨거운지, routing table이 맞는지, rebalance 중 dual-write가 성공했는지`를 봅니다. Distributed SQL에서는 `hot range, leaseholder locality, transaction retry, quorum latency`를 함께 봅니다.
 
-운영에서 다시 확인할 신호는 `partition pruning 여부, shard skew, hot key QPS, cross-shard query 비율, rebalance 시간`입니다. 이 값들은 답변을 검증 가능한 문장으로 바꿔 줍니다. 좋은 답변은 `느립니다`, `안전합니다`, `일관됩니다`에서 멈추지 않고, 어떤 값이 어느 범위에 있으면 그렇게 판단하는지 말합니다. 반대로 그 값이 예상과 다르면 처음 세운 mental model을 다시 열어야 합니다.
+현장에서 이 설명을 검증하려면 `partition pruning 여부, shard별 QPS와 p99 latency, hot key 충돌률, cross-shard query 비율, rebalance 소요 시간, distributed transaction retry율`을 봅니다. 예를 들어 "sharding했는데 느립니다"라는 말은 `특정 shard p99만 높은가`, `모든 shard가 같이 높은가`, `coordinator merge 시간이 높은가`에 따라 원인이 달라집니다. 지표가 예상과 다르면 처음 세운 key 선택과 query boundary를 다시 열어야 합니다.
 
 ```text
 incoming query -> choose partition/shard from key -> local scan or fan-out -> aggregate/commit -> rebalance or archive operation
@@ -537,7 +612,7 @@ incoming query -> choose partition/shard from key -> local scan or fan-out -> ag
 
 이 trace를 손으로 다시 그리면, partition과 sharding을 단순 분할 기법으로 외웠는지, 아니면 query와 transaction이 실제로 어느 조각까지 머무는지 이해했는지가 드러납니다. 각 화살표마다 `이 key로 한 조각을 고를 수 있는가`, `fan-out이 필요하면 누가 merge하는가`, `commit이 여러 조각을 건드리면 누가 재시도와 검증을 맡는가`를 붙여 봅니다. 답이 막히는 화살표가 있으면 그 부분이 설계와 운영에서 가장 먼저 깨질 지점입니다.
 
-면접에서는 최종적으로 이렇게 압축할 수 있습니다. partition은 물리 조각 관리, sharding은 node 분산, distributed SQL은 그 위에서 SQL 의미를 유지하려는 시도라고 말합니다. 그 다음 꼬리 질문이 오면, 이 문장의 한 단어를 골라 작은 trace로 내려가면 됩니다. 이 방식은 외운 답을 길게 늘이는 것이 아니라, 짧은 답을 근거 있는 구조로 확장하는 방식입니다.
+면접에서는 최종적으로 이렇게 압축할 수 있습니다. Partition은 한 DBMS 안에서 읽을 물리 조각과 보관 단위를 줄이는 방법이고, sharding은 데이터 소유권을 여러 노드에 나누어 query와 transaction 경계를 key 주변으로 모으는 방법입니다. Distributed SQL은 이 분산과 합의 비용을 DBMS 내부로 옮겨 SQL 표면을 유지하려는 시도입니다. 좋은 답변은 이 세 단어를 분리한 뒤, `이 query는 한 조각에 머무는가`, `이 transaction은 몇 조각을 commit해야 하는가`, `깨졌을 때 어떤 지표로 확인하는가`까지 내려갑니다.
 
 ## 더 깊게 볼 자료
 
@@ -547,6 +622,9 @@ incoming query -> choose partition/shard from key -> local scan or fan-out -> ag
 - [MySQL 8.4 문서: Partition Pruning](https://dev.mysql.com/doc/refman/8.4/en/partitioning-pruning.html) - `EXPLAIN PARTITIONS`로 pruning을 확인하는 방법을 볼 수 있습니다.
 - [MySQL 8.4 문서: Partitioning Limitations Relating to Storage Engines](https://dev.mysql.com/doc/refman/8.4/en/partitioning-limitations-storage-engines.html) - InnoDB partitioning과 foreign key의 hard caveat를 확인할 수 있습니다.
 - [CockroachDB 문서: Architecture Overview](https://www.cockroachlabs.com/docs/stable/architecture/overview) - range, replica, leaseholder, Raft 등 CockroachDB-specific 구조를 확인할 수 있습니다.
+- [CockroachDB 문서: cockroach demo](https://www.cockroachlabs.com/docs/stable/cockroach-demo) - multi-node와 multi-region demo cluster를 로컬에서 시작하는 방법을 확인할 수 있습니다.
+- [CockroachDB 문서: Transaction Retry Error Reference](https://www.cockroachlabs.com/docs/stable/transaction-retry-error-reference) - `40001` retry error와 client-side retry 처리의 공식 기준입니다.
+- [CockroachDB 문서: Follower Reads](https://www.cockroachlabs.com/docs/stable/follower-reads) - 가까운 replica에서 과거의 일관된 시점을 읽는 선택과 최신성 trade-off를 확인할 수 있습니다.
 - [YugabyteDB 문서: Architecture](https://docs.yugabyte.com/preview/architecture/) - tablet, DocDB, Raft replication 등 YugabyteDB-specific 구조를 확인할 수 있습니다.
 - [Google Spanner paper](https://research.google/pubs/spanner-googles-globally-distributed-database/) - TrueTime과 external consistency를 다룬 원 논문입니다.
 - [Linux kernel 문서: Explicit volatile write back cache control](https://www.kernel.org/doc/html/v6.6/block/writeback_cache_control.html) - fsync/sync/unmount 같은 data integrity operation에서 block layer flush와 FUA가 왜 필요한지 확인합니다.

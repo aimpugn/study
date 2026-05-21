@@ -1,10 +1,10 @@
-# Search, Document, NoSQL Engine Deep Dive
+# 검색 엔진과 문서형 NoSQL은 RDBMS와 어떤 다른 계약을 가지는가?
 
 Elasticsearch, OpenSearch, Firestore는 모두 전통적인 RDBMS와 다른 저장·조회 모델을 제공합니다. 하지만 "NoSQL"이라는 한 단어로 묶으면 가장 중요한 차이를 잃습니다. Elasticsearch와 OpenSearch는 문서를 저장하지만 핵심 역할은 검색 엔진입니다. text를 token으로 쪼개 inverted index를 만들고, relevance score로 정렬하며, shard와 replica 위에서 분산 검색을 수행합니다. Firestore는 document database입니다. collection/document 경로에 JSON-like document를 저장하고, index 기반 query와 security rules, pricing model, hotspot 제약을 중심으로 설계합니다.
 
 검색 엔진은 "문서를 넣으면 SQL처럼 찾아준다"가 아닙니다. mapping이 field type을 정하고, analyzer가 text를 token으로 바꾸며, inverted index가 term에서 document 목록으로 가는 길을 만듭니다. 검색 결과 정렬은 단순 최신순이 아니라 BM25 같은 scoring 모델, filter context, sort, pagination 방식에 따라 달라집니다. Firestore도 "JSON을 저장하는 DB"로만 보면 안 됩니다. 문서 크기, index fanout, transaction/batch limit, security rules evaluation, read/write 과금, sequential key hotspot이 설계 제약이 됩니다.
 
-이 문서는 검색 엔진과 문서 DB를 면접에서 설명 가능한 deep study monograph로 정리합니다. 핵심은 "왜 RDBMS index와 다르게 생겼는가", "분산 shard에서 검색 결과가 어떻게 만들어지는가", "deep pagination과 reindex가 왜 어려운가", "Firestore document modeling이 왜 query와 security/cost에서 시작해야 하는가"를 닫는 것입니다.
+이 문서는 검색 엔진과 문서형 데이터베이스를 RDBMS와 대비해 설명합니다. 핵심은 "왜 검색 index는 RDBMS B-tree와 다르게 생겼는가", "분산 shard에서 검색 결과가 어떻게 만들어지는가", "deep pagination과 reindex가 왜 어려운가", "Firestore document modeling이 왜 query와 security/cost에서 시작해야 하는가"를 독자가 다시 설명할 수 있게 만드는 것입니다.
 - [2-5분 개요](#2-5분-개요)
 - [먼저 잡아야 할 작은 모델](#먼저-잡아야-할-작은-모델)
 - [깊은 메커니즘](#깊은-메커니즘)
@@ -468,6 +468,8 @@ Elasticsearch와 OpenSearch는 유사한 API를 공유하는 부분이 많지만
 Firestore transaction 함수는 재시도될 수 있고, read는 write보다 먼저 수행되어야 하며, offline client에서는 transaction이 실패합니다. 그래서 transaction callback 안에서 결제 승인, 이메일 발송, 외부 API 호출처럼 한 번만 일어나야 하는 side effect를 직접 실행하면 안 됩니다. DB transaction 안팎의 side effect 경계는 [애플리케이션 경계, 멱등성, outbox](12-application-boundaries-idempotency-money-outbox.md)에서 이어서 봅니다.
 
 Firestore는 검색 엔진이 아닙니다. Prefix 검색, 형태소 검색, relevance ranking, typo tolerance, synonym search를 Firestore query만으로 만들려고 하면 한계가 큽니다. Firestore는 operational document store로 두고, full-text search는 Elasticsearch/OpenSearch/Algolia 같은 검색 시스템으로 projection하는 설계가 흔합니다. 이 경우 source of truth는 Firestore이고, search index는 파생 read model입니다. Sync lag, delete propagation, reindex, idempotent event handling이 필요합니다. 이 지연과 재생 가능성은 [복제, 지연, 백업, failover](09-replication-lag-backup-failover.md)의 replica lag 사고방식과도 닮아 있습니다.
+
+표의 `inverted index`, `doc values`, `BKD tree`는 Lucene 계열 검색 엔진에서 field type과 사용 목적에 따라 달라지는 물리 구조입니다. `text` field는 analyzer가 문장을 token으로 쪼갠 뒤, token에서 document 목록으로 가는 inverted index를 만듭니다. 그래서 "환불 정책"을 검색할 때 `환불`, `정책` 같은 term으로 document 후보를 찾을 수 있습니다. `keyword` field는 분석하지 않은 정확한 값을 집계, filter, sort에 자주 쓰므로 columnar 형태의 doc values가 중요해집니다. `price`, `created_at`, `location`처럼 숫자, 시간, 위치 범위를 묻는 field는 BKD tree 같은 point/range 검색 구조가 관여합니다. 이 구분을 모르면 text에 정렬을 걸거나, keyword에 형태소 검색을 기대하거나, 숫자 range filter를 단순 inverted index 감각으로 설명하는 실수를 하게 됩니다.
 
 RDBMS와도 경계가 다릅니다. RDBMS는 relational constraint, join, transaction, ad hoc query에 강합니다. Search engine은 text relevance와 large-scale retrieval에 강합니다. Firestore는 flexible document model, client SDK, realtime listener, managed scale에 강하지만 query shape와 cost 제약이 강합니다. 면접에서는 "어떤 것이 더 좋다"보다 "어떤 질문에 답하기 위해 어떤 저장 모델을 선택하는가"를 말해야 합니다.
 

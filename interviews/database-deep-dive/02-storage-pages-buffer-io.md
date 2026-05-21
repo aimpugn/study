@@ -311,7 +311,7 @@ fsync/fdatasync
 
 따라서 durability는 DBMS 코드만의 성질이 아니라, DBMS 설정, 커널 sync 동작, filesystem, storage cache 정책이 함께 만드는 계약입니다. 면접 답변에서는 `fsync`를 "느린 함수"로만 말하지 말고, commit 성공 응답이 어느 durable boundary 뒤에 나가는지와 연결해야 합니다.
 
-이 경로는 왜 DB 운영에서 CPU scheduler와 memory pressure도 중요해지는지 보여 줍니다. DBMS background writer나 checkpointer가 runnable 상태여도 CPU를 받지 못하면 flush가 늦어질 수 있습니다. 메모리가 부족하면 커널 writeback이나 reclaim이 DBMS foreground query와 겹쳐 지연을 만들 수 있습니다. block queue가 길어지면 DBMS 내부에서는 단순한 `fsync` 지연처럼 보이지만, 실제 원인은 filesystem journal, block scheduler, driver, 장치 cache flush 중 하나일 수 있습니다. 그래서 storage 장애를 볼 때는 DB 지표와 함께 `iostat`, `pidstat`, `vmstat`, `perf`, filesystem mount option, device cache 정책을 함께 봐야 합니다.
+이 경로를 보면 DB 운영에서 운영체제의 일 배분도 중요해집니다. CPU 스케줄러는 실행 가능한 프로세스와 thread 중 누가 CPU를 받을지 정합니다. DBMS의 background writer나 checkpointer가 실행 가능한 상태(runnable)여도 CPU를 충분히 받지 못하면 flush가 늦어질 수 있습니다. 메모리가 부족하면 커널은 메모리 회수(reclaim)를 하며 page cache나 프로세스 메모리를 정리하려고 하고, 더러운 page는 저장 장치와 동기화되어야 합니다. 블록 장치 대기열(block queue)이 길어지면 DBMS 내부에서는 단순한 `fsync` 지연처럼 보이지만, 실제 원인은 파일시스템 journal, block scheduler, device driver, 장치 cache flush 중 하나일 수 있습니다. 그래서 storage 장애를 볼 때는 DB 지표와 함께 `iostat`, `pidstat`, `vmstat`, `perf`, filesystem mount option, device cache 정책을 함께 봐야 합니다.
 
 ### dirty page는 commit과 다른 시간축에 산다
 
@@ -648,11 +648,11 @@ PASS 신호는 DELETE 직후 relation size가 기대만큼 바로 줄지 않을 
 
     충분하지 않습니다. `page, buffer frame, dirty page, checkpoint, fsync, random I/O, sequential log`는 암기용 키워드가 아니라 상태 변화의 경로입니다. 먼저 요청이나 row가 들어오고, 그 요청이 어떤 기준으로 분류되며, 그 기준이 어떤 내부 구조를 움직이고, 마지막에 어떤 관측값으로 결과를 확인하는지 말해야 합니다. 이렇게 말하면 단어는 짧아도 설명의 깊이가 생깁니다.
 
-    작은 반례는 `commit이 성공했지만 data file page는 아직 flush되지 않은 상황`입니다. 이 반례를 처리하지 못하면 앞의 설명이 부분적으로 맞더라도 큰 설명은 틀립니다. 그래서 답변은 항상 공통 원리에서 시작하되 곧바로 범위를 좁혀야 합니다. 어느 DBMS인지, 어느 version인지, 어떤 isolation이나 일관성 요구인지, 이 작업이 운영 중 변경인지 장애 복구인지에 따라 같은 단어가 다른 위험을 만듭니다.
+    반례로 `commit이 성공했지만 data file page는 아직 flush되지 않은 상황`을 놓고 보겠습니다. 사용자가 계좌 잔액을 1000원에서 900원으로 바꾸는 transaction을 commit했다고 하겠습니다. DBMS는 변경 내용을 먼저 log에 durable하게 남기고 commit 성공을 돌려줄 수 있습니다. 이때 table page 자체는 여전히 buffer pool의 dirty page일 수 있고, checkpoint가 나중에 그 page를 data file로 내려보냅니다. Crash가 나면 data file만 보고 판단하지 않고 log를 replay해 commit된 변경을 복구합니다.
 
-    DBMS별로는 PostgreSQL은 heap page와 WAL/checkpoint, InnoDB는 page/buffer pool/redo/doublewrite 같은 경계를 확인해야 합니다. 이 차이는 세부 취향이 아니라 실제 장애 대응과 설계 판단을 바꿉니다. 면접에서 제품 이름을 들었다면, 그 제품의 문서와 운영 지표로 돌아가야 합니다. 제품 이름이 없다면 일반 원리를 말하되, 일반 원리가 제품별 구현을 덮어쓴다고 말하면 안 됩니다.
+    DBMS별로는 같은 원리가 다른 구조 이름으로 나타납니다. PostgreSQL은 heap page, shared buffer, WAL, checkpoint를 중심으로 봅니다. InnoDB는 clustered index page, buffer pool, redo log, doublewrite buffer, checkpoint age를 함께 봅니다. 그래서 "page가 disk에 쓰였나요?"라는 질문은 제품별로 `어느 page인가`, `어느 log가 먼저 durable해졌는가`, `checkpoint가 어디까지 진행됐는가`, `crash 뒤 어떤 replay가 가능한가`로 풀어야 합니다.
 
-    운영에서 다시 확인할 신호는 `buffer hit ratio, dirty page count, checkpoint write volume, fsync latency, random read count`입니다. 이 값들은 답변을 검증 가능한 문장으로 바꿔 줍니다. 좋은 답변은 `느립니다`, `안전합니다`, `일관됩니다`에서 멈추지 않고, 어떤 값이 어느 범위에 있으면 그렇게 판단하는지 말합니다. 반대로 그 값이 예상과 다르면 처음 세운 mental model을 다시 열어야 합니다.
+    이 모델은 운영 지표로도 이어집니다. `buffer hit ratio, dirty page count, checkpoint write volume, fsync latency, random read count`를 함께 보면 어느 층에서 시간이 쓰이는지 좁힐 수 있습니다. 예를 들어 buffer hit ratio는 높은데 p99 write latency가 튀면 읽기 cache보다 WAL fsync나 checkpoint burst가 원인일 수 있습니다. Dirty page가 계속 쌓이고 checkpoint write가 한꺼번에 몰리면 평소에는 빠르던 read/write가 checkpoint 시점에 느려질 수 있습니다. Random read가 늘면 index lookup이 많아졌는지, sequential scan이 더 나았을 query가 잘못된 plan을 탔는지 [인덱스와 optimizer](04-index-query-optimizer.md)까지 연결해서 봅니다.
 
     ```text
     read page -> modify buffer frame -> mark dirty -> flush log for commit -> checkpoint writes dirty page -> recovery replays if needed
@@ -660,7 +660,7 @@ PASS 신호는 DELETE 직후 relation size가 기대만큼 바로 줄지 않을 
 
     이 trace를 손으로 다시 그릴 때는 page가 어느 순간 "사용자에게 성공으로 보인 상태"가 되고, 어느 순간 "data file에 실제로 내려간 상태"가 되는지 분리해서 봅니다. Dirty page, log flush, checkpoint 사이의 간격을 그릴 수 있으면 buffer hit ratio나 checkpoint 통계도 단순 숫자가 아니라 복구 비용과 지연의 신호로 읽을 수 있습니다. 답이 막히는 화살표가 있으면 그 부분이 storage engine을 다시 확인해야 하는 지점입니다.
 
-    면접에서는 최종적으로 이렇게 압축할 수 있습니다. DB는 row를 바로 디스크에 쓰는 것이 아니라 page 단위로 메모리에 올리고 durable log와 checkpoint로 data file을 맞춘다고 말합니다. 그 다음 꼬리 질문이 오면, 이 문장의 한 단어를 골라 작은 trace로 내려가면 됩니다. 이 방식은 외운 답을 길게 늘이는 것이 아니라, 짧은 답을 근거 있는 구조로 확장하는 방식입니다.
+    면접에서는 최종적으로 이렇게 압축할 수 있습니다. DB는 row를 바로 디스크 파일에 꽂아 넣는 것이 아니라 page 단위로 메모리에 올리고, commit 보존성은 먼저 log flush로 닫고, data file은 checkpoint와 background write로 따라오게 만듭니다. 따라서 "commit됨", "dirty page가 있음", "data file에 내려감", "crash 뒤 replay 가능함"은 서로 다른 상태입니다. 이 네 상태를 구분하면 buffer와 log 질문이 단순 키워드가 아니라 장애 복구와 지연을 설명하는 모델이 됩니다.
 
 ## 더 깊게 볼 자료
 

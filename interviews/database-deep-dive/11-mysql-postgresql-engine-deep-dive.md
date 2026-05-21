@@ -72,7 +72,7 @@ CREATE TABLE account (
 CREATE INDEX idx_account_status ON account(status);
 ```
 
-이 테이블에서 `id = 10`인 행을 읽고, `status = 'ACTIVE'` 조건으로 목록을 조회하고, `balance`를 갱신한다고 하자. SQL은 같지만 엔진의 mental model은 다릅니다.
+이 테이블에서 `id = 10`인 행을 읽고, `status = 'ACTIVE'` 조건으로 목록을 조회하고, `balance`를 갱신한다고 하겠습니다. SQL은 같지만 엔진의 mental model은 다릅니다.
 
 InnoDB에서는 `PRIMARY KEY(id)` B-tree가 테이블의 본체입니다. `id = 10`을 찾으면 clustered index를 내려가 leaf page에서 실제 행을 만납니다. `idx_account_status`는 `status` 값으로 정렬된 별도 B-tree지만 leaf에는 전체 행이 아니라 `status`와 그 행의 primary key가 들어갑니다. 그래서 `status = 'ACTIVE'`로 보조 인덱스를 타면 먼저 matching secondary entry를 찾고, 각 entry가 가진 primary key로 clustered index를 다시 찾아 실제 행을 읽습니다. 이 과정을 보통 back to primary key lookup이라고 이해하면 됩니다.
 
