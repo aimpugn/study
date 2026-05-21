@@ -100,6 +100,8 @@ T1 visible version:
 
 Snapshot을 처음 배울 때 `그 시점의 DB 사진`이라고 비유할 수는 있습니다. 하지만 내부 동작을 설명할 때 이 비유를 그대로 믿으면 틀립니다. DBMS가 큰 table 전체를 복사해서 transaction마다 들고 있으면 OLTP workload를 감당하기 어렵습니다. 실제로는 transaction id와 active transaction 목록, commit 상태, undo pointer, tuple header 같은 정보를 이용해 각 row version을 읽을 때마다 visible 여부를 판정합니다.
 
+MVCC가 필요한 배경은 단일 current row만 두고 reader와 writer를 모두 같은 lock으로 조정하면, 읽기 많은 서비스에서 쓰기와 읽기가 서로 오래 막히기 쉽다는 데 있습니다. 주문 목록을 조회하는 긴 report가 같은 table의 결제 상태 update를 계속 붙잡거나, 짧은 update가 긴 조회를 매번 기다리게 만들면 OLTP 시스템은 처리량보다 대기 시간이 먼저 커집니다. MVCC는 "읽는 사람에게는 자기 기준에서 일관된 과거를 보여 주고, 쓰는 사람은 새 현재를 만들게 하자"는 방향으로 이 압력을 줄입니다. 그래서 핵심은 lock을 없애는 구호가 아니라, 각 reader가 어느 과거를 현재로 볼지 판정하는 계약입니다.
+
 PostgreSQL의 단순화된 visibility 질문은 다음과 같습니다.
 
 ```text
@@ -148,6 +150,8 @@ new tuple
 
 Reader는 자기 snapshot 기준으로 T2가 보이는지 확인합니다. T2 commit 이전 snapshot이면 old tuple이 보일 수 있고, T2 commit 이후 statement snapshot이면 new tuple이 보일 수 있습니다. 이 구조 덕분에 reader는 writer가 만든 new version 때문에 무조건 막히지 않습니다.
 
+PostgreSQL이 old tuple을 바로 덮어쓰지 않는 이유도 이 reader 계약 때문입니다. T2에게는 `balance=900`이 새 현재지만, T2가 commit되기 전에 snapshot을 잡은 T1에게는 `balance=1000`이 여전히 현재일 수 있습니다. 같은 논리 row에 대해 서로 다른 transaction이 서로 다른 현재를 가져야 하므로, 엔진은 한동안 두 tuple을 함께 보존하고 visibility metadata로 어느 쪽을 보여 줄지 결정합니다.
+
 하지만 old tuple은 영원히 남을 수 없습니다. 더 이상 어떤 snapshot도 old tuple을 필요로 하지 않을 때 vacuum이 dead tuple을 정리합니다. 오래 열린 transaction이 있으면 그 transaction의 snapshot이 old version을 볼 가능성이 있으므로 vacuum이 안전하게 지우지 못합니다. 이때 table bloat, index bloat, autovacuum 지연, transaction id wraparound 위험 같은 운영 문제가 생깁니다.
 
 PostgreSQL 운영에서 MVCC를 의심할 때는 `pg_stat_activity`에서 오래 열린 transaction, `pg_stat_user_tables`의 dead tuple 수, autovacuum 동작, vacuum freeze 관련 지표를 봅니다. 면접 답변에서도 `MVCC라서 읽기가 빠릅니다`에서 끝내지 말고, 오래 열린 transaction이 cleanup을 막는 비용까지 말하면 훨씬 실전적인 답이 됩니다.
@@ -172,6 +176,8 @@ T1 reads
 ```
 
 Undo는 rollback에도 필요하지만, consistent read에도 필요합니다. 그래서 오래 열린 read view가 있으면 purge가 undo history를 지우지 못하고 history list가 길어질 수 있습니다. 이 상태가 길어지면 undo tablespace 사용량, purge lag, read 성능 문제로 이어질 수 있습니다.
+
+이 구조 차이는 "MVCC 구현은 모두 같은 모양"이라는 오해를 줄여 줍니다. 어떤 엔진은 row version을 table 쪽에 남기고 나중에 vacuum으로 치우는 방향을 택하고, 어떤 엔진은 현재 record에서 undo chain을 따라 과거 모습을 재구성하는 방향을 택합니다. 두 방식 모두 과거를 보존한다는 목적은 같지만, 관측 지표와 병목은 달라집니다. PostgreSQL에서는 dead tuple과 vacuum이 먼저 보이고, InnoDB에서는 undo history와 purge가 먼저 보이는 식입니다.
 
 InnoDB에서 또 중요한 구분은 consistent nonlocking read와 locking read입니다. Plain SELECT는 read view를 통해 snapshot을 읽을 수 있지만, `SELECT ... FOR UPDATE`나 `LOCK IN SHARE MODE` 계열은 current row를 대상으로 lock을 겁니다. Update나 delete는 결국 current version과 충돌을 조정해야 합니다. 따라서 `InnoDB MVCC는 lock을 안 씁니다`라는 답은 틀립니다. 정확한 답은 `일관된 읽기에는 read view와 undo를 사용해 reader-writer blocking을 줄이지만, locking read와 write conflict에서는 lock을 씁니다`라고 말하는 것입니다.
 
@@ -208,6 +214,8 @@ old version을 아직 볼 수 있는 snapshot이 있는가?
 없다면 정리해도 되는가?
 정리가 늦어지면 어떤 지표가 나빠지는가?
 ```
+
+이 판단을 늦게 하는 이유는 보수적이라서가 아니라 정확성 때문입니다. Old version은 물리적으로 오래된 값이지만, 어떤 reader에게는 아직 약속된 현재입니다. Cleanup이 너무 빠르면 그 reader는 자기 snapshot을 재생할 수 없고, cleanup이 너무 늦으면 저장 공간과 cache 효율이 무너집니다. MVCC의 청소 작업은 성능 튜닝의 부가 작업이 아니라, "과거를 언제까지 보존해야 하는가"라는 correctness 판단과 붙어 있습니다.
 
 운영 장애에서 cleanup 지연은 종종 느린 query보다 오래 열린 transaction에서 시작됩니다. Report job이 transaction을 열어 둔 채 cursor로 천천히 읽거나, connection pool이 `idle in transaction` 상태를 방치하거나, migration script가 긴 transaction을 유지하면 old version이 지워지지 않습니다. 좋은 MVCC 답변은 이런 운영 신호까지 이어져야 합니다.
 

@@ -130,6 +130,8 @@ predicate 보호가 필요한 경우
 
 SQL 표준은 isolation을 dirty read, non-repeatable read, phantom read 같은 현상으로 설명합니다. Dirty read는 commit되지 않은 다른 transaction의 변경을 읽는 것입니다. Non-repeatable read는 같은 row를 두 번 읽었는데 중간 commit 때문에 값이 달라지는 것입니다. Phantom read는 같은 조건으로 다시 검색했을 때 새 row가 나타나는 것입니다.
 
+이 현상 이름들이 필요한 이유는 "동시에 실행했더니 이상했다"라는 막연한 말을 서로 검증 가능한 실패 모양으로 바꾸기 위해서입니다. 기준선은 실제로 한 줄씩 순서대로 실행한 것처럼 보이는가입니다. 어떤 결과가 순차 실행으로 설명되지 않거나, 같은 query를 반복했는데 관측이 바뀌거나, 조건에 맞는 row 집합이 중간에 달라지면 그 차이를 dirty read, non-repeatable read, phantom, write skew 같은 이름으로 나눕니다. 이름을 외우는 것보다 중요한 것은 각 이름이 어떤 읽기 결과와 어떤 쓰기 결정을 문제 삼는지 잡는 것입니다.
+
 하지만 실제 DBMS는 표준 표를 그대로 구현하는 것이 아니라 자기 저장 구조와 동시성 제어 방식에 맞게 isolation을 제공합니다. PostgreSQL의 `READ COMMITTED`는 statement마다 snapshot을 새로 만들기 때문에 같은 transaction 안의 반복 SELECT가 다른 committed 값을 볼 수 있습니다. PostgreSQL의 `REPEATABLE READ`는 phantom까지 상당히 막는 snapshot isolation 성격을 가집니다. PostgreSQL의 `SERIALIZABLE`은 SSI로 dependency cycle을 감지해 serialization failure를 낼 수 있습니다.
 
 MySQL/InnoDB는 기본 `REPEATABLE READ`에서 consistent read는 transaction read view를 유지하지만, locking read와 range scan에서는 next-key lock이 중요해집니다. `READ COMMITTED`에서는 gap lock 사용이 줄어드는 등 lock behavior가 달라질 수 있습니다. 따라서 `REPEATABLE READ면 phantom이 발생한다/안 한다`처럼 제품 없이 단정하는 답은 위험합니다.
@@ -179,6 +181,8 @@ PostgreSQL에서도 row-level lock은 `FOR UPDATE`, `FOR NO KEY UPDATE`, `FOR SH
 ### Gap lock과 next-key lock은 존재하지 않는 row를 둘러싼 충돌을 다룬다
 
 Phantom은 기존 row 하나를 잠그는 것만으로 막히지 않습니다. `WHERE price BETWEEN 100 AND 200`에 해당하는 row를 읽은 뒤 그 범위에 새 row가 insert되면, 두 번째 읽기에서 결과가 달라질 수 있습니다. InnoDB next-key lock은 index record와 그 앞 gap을 함께 잠그는 방식으로 range에 새 row가 끼어드는 일을 막을 수 있습니다.
+
+이 장치가 낯설게 느껴지는 이유는 아직 존재하지 않는 row를 보호한다는 말이 직관에 어긋나기 때문입니다. 하지만 많은 업무 규칙은 존재하는 row가 아니라 "그 조건에 해당하는 row가 없다"는 사실에 기대어 동작합니다. 특정 시간대에 예약이 없으니 새 예약을 넣고, 같은 쿠폰 사용 이력이 없으니 사용 row를 넣고, 특정 점수 구간에 후보가 없으니 새 후보를 넣습니다. 이때 absence, 즉 없다는 사실도 transaction이 읽은 정보입니다. Gap lock과 predicate conflict tracking은 바로 이 "없음을 믿고 쓴다"는 동시성 압력을 다룹니다.
 
 ```text
 index values: 10, 20, 30
@@ -253,6 +257,8 @@ cycle 발생
 
 DBMS는 이런 cycle을 감지하면 보통 한 transaction을 victim으로 골라 rollback합니다. Victim 선택 기준은 제품별로 다릅니다. 애플리케이션은 deadlock 오류를 사용자에게 곧바로 실패로 보여 주기보다, transaction 전체가 idempotent하거나 안전하게 다시 실행될 수 있으면 retry해야 합니다. 단, retry는 무한 반복이 아니라 backoff, 최대 횟수, observability, side effect 분리와 함께 설계해야 합니다.
 
+Deadlock 감지가 필요한 이유는 단순합니다. 서로 기다리는 두 transaction이 모두 "상대가 먼저 lock을 놓겠지"라고 기다리면 시스템은 영원히 진행하지 못합니다. DBMS는 wait graph를 관찰하다가 cycle을 발견하면, 모두를 살리는 대신 하나를 희생시켜 나머지 진행을 가능하게 만듭니다. 그래서 deadlock victim은 DB가 고장 났다는 신호라기보다, 동시 실행을 허용하는 시스템에서 반드시 설계해야 하는 실패 반환값입니다. 애플리케이션은 이 실패를 보고 전체 업무 시도를 다시 실행할 수 있는지, 이미 외부 side effect가 나갔는지, 같은 lock 순서로 반복 충돌할 가능성이 있는지까지 판단해야 합니다.
+
 Deadlock 예방의 기본은 lock order를 통일하는 것입니다. 여러 row를 갱신해야 한다면 모든 code path가 key를 정렬한 순서로 update합니다. Batch job도 random order로 update하지 않습니다. Foreign key가 참조하는 parent/child table 순서, inventory와 order table 순서, 계좌 A/B 순서를 통일합니다. 그래도 DB 내부 lock과 index range 때문에 모든 deadlock을 제거할 수는 없으므로 retry는 남깁니다.
 
 ### Anomaly별로 방어 수단이 다르다
@@ -301,6 +307,8 @@ lock wait / deadlock
 운영에서 lock wait가 늘면 누구나 빨리 줄이고 싶어 합니다. 하지만 lock을 줄이는 방향이 invariant를 깨면 안 됩니다. 예를 들어 `SELECT ... FOR UPDATE`를 제거하면 대기 시간은 줄 수 있지만, 같은 재고를 두 transaction이 동시에 차감할 수 있습니다. 반대로 모든 작업에 table lock을 걸면 correctness는 단순해질 수 있지만 throughput이 무너집니다.
 
 좋은 설계는 보호해야 할 invariant를 먼저 고른 뒤 가장 좁은 자원으로 보호합니다. 재고 한 SKU의 수량이면 그 SKU row를 조건부 update합니다. 한 사용자 계정의 상태 전이면 user id 기준으로 같은 row 또는 advisory key를 잡습니다. 특정 기간의 중복 예약이면 `(resource_id, time_range)`를 constraint나 range lock으로 표현할 수 있는지 봅니다. 보호 대상이 명확해질수록 lock 범위도 줄어듭니다.
+
+이 균형 감각은 데이터베이스가 shared resource라는 사실에서 나옵니다. Lock을 전혀 쓰지 않으면 같은 재고나 쿠폰을 여러 요청이 동시에 믿고 써 버릴 수 있고, lock을 너무 넓게 쓰면 관련 없는 요청까지 줄을 세웁니다. 동시성 제어는 속도를 포기하고 안전을 얻는 단순 스위치가 아니라, 어떤 업무 사실을 어떤 최소 자원으로 대표할지 고르는 모델링 문제입니다.
 
 ### DB lock wait는 OS scheduler와 I/O wait 위에서 관측된다
 

@@ -164,6 +164,8 @@ lookup key = 42
    InnoDB secondary index: use primary key to visit clustered leaf
 ```
 
+B-tree 계열이 데이터베이스에서 계속 쓰이는 이유는 메모리 안의 비교 횟수보다 디스크와 cache page 이동 비용을 줄이는 데 잘 맞기 때문입니다. 이진 탐색 트리처럼 pointer를 한 노드씩 많이 따라가는 구조는 메모리에서는 자연스럽지만, 저장 장치에서는 작은 노드를 많이 읽는 비용이 커질 수 있습니다. B-tree/B+tree 계열은 한 page 안에 많은 separator key를 넣어 한 번의 page read로 큰 범위를 고르고, leaf page를 정렬된 순서로 이어 range scan을 가능하게 합니다. 그래서 `O(log N)`이라는 말보다 "root, internal, leaf 몇 page를 읽고, 그 뒤 leaf를 얼마나 연속으로 따라가는가"가 더 좋은 면접 설명입니다.
+
 range query는 3번에서 멈추지 않습니다. 시작 leaf를 찾은 뒤 leaf sibling을 따라가며 범위가 끝날 때까지 읽습니다.
 
 ```text
@@ -400,6 +402,8 @@ actual data
 
 Plan regression은 SQL text가 그대로여도 발생합니다. 데이터가 늘거나 skew가 생기거나, 통계가 낡거나, parameter 값이 바뀌거나, DBMS version과 cost setting이 바뀌면 optimizer의 선택이 달라집니다. 그래서 성능 장애를 볼 때는 query text, bind value, table cardinality, statistics freshness, plan diff, actual rows vs estimated rows를 함께 봅니다.
 
+통계 기반 옵티마이저가 필요한 이유는 SQL이 물리 경로를 일부러 숨기기 때문입니다. 사용자는 `WHERE status = 'PAID'`라고 쓰지만, 이 조건이 전체 row의 1%를 고르는지 80%를 고르는지는 SQL text만으로 알 수 없습니다. 규칙 기반으로 "인덱스가 있으면 index scan"이라고 정하면 작은 table이나 낮은 선택도 조건에서 오히려 느려질 수 있고, "항상 sequential scan"이라고 정하면 고선택도 lookup을 놓칩니다. 통계는 DBMS가 애플리케이션 대신 데이터 분포를 보고 물리 경로를 고르게 해 주는 관측 장치입니다. 그래서 통계가 낡으면 DBMS는 틀린 세계 지도를 들고 길을 고르는 셈이 됩니다.
+
 ### optimizer cost는 운영체제 I/O 비용을 간접적으로 본다
 
 옵티마이저의 cost는 실제 Linux block queue를 실시간으로 읽어 계산한 값이 아닙니다. 하지만 cost model이 비교하려는 비용의 뿌리는 결국 운영체제와 storage 경로에 있습니다. Index scan은 후보 row를 빠르게 좁힐 수 있지만, heap이나 clustered page를 여러 곳에서 가져와야 하면 DBMS buffer miss와 OS page cache miss가 늘 수 있습니다. Sequential scan은 더 많은 row를 읽어도 page를 연속으로 읽으므로 OS read-ahead, filesystem layout, storage queue가 더 잘 맞을 수 있습니다.
@@ -425,7 +429,9 @@ Path C: bitmap heap scan
 
 이 관점은 "index가 있는데 왜 sequential scan인가요?"라는 질문을 더 정확하게 만듭니다. DBMS는 SQL 의미만이 아니라 page 접근 비용을 추정합니다. 그 page 접근 비용은 DBMS buffer, OS page cache, filesystem, block layer, device 특성의 영향을 받습니다. PostgreSQL의 `seq_page_cost`와 `random_page_cost` 같은 설정은 이 차이를 추상화한 값이고, MySQL도 range optimizer와 InnoDB statistics로 access path의 비용을 추정합니다. 다만 이 값들은 현재 장치 queue 길이, 순간적인 writeback, 다른 process의 I/O 경쟁을 완벽히 반영하지 못합니다.
 
-그래서 plan 진단은 두 층으로 나눠야 합니다. 먼저 `EXPLAIN`으로 optimizer가 어떤 row 수와 access path를 상상했는지 봅니다. 그다음 `EXPLAIN (ANALYZE, BUFFERS)`, MySQL `EXPLAIN ANALYZE`, slow query log, performance schema, OS의 `iostat` 같은 관측으로 실제 page read, cache hit, read latency, writeback pressure를 확인합니다. 추정과 실제가 크게 다르면 통계, parameter, index 설계, cache 상태, OS I/O 압력 중 어디가 어긋났는지 다시 좁혀야 합니다.
+그래서 plan 진단은 두 층으로 나눠야 합니다. 먼저 `EXPLAIN`으로 optimizer가 어떤 row 수와 access path를 추정했는지 봅니다. 그다음 `EXPLAIN (ANALYZE, BUFFERS)`, MySQL `EXPLAIN ANALYZE`, slow query log, performance schema, OS의 `iostat` 같은 관측으로 실제 page read, cache hit, read latency, writeback pressure를 확인합니다. 추정과 실제가 크게 다르면 통계, parameter, index 설계, cache 상태, OS I/O 압력 중 어디가 어긋났는지 다시 좁혀야 합니다.
+
+이 분리는 운영 현장에서 특히 중요합니다. 옵티마이저의 cost model은 대체로 "이 access path가 평균적으로 얼마나 비쌀까"를 계산하지만, 그 순간 storage device queue가 checkpoint flush로 꽉 차 있는지, 다른 batch job이 같은 disk를 쓰고 있는지, OS page cache가 방금 압박을 받아 비워졌는지는 완전히 알기 어렵습니다. 그래서 같은 plan이 아침에는 빠르고 배치 시간에는 느릴 수 있습니다. plan이 바뀌었는지와 plan은 같은데 실행 환경이 바뀌었는지를 나누지 않으면, 통계 문제에 서버 증설로 대응하거나 I/O 병목에 index만 추가하는 식의 빗나간 처방이 나옵니다.
 
 ### EXPLAIN은 정답표가 아니라 가설 검사 도구다
 

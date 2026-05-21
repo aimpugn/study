@@ -120,6 +120,8 @@ Durability
 
 많은 DB client는 기본적으로 autocommit을 켭니다. 이 상태에서 statement 하나를 보내면 DBMS는 그 statement를 하나의 transaction으로 실행하고 성공하면 commit합니다. 사용자는 `BEGIN`을 쓰지 않았지만 transaction이 없었던 것이 아닙니다. 아주 작은 transaction이 statement마다 자동으로 열린 것입니다.
 
+Autocommit이 기본값으로 자주 쓰이는 배경은 SQL을 대화형으로 실행하거나 단일 statement를 업무 단위로 보는 상황에서는 이 방식이 가장 예측하기 쉽기 때문입니다. `INSERT` 한 줄을 실행했는데 별도 `COMMIT`을 잊어 데이터가 보이지 않는다면 대화형 SQL을 쓰는 사람과 운영자 모두 혼란스럽습니다. 문제는 이 편의가 여러 statement로 이루어진 업무 전이까지 자동으로 묶어 주지는 않는다는 점입니다. DBMS는 statement 하나의 성공과 실패는 잘 알고 있지만, "출금과 입금은 같은 업무"라는 의미는 애플리케이션이 transaction boundary로 알려 줘야 합니다.
+
 이 사실은 장애 trace에서 중요합니다.
 
 ```text
@@ -169,6 +171,8 @@ safe application design
 ```
 
 이 문제는 DB가 약해서 생기는 것이 아닙니다. distributed system에서 client와 server 사이의 응답 손실은 항상 가능합니다. transaction boundary를 제대로 잡아도, commit outcome을 애플리케이션이 어떻게 확인하고 재시도할지 설계하지 않으면 사용자에게는 중복 결제나 주문 누락처럼 보일 수 있습니다.
+
+그래서 transaction id, request id, payment id 같은 업무 식별자는 단순 로그 장식이 아닙니다. 성공 응답을 못 받은 client가 다시 요청했을 때, 서버가 "이미 commit된 같은 시도인지", "처음부터 실행되지 않은 새 시도인지"를 구분할 기준이 됩니다. 트랜잭션은 DB 내부 상태 전이를 원자적으로 만들지만, 네트워크 너머의 사용자는 commit 결과를 메시지로만 알 수 있습니다. 그 메시지가 유실될 수 있다는 사실 때문에 멱등성 키와 결과 조회 API가 transaction boundary 바깥의 안전장치로 붙습니다.
 
 ### DB COMMIT은 OS flush와 storage acknowledge까지 이어진다
 
@@ -222,9 +226,13 @@ DB 상태: order status는 원래대로 돌아갈 수 있습니다.
 
 이 흐름에서는 DB rollback 뒤 PG 취소 API를 호출하거나, 아예 PG 호출을 DB commit 뒤 outbox event 소비자가 처리하게 할 수 있습니다. 어느 쪽이 낫다는 답은 도메인에 따라 달라집니다. 중요한 것은 DB transaction의 rollback 경계와 외부 시스템의 보상 경계를 같은 것으로 말하지 않는 것입니다.
 
+이런 보상 설계가 등장하는 이유는 현대 서비스가 하나의 DB 안에서만 끝나지 않기 때문입니다. 결제사는 자기 원장을 가지고, 메시지 broker는 자기 log를 가지고, 이메일 시스템은 발송 큐를 가집니다. DBMS가 `ROLLBACK`을 수행해도 그 외부 원장과 log까지 시간을 되감지는 못합니다. 따라서 분산 트랜잭션을 모든 곳에 억지로 씌우기보다, 어떤 side effect는 취소 API로 되돌리고, 어떤 side effect는 outbox와 멱등 consumer로 중복을 흡수하며, 어떤 side effect는 정산 보정으로 수렴시키는 식의 경계 설계가 필요해집니다.
+
 ### SAVEPOINT는 부분 실패를 표현하지만 업무 안전성을 대신 판단하지 않는다
 
 `SAVEPOINT`는 transaction 안에서 되돌릴 위치를 만듭니다. 어떤 단계가 실패했을 때 전체 transaction을 포기하지 않고 savepoint 이후 작업만 취소할 수 있습니다.
+
+Savepoint가 유용해진 배경은 모든 업무 실패가 "처음부터 아무 일도 없었던 것"과 같지 않기 때문입니다. 대량 정산, 여러 주문 항목 처리, 일부 쿠폰 적용처럼 큰 작업 안에 작은 실패 단위가 있으면, 전체를 버리는 것보다 실패한 조각을 기록하고 남은 조각을 계속 처리하는 편이 업무적으로 맞을 수 있습니다. 다만 이 선택은 기술 기능보다 도메인 상태 모델이 먼저입니다. 부분 실패 상태를 설명할 수 없다면 savepoint는 안전장치가 아니라 이상한 중간 상태를 commit하는 통로가 됩니다.
 
 ```sql
 BEGIN;

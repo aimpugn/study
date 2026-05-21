@@ -154,6 +154,8 @@ DBMS의 data file은 보통 page들의 배열로 볼 수 있습니다. PostgreSQ
 
 이 구조가 필요한 이유는 row가 항상 같은 byte 위치에 머물지 않기 때문입니다. page 안에서 row data를 compaction하거나 새로운 tuple version을 추가할 수 있고, item identifier가 안정적으로 남으면 외부 참조는 page 번호와 item slot을 통해 row를 찾을 수 있습니다. row를 직접 file offset으로만 기억하면 page 내부 이동이 매우 위험해집니다.
 
+page라는 단위는 우연히 생긴 포장 단위가 아닙니다. 저장 장치와 운영체제는 byte 하나씩보다 block 또는 page 단위로 읽고 쓰는 편이 훨씬 자연스럽고, DBMS도 그 위에서 "한 번 읽어 온 주변 데이터가 곧 다시 쓰일 가능성"을 활용합니다. row 하나만 필요해도 같은 page에 있는 인접 row, page header, free space 정보, visibility나 checksum 관련 metadata가 함께 움직입니다. 그래서 page는 너무 작으면 I/O 요청이 잘게 쪼개지고, 너무 크면 필요 없는 row까지 많이 끌고 오는 절충점입니다. DBMS별 기본 page 크기가 다르고 설정이 제한적인 이유도 이 절충이 storage, cache, WAL/redo, index split 비용을 한꺼번에 건드리기 때문입니다.
+
 ```text
 PostgreSQL heap page simplified
 
@@ -221,6 +223,8 @@ DB buffer lookup
 ```
 
 여기서 DBMS buffer와 OS page cache는 같은 데이터를 두 번 들고 있을 수도 있습니다. 이를 double buffering이라고 부르기도 합니다. 이것이 항상 낭비라는 뜻은 아닙니다. DBMS buffer는 page의 dirty 여부, pageLSN, replacement 정책, latch와 transaction visibility 같은 DBMS 의미를 붙잡습니다. OS page cache는 file offset과 block 단위 재사용, read-ahead, writeback을 관리합니다. 두 계층의 목적이 다르기 때문에, 어떤 DBMS와 storage 설정에서는 buffered I/O를 쓰고, 어떤 구성에서는 direct I/O나 유사 설정으로 OS cache 경로를 줄이기도 합니다. 제품과 설정을 모르면 "DBMS가 OS cache를 완전히 우회한다"고 단정하지 않는 편이 안전합니다.
+
+DBMS가 자체 buffer manager를 갖는 이유도 여기서 분명해집니다. 운영체제 page cache는 여러 프로세스를 공평하게 다루는 범용 cache에 가깝고, 어떤 file block이 transaction commit에 필요한 dirty page인지, 어떤 page가 checkpoint 전에는 eviction되면 안 되는지, 어떤 page가 오래된 snapshot 때문에 아직 의미를 잃지 않았는지 알지 못합니다. DBMS는 같은 8KB 또는 16KB 조각을 보더라도 그 안에서 pageLSN, pin, latch, visibility, dirty 상태를 함께 봅니다. 그래서 "OS cache가 있으니 DB buffer는 단순 중복이다"라는 말은 절반만 맞습니다. 두 cache는 같은 bytes를 잡을 수 있지만, 그 bytes에 붙는 의미와 퇴출 기준이 다릅니다.
 
 운영에서 "cache hit ratio가 높다"는 지표를 볼 때는 어떤 층의 hit인지 확인해야 합니다. InnoDB buffer pool hit가 높으면 storage read pressure가 낮다는 좋은 신호일 수 있습니다. PostgreSQL shared buffer hit가 높아도, checkpoint fsync나 OS writeback에서 latency가 생길 수 있습니다. 반대로 DBMS buffer hit가 낮아도 OS cache가 흡수하고 있다면 물리 device read는 적을 수 있습니다. 하지만 DBMS는 OS cache 내부 상태를 transaction 의미와 직접 연결하지 못하므로, 안정성은 WAL/fsync 같은 명시적 flush 경계로 닫아야 합니다.
 
@@ -367,6 +371,8 @@ recovery:
 ```
 
 checkpoint는 한 번에 "모든 것을 깨끗하게 만든다"라기보다, 복구가 다시 읽어야 할 출발선을 앞으로 당기는 작업입니다.
+
+이 설계는 정상 실행을 멈추고 모든 page를 한 번에 안전한 상태로 만드는 방식이 너무 비싸기 때문에 중요합니다. 작은 업무 시스템이라면 "commit 때마다 바뀐 page를 모두 disk에 쓰면 되지 않나"라고 생각할 수 있습니다. 하지만 update가 여러 page에 흩어지고 동시 transaction이 계속 들어오면, 매번 모든 dirty data page를 강제로 내리는 방식은 foreground transaction을 storage latency에 묶어 버립니다. checkpoint와 background flush는 이 비용을 시간에 나누어 흘려보내고, WAL/redo는 그 사이 crash가 나도 빠진 변경을 다시 만들 수 있게 해 줍니다. 즉 checkpoint는 안전성을 포기한 지연 쓰기가 아니라, log를 먼저 믿고 data page 정리를 뒤로 미루는 구조적 타협입니다.
 
 ```text
 before checkpoint

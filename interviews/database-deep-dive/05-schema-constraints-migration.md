@@ -144,6 +144,8 @@ orders
 
 이 작은 모델에서 움직이는 대상은 column definition, existing row values, application contract입니다. Migration은 DDL 문장 하나가 아니라 이 세 대상이 같은 방향으로 이동하는 과정입니다.
 
+이 단계형 흐름이 필요한 배경은 데이터베이스가 더 이상 한 프로그램의 사적인 파일이 아니기 때문입니다. 같은 table을 웹 요청, batch job, admin tool, 보고서 query, migration script가 함께 만지면 "새 코드만 조심해서 배포한다"는 약속만으로는 부족합니다. Schema 변경은 여러 실행 경로가 같은 데이터를 읽고 쓰는 동안 데이터 의미를 옮기는 일이므로, 먼저 넓은 계약을 만들고 기존 데이터를 이동시킨 뒤 마지막에 좁은 constraint를 거는 편이 운영 시간축과 잘 맞습니다.
+
 ## 깊은 메커니즘
 
 ### 정규화는 중복 제거가 아니라 사실의 소유권을 정하는 일이다
@@ -165,6 +167,8 @@ question
 ```
 
 정규화된 구조에서는 현재 email은 `users`가 소유합니다. 주문 목록에서 email을 보여 줘야 하면 join으로 가져오거나, 읽기 모델에 복사하되 그것이 cache/denormalized projection이라는 사실과 갱신 경로를 명시해야 합니다. 반대로 주문 당시 email이 법적 증빙이나 알림 이력의 일부라면 `orders.contact_email_at_order_time`처럼 이름부터 의미를 분리하는 편이 낫습니다. 이것은 중복이 아니라 다른 사실입니다.
+
+정규화가 중요한 이유는 저장 장치가 부족하던 시절의 절약 습관만이 아닙니다. 업무 시스템은 시간이 지나면서 "회원의 현재 이메일", "주문 당시 연락 이메일", "마케팅 발송 당시 수신자 이메일"처럼 비슷한 문자열이 서로 다른 사실을 대표하게 됩니다. 이때 schema가 사실의 소유자를 분리하지 않으면, 한 값을 고치는 순간 다른 시점의 증빙까지 함께 고쳐 버리는 문제가 생깁니다. 정규화는 중복을 싫어하는 미학이 아니라, 어떤 변경이 어디까지 전파되어야 하는지 결정하는 언어입니다.
 
 정규화는 무조건 높은 normal form을 목표로 하는 의식이 아닙니다. 면접 답변에서는 "어떤 update anomaly를 막는가"와 "어떤 query와 운영 비용을 새로 만드는가"를 함께 말해야 합니다. 너무 잘게 쪼개면 join 비용과 transaction 경계가 늘고, 너무 뭉치면 중복과 inconsistency 위험이 커집니다.
 
@@ -330,6 +334,8 @@ risk
 
 이 체크를 통해 DDL은 개발 환경에서 빨리 끝났더라도 운영에서 위험할 수 있음을 설명할 수 있습니다. 개발 DB의 row 수가 1000개이고 production이 3억 row라면 같은 DDL 문장도 완전히 다른 사건입니다. 운영 영향은 schema 문법만이 아니라 page rewrite, index rebuild, WAL/redo 증가, checkpoint와 replication lag까지 이어지므로 앞선 [storage I/O 모델](02-storage-pages-buffer-io.md)을 같이 가져와야 합니다.
 
+Online DDL이라는 기능군이 생긴 배경도 이 운영 압력입니다. 서비스가 짧은 점검 시간에 모든 쓰기를 멈추고 table을 새로 만들 수 있다면 DDL은 훨씬 단순합니다. 하지만 많은 서비스는 주문, 결제, 로그인처럼 계속 들어오는 쓰기를 완전히 멈추기 어렵고, table도 한 번 복사하면 storage와 replication까지 흔들릴 만큼 커집니다. 그래서 DBMS는 metadata만 바꾸는 경로, background build 경로, concurrent index build 경로를 제공하지만, 물리적으로 page를 읽고 쓰고 검증해야 하는 작업 자체가 사라지는 것은 아닙니다.
+
 ### 대용량 DDL은 DB 엔진 밖의 OS I/O 경로까지 흔든다
 
 대용량 DDL을 설명할 때는 DBMS 내부 lock만 보시면 부족합니다. Table rewrite, index build, backfill update는 DB buffer pool이나 shared buffer를 더럽히고, WAL/redo를 늘리며, 결국 운영체제의 page cache, filesystem, block layer, device driver, storage queue까지 I/O를 밀어 넣습니다. Linux 문서 기준으로 file write는 먼저 page cache에 더러운 page를 만들 수 있고, `fsync`는 그 변경을 storage device까지 밀어내 완료를 기다립니다. Linux block layer는 파일시스템과 block device driver 사이에서 요청을 software queue와 hardware dispatch queue로 보내며, device가 바로 받을 수 없으면 나중에 다시 보냅니다.
@@ -372,6 +378,8 @@ flyway validate
 ```
 
 이 구조는 팀이 어떤 migration이 적용되었는지 공유하는 데 매우 유용합니다. 하지만 `V3__add_order_status.sql` 안에 위험한 DDL이 들어 있으면 Flyway가 자동으로 안전하게 바꿔 주지는 않습니다. 대용량 backfill, lock timeout, retry, data verification, online DDL algorithm hint, rollback/forward fix 전략은 script 작성자가 설계해야 합니다.
+
+Migration tool이 필요한 이유는 schema 변경이 더 이상 DBA의 일회성 수동 작업으로 끝나지 않기 때문입니다. 애플리케이션 코드는 Git history에 남고 CI에서 검증되는데, DB schema가 운영 서버에서만 수동으로 바뀌면 코드와 데이터 계약의 역사가 갈라집니다. Flyway 같은 도구는 schema 변경을 release artifact로 끌어와 "어떤 버전의 코드가 어떤 버전의 DB 계약을 기대하는가"를 추적하게 해 줍니다. 다만 이 추적성은 실행 순서와 감사 가능성을 주는 것이지, script 안의 lock 위험이나 데이터 의미 오류를 자동으로 판단해 주는 것은 아닙니다.
 
 이미 적용된 versioned migration file을 수정하는 것은 위험합니다. 로컬 파일은 바뀌었지만 production에는 예전 내용이 적용되어 있을 수 있고, checksum mismatch가 생깁니다. 일반적으로 새 migration을 추가해 forward fix를 만듭니다. `repair`는 이력을 고치는 강한 도구이므로, 실제 DB 상태와 repository migration file의 관계가 검증된 상황에서만 써야 합니다. 이 판단은 "이력 표를 맞춘다"가 아니라 "운영 DB가 어떤 변경을 실제로 겪었는지 감사 가능하게 남긴다"는 문제입니다.
 

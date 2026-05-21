@@ -160,6 +160,21 @@ WHERE date(created_at) = date '2026-05-20'
 
 Partition key 선택은 query와 maintenance를 동시에 봅니다. 날짜 partition은 time-series cleanup과 recent query에 좋습니다. Tenant partition은 특정 tenant의 데이터 격리와 이동에 좋을 수 있습니다. Hash partition은 write 분산에 좋을 수 있지만 범위 삭제나 특정 기간 pruning에는 약합니다. Composite partition은 두 장점을 일부 결합할 수 있지만 partition 수와 index 관리가 복잡해집니다. Key 선택은 "무엇으로 나눌 수 있는가"가 아니라 "무엇으로 자주 좁히는가, 무엇을 독립적으로 보관/삭제/이동하는가"로 판단합니다.
 
+Partitioning이 계속 쓰이는 이유는 단순히 쿼리를 빠르게 만들기 위해서가 아닙니다. 데이터가 계속 쌓이는 업무에서는 "어제까지는 빠르던 테이블"이 어느 순간 백업, 통계 갱신, vacuum, index rebuild, 오래된 데이터 삭제의 단위로 너무 커집니다. 예전 데이터를 `DELETE FROM orders WHERE created_at < ...`로 조금씩 지우면 undo/WAL/binlog, lock, vacuum, replication lag가 함께 커질 수 있습니다. 반대로 월별 partition을 독립 조각으로 두면 오래된 조각을 detach/drop/archive하는 운영 행위가 row 단위 삭제보다 예측 가능한 작업이 됩니다. 그래서 partition key는 조회 조건이면서 보관 정책의 손잡이입니다.
+
+```text
+row-by-row cleanup
+  3월 row 1억 건 DELETE
+    -> log 폭증, vacuum/purge 지연, replica lag 위험
+
+partition lifecycle cleanup
+  orders_2026_03 detach
+    -> archive 검증
+    -> drop 또는 cold storage 이동
+```
+
+이 흐름은 partitioning을 "큰 테이블을 쪼개는 기능"보다 넓게 보게 해 줍니다. partition은 optimizer가 읽을 후보를 줄이는 장치이면서, 운영자가 데이터 생명주기를 다루는 더 큰 단위입니다.
+
 Partition은 index 설계도 바꿉니다. PostgreSQL에서는 partitioned table의 index가 각 partition의 index로 구성됩니다. Global unique index 제약에는 제품별 한계가 있습니다. 일반적으로 partition key가 unique constraint에 포함되어야 전체 partition에서 uniqueness를 보장하기 쉽습니다. 예를 들어 `order_id`만 전역 유니크해야 하는데 월별 partition을 쓰면, DBMS가 전역 unique index를 지원하는지 확인해야 합니다. 지원하지 않으면 id generator나 key design이 별도 책임이 됩니다.
 
 Partition lifecycle도 중요합니다. 새 달이 시작되기 전에 새 partition을 만들어야 하고, 오래된 partition을 detach/drop/archive해야 합니다. Partition이 너무 많으면 planner overhead, catalog bloat, migration complexity가 생길 수 있습니다. 월별 partition이 좋은지 일별 partition이 좋은지는 데이터량, query 범위, retention, backup/restore 단위로 판단합니다. 너무 작은 partition은 관리 오버헤드가 커지고, 너무 큰 partition은 pruning과 archiving 이점이 줄어듭니다.
@@ -201,6 +216,17 @@ root:
 ```
 
 Sharding은 partition보다 더 큰 경계 이동입니다. Partition은 보통 한 DBMS 안의 storage organization이고, shard는 여러 독립 database node 또는 cluster에 데이터 소유권을 나눕니다. Shard key가 `tenant_id`이면 한 tenant의 데이터가 한 shard에 모여 tenant-local transaction과 query가 쉬워집니다. 하지만 큰 tenant 하나가 전체 부하의 대부분이면 hot shard가 생깁니다. Shard key가 hash(user_id)이면 write 분산은 좋지만 tenant 단위 이동이나 range query는 어려워집니다.
+
+샤딩은 대개 단일 장비를 계속 키우는 방식이 가격, 장애 반경, 쓰기 한계에서 막힐 때 등장합니다. CPU와 메모리를 더 큰 서버로 올리는 vertical scaling은 단순하고 SQL 의미를 많이 보존하지만, 어느 지점부터는 장비 교체와 장애 복구가 부담이 됩니다. 여러 작은 노드에 데이터를 나누는 horizontal scaling은 그 부담을 나누지만, DB가 한 곳에 있을 때 공짜처럼 보이던 join, transaction, unique constraint, backup, schema migration의 책임을 shard 경계마다 다시 묻습니다. 샤딩은 "성능을 더 얻는다"가 아니라 "단일 DB가 맡던 일관성 비용 일부를 routing과 운영 절차로 옮긴다"에 가깝습니다.
+
+| 단일 DB에서 숨겨져 있던 질문 | 샤딩 뒤 드러나는 질문 |
+| --- | --- |
+| unique key는 DB가 전체 테이블에서 검사한다 | 전역 unique가 필요한가, shard-local unique로 충분한가 |
+| join은 optimizer가 table 사이에서 계획한다 | 두 table이 같은 shard key로 모이는가 |
+| backup은 한 instance 단위로 생각한다 | shard별 snapshot 시점과 복구 순서를 어떻게 맞추는가 |
+| schema migration은 한 catalog에서 수행한다 | 모든 shard에 같은 순서와 버전으로 적용됐는가 |
+
+이 표 때문에 shard key는 해시 함수 선택보다 먼저 업무 경계 선택입니다. 한 주문, 한 사용자, 한 tenant, 한 지갑처럼 같이 읽고 같이 commit되어야 하는 aggregate가 어느 key 주변에 모이는지 먼저 정해야 합니다.
 
 Routing table은 샤딩의 핵심 운영 자산입니다. 단순 modulo sharding은 `user_id % N`으로 shard를 고르기 쉬우나 shard 수 N이 바뀌면 많은 key가 이동합니다. Consistent hashing이나 virtual bucket을 쓰면 이동 범위를 줄일 수 있습니다. Range sharding은 범위 query에 좋지만 hot range가 생길 수 있습니다. Directory-based sharding은 key-to-shard mapping table을 두어 유연하지만 routing table 일관성과 cache invalidation을 관리해야 합니다.
 
@@ -252,6 +278,24 @@ Cross-shard query는 비용이 큽니다. User profile과 user orders가 같은 
 Cross-shard transaction도 어렵습니다. 두 shard에 걸친 원자성을 보장하려면 2PC 같은 coordination이 필요하고, coordinator failure, lock hold time, participant timeout, heuristic outcome 같은 복잡도가 생깁니다. 많은 시스템은 cross-shard transaction을 피하기 위해 aggregate boundary를 shard key와 맞추거나, saga/outbox로 eventual consistency를 선택합니다. 금융 원장처럼 강한 원자성이 필요한 경우에는 shard key 설계가 더 중요해집니다. 이 판단은 [트랜잭션과 ACID 경계](06-transaction-acid-boundary.md)와 [애플리케이션 경계, 멱등성, 돈, outbox](12-application-boundaries-idempotency-money-outbox.md)를 함께 봐야 안전합니다.
 
 Distributed SQL은 이런 문제 일부를 DBMS 내부로 가져옵니다. CockroachDB는 SQL layer 아래에 key-value ranges와 Raft replication을 두고, range leaseholder/leader를 통해 읽기와 쓰기를 조율합니다. YugabyteDB도 DocDB, tablet, Raft consensus 같은 구조를 갖습니다. Google Spanner는 TrueTime 기반 timestamp와 Paxos replication으로 외부 일관성(external consistency)을 제공합니다. 세부 구현은 vendor-specific이지만, 공통적으로 data range, replica, consensus, transaction timestamp, retry가 핵심 단어입니다.
+
+Distributed SQL이 등장한 배경에는 두 요구가 같이 있습니다. 하나는 RDBMS의 SQL, schema, transaction 의미를 버리기 어렵다는 요구입니다. 다른 하나는 단일 노드나 단일 region에 모든 write와 장애 복구를 맡기기 어렵다는 요구입니다. 한쪽 극단은 전통적인 단일 노드 RDBMS처럼 강한 관계형 의미를 보존하지만 확장과 region 장애 대응이 어렵고, 다른 극단은 단순 key-value나 document store처럼 분산은 쉬워도 join과 transaction 의미를 애플리케이션이 크게 떠안습니다. Distributed SQL은 이 둘 사이에서 SQL 표면을 유지하려고 하지만, 내부적으로는 range split, replica placement, consensus, timestamp ordering이라는 분산 시스템 비용을 치릅니다.
+
+```text
+old comfort
+  SQL transaction 하나가 table 여러 개를 바꿈
+  DBMS가 같은 서버 안에서 lock/log/recovery를 조율
+
+distributed pressure
+  데이터와 사용자가 여러 region에 흩어짐
+  한 서버 장애가 서비스 전체 장애가 되면 안 됨
+
+distributed SQL answer
+  SQL 표면은 최대한 유지
+  내부에서는 range, replica, consensus, retry로 비용을 재배치
+```
+
+그래서 distributed SQL을 평가할 때는 "SQL을 지원한다"에서 멈추지 않고, 어떤 transaction이 한 range에 머무는지, 어떤 write가 여러 region quorum을 지나야 하는지, retry가 application contract에 들어와도 안전한지까지 내려가야 합니다.
 
 Consensus는 durability와 failover를 강하게 만들지만 latency를 만듭니다. 단일 노드 DB의 commit은 로컬 WAL flush가 핵심일 수 있습니다. 분산 SQL의 write는 leader가 replica quorum에 log를 복제해야 할 수 있습니다. Cross-region quorum이면 network round trip이 commit latency에 직접 들어옵니다. Multi-region availability를 얻으려면 쓰기 지연과 locality를 설계해야 합니다. 읽기도 follower read, bounded staleness, leaseholder locality 같은 선택에 따라 최신성과 latency가 달라집니다. 복제와 장애 전환의 기본 감각은 [복제, 지연, 백업, failover](09-replication-lag-backup-failover.md)에서 먼저 잡아 두면 distributed SQL의 비용을 더 정확히 읽을 수 있습니다.
 
