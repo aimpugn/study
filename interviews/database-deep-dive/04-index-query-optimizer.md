@@ -19,6 +19,7 @@
     - [plan regression은 SQL 문제가 아니라 환경과 데이터 문제일 수 있다](#plan-regression은-sql-문제가-아니라-환경과-데이터-문제일-수-있다)
 - [DBMS별 경계](#dbms별-경계)
 - [직접 재생해 보기](#직접-재생해-보기)
+    - [인덱스가 항상 빠르지 않은 이유를 EXPLAIN으로 재생하기](#인덱스가-항상-빠르지-않은-이유를-explain으로-재생하기)
     - [Composite index와 leftmost prefix 확인](#composite-index와-leftmost-prefix-확인)
     - [PostgreSQL에서 index-only scan 경계 확인](#postgresql에서-index-only-scan-경계-확인)
     - [Pagination offset과 keyset 비교](#pagination-offset과-keyset-비교)
@@ -563,6 +564,156 @@ Partial index는 PostgreSQL에서는 강력한 1급 기능이지만, MySQL에서
 LSM은 PostgreSQL/MySQL 기본 인덱스 설명에서 직접 적용하지 않습니다. RocksDB 기반 MyRocks 같은 MySQL storage engine이나 Cassandra/RocksDB/LevelDB 계열을 비교할 때 꺼내는 편이 정확합니다. RDBMS row-store의 B-tree 비용과 LSM compaction 비용을 섞어 말하면 면접에서 바로 반례가 나옵니다.
 
 ## 직접 재생해 보기
+
+### 인덱스가 항상 빠르지 않은 이유를 EXPLAIN으로 재생하기
+
+이 실험은 "인덱스를 타면 항상 빠른가요?"라는 질문을 한 번에 닫기 위한 작은 재생 장치입니다.
+핵심은 인덱스가 후보 위치를 빨리 찾게 해 줄 수는 있지만, 최종 비용은 `몇 row를 찾았는가`보다
+`몇 page를 어떤 순서로 읽었는가`, `table/heap 방문이 얼마나 생겼는가`, `읽은 page가 이미 buffer에
+있었는가`, `정렬이나 heap fetch가 남았는가`에 의해 결정된다는 점입니다.
+
+먼저 같은 table에서 선택도가 높은 조건과 낮은 조건을 일부러 나눕니다. 선택도는 조건을 통과하는
+row 비율입니다. `user_id = 42`처럼 극히 일부 row만 고르면 선택도가 높다고 말하고, `status =
+'PAID'`처럼 전체의 대부분이 걸리면 선택도가 낮다고 말합니다. 실험 table은 아래
+[Composite index와 leftmost prefix 확인](#composite-index와-leftmost-prefix-확인)에서 만드는
+`orders_plan_lab`을 그대로 써도 됩니다. 여기서는 그 table에 대해 데이터 분포와 보조 index만
+추가로 고정합니다. 실제 실행 순서는 다음 절의 `CREATE TABLE`을 먼저 실행한 뒤, 다시 이 절의
+보조 index와 데이터 분포를 맞추는 식으로 잡으면 됩니다.
+
+```text
+orders_plan_lab distribution for this experiment
+  total rows: 1,000,000
+  status = 'PAID': 800,000 rows
+  user_id = 42 AND status = 'PAID': 120 rows
+```
+
+```sql
+-- PostgreSQL에서 covering/index-only 후보까지 함께 보고 싶을 때 둡니다.
+CREATE INDEX orders_user_status_created_cover_idx
+ON orders_plan_lab (user_id, status, created_at DESC, id DESC)
+INCLUDE (total_amount);
+
+-- 낮은 선택도 조건이 어떤 plan을 고르는지 보기 위한 단일 column index입니다.
+CREATE INDEX orders_status_only_idx
+ON orders_plan_lab (status);
+
+ANALYZE orders_plan_lab;
+```
+
+첫 번째 query는 인덱스가 잘 맞는 경우입니다.
+
+```sql
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT id, created_at, total_amount
+FROM orders_plan_lab
+WHERE user_id = 42
+  AND status = 'PAID'
+ORDER BY created_at DESC, id DESC
+LIMIT 20;
+```
+
+대표적인 PASS 모양은 아래처럼 읽습니다. 이 출력은 특정 장비에서 반드시 그대로 나온다는 뜻이 아니라,
+읽어야 할 단서의 모양을 보여 주는 축약 예시입니다.
+
+```text
+Limit
+  Buffers: shared hit=8 read=2
+  ->  Index Only Scan using orders_user_status_created_cover_idx on orders_plan_lab
+        Index Cond: ((user_id = 42) AND (status = 'PAID'))
+        Heap Fetches: 0
+        Buffers: shared hit=8 read=2
+```
+
+이 plan이 좋은 이유는 세 가지입니다. 먼저 `(user_id, status)`가 leaf range를 아주 좁게 만듭니다.
+그 좁은 범위 안에서 `created_at DESC, id DESC` 순서가 이미 맞기 때문에 별도 sort 없이 앞에서부터
+20개를 읽고 멈출 수 있습니다. 또 `id`, `created_at`, `total_amount`가 index에서 해결되고
+visibility 조건까지 맞으면 PostgreSQL은 heap page를 거의 보지 않을 수 있습니다. 이때 비용은
+"1,000,000 row table에서 20 row를 찾았다"가 아니라 "index page 몇 개와 필요한 visible entry만
+읽었다"에 가깝습니다.
+
+두 번째 query는 인덱스가 있어도 항상 빠르지 않은 경우를 보여 줍니다.
+
+```sql
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT id, created_at, total_amount
+FROM orders_plan_lab
+WHERE status = 'PAID';
+```
+
+`status = 'PAID'`가 전체의 80%라면, optimizer는 아래처럼 sequential scan을 고를 수 있습니다.
+
+```text
+Seq Scan on orders_plan_lab
+  Filter: (status = 'PAID')
+  Rows Removed by Filter: 200000
+  Buffers: shared hit=1200 read=300
+```
+
+이것은 인덱스를 "못 탄" 실패가 아닐 수 있습니다. `orders_status_only_idx`를 타면 `PAID` entry 800,000개를
+찾은 뒤, 각 row의 나머지 column을 얻기 위해 table/heap page를 넓게 방문해야 할 수 있습니다.
+그 page들이 물리적으로 흩어져 있고 buffer에 없다면, 많은 random access가 생깁니다. 반대로
+sequential scan은 필요 없는 20% row까지 보지만 page를 앞에서부터 예측 가능한 순서로 읽습니다.
+DB buffer, OS page cache, filesystem read-ahead, storage queue는 이런 연속 접근에서 더 잘 작동할
+수 있습니다. 그래서 "index가 있으니 index scan이 더 빠르다"가 아니라, "index lookup이 줄인 후보
+수보다 table page를 흩어 읽는 비용이 더 큰가"를 봐야 합니다.
+
+중간 지점에서는 bitmap heap scan이 나올 수도 있습니다.
+
+```text
+Bitmap Heap Scan on orders_plan_lab
+  Recheck Cond: (status = 'PAID')
+  Heap Blocks: exact=9000
+  Buffers: shared hit=2500 read=700
+  ->  Bitmap Index Scan on orders_status_only_idx
+        Index Cond: (status = 'PAID')
+```
+
+bitmap heap scan은 index에서 tuple 위치를 먼저 모은 뒤, heap page를 더 물리적인 순서에 가깝게
+방문하려는 절충안입니다. 이 plan은 "index를 쓴다"와 "row마다 table을 제각각 찌른다" 사이에 있는
+경로입니다. 대신 bitmap을 만들 memory가 필요하고, index order는 사라지므로 `ORDER BY`가 있으면
+별도 sort가 남을 수 있습니다.
+
+세 번째로 covering 또는 index-only scan의 함정도 같이 봐야 합니다. 같은 query라도 PostgreSQL에서
+최근 update가 많아 visibility map이 all-visible 상태를 잃으면 heap fetch가 다시 생길 수 있습니다.
+
+```text
+Index Only Scan using orders_user_status_created_cover_idx on orders_plan_lab
+  Index Cond: ((user_id = 42) AND (status = 'PAID'))
+  Heap Fetches: 842
+  Buffers: shared hit=400 read=80
+```
+
+이 출력은 `Index Only Scan`이라는 이름만 보고 "table을 전혀 안 봤다"고 말하면 안 된다는 경고입니다.
+PostgreSQL은 MVCC 때문에 row가 현재 transaction에서 보이는지 확인해야 하고, visibility map이
+해당 heap page를 all-visible이라고 알려 주지 못하면 heap을 확인합니다. InnoDB에서는 경계가 조금
+다릅니다. secondary index가 query에 필요한 column을 모두 담고 있으면 clustered index lookup을
+줄일 수 있지만, 필요한 column이 빠져 있으면 secondary index entry의 primary key로 clustered
+record를 다시 찾아갑니다.
+
+이 실험을 면접 답변으로 압축하면 이렇게 말할 수 있습니다.
+
+```text
+인덱스는 후보 row를 좁히는 access path를 제공하지만,
+빠른지 여부는 후보 수만으로 결정되지 않습니다.
+
+최종 비용은 대략 아래 항목의 합입니다.
+
+  index page를 몇 개 읽는가
+  table/heap/clustered page를 몇 개 읽는가
+  그 page들이 buffer에 있는가, disk에서 읽는가
+  접근이 random인지 sequential인지
+  sort, bitmap, heap fetch, visibility check가 남는가
+  optimizer의 estimated rows가 actual rows와 맞는가
+
+따라서 낮은 선택도 조건에서는 sequential scan이나 bitmap heap scan이 더 나을 수 있고,
+covering/index-only scan도 DBMS별 visibility와 clustered lookup 경계가 맞아야 이득이 납니다.
+```
+
+PASS 신호는 `EXPLAIN (ANALYZE, BUFFERS)`에서 plan node 이름만 보지 않고 `rows`, `actual rows`,
+`Buffers`, `Heap Fetches`, sort/temp 여부를 함께 읽는 것입니다. FAIL 신호는 `Index Scan`이라는
+단어만 보고 빠르다고 단정하거나, `Seq Scan`이라는 단어만 보고 나쁜 plan이라고 단정하는 것입니다.
+실제 plan은 DBMS, 통계, 데이터 분포, cache 상태, version, 설정에 따라 달라지므로, 실험 결과가
+다르면 "왜 다른 plan이 합리적인가"를 page I/O와 row stream 관점으로 다시 설명해야 합니다.
 
 ### Composite index와 leftmost prefix 확인
 
