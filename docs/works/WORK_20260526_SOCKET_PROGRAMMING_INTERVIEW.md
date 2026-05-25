@@ -207,3 +207,14 @@
   - Whitespace diff check: PASS. `git diff --check -- interviews/socket-programming.md docs/works/WORK_20260526_SOCKET_PROGRAMMING_INTERVIEW.md`.
   - 영어 우선 잔여 표현 scan: PASS for target doc. `OS networking API`, `socket endpoint handle`, `OS network stack`, `OS 중립적으로`, `불변식` 잔여 없음.
 - 최종 감사: PASS. 기술 주장과 공식 근거는 그대로 유지했고, 한국어 흐름과 초반 학습 발판만 좁게 보정했다.
+
+## 14. Follow-Up: Humanize Correction on `손잡이`
+
+- 사용자 피드백: "`정수 손잡이로 보이는 경우가 많고` - `$humanize-korean` 적용된 게 맞는지?"
+- 판정: 해당 표현은 기술 의미를 쉽게 풀려다 만든 비유지만, 한국어 학습 문서에서는 어색한 직역처럼 읽힌다. `humanize-korean` 기준의 자연스러움 검수에서 놓친 항목으로 본다.
+- 수정: `손잡이` 계열 표현을 문맥에 따라 `정수값`, `식별자`, `값이나 객체`, `그 소켓을 가리키는 번호`, `접근 방식`으로 교체했다. 기술 claim은 유지하고 표현만 보정했다.
+- 검증 결과:
+  - Target phrase scan: PASS for target doc. `손잡이`, `정수 손잡이`, `보이는 경우가 많고`, `운영체제에 맡긴 통로` 잔여 없음.
+  - TOC anchor check: PASS. `headings=26`, `toc_links=18`, `missing=[]`.
+  - Whitespace diff check: PASS. `git diff --check -- interviews/socket-programming.md docs/works/WORK_20260526_SOCKET_PROGRAMMING_INTERVIEW.md`.
+- 최종 감사: PASS. 사용자 지적을 맞는 지적으로 인정하고, 자연스럽지 않은 비유를 기술적으로 더 정확한 표현으로 바꿨다.
