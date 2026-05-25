@@ -188,3 +188,11 @@
 
 - 최종 상태: `COMPLETE` for document/review stage.
 - 완료 게이트: `ALLOW_COMPLETE`; git commit/push evidence is recorded in the final response because the commit hash cannot be embedded in the commit content without changing that hash.
+
+## 12. Follow-Up: OS-Neutral Socket Boundary
+
+- 사용자 피드백: "os 중립적인 설명도 있는지? os마다 다양하게 소켓을 지원할 거 같은데."
+- 판정: 기존 문서는 핵심 개념은 통신 끝점으로 설명했지만, first brick과 근거가 Unix/Linux/POSIX fd 모델에 강하게 기대고 있어 OS 중립 경계가 덜 선명했다.
+- 수정: `interviews/socket-programming.md` 앞부분에 `OS 중립 모델과 OS별 API 차이` 섹션을 추가하고, 기존 first brick 제목을 POSIX 계열 대표 예시로 좁혔다.
+- 근거: POSIX/The Open Group `socket()`은 fd를 반환하지만, Microsoft Winsock `socket()`은 `SOCKET` 핸들을 반환하고 `closesocket()`을 쓰며, Apple Network framework는 `NWConnection` 같은 더 높은 수준의 연결 객체를 제공한다.
+- 검증 예정: TOC anchor check, diff check, OS-neutral terms scan, scoped commit/push.
