@@ -27,6 +27,10 @@
 - [문제 해결, 코드 품질, 운영 실천](problem-solving-code-quality.md): 5 source chunks
 - [Source Context And Question Bank](source/_source-context-and-question-bank.md): 8 context chunks
 
+## 승격된 심화 문서
+
+- [소켓이란 무엇이고 소켓 프로그래밍이란 무엇인가](socket-programming.md)
+
 ## 보존 규칙
 
 - 원본 `intervie*.md` 파일은 `source/` 아래 source reservoir로 유지합니다.
