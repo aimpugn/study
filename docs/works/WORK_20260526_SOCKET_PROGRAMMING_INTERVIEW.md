@@ -218,3 +218,26 @@
   - TOC anchor check: PASS. `headings=26`, `toc_links=18`, `missing=[]`.
   - Whitespace diff check: PASS. `git diff --check -- interviews/socket-programming.md docs/works/WORK_20260526_SOCKET_PROGRAMMING_INTERVIEW.md`.
 - 최종 감사: PASS. 사용자 지적을 맞는 지적으로 인정하고, 자연스럽지 않은 비유를 기술적으로 더 정확한 표현으로 바꿨다.
+
+## 15. Follow-Up: Whole-Document Humanize Pass
+
+- 사용자 피드백: "비슷하게 억지 번역 없는지 등 다시 전체 `$humanize-korean`."
+- Writing Task Frame:
+  - 요청 유형: 전체 문서 재윤문 및 억지 번역 감사.
+  - 독자: 기술 면접을 준비하는 한국어 독자.
+  - 장르: 인터뷰 대비용 장문 기술 학습 문서.
+  - 성공 기준: 기술 claim과 근거는 보존하되, 어색한 직역, 내부 은유, 덜 정리된 영어 표현을 줄인다.
+  - 비목표: 모든 영어 기술 용어를 억지로 한국어로 번역하지 않는다.
+- 탐지:
+  - `첫 번째 벽돌`, `밑바닥 질문`, `raw 파일 디스크립터`, `connected socket`, `root cause`, `길이 prefix`, `구분자 delimiter`, `QUIC의 기반 전송`, `표면화됩니다`, `PASS 신호 / FAIL 신호` 등은 기술 의미는 맞지만 한국어 문서 흐름에서 튀는 표현으로 판정했다.
+  - `endpoint`는 억지 번역을 피하기 위해 `엔드포인트(endpoint)`로 첫 등장에 병기하고, 이후에는 `엔드포인트` 또는 문맥상 `통신 지점`으로 정리했다.
+- 수정:
+  - 문서 내부 은유를 `가장 작은 출발점`, `근본 질문`처럼 직접적인 표현으로 교체했다.
+  - 영어 상태명과 API 표현은 공식 용어가 필요한 곳만 남기고, 문장 설명에서는 `리스닝 소켓`, `연결 소켓`, `오류 메시지`, `근본 원인`처럼 한국어 우선으로 바꿨다.
+  - 프레이밍 설명에서는 `길이를 앞에 붙이는 방식(length prefix)`, `구분자(delimiter)`처럼 한국어 설명을 먼저 두고 검색 가능한 원어를 병기했다.
+- 검증 결과:
+  - 억지 번역 후보 scan: PASS for target doc. `손잡이`, `밑바닥`, `첫 번째 벽돌`, `root cause`, `error message`, `connected socket`, `listening socket`, `idle 연결`, `raw 파일`, `기반 전송`, `통신 끝점`, `길이 prefix`, `구분자 delimiter`, `read exactly` 잔여 없음.
+  - TOC anchor check: PASS. `headings=26`, `toc_links=18`, `missing=[]`.
+  - Code fence parity: PASS. `code_fence_markers=36`, even.
+  - Whitespace diff check: PASS. `git diff --check -- interviews/socket-programming.md docs/works/WORK_20260526_SOCKET_PROGRAMMING_INTERVIEW.md`.
+- 최종 감사: PASS. 기술 용어를 무리하게 번역하지 않고, 문장 안에서 튀던 직역과 내부 은유만 줄였다.
