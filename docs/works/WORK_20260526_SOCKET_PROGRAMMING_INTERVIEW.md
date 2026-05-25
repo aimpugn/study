@@ -193,6 +193,17 @@
 
 - 사용자 피드백: "os 중립적인 설명도 있는지? os마다 다양하게 소켓을 지원할 거 같은데."
 - 판정: 기존 문서는 핵심 개념은 통신 끝점으로 설명했지만, first brick과 근거가 Unix/Linux/POSIX fd 모델에 강하게 기대고 있어 OS 중립 경계가 덜 선명했다.
-- 수정: `interviews/socket-programming.md` 앞부분에 `OS 중립 모델과 OS별 API 차이` 섹션을 추가하고, 기존 first brick 제목을 POSIX 계열 대표 예시로 좁혔다.
+- 수정: `interviews/socket-programming.md` 앞부분에 `운영체제 중립 모델과 OS별 API 차이` 섹션을 추가하고, 기존 첫 번째 벽돌 제목을 POSIX 계열 대표 예시로 좁혔다.
 - 근거: POSIX/The Open Group `socket()`은 fd를 반환하지만, Microsoft Winsock `socket()`은 `SOCKET` 핸들을 반환하고 `closesocket()`을 쓰며, Apple Network framework는 `NWConnection` 같은 더 높은 수준의 연결 객체를 제공한다.
 - 검증 예정: TOC anchor check, diff check, OS-neutral terms scan, scoped commit/push.
+
+## 13. Follow-Up: Korean Flow Pass
+
+- 사용자 스킬 지시: `$humanize-korean $study-explanation`.
+- 판정: 문서의 전체 학습 구조는 유지하되, OS 중립 보강부에 남아 있던 `OS networking API`, `socket endpoint handle 반환`, `OS network stack` 같은 영어 우선 표현은 한국어 학습 문서의 초반 발판으로는 약했다.
+- 수정: 해당 구간을 `운영체제 네트워크 API`, `통신 끝점을 가리키는 손잡이`, `운영체제 네트워크 스택`처럼 한국어 우선 표현으로 바꾸고, 첫 답변의 `OS 중립적으로` 문장도 `특정 운영체제에 묶지 않고`로 풀었다.
+- 검증 결과:
+  - TOC anchor check: PASS. `headings=26`, `toc_links=18`, `missing=[]`.
+  - Whitespace diff check: PASS. `git diff --check -- interviews/socket-programming.md docs/works/WORK_20260526_SOCKET_PROGRAMMING_INTERVIEW.md`.
+  - 영어 우선 잔여 표현 scan: PASS for target doc. `OS networking API`, `socket endpoint handle`, `OS network stack`, `OS 중립적으로`, `불변식` 잔여 없음.
+- 최종 감사: PASS. 기술 주장과 공식 근거는 그대로 유지했고, 한국어 흐름과 초반 학습 발판만 좁게 보정했다.
