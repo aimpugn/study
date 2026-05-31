@@ -1,103 +1,79 @@
-# Claim Review Ledger
+# Claim Review Audit
 
-Status: SECTION_REVIEWED
+검수 날짜: 2026-05-31
 
-This file records dialectic and review-kernel evidence for the corpus. It is not a reader-facing tutorial. The reader-facing learning material is in `00` through `10`.
+이 문서는 학습 본문이 아니라 이번 corpus rewrite의 review ledger입니다. 이전 버전의 label-heavy PASS 판정은 superseded되었습니다. 현재 기준은 prose-first deep study, lower-layer trace, source boundary, unsafe command repair, claim-level evidence입니다.
 
-## Activated Review Roles
+## Activated Roles
 
 | Role | Responsibility | Result |
 |---|---|---|
-| Source Evidence Researcher | Primary/official source selection and version-sensitive claim warnings | Cassandra fixed-version source, Kafka exactly-once boundary, Spark latest docs, Linux version-sensitive boundaries integrated. |
-| Curriculum Critic | Attack shallow-summary failure modes and missing traces | Repair accepted: self-contained docs, per-system traces, scenarios, OS/distributed links. |
-| Protocol Sentinel | Guard whole-request completion, commit/push boundary, no premature closure | Repair accepted: no intermediate commit, only new corpus and WORK can be staged, push forbidden. |
+| Curriculum Critic | gold slice가 독자의 반문을 닫는지 검수 | ACCEPT_REPAIR after one wording fix |
+| Evidence Auditor | `write()`, fd, page cache, fsync, Cassandra/Spark/Kafka source boundary 공격 | ACCEPT_REPAIR / DOWNGRADE rows incorporated |
+| Protocol Sentinel | premature WHOLE_COMPLETE, unsafe command, source ledger weakness, staging boundary 감시 | HOLD before repairs, incorporated into rework gates |
+| Main Orchestrator | repairs, corpus rewrite, verification, commit boundary | in progress until final verification and commit |
 
 ## Claim Cards
 
-| ID | Claim | Attack focus | Closure |
+| Claim | Attack | Closure | Repair |
 |---|---|---|---|
-| CC01 | The new corpus may duplicate existing docs. | Latest user message says duplicate is acceptable, but duplication must not become shallow repetition. | ACCEPT_REPAIR: new corpus is self-contained; existing docs are not linked as substitutes. |
-| CC02 | OS kernel knowledge explains Kafka/Cassandra/Spark symptoms. | Could become a slogan without concrete trace. | ACCEPT_REPAIR: `01`, `03`, `04`, `05`, `06`, `08` include page cache, disk, socket, scheduling, GC/spill/compaction traces. |
-| CC03 | Kafka should be taught as append-only log. | Risk of erasing queue use cases or overstating topic-wide order. | ACCEPT_REPAIR: `03` explains queue-like consumer group pattern but grounds model in partition log, offset, retention, per-partition order. |
-| CC04 | Kafka exactly-once can be described in the corpus. | Dangerous overclaim if external systems are included. | ACCEPT_REPAIR: `03` and `07` restrict exactly-once processing to supported Kafka-internal transaction/idempotence/read isolation conditions and call out external side effects. |
-| CC05 | Kafka durability follows from replication. | Overclaim if `acks`, ISR, `min.insync.replicas`, unclean election are omitted. | ACCEPT_REPAIR: `03` includes leader/follower, ISR, high watermark, `acks`, `min.insync.replicas`, unclean election tradeoff. |
-| CC06 | Cassandra quorum improves consistency. | Could be misread as automatic linearizability. | ACCEPT_REPAIR: `02`, `04`, `07` distinguish quorum intersection from linearizable read, include timestamp/failed write/repair cautions. |
-| CC07 | Cassandra hints repair missed writes. | Hints are best-effort and not anti-entropy repair. | ACCEPT_REPAIR: `04`, `09`, `10` explicitly say hints do not replace anti-entropy repair. |
-| CC08 | LSM tree is write-optimized. | Half-truth if read amplification and compaction are omitted. | ACCEPT_REPAIR: `04` includes write path, read path, bloom filter, SSTable count, tombstone, compaction pressure, OS disk impact. |
-| CC09 | Spark lineage provides fault tolerance. | Incomplete if shuffle output loss, nondeterminism, checkpoint boundaries are omitted. | ACCEPT_REPAIR: `05` includes lineage, shuffle file loss, nondeterministic side effects, checkpoint reliable storage. |
-| CC10 | Spark is in-memory. | Dangerous simplification if shuffle/spill/checkpoint/input/output disk use is omitted. | ACCEPT_REPAIR: `05`, `06`, `08`, `09` say in-memory is an optimization direction, not disk-free execution. |
-| CC11 | CAP/PACELC are useful teaching frames. | Risk of label memorization. | ACCEPT_REPAIR: `02` and `06` teach partition-time and normal-time tradeoff through read/write traces. |
-| CC12 | Experiments can support the corpus. | Risk of becoming a command list or implying production-safe operations. | ACCEPT_REPAIR: `08` uses purpose/prerequisite/commands/expected/PASS/FAIL, and warns about production-side effects like `nodetool compact`. |
-| CC13 | Official docs and papers are enough source coverage. | Version-sensitive docs and defaults can drift. | ACCEPT_REPAIR: `10` distinguishes Direct, Strong inference, General principle, Version-check-needed and records checked date. |
-| CC14 | Each document can be read independently. | Cross-links might hide missing definitions. | ACCEPT_REPAIR: `01` through `05` include local prerequisites, traces, failure modes, verification, scenarios, active recall. |
-| CC15 | The corpus can be closed by file count. | File count is a proxy, not quality evidence. | REBUT: final closure requires coverage checks, forbidden diagram syntax check, link/source review, final audit, size check, commit, no push. |
+| The previous corpus already met the original intent. | User explicitly rated it around 30-40/100 and objected to checklist-like labels, vague boundary wording, and shallow mechanisms. | DOWNGRADE | Treat previous corpus as source material, not accepted baseline. |
+| Gold-slice-first is a valid rewrite strategy. | If the slice only gets longer but does not connect syscall/page cache to Kafka/Cassandra/Spark, it will not generalize. | ACCEPT_REPAIR | `01` section 1 now includes boundary definition, historical causality, syscall descent, partial write, page cache/durability, and product bridges. |
+| `경계` can be used in explanations. | The word is harmful if left abstract; reader asks "what boundary and how?" | ACCEPT_REPAIR | Define boundary as CPU privilege, address access, and kernel-owned data structure access before using it. |
+| `write()` success means requested bytes reached the file. | `write(2)` can return partial byte count; durable storage is not guaranteed. | ACCEPT_REPAIR | Add partial-write and `fsync()` separation; source ledger maps to man7 pages. |
+| Kafka is fast because it avoids disk. | Kafka docs emphasize filesystem/page cache and log design; "no disk" is false. | ACCEPT_REPAIR | Rewrite Kafka as disk-friendly append/page-cache/batch/sendfile design. |
+| Cassandra QUORUM is always latest. | RF/CL intersection helps but is not blanket linearizability; repair/timestamp/LWT matter. | ACCEPT_REPAIR | Rewrite Cassandra consistency as read/write CL trace with caveats. |
+| Spark shuffle is network transfer. | Shuffle includes serialization, local disk, spill, memory, GC, skew. | ACCEPT_REPAIR | Rewrite Spark shuffle as multi-resource state movement. |
+| Experiments are safe enough if they mention warnings. | Broad process-kill patterns can kill unrelated processes; `nodetool compact` is heavy. | ACCEPT_REPAIR | Replace with PID/trap cleanup; mark compaction as local-only opt-in and not normal verification. |
+| Source ledger can be a bibliography. | User requested evidence/source boundaries and version-sensitive claim handling. | ACCEPT_REPAIR | Rewrite source ledger as claim-level mapping with official URLs, tier, boundary. |
+| Whole corpus can pass by keyword/file-count checks. | User quality floor is reader journey and lower-layer explanation; structural checks are not sufficient. | REBUT | Verification must include prose-label scan, unsafe command scan, source URL checks, and reader journey audit. |
+| OS lock/concurrency coverage is enough if lock contention is mentioned. | Lock contention alone does not teach race, deadlock, lost wakeup, memory ordering, or JVM wait states. | ACCEPT_REPAIR | Expanded `01` lock section with shared-state protection, lost update, deadlock, lost wakeup, memory ordering, JVM/OS wait trace. |
+| Consensus coverage is enough if quorum is contrasted with consensus. | A reader still needs a state-machine replication trace with leader term, log index, majority append, commit, apply. | ACCEPT_REPAIR | Expanded `02` with Raft-like log entry trace and KRaft/Cassandra boundary. |
+| Spark DataFrame coverage can be satisfied by naming DataFrame next to RDD. | The frozen scope asks for RDD/DataFrame/DAG; a reader needs the logical plan -> physical plan -> stage/task bridge. | ACCEPT_REPAIR | Expanded `05` with DataFrame/Dataset, Catalyst plan, physical plan, exchange/shuffle, and explain-plan reasoning boundary. |
+
+## Gold Slice Confirmation
+
+The `write(fd, buf, len)` gold slice in [01_os_kernel_foundations.md](../01_os_kernel_foundations.md) is accepted as the expansion standard after this repair:
+
+- Original risky wording: kernel code is not in process address space like a library.
+- Critic attack: some kernels map kernel memory into process virtual address space; the important claim is not address layout but accessibility and entry path.
+- Repair: wording now says mapping differs by OS/architecture, but user code cannot call kernel like an exposed library function and must enter through syscall/trap entry.
+- Closure: ACCEPT_REPAIR.
+
+The expansion standard is not "copy this section's length." It is:
+
+- abstract terms are grounded immediately;
+- history explains need before naming mechanism;
+- API calls are translated into internal objects and buffers;
+- success return, durability, consistency, and recovery are separated;
+- product sections connect back to OS/distributed-system mechanisms.
 
 ## Repairs That Changed The Corpus
 
-| Critique | Repair in documents |
+| Area | Repair |
 |---|---|
-| Kafka might be reduced to "message queue." | `03` begins with distributed append-only log model, explains consumer groups as one reading pattern. |
-| Page cache/durable write could be vague. | `01` and `08` include `write()` vs `fsync()` traces; `03` and `04` connect this to Kafka/Cassandra. |
-| Quorum could be overstated. | `02`, `04`, `07`, `09`, `10` all distinguish quorum intersection from automatic linearizability. |
-| Spark could become a feature list. | `05` follows driver -> DAG -> stage -> shuffle -> spill -> lineage/checkpoint state movement. |
-| Experiments could be unsafe command dumps. | `08` separates PASS/FAIL and marks side-effect risks, especially cache drop and Cassandra compaction. |
-| Existing docs could replace new content. | `README`, `00`, WORK ledger state self-contained scope; no root README update or existing-doc substitution. |
+| README / 00 | Reframed corpus as self-contained prose-first learning path, not fixed label template. |
+| 01 OS | Rewrote entire file around syscall, scheduler, memory, page cache, socket, observability traces. |
+| 02 Distributed | Replaced CAP/quorum keyword flow with partial failure, time/order, log, partition, replication, consistency, recovery, backpressure. |
+| 03 Kafka | Rewrote as partition log, page cache, replication/ISR, consumer offset, delivery semantics, compaction. |
+| 04 Cassandra | Rewrote as token ownership, commit log/memtable/SSTable, read path, CL/RF, repair, compaction. |
+| 05 Spark | Rewrote as driver/executor, lazy graph, DataFrame logical/physical plan, partition/task, dependency/stage, shuffle/spill, lineage/checkpoint. |
+| 06 Comparison | Rebuilt around same words with different promises: log, partition, replication, consistency, recovery, OS resource. |
+| 07 Interview | Rebuilt around state/owner/order/failure/verification and short answer plus tail trace. |
+| 08 Experiments | Repaired unsafe process kill; constrained heavy Cassandra compaction; clarified local-only/pass-fail boundaries. |
+| 09 Glossary | Added Korean-first meaning, English original, confusion pair, first appearance, interview one-liner. |
+| 10 Source Ledger | Replaced source list with claim-level ledger and version-sensitive boundaries. |
 
-## Final Review Kernel
+## Remaining Verification Before Completion
 
-Review question: Can a Korean backend developer who starts with little OS/distributed-systems knowledge read this corpus sequentially and answer lower-layer follow-up questions about Kafka, Cassandra, and Spark?
+The corpus is not complete merely because these repairs are written. Before `WHOLE_COMPLETE`, the main workflow must verify and record:
 
-Findings after automated coverage and author-side review:
-
-| Finding | Severity | Status |
-|---|---|---|
-| Required files, forbidden diagram syntax check, internal links, source ledger, size. | material | PASS by verification log. |
-| Every big deep-dive or synthesis doc has at least two scenarios. | material | PASS for `01` through `08`; `00`, `09`, `10` are index/glossary/source roles. |
-| Major scope terms appear in corpus. | material | PASS by keyword coverage check. |
-| Kafka/Cassandra/Spark are connected back to OS and distributed-systems principles. | material | PASS by review of `03`, `04`, `05`, `06`, `07`, `08`. |
-| Commit only scoped files after final checks. | material | PASS pending final git stage/commit command. |
-
-## Verification Log
-
-Commands run from `interviews/`:
-
-```bash
-find os-kernel-distributed-systems-deep-dive -type f -maxdepth 3 | sort
-du -sh os-kernel-distributed-systems-deep-dive
-wc -c os-kernel-distributed-systems-deep-dive/*.md os-kernel-distributed-systems-deep-dive/audit/*.md
-rg <forbidden diagram syntax keyword check> os-kernel-distributed-systems-deep-dive ../docs/works/WORK_20260531_OS_KERNEL_DISTRIBUTED_SYSTEMS_CORPUS.md
-python3 <coverage-check: required files, quote/scenario/PASS/FAIL/active recall counts, internal links, total bytes>
-python3 <scope-term-check>
-rg <progress-filler phrase check> os-kernel-distributed-systems-deep-dive
-curl <Cassandra storage-engine fixed/latest URL check>
-```
-
-Observed results:
-
-| Check | Result |
-|---|---|
-| Required `00` through `10` files | PASS, no missing files. |
-| Corpus size | PASS, about 238KB, far below 50MB. |
-| Internal Markdown links | PASS, no missing local targets. |
-| Forbidden diagram syntax | PASS, no occurrences. |
-| Scope terms | PASS, no missing required terms in corpus text. |
-| Scenario count | PASS for `01`-`08`; each has at least two scenarios or reality scenarios. |
-| Experiment PASS/FAIL signals | PASS, `08` has 12 PASS/FAIL blocks plus active recall. |
-| Korean progress filler phrases | PASS after replacing the only material phrase hit in `02`. |
-| Cassandra storage engine URL | PASS, fixed 5.0.8 `storage-engine.html` returned HTTP 200. |
-
-## Final Reader-Facing Quality Review
-
-Verdict before git commit: PASS.
-
-Reasoning:
-
-- The corpus starts from OS boundary concepts and repeatedly turns them into byte/page/packet/log/task traces.
-- Distributed-system concepts are not treated as CAP/quorum vocabulary only; the docs show timeout ambiguity, ordering, log/state machine, quorum intersection, retry, backpressure, checkpoint and recovery traces.
-- Kafka, Cassandra, and Spark each include their own local prerequisites, state movement diagrams, failure modes, verification methods, common misconceptions, and interview follow-up paths.
-- Cross-system comparison and interview playbook force the reader to reuse lower-layer mechanisms rather than memorize isolated product facts.
-- Experiments are framed as observation exercises with PASS/FAIL signals, not production prescriptions.
-
-Residual risk:
-
-- This corpus is not an operations manual for every version and deployment topology. The source ledger marks version-sensitive areas that must be rechecked against the target production version.
+- required target file set exists;
+- forbidden Mermaid syntax is absent;
+- old repeated labels no longer dominate major topic files;
+- unsafe broad process-kill command is absent;
+- `nodetool compact` is explicitly local-only/opt-in;
+- source URLs that were changed return reachable official pages where possible;
+- WORK ledger re-judges every row after current edits;
+- staged files are restricted to corpus root and the WORK ledger;
+- no push is performed.

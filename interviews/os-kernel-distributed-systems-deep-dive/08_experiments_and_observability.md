@@ -1,48 +1,35 @@
 # 08. Experiments and Observability
 
-> 실험의 목적은 멋진 benchmark 숫자를 얻는 것이 아니라, 문서에서 설명한 상태 이동을 내 눈으로 확인하는 것입니다.
-> Linux와 macOS는 관찰 도구와 권한 모델이 다르므로 같은 개념을 같은 명령으로 확인하려 하면 실패할 수 있습니다.
-> 각 실험은 목적, 전제, 명령, 예상 관찰, PASS 신호, FAIL 신호를 분리해 둡니다.
+이 문서의 실험은 benchmark 경쟁이 아니라 개념 검증입니다. 숫자가 예쁘게 나오지 않아도 괜찮습니다. 중요한 것은 "문서에서 말한 상태 이동이 실제 관찰 표면에서 어떻게 보이는가"입니다.
 
-## 1. 도구 지도
+모든 실험은 개인 local 환경에서 실행하는 것을 전제로 합니다. production, shared server, 회사 개발 cluster에서 그대로 실행하지 않습니다. 특히 CPU 부하, disk I/O, Cassandra compaction, Spark shuffle은 주변 작업에 피해를 줄 수 있습니다.
 
-> 관찰 도구는 결론이 아니라 렌즈입니다.
-> `strace`, `dtrace`, `vmstat`, `iostat`, `ss`, `lsof`, `jstack`, Spark UI, Kafka/Cassandra CLI는 서로 다른 계층을 봅니다.
+## 도구를 고르는 기준
 
-| 목적 | Linux | macOS | 주의 |
+| 보고 싶은 상태 | Linux 예 | macOS 예 | 주의 |
 |---|---|---|---|
-| syscall 관찰 | `strace` | `dtruss`, `dtrace` | macOS SIP/권한 제한 가능 |
-| CPU/memory/I/O 추세 | `vmstat` | `vm_stat`, `top` | 필드 의미가 다름 |
-| block I/O | `iostat -xz` | `iostat -w` | 옵션과 출력 다름 |
-| socket 상태 | `ss -tin`, `netstat` | `netstat` | `ss`는 Linux 중심 |
-| 열린 파일 | `lsof` | `lsof` | 권한 필요할 수 있음 |
-| JVM thread | `jstack`, `jcmd` | `jstack`, `jcmd` | JDK 설치 필요 |
-| Kernel tracing | `perf`, `ftrace`, eBPF tools | `dtrace`, Instruments | 권한/보안 정책 주의 |
-| Kafka | `kafka-topics.sh`, `kafka-consumer-groups.sh` | same if installed | local cluster 필요 |
-| Cassandra | `cqlsh`, `nodetool` | same if installed | local cluster 필요 |
-| Spark | Spark UI, `spark-submit` | same if installed | Java/Python version 주의 |
+| system call | `strace` | `dtruss`, `dtrace` | macOS SIP/권한 제한 가능 |
+| CPU runnable/context switch | `vmstat`, `pidstat` | `top`, Activity Monitor | 필드 의미가 다름 |
+| disk I/O | `iostat -xz` | `iostat -w` | 옵션 차이 큼 |
+| socket queue | `ss -tin`, `netstat` | `netstat` | `ss`는 Linux 중심 |
+| 열린 파일 | `lsof` | `lsof` | 권한 필요 |
+| JVM thread | `jcmd`, `jstack` | `jcmd`, `jstack` | JDK 필요 |
+| Kafka | `kafka-consumer-groups.sh`, broker metrics | same | local cluster 필요 |
+| Cassandra | `nodetool`, `cqlsh` | same | 명령 부작용 주의 |
+| Spark | Spark UI, event log, `spark-submit` | same | local mode와 cluster mode 차이 |
 
-## 2. Experiment: syscall과 durable write 구분
+## 1. `write()`와 `fsync()`가 다른 system call임을 본다
 
-> `write()`는 user buffer에서 kernel boundary를 넘는 사건이고, `fsync()`는 파일 data를 더 강하게 storage로 밀어 넣는 사건입니다.
-> 이 둘을 구분하지 못하면 Kafka/Cassandra durability 질문에서 틀린 답을 하기 쉽습니다.
+목적은 파일 쓰기가 커널 system call로 내려가고, `write()`와 `fsync()`가 별도 요청임을 확인하는 것입니다.
 
-### 목적
-
-파일 쓰기가 syscall로 내려가는 것을 보고, `write()`와 `fsync()`가 별도 syscall임을 확인합니다.
-
-### 전제
-
-- Linux: `strace` 설치
-- macOS: `sudo dtruss` 가능해야 함
-
-### 명령
+전제는 Linux에 `strace`가 설치되어 있거나, macOS에서 `dtruss` 권한이 있는 것입니다.
 
 Linux:
 
 ```bash
 strace -e trace=write,fsync,fdatasync -o /tmp/write-trace.log python3 - <<'PY'
 import os
+
 fd = os.open("/tmp/durable-demo.txt", os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o644)
 os.write(fd, b"hello\n")
 os.fsync(fd)
@@ -51,11 +38,14 @@ PY
 sed -n '1,80p' /tmp/write-trace.log
 ```
 
-macOS:
+예상 관찰은 `write(...)`와 `fsync(...)`가 따로 보이는 것입니다. PASS는 두 syscall이 분리되어 보이고, `write()`만으로 fd sync를 증명하지 않는 것입니다. FAIL은 tracing 권한 문제를 개념 실패로 해석하거나, `write()`가 보였다는 이유로 storage durability를 증명했다고 말하는 것입니다.
+
+macOS에서는 다음과 같이 시도할 수 있지만, SIP와 권한 제한 때문에 실패할 수 있습니다.
 
 ```bash
 sudo dtruss -t write -t fsync -o /tmp/write-trace.log python3 - <<'PY'
 import os
+
 fd = os.open("/tmp/durable-demo.txt", os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o644)
 os.write(fd, b"hello\n")
 os.fsync(fd)
@@ -63,126 +53,79 @@ os.close(fd)
 PY
 ```
 
-### 예상 관찰 결과
+## 2. page cache 효과를 조심스럽게 본다
 
-`write`와 `fsync`가 별도 syscall로 보입니다.
+목적은 같은 파일을 반복 읽을 때 두 번째 read가 page cache 덕분에 빠를 수 있음을 관찰하는 것입니다.
 
-### PASS 신호
-
-- `write(..., "hello\n", ...)` 또는 유사한 syscall이 보입니다.
-- `fsync(fd)`가 별도로 보입니다.
-
-### FAIL 신호
-
-- tracing 권한 문제로 syscall이 보이지 않습니다.
-- `write()`가 보였다는 이유만으로 device durability를 증명했다고 해석합니다.
-
-## 3. Experiment: page cache 효과 관찰
-
-> page cache는 disk I/O를 숨기기도 하고, memory pressure에서 다시 드러나기도 합니다.
-> 같은 파일을 두 번 읽을 때 두 번째가 빠른 이유는 애플리케이션 code가 아니라 kernel cache일 수 있습니다.
-
-### 목적
-
-같은 파일을 반복 읽을 때 page cache 효과가 보일 수 있음을 확인합니다.
-
-### 전제
-
-- 큰 파일을 만들 disk 공간이 있어야 합니다.
-- `/tmp`가 memory filesystem이면 결과가 왜곡될 수 있습니다.
-
-### 명령
+전제는 local disk 공간이 충분하고 `/tmp`가 memory filesystem이 아닌 환경입니다.
 
 ```bash
 dd if=/dev/zero of=/tmp/page-cache-demo.bin bs=1m count=256
 sync
 time dd if=/tmp/page-cache-demo.bin of=/dev/null bs=1m
 time dd if=/tmp/page-cache-demo.bin of=/dev/null bs=1m
+rm -f /tmp/page-cache-demo.bin
 ```
 
-Linux에서 cache drop은 root 권한과 system-wide 영향이 있어 이 문서에서는 기본 실험으로 권장하지 않습니다.
+PASS는 두 번째 read 시간이 줄거나 device read 증가가 작게 보이는 것입니다. FAIL은 차이가 없다고 page cache가 없다고 결론 내리는 것입니다. SSD, memory 크기, 이미 warm cache였는지, OS 정책 때문에 차이는 작을 수 있습니다. Linux의 `/proc/sys/vm/drop_caches`는 system-wide 영향이 있으므로 이 문서에서는 기본 실험으로 사용하지 않습니다.
 
-### 예상 관찰 결과
+## 3. runnable queue와 context switch를 안전하게 만든다
 
-두 번째 read가 더 빠르거나 device read 증가가 작을 수 있습니다.
-
-### PASS 신호
-
-- 반복 read에서 시간 차이나 I/O 통계 차이를 관찰합니다.
-
-### FAIL 신호
-
-- 차이가 없다고 page cache가 없다고 결론 냅니다. SSD, memory filesystem, OS cache 상태, 파일 크기 때문에 차이가 작을 수 있습니다.
-
-## 4. Experiment: runnable queue와 context switch
-
-> CPU 병목은 CPU 사용률 하나로 끝나지 않습니다.
-> runnable queue와 context switch가 늘면 thread가 CPU를 받기 위해 기다릴 수 있습니다.
-
-### 목적
-
-CPU-bound 작업을 여러 개 띄우고 `vmstat`에서 runnable queue와 context switch를 관찰합니다.
-
-### 전제
-
-- Linux `vmstat`
-- macOS는 `top`, `powermetrics`, Activity Monitor로 대체 관찰
-
-### 명령
+이 실험은 CPU-bound process를 몇 개 띄운 뒤 `vmstat`에서 runnable queue와 context switch 변화를 보는 것입니다. 코드 문자열로 광범위하게 process를 찾아 종료하는 방식은 다른 Python 작업까지 죽일 수 있으므로 사용하지 않습니다. 여기서는 PID를 기록하고 trap으로 정리합니다.
 
 Linux:
 
 ```bash
+tmpdir="$(mktemp -d)"
+cleanup() {
+  if [ -f "$tmpdir/pids" ]; then
+    while read -r pid; do
+      kill "$pid" 2>/dev/null || true
+    done < "$tmpdir/pids"
+  fi
+  rm -rf "$tmpdir"
+}
+trap cleanup EXIT
+
 python3 - <<'PY' &
 while True:
     pass
 PY
+echo "$!" >> "$tmpdir/pids"
+
 python3 - <<'PY' &
 while True:
     pass
 PY
+echo "$!" >> "$tmpdir/pids"
+
 vmstat 1 5
-pkill -f 'while True'
+cleanup
+trap - EXIT
 ```
 
-### 예상 관찰 결과
+PASS는 runnable queue(`r`)나 context switch(`cs`)가 변하는 것을 보는 것입니다. FAIL은 shared machine에서 CPU-bound loop를 오래 방치하거나 PID 없이 광범위한 kill pattern을 쓰는 것입니다.
 
-CPU core 수와 background loop 수에 따라 `r`과 context switch가 변합니다.
+macOS에서는 Activity Monitor나 `top -o cpu`로 CPU-bound process를 확인하고, 같은 PID 정리 원칙을 적용합니다.
 
-### PASS 신호
+## 4. socket queue와 backpressure 감각을 본다
 
-- runnable queue가 생기고 CPU user time이 증가합니다.
-
-### FAIL 신호
-
-- shared machine에서 `pkill`이 다른 작업을 종료할 수 있습니다. 개인 실험 환경에서만 사용하고, 더 안전하게는 PID를 기록해 종료합니다.
-
-## 5. Experiment: socket state와 backpressure 감각
-
-> network backpressure는 애플리케이션 queue뿐 아니라 kernel socket send/receive queue로도 나타납니다.
-> receiver가 느리면 sender는 결국 buffer와 flow control에 막힙니다.
-
-### 목적
-
-간단한 TCP 연결을 만들고 socket state를 관찰합니다.
-
-### 전제
-
-- `nc` 또는 `python3`
-- Linux는 `ss`, macOS는 `netstat`
-
-### 명령
+목적은 receiver가 읽지 않을 때 sender가 결국 kernel socket buffer와 TCP flow control의 영향을 받는다는 점을 관찰하는 것입니다.
 
 Terminal 1:
 
 ```bash
 python3 - <<'PY'
 import socket, time
+
 s = socket.socket()
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 s.bind(("127.0.0.1", 18080))
 s.listen(1)
 conn, _ = s.accept()
 time.sleep(30)
+conn.close()
+s.close()
 PY
 ```
 
@@ -191,397 +134,91 @@ Terminal 2:
 ```bash
 python3 - <<'PY'
 import socket
+
 s = socket.create_connection(("127.0.0.1", 18080))
-s.sendall(b"x" * 1024 * 1024)
+payload = b"x" * 1024 * 1024
+for _ in range(64):
+    s.sendall(payload)
 input("press enter to close")
+s.close()
 PY
 ```
 
 Terminal 3:
 
-Linux:
-
 ```bash
+# Linux
 ss -tin sport = :18080 or dport = :18080
-```
 
-macOS:
-
-```bash
+# macOS fallback
 netstat -an | grep 18080
 ```
 
-### 예상 관찰 결과
+PASS는 TCP connection과 send/receive queue 관련 정보가 보이는 것입니다. FAIL은 loopback 결과를 실제 datacenter latency와 동일하게 해석하는 것입니다.
 
-연결 상태와 queue 관련 정보를 볼 수 있습니다. OS와 버전에 따라 세부 queue 숫자는 다릅니다.
+## 5. JVM thread dump로 waiting과 blocked를 본다
 
-### PASS 신호
+목적은 JVM 기반 Kafka/Cassandra/Spark에서 CPU가 낮아도 thread가 lock이나 sleep, I/O에서 기다릴 수 있음을 보는 것입니다.
 
-- TCP connection이 ESTABLISHED 상태로 보입니다.
-- receiver가 읽지 않으면 sender가 eventually block될 수 있음을 관찰합니다.
-
-### FAIL 신호
-
-- loopback 실험 결과를 실제 datacenter network latency와 동일하게 해석합니다.
-
-## 6. Experiment: JVM thread dump로 lock/wait 보기
-
-> JVM 기반 Kafka, Cassandra, Spark는 모두 OS process이면서 JVM thread 집합입니다.
-> thread dump는 CPU가 낮은데 latency가 높은 상황에서 lock wait, blocking I/O, GC 영향을 추적하는 첫 도구가 될 수 있습니다.
-
-### 목적
-
-JVM process의 thread 상태를 확인합니다.
-
-### 전제
-
-- JDK 설치
-- Java process 실행 중
-
-### 명령
+전제는 JDK가 있고 Java process가 실행 중인 것입니다.
 
 ```bash
-jps -l
-jcmd <pid> Thread.print | sed -n '1,160p'
+jcmd
+jcmd <pid> Thread.print | sed -n '1,120p'
 ```
 
-### 예상 관찰 결과
+PASS는 `RUNNABLE`, `WAITING`, `TIMED_WAITING`, `BLOCKED` 상태를 구분해 보는 것입니다. FAIL은 모든 `RUNNABLE`을 CPU 실행 중으로 해석하는 것입니다. JVM의 `RUNNABLE`은 native I/O wait를 포함해 OS CPU running과 정확히 같지 않을 수 있습니다.
 
-thread 이름, 상태(`RUNNABLE`, `WAITING`, `BLOCKED`), stack trace가 보입니다.
+## 6. Kafka local 관찰
 
-### PASS 신호
-
-- 어떤 thread가 lock, sleep, I/O, executor work를 수행 중인지 구분합니다.
-
-### FAIL 신호
-
-- 한 번의 dump로 결론을 확정합니다. 여러 번 sampling해야 transient wait와 persistent blockage를 구분할 수 있습니다.
-
-## 7. Kafka Local Experiment: offset과 lag
-
-> Kafka consumer lag는 log end offset과 group committed offset 사이 거리입니다.
-> 이 실험은 lag가 "broker에 쌓인 처리 대기 상태"라는 것을 확인합니다.
-
-### 목적
-
-topic에 record를 넣고 consumer group offset과 lag를 관찰합니다.
-
-### 전제
-
-- Local Kafka cluster 실행 중
-- Kafka command-line tools 사용 가능
-
-### 명령
+목적은 topic partition과 consumer group offset/lag가 실제로 분리된 상태임을 보는 것입니다. 전제는 local Kafka cluster가 있고 실험용 topic을 사용한다는 것입니다.
 
 ```bash
-kafka-topics.sh --bootstrap-server localhost:9092 --create --topic lag-demo --partitions 3 --replication-factor 1
-seq 1 1000 | kafka-console-producer.sh --bootstrap-server localhost:9092 --topic lag-demo
-kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic lag-demo --group lag-demo-group --max-messages 100
-kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group lag-demo-group
+kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic demo-topic
+kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group demo-group
 ```
 
-### 예상 관찰 결과
+PASS는 partition별 current offset, log end offset, lag를 구분해 보는 것입니다. FAIL은 lag를 곧바로 consumer thread 부족으로 단정하는 것입니다. broker disk, partition skew, downstream processing이 모두 후보입니다.
 
-consumer가 100개만 읽고 멈추면 remaining offsets가 lag로 남습니다.
+## 7. Cassandra local 관찰
 
-### PASS 신호
+목적은 Cassandra node의 상태와 compaction/repair 관련 신호를 읽는 것입니다. 전제는 개인 local Cassandra cluster입니다.
 
-- partition별 current offset, log end offset, lag가 보입니다.
-- lag는 group별 상태임을 확인합니다.
-
-### FAIL 신호
-
-- lag를 topic 자체의 미처리 record 수로만 해석합니다. group마다 lag가 다릅니다.
-
-## 8. Kafka Local Experiment: partition ordering
-
-> Kafka ordering은 partition 안에서 성립합니다.
-> 같은 key가 같은 partition으로 가는지와 partition별 offset이 독립 증가하는지 확인합니다.
-
-### 목적
-
-keyed record의 partition assignment와 per-partition ordering을 관찰합니다.
-
-### 전제
-
-- Local Kafka cluster
-- console producer가 key parsing을 지원
-
-### 명령
+안전한 read-only 관찰:
 
 ```bash
-kafka-topics.sh --bootstrap-server localhost:9092 --create --topic key-demo --partitions 3 --replication-factor 1
-printf 'u1:a\nu1:b\nu2:c\nu1:d\n' | kafka-console-producer.sh \
-  --bootstrap-server localhost:9092 \
-  --topic key-demo \
-  --property parse.key=true \
-  --property key.separator=:
-kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic key-demo --from-beginning \
-  --property print.key=true --property print.partition=true --property print.offset=true --max-messages 4
-```
-
-### 예상 관찰 결과
-
-같은 key `u1` record가 같은 partition에 배치되는 것을 기대할 수 있습니다. partitioner 설정에 따라 결과는 달라질 수 있습니다.
-
-### PASS 신호
-
-- offset은 partition별로 증가합니다.
-
-### FAIL 신호
-
-- 전체 출력 순서를 topic-wide total order로 해석합니다.
-
-## 9. Cassandra Local Experiment: write/read trace
-
-> Cassandra read/write는 coordinator와 replica 사이의 메시지, consistency level, storage path를 거칩니다.
-> CQL tracing은 작은 query 하나가 내부에서 어떤 replica와 상호작용하는지 보여 줍니다.
-
-### 목적
-
-Consistency level과 tracing으로 coordinator path를 관찰합니다.
-
-### 전제
-
-- Local Cassandra cluster
-- `cqlsh`
-
-### 명령
-
-```sql
-CREATE KEYSPACE IF NOT EXISTS demo
-WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
-
-CREATE TABLE IF NOT EXISTS demo.users (
-  id text PRIMARY KEY,
-  status text
-);
-
-CONSISTENCY ONE;
-TRACING ON;
-INSERT INTO demo.users (id, status) VALUES ('u1', 'ACTIVE');
-SELECT * FROM demo.users WHERE id='u1';
-```
-
-### 예상 관찰 결과
-
-trace에 parsing, replica contact, read/write activity가 나타납니다.
-
-### PASS 신호
-
-- consistency level과 replica 수가 query path에 영향을 준다는 감각을 얻습니다.
-
-### FAIL 신호
-
-- single-node RF=1 실험으로 quorum/failure behavior까지 검증했다고 해석합니다.
-
-## 10. Cassandra Local Experiment: SSTable과 compaction 관찰
-
-> Cassandra의 write path는 memtable flush로 SSTable을 만들고, compaction은 SSTable을 병합합니다.
-> 이 실험은 LSM 구조의 흔적을 `nodetool`로 관찰하는 데 초점을 둡니다.
-
-### 목적
-
-flush와 compaction 관련 지표를 확인합니다.
-
-### 전제
-
-- Local Cassandra
-- 운영 data가 아닌 실험 keyspace
-
-### 명령
-
-```bash
-nodetool tablestats demo.users
-nodetool flush demo users
-nodetool tablestats demo.users
-nodetool compact demo users
+nodetool status
+nodetool tpstats
 nodetool compactionstats
 ```
 
-### 예상 관찰 결과
+`nodetool compact`는 정상 검증 명령이 아닙니다. local disposable cluster에서 compaction 효과를 일부러 관찰할 때만 opt-in으로 실행합니다. shared cluster나 production에서 실행하면 disk I/O를 크게 만들 수 있습니다.
 
-SSTable count, disk space, compaction 상태가 변할 수 있습니다.
+PASS는 pending compaction, thread pool pending/blocked, node status를 읽고 어떤 queue가 자라는지 말하는 것입니다. FAIL은 `compact`를 일반 점검 명령처럼 실행하는 것입니다.
 
-### PASS 신호
+## 8. Spark local 관찰
 
-- memtable flush와 SSTable/compaction 지표를 연결합니다.
+목적은 action이 job/stage/task로 나뉘고, shuffle이 stage boundary와 spill metric을 만든다는 점을 보는 것입니다.
 
-### FAIL 신호
-
-- production에서 무작정 `compact`를 실행합니다. 운영 compaction은 강한 I/O side effect가 있습니다.
-
-## 11. Spark Local Experiment: DAG, stage, shuffle
-
-> Spark action 하나는 DAG, stage, task로 쪼개집니다.
-> wide dependency가 있는 연산은 shuffle stage를 만들고 Spark UI에서 확인할 수 있습니다.
-
-### 목적
-
-local mode에서 shuffle이 stage 경계를 만드는지 관찰합니다.
-
-### 전제
-
-- Spark 설치
-- Java/Python version이 Spark 문서 요구와 맞음
-
-### 명령
+local mode 예시:
 
 ```bash
-pyspark --master local[2]
+spark-submit --master local[2] examples/src/main/python/wordcount.py /tmp/input.txt
 ```
 
-PySpark shell:
+실제 path는 설치 방식마다 다릅니다. Spark UI가 떠 있다면 `Jobs`, `Stages`, `Executors`, `SQL` 탭에서 task duration, shuffle read/write, spill, GC time을 봅니다.
 
-```python
-rdd = sc.parallelize([(i % 10, i) for i in range(100000)], 4)
-out = rdd.groupByKey().mapValues(lambda xs: sum(xs))
-out.collect()
-```
+PASS는 job -> stage -> task 계층과 shuffle metric을 구분하는 것입니다. FAIL은 local mode 결과를 cluster scheduling, remote shuffle, executor loss와 동일하게 해석하는 것입니다.
 
-브라우저:
+## 실험 후 기록할 것
+
+각 실험 뒤에는 다음 네 줄을 적습니다.
 
 ```text
-http://localhost:4040
+observed state:
+where it sits:
+what changed:
+what I must not overclaim:
 ```
 
-### 예상 관찰 결과
-
-Spark UI에서 job, stage, task, shuffle read/write가 보입니다.
-
-### PASS 신호
-
-- `groupByKey`가 shuffle을 만들고 stage가 나뉘는 것을 확인합니다.
-
-### FAIL 신호
-
-- local mode 결과를 cluster network shuffle 비용과 동일하게 해석합니다.
-
-## 12. Spark Local Experiment: cache와 recomputation
-
-> Spark cache는 성능 최적화이고, lineage는 recomputation 근거입니다.
-> cache하지 않은 RDD를 여러 action에서 쓰면 lineage가 반복 실행될 수 있습니다.
-
-### 목적
-
-cache 전후 action 시간이 달라질 수 있음을 확인합니다.
-
-### 전제
-
-- Spark local mode
-
-### 명령
-
-```python
-import time
-rdd = sc.parallelize(range(20_000_000), 4).map(lambda x: x * x)
-t = time.time(); rdd.count(); print("first", time.time() - t)
-t = time.time(); rdd.count(); print("second without cache", time.time() - t)
-cached = rdd.cache()
-t = time.time(); cached.count(); print("cache materialize", time.time() - t)
-t = time.time(); cached.count(); print("second with cache", time.time() - t)
-```
-
-### 예상 관찰 결과
-
-cache materialization 이후 반복 action이 빨라질 수 있습니다.
-
-### PASS 신호
-
-- cache는 action에서 실제 materialize되며, memory에 들어가는 범위에서 재사용 이점이 보입니다.
-
-### FAIL 신호
-
-- cache가 항상 빠르다고 결론 냅니다. memory 부족, serialization, eviction, GC가 있으면 다를 수 있습니다.
-
-## 13. Reality Scenario: Linux page cache 때문에 durable write가 헷갈린다
-
-> 빠른 write latency는 durable write 증거가 아닙니다.
-> Kafka/Cassandra 같은 system은 이 경계를 replication, commit log, fsync policy와 함께 다룹니다.
-
-1. 관측된 증상
-
-    write latency는 낮지만 crash 후 일부 data가 기대와 다르게 복구됩니다.
-
-2. 가능한 원인 후보
-
-    page cache writeback 전 crash, fsync policy, storage cache, app-level ack 위치, replica ack 오해.
-
-3. OS/kernel 관점에서 볼 지점
-
-    syscall trace, fsync 호출 여부, writeback, disk flush behavior.
-
-4. distributed-system 관점에서 볼 지점
-
-    quorum/replication ack가 어떤 failure model을 막는지 봅니다.
-
-5. 시스템 내부 구조와 연결되는 지점
-
-    Kafka broker log append and replication, Cassandra commit log sync, Spark checkpoint storage.
-
-6. 확인 명령 또는 로그
-
-    `strace -e trace=write,fsync`, broker/database config, application ack log.
-
-7. 잘못된 결론의 예
-
-    "`write()`가 성공했으니 storage는 안전하다."
-
-8. 더 나은 추론 과정
-
-    ack가 user/kernel/device/replica 중 어느 boundary 뒤에 찍혔는지 확인합니다.
-
-## 14. Reality Scenario: JVM GC, memory pressure, disk saturation이 분산 증상으로 보인다
-
-> JVM pause와 OS resource pressure는 distributed failure detector 입장에서는 느린 node처럼 보일 수 있습니다.
-> 제품 metric과 OS/JVM metric을 시간순으로 맞춰 봐야 합니다.
-
-1. 관측된 증상
-
-    Kafka consumer rebalance, Cassandra timeout, Spark executor lost가 같은 시간대에 발생합니다.
-
-2. 가능한 원인 후보
-
-    GC pause, disk saturation, memory pressure, network retransmission, node overload.
-
-3. OS/kernel 관점에서 볼 지점
-
-    `vmstat`, `iostat`, process RSS, swap, socket queue.
-
-4. distributed-system 관점에서 볼 지점
-
-    heartbeat timeout, group rebalance, failure detector conviction, task retry.
-
-5. 시스템 내부 구조와 연결되는 지점
-
-    Kafka group coordinator, Cassandra gossip/failure detector, Spark executor heartbeat.
-
-6. 확인 명령 또는 로그
-
-    GC logs, `jcmd Thread.print`, product coordinator logs, OS metrics.
-
-7. 잘못된 결론의 예
-
-    "세 시스템이 각각 독립적으로 장애가 났다."
-
-8. 더 나은 추론 과정
-
-    같은 host/time window에서 resource pressure가 먼저 시작됐는지 확인하고, distributed symptom이 그 결과인지 분리합니다.
-
-## Active Recall
-
-1. `write()`와 `fsync()`를 syscall trace에서 각각 어떻게 찾을 수 있나요?
-2. page cache 실험에서 두 번째 read가 빠르지 않아도 page cache 설명이 틀렸다고 단정하면 안 되는 이유는 무엇인가요?
-3. `vmstat`, `iostat`, `ss`, `jcmd`가 각각 어느 계층의 queue나 state를 보여 주나요?
-4. Kafka consumer lag 실험에서 lag가 topic 전체 상태가 아니라 group별 상태인 이유는 무엇인가요?
-5. Cassandra `nodetool compact`를 운영 cluster에서 함부로 실행하면 왜 위험한가요?
-6. Spark UI에서 shuffle bottleneck을 볼 때 stage 평균만 보면 왜 부족한가요?
-
-## 근거와 더 읽을 자료
-
-- [01_os_kernel_foundations.md](01_os_kernel_foundations.md)
-- [02_distributed_system_foundations.md](02_distributed_system_foundations.md)
-- [03_kafka_deep_dive.md](03_kafka_deep_dive.md)
-- [04_cassandra_deep_dive.md](04_cassandra_deep_dive.md)
-- [05_spark_deep_dive.md](05_spark_deep_dive.md)
-- [10_source_ledger.md](10_source_ledger.md)
+예를 들어 `write()` 실험 뒤에는 `observed state: write and fsync syscalls`, `where it sits: process -> kernel syscall boundary`, `what changed: file bytes accepted then fd sync requested`, `what I must not overclaim: write alone proves durable storage`처럼 씁니다.
