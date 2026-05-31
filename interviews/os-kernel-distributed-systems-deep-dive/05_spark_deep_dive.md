@@ -210,3 +210,201 @@ container에서 executor를 실행한다면 [01e_concurrency_isolation_observabi
 - Apache Spark RDD programming guide: partition, transformation/action, shuffle, persistence.
 - Apache Spark tuning guide: serialization, memory management, GC, parallelism.
 - Spark RDD paper: lineage-based fault tolerance.
+
+## Driver, executor, task를 OS process와 thread로 다시 보기
+
+Spark application은 driver와 executor로 구성됩니다. Driver는 user program의 control flow를 실행하고 job, stage, task를 만들며 cluster manager와 통신합니다. Executor는 worker node에서 task를 실행하고 data를 cache하거나 shuffle block을 저장합니다. 이 구조를 Spark 용어로만 보면 추상적이지만, OS 관점으로 보면 driver와 executor는 process이고, executor 안의 task는 thread pool 위에서 실행되는 work item입니다.
+
+```
+driver process
+  -> builds logical/physical plan
+  -> submits jobs and stages
+  -> tracks task attempts and executor heartbeats
+
+executor process
+  -> JVM heap/off-heap/thread stacks
+  -> task threads
+  -> shuffle files and cache blocks
+  -> network connections to driver and other executors
+```
+
+Driver가 느리면 scheduling delay가 생기고, executor heartbeat를 제때 처리하지 못하면 executor loss로 오판할 수 있습니다. Executor가 느리면 task가 길어지고, shuffle block을 늦게 제공하고, heartbeat가 지연됩니다. Cluster manager는 resource allocation과 process lifecycle을 담당하지만, task 내부의 CPU, memory, disk, network 경쟁은 OS와 JVM 위에서 일어납니다. 따라서 Spark tuning은 Spark config만의 문제가 아니라 process scheduling, memory accounting, local disk, network socket, cgroup boundary와 연결됩니다.
+
+## Lazy evaluation과 stage boundary는 lineage를 실행 가능한 조각으로 자른다
+
+Spark transformation은 즉시 실행되지 않고 lineage graph를 만듭니다. Action이 호출되면 Spark는 필요한 computation graph를 job으로 만들고, shuffle이 필요한 wide dependency를 기준으로 stage를 나눕니다. Narrow dependency는 parent partition 하나 또는 소수에서 child partition을 만들 수 있어 pipeline으로 이어질 수 있습니다. Wide dependency는 data를 key 기준으로 다시 나누어 shuffle을 만들고 stage boundary가 됩니다.
+
+```
+read input
+  -> map
+  -> filter
+  -> reduceByKey
+  -> write output
+
+stage 1
+  read/map/filter
+  -> shuffle write
+
+stage 2
+  shuffle read
+  -> reduce/write
+```
+
+이 구조는 recovery와도 연결됩니다. 어떤 partition이 실패하면 lineage를 따라 필요한 parent partition을 다시 계산할 수 있습니다. 하지만 lineage가 너무 길거나 source가 비결정적이거나 shuffle output이 사라지면 재계산 비용이 커집니다. Checkpoint는 lineage를 끊고 안정된 storage에 중간 상태를 남깁니다. Cache/persist는 반복 계산을 줄이지만 executor memory를 사용하고 eviction될 수 있습니다. "Spark는 memory computation이라 빠르다"가 아니라, "계산 graph와 materialization boundary를 선택해 재계산, memory, disk I/O를 조절한다"가 더 정확합니다.
+
+## Shuffle은 network가 아니라 disk, memory, serialization, skew가 만나는 지점이다
+
+Shuffle은 data를 partition 사이에서 재분배하는 과정입니다. Map-side task는 shuffle data를 local disk에 쓰고, reduce-side task는 필요한 block을 여러 executor에서 fetch합니다. 이때 serialization, compression, spill, file consolidation, network fetch, disk read/write, memory buffer가 모두 관여합니다. 그래서 shuffle이 느리다는 말은 "네트워크가 느리다"로 끝나지 않습니다.
+
+```
+map task
+  -> builds shuffle buffers
+  -> spills to local disk if memory pressure
+  -> writes shuffle files and index
+
+reduce task
+  -> fetches remote/local blocks
+  -> stores buffers in memory or spills
+  -> merges and aggregates
+```
+
+Skew는 특정 key나 partition에 data가 몰리는 현상입니다. 평균 partition size가 좋아 보여도 한 partition이 매우 크면 그 task가 stage 전체를 붙잡습니다. Executor를 더 늘려도 single hot partition은 한 task가 처리해야 할 수 있습니다. 해결은 salting, repartitioning, skew join optimization, broadcast join, data modeling 조정 등 workload에 따라 달라집니다. 단순히 executor 수를 늘리는 것은 병렬화 가능한 조각이 충분할 때만 효과가 있습니다.
+
+Shuffle file은 OS local filesystem과 page cache, disk queue를 사용합니다. Executor가 container 안에서 실행되면 local directory가 ephemeral storage인지, network volume인지, SSD인지, quota가 있는지에 따라 성능과 안정성이 달라집니다. Disk full은 stage failure로 올라오고, slow disk는 fetch wait와 task runtime으로 올라옵니다. Page cache가 충분하면 repeated read에 도움이 될 수 있지만, executor heap을 너무 크게 잡으면 OS cache 여유가 줄 수 있습니다.
+
+## Executor memory는 heap 하나가 아니라 여러 영역이다
+
+Spark executor memory를 볼 때 `spark.executor.memory`만 보면 부족합니다. Execution memory는 shuffle, join, aggregation 같은 계산 중간 구조에 쓰이고, storage memory는 cache/persist된 block에 쓰입니다. Unified memory manager는 이 둘 사이를 조절합니다. 그 밖에 off-heap memory, direct buffer, serializer buffer, Python worker memory, JVM metaspace, thread stack, code cache, OS page cache, container overhead가 있습니다.
+
+```
+executor container limit
+  -> JVM heap
+     -> execution memory
+     -> storage memory
+     -> user objects
+  -> memory overhead
+     -> off-heap/direct buffers
+     -> Python worker/native memory
+     -> thread stacks/metaspace
+  -> local disk page cache and kernel memory
+```
+
+Executor heap을 늘리면 spill이 줄 수 있지만 GC pause가 늘고 page cache가 줄 수 있습니다. Heap을 줄이면 GC는 가벼워질 수 있지만 spill이 늘어 disk I/O가 커질 수 있습니다. Off-heap을 켜면 GC pressure를 줄일 수 있지만 cgroup memory와 native allocation을 더 잘 관측해야 합니다. PySpark는 Python worker process memory를 별도로 고려해야 합니다. Container OOM kill은 JVM heap exception과 다르게 process가 갑자기 사라질 수 있습니다.
+
+Spark UI에서 memory spill과 disk spill, GC time, executor lost reason, task deserialization time, shuffle read blocked time을 함께 봐야 합니다. OS에서는 cgroup memory events, disk I/O, network socket, GC logs, executor process RSS를 봅니다. "메모리를 늘렸는데 더 느려졌다"는 질문은 이 tradeoff를 이해하고 있을 때만 답할 수 있습니다.
+
+## Structured Streaming은 offset, state, sink commit이 함께 안전해야 한다
+
+Structured Streaming은 source에서 data를 읽고, stateful operator를 처리하고, sink에 결과를 씁니다. 장애 뒤 정확한 재시작을 하려면 checkpoint에 source offset, state store, progress metadata가 남아야 합니다. 하지만 sink side effect가 idempotent하지 않거나 transaction boundary가 맞지 않으면 중복 output이 생길 수 있습니다. Kafka source와 Kafka sink를 쓰는 경우와 외부 DB나 object storage sink를 쓰는 경우의 보장이 다릅니다.
+
+```
+micro-batch
+  -> read source offsets [a, b)
+  -> update state store
+  -> write sink output
+  -> record progress in checkpoint
+
+crash between sink write and checkpoint
+  -> restart may reprocess batch
+  -> sink must handle duplicate or commit protocol must prevent it
+```
+
+Checkpoint는 단순한 임시 파일이 아닙니다. Streaming query identity와 recovery boundary입니다. Checkpoint directory를 지우면 query는 과거 진행 상태를 잃습니다. Object storage 위 checkpoint는 listing/rename/commit semantics와 latency를 고려해야 합니다. State store가 커지면 memory와 local disk, checkpoint I/O가 늘고, watermark와 state eviction 정책이 중요해집니다.
+
+## Scheduler delay, straggler, speculative execution
+
+Spark UI에서 task time을 볼 때 scheduler delay, task deserialization, executor run time, GC time, result serialization, getting result time 같은 항목을 나눠 봐야 합니다. Scheduler delay가 크면 resource 부족, task locality wait, driver bottleneck, executor launch delay를 의심합니다. Executor run time이 길면 skew, CPU, I/O, GC, remote fetch를 봅니다. GC time이 크면 object allocation과 memory layout을 봅니다.
+
+Straggler는 일부 task가 다른 task보다 훨씬 늦는 현상입니다. 원인은 data skew, bad executor, slow disk, network congestion, GC, noisy neighbor, node-level throttling 등 다양합니다. Speculative execution은 느린 task의 복제본을 다른 executor에서 실행해 먼저 끝나는 것을 사용하려는 방법입니다. 하지만 side effect가 있는 task나 shuffle/storage pressure가 큰 workload에서는 추가 load를 만들 수 있습니다. 느린 이유를 모른 채 speculation을 켜면 cluster를 더 바쁘게 만들 수 있습니다.
+
+```
+stage has 100 tasks
+  -> 99 tasks finish in 20s
+  -> 1 task runs for 5min
+  -> job waits for the last task
+
+possible causes
+  skewed partition
+  executor GC
+  slow disk
+  network fetch wait
+  CPU throttling
+```
+
+## OS와 Spark UI를 함께 읽는 map
+
+Spark UI는 Spark 내부의 job/stage/task 관측을 제공합니다. 하지만 OS 자원 원인을 직접 확정하지는 않습니다. Shuffle read blocked time이 높으면 network fetch와 remote executor, local disk, connection pool을 봅니다. Disk spill이 크면 executor memory와 aggregation/join strategy, local disk 성능을 봅니다. GC time이 높으면 object allocation, serializer, cache format, heap size를 봅니다. Executor lost가 OOM이면 cgroup memory와 overhead를 봅니다.
+
+```
+Spark symptom
+  high scheduler delay
+    -> driver/cluster resource/locality
+
+  high shuffle read wait
+    -> network, remote block, disk, skew
+
+  high spill
+    -> memory pressure, aggregation/join, partition size
+
+  executor lost
+    -> OOM, heartbeat timeout, node/preemption, disk failure
+```
+
+Kafka와 Cassandra와 비교하면 Spark는 long-running storage service라기보다 distributed compute runtime입니다. 하지만 OS 자원은 똑같이 중요합니다. Executor는 process이고, task는 thread이며, shuffle file은 filesystem과 disk를 쓰고, network fetch는 TCP와 socket buffer를 지납니다. Driver와 executor 사이의 heartbeat도 partial failure와 timeout 불확실성을 갖습니다.
+
+## Interview replay: Spark를 계산 graph와 OS resource로 설명하기
+
+Spark를 짧게 설명하면 "driver가 lazy transformation graph를 action 시점에 job/stage/task로 나누고, executor가 partition 단위 task를 실행하며, wide dependency에서 shuffle을 통해 data를 재분배하는 분산 계산 엔진"입니다. OS와 연결하면 "executor는 JVM process이고 task는 thread pool 위에서 CPU, heap/off-heap memory, local disk spill, TCP shuffle fetch, cgroup limit을 공유한다"가 됩니다.
+
+꼬리 질문에는 네 경계로 답합니다. Lineage는 재계산 경로이고 checkpoint는 재시작 기준점입니다. Cache/persist는 반복 계산을 줄이지만 memory와 eviction 문제를 만듭니다. Shuffle은 network뿐 아니라 disk, serialization, memory, skew입니다. Structured Streaming은 source offset, state checkpoint, sink idempotency가 함께 맞아야 안전합니다. 이 경계를 말할 수 있으면 Spark를 "빠른 빅데이터 도구"가 아니라 OS와 분산 recovery 위에 올라간 runtime으로 설명할 수 있습니다.
+
+## Data locality와 remote fetch는 scheduler 판단을 바꾼다
+
+Spark scheduler는 task를 아무 executor에나 던지지 않습니다. Input data가 있는 곳, cached block이 있는 곳, executor availability, locality wait 같은 요소를 고려합니다. Data locality가 맞으면 network transfer를 줄일 수 있지만, locality를 너무 오래 기다리면 cluster resource가 놀 수 있습니다. Locality wait은 "가까운 data를 기다릴 것인가, 멀리서 가져오더라도 지금 실행할 것인가"의 tradeoff입니다.
+
+```
+task needs partition P
+  -> executor E1 has cached block
+  -> E1 busy
+  -> wait for locality?
+  -> or launch on E2 and fetch remotely?
+```
+
+이 질문은 OS scheduler와 닮았습니다. 둘 다 locality와 utilization 사이를 고릅니다. CPU scheduler는 cache locality와 CPU 사용률을 조절하고, Spark scheduler는 data locality와 cluster utilization을 조절합니다. Kafka partition leader placement나 Cassandra token range ownership도 비슷한 질문을 갖습니다. "어디서 실행할 것인가"는 항상 data movement와 queue waiting을 동시에 만듭니다.
+
+## External sink와 side effect는 task retry와 충돌한다
+
+Spark task는 실패하면 재시도될 수 있습니다. Speculative execution이 켜져 있으면 느린 task의 복제본이 동시에 실행될 수 있습니다. 이때 task 안에서 외부 DB update, HTTP call, file append 같은 side effect를 직접 수행하면 중복이 생길 수 있습니다. Spark가 RDD/DataFrame lineage를 재계산할 수 있다는 것은 순수 계산에 강하다는 뜻이지, 외부 세계의 side effect를 자동으로 되돌린다는 뜻이 아닙니다.
+
+```
+task attempt 1
+  -> writes row to external DB
+  -> executor dies before Spark records success
+
+task attempt 2
+  -> writes same row again
+
+safe only if
+  -> idempotent key
+  -> transaction/commit protocol
+  -> exactly-once capable sink boundary
+```
+
+Structured Streaming에서도 같은 문제가 batch 단위로 나타납니다. Source offset을 다시 읽을 수 있고 state checkpoint가 있어도 sink가 중복 write를 허용하지 않으면 결과가 깨질 수 있습니다. 그래서 foreachBatch나 custom sink를 쓸 때 idempotency key, batch id, transaction, merge/upsert semantics를 명시해야 합니다.
+
+## Spark와 운영체제의 마지막 연결
+
+Spark는 분산 계산 엔진이지만, 실제 병목은 매우 OS적입니다. Driver는 process이고 executor도 process입니다. Task는 thread에서 실행됩니다. Shuffle은 TCP socket과 local disk file입니다. Cache는 heap/off-heap memory입니다. Spill은 filesystem과 page cache를 씁니다. Heartbeat와 fetch timeout은 partial failure의 관측입니다. Container 안에서는 cgroup CPU/memory limit이 executor behavior를 바꿉니다.
+
+```
+Spark symptom
+  slow stage
+  -> skew or scheduler delay?
+  -> executor CPU/GC?
+  -> shuffle network?
+  -> local disk spill?
+  -> cgroup throttle/OOM?
+  -> lost executor and recomputation?
+```
+
+이 흐름을 말할 수 있으면 Spark tuning이 설정 표 암기가 아니라 trace가 됩니다. Input partition이 task가 되고, task가 thread에서 실행되고, shuffle이 disk와 network를 지나고, checkpoint가 recovery boundary가 되며, sink idempotency가 외부 correctness를 닫습니다. Spark를 OS와 분산 시스템의 bridge로 읽는 이유가 여기에 있습니다.

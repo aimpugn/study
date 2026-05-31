@@ -42,7 +42,7 @@
 | SSTable | Cassandra가 memtable을 disk에 flush해 만든 immutable sorted file | commit log | 04 | SSTable은 read 대상 data file이고 commit log는 crash recovery용 append log입니다. |
 | tombstone | Cassandra delete를 표시하는 marker | 즉시 물리 삭제 | 04 | tombstone은 compaction 전까지 read 비용과 resurrection 위험에 영향을 줄 수 있습니다. |
 | compaction | 여러 SSTable을 읽어 merge하고 새 SSTable을 만드는 background 작업 | compression | 04 | compaction은 read amplification을 줄이지만 disk I/O와 write amplification을 만듭니다. |
-| hinted handoff | 잠시 unavailable한 replica에 나중에 전달할 hint를 저장하는 장치 | repair 보장 | 04 | hints는 best-effort이며 anti-entropy repair를 대체하지 않습니다. |
+| hinted handoff | 잠시 unavailable한 replica에 이후 전달할 hint를 저장하는 장치 | repair 보장 | 04 | hints는 best-effort이며 anti-entropy repair를 대체하지 않습니다. |
 | lineage | Spark partition을 다시 계산할 수 있게 transformation graph를 기억한 것 | checkpoint | 05 | lineage는 재계산 계획이고 checkpoint는 중간 결과를 stable storage에 남기는 기준점입니다. |
 | driver | Spark application을 조율하고 job/stage/task를 scheduling하는 process | executor | 05 | driver는 단순 client가 아니라 scheduling과 metadata의 중심입니다. |
 | executor | Spark task를 실행하고 data를 memory/disk에 보관하는 worker process | worker node | 05 | executor는 node 전체가 아니라 application별로 뜨는 process입니다. |

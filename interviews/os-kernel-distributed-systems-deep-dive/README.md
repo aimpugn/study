@@ -4,6 +4,8 @@
 
 첫 번째 기준은 self-contained입니다. 다른 문서를 이미 읽었다고 가정하지 않습니다. 같은 개념이 앞뒤에서 다시 나오더라도, 그 문서 안에서 필요한 만큼 다시 설명합니다. 두 번째 기준은 prose-first입니다. `질문/직관/깨지는 지점` 같은 내부 작성 체크리스트를 본문 목차로 반복하지 않고, 독자가 읽는 순서대로 원인, 역사, 작은 상태, 내부 경로, 깨지는 지점, 확인 방법이 자연스럽게 이어지게 씁니다.
 
+이번 확장판에서 `01`부터 `08`까지의 substantive 문서는 모두 20,000자 이상의 장문 학습 문서입니다. 다만 문자 수는 하한일 뿐입니다. 각 문서는 최소 하나 이상의 실제 상태 이동 trace를 중심으로 OS 객체, 분산 상태, 제품 내부 queue/log/buffer를 연결하고, 관측 경로와 과장하면 안 되는 지점을 함께 남깁니다.
+
 ## 읽는 순서
 
 1. [00_index_and_learning_path.md](00_index_and_learning_path.md)에서 전체 지도를 잡습니다.
@@ -25,3 +27,5 @@
 - 장애 질문이 오면 어떤 상태가 어디에 기록되었고, 실패 후 어디서 다시 시작할 수 있는지 어떻게 추론하는가?
 
 `audit/claim_review.md`는 이 코퍼스 자체에 대한 검수 기록입니다. 학습 본문이 아니라, 어떤 claim이 어떤 공격을 받았고 어떤 수리를 거쳐 살아남았는지 추적하기 위한 장부입니다.
+
+OS 교과서 주제군은 chapter-by-chapter 요약이 아니라 topic-family coverage로 반영했습니다. OSTEP의 virtualization/concurrency/persistence/security 축, CSAPP의 exceptional control flow/virtual memory/system I/O/network/concurrency 축, OSPP와 공룡책 계열의 process/thread/scheduling/synchronization/deadlock/memory/storage/I/O/filesystem/protection/security/virtualization 관점을 Linux man-pages, kernel docs, 공식 제품 문서, 논문 근거로 다시 썼습니다.

@@ -128,3 +128,182 @@ incoming request
 ```
 
 이 흐름을 말할 수 있으면 "CPU는 낮은데 p99가 높다"는 질문을 감으로 답하지 않고, run queue, off-CPU wait, lock, I/O, GC, downstream queue로 나눠 볼 수 있습니다.
+
+## 스케줄링 정책은 공정함, 응답성, 처리량 사이의 선택이다
+
+스케줄링 알고리즘을 외울 때 흔히 round-robin, priority, multilevel feedback queue 같은 이름부터 잡습니다. 하지만 면접이나 운영 상황에서는 이름보다 선택 기준이 먼저입니다. 어떤 정책은 모든 runnable task에게 비슷한 기회를 주려 하고, 어떤 정책은 interactive task의 짧은 응답을 우선하며, 어떤 정책은 batch throughput을 우선합니다. 서버 workload에서는 평균 처리량뿐 아니라 tail latency도 중요합니다. 하나의 정책이 모든 목표를 동시에 만족시키지는 못합니다.
+
+Round-robin은 task를 돌아가며 일정 시간씩 실행하는 단순한 모델입니다. Time slice가 너무 짧으면 context switch가 잦아지고 cache locality가 깨집니다. 너무 길면 한 task가 CPU를 오래 잡아 interactive responsiveness가 나빠집니다. Priority scheduling은 중요한 task를 먼저 실행할 수 있지만, 낮은 priority task가 계속 밀리는 starvation을 만들 수 있습니다. Multilevel feedback queue는 자주 잠드는 interactive task와 CPU를 오래 쓰는 batch task를 다르게 보며, task의 최근 행동을 기준으로 queue를 이동시켜 응답성과 처리량을 절충하려 합니다.
+
+현대 Linux의 일반 task scheduling은 단순 round-robin으로 설명하기 어렵습니다. CFS 계열의 핵심 사고는 task가 자기 weight에 맞게 공정한 CPU 시간을 받도록 실행 시간을 accounting하는 것입니다. 여기서 weight, nice value, cgroup CPU share, runnable time, wakeup placement, CPU affinity가 함께 작동합니다. Real-time scheduling class는 또 다른 규칙을 갖습니다. 그러니 "리눅스 scheduler는 round-robin인가요?"라는 질문에는 "일반 task에는 단순 round-robin보다 공정한 CPU 시간 배분에 가까운 모델을 쓴다. 다만 scheduling class와 cgroup 설정에 따라 달라진다"라고 답하는 것이 안전합니다.
+
+```
+two CPU-bound tasks, same weight
+  A runs and accumulates virtual runtime
+  B has smaller virtual runtime
+  scheduler tends to pick B
+
+one interactive task
+  sleeps on I/O
+  wakes up after event
+  should not wait behind a long CPU hog forever
+```
+
+이 설명이 제품으로 내려오면 thread pool size와 연결됩니다. Kafka request handler를 늘리면 동시에 처리할 수 있는 request 수는 늘 수 있지만, CPU-bound 구간에서는 runnable 경쟁이 커집니다. Cassandra compaction thread를 늘리면 backlog가 줄 수 있지만, foreground read/write가 disk와 CPU를 더 많이 기다릴 수 있습니다. Spark executor core 수를 늘리면 task parallelism은 커지지만, shuffle spill, serialization, GC, remote fetch가 같이 늘 수 있습니다. 스케줄러는 thread 수를 무한히 흡수하는 기계가 아니라, 제한된 CPU 시간을 어떤 runnable 흐름에 줄지 결정하는 마지막 중재자입니다.
+
+## Context switch 비용은 register 저장보다 넓다
+
+Context switch를 "현재 register를 저장하고 다음 register를 복원한다"로만 외우면 비용을 작게 봅니다. 물론 직접 비용으로 register, program counter, stack pointer, kernel bookkeeping을 바꾸는 일이 있습니다. 하지만 실제 비용은 간접 효과까지 포함합니다. 다른 process로 바뀌면 주소 공간이 달라지고, TLB entry가 무효화되거나 새 주소 공간에 맞게 바뀌어야 할 수 있습니다. 같은 CPU cache에 남아 있던 data가 다른 task의 data로 밀려나면, 원래 task가 돌아왔을 때 cache miss가 늘어납니다.
+
+```
+Task A works on hot data
+  -> cache lines for A are warm
+  -> scheduler switches to Task B
+  -> B touches different data
+  -> A resumes
+  -> A's hot data may no longer be in cache
+```
+
+Thread가 많으면 동시에 기다릴 수 있는 작업은 늘지만, context switch와 cache disruption도 늘어납니다. 특히 짧은 CPU 작업과 짧은 blocking 작업이 너무 많은 thread에서 교차하면 scheduler는 바쁘고 실제 useful work는 줄 수 있습니다. Event-loop 기반 서버가 적은 수의 thread로 많은 connection을 다루려는 이유도 여기 있습니다. 모든 request를 thread 하나에 영구히 묶는 대신, readiness notification과 non-blocking I/O로 "지금 실제로 할 일이 있는 fd"만 처리하면 thread 수와 context switch를 줄일 수 있습니다.
+
+반대로 thread-per-request 모델이 항상 나쁜 것도 아닙니다. 코드가 단순하고 blocking I/O가 많으며 thread 수가 bounded되어 있고 kernel scheduler가 충분히 잘 처리하는 workload에서는 좋은 선택일 수 있습니다. 핵심은 모델 자체를 선악으로 나누는 것이 아니라, "현재 workload의 대기 지점이 어디이며 thread 수가 그 대기를 감추는가, 아니면 새로운 contention을 만드는가"를 보는 것입니다.
+
+## Priority inversion, starvation, livelock은 서버에서도 일어난다
+
+우선순위 역전(priority inversion)은 낮은 priority task가 lock을 쥐고 있고 높은 priority task가 그 lock을 기다리는데, 중간 priority task들이 CPU를 계속 받아 lock holder가 실행될 기회를 얻지 못하는 상황입니다. 실시간 시스템의 고전 사례로 자주 배우지만, 백엔드 서버에서도 같은 모양이 나타납니다. Background maintenance thread가 metadata lock을 오래 잡고 있고 request thread가 그 lock을 기다리는데, 다른 CPU worker가 계속 실행되면 중요한 요청은 낮은 priority 작업 하나 때문에 밀립니다.
+
+```
+background thread
+  -> holds shared lock
+  -> needs CPU to finish and release lock
+
+request thread
+  -> waits for that lock
+
+other workers
+  -> consume CPU
+  -> background thread releases lock late
+  -> user-visible latency grows
+```
+
+Starvation은 어떤 작업이 계속 자원을 받지 못하는 상태입니다. CPU뿐 아니라 lock, disk queue, connection pool, partition queue에서도 생깁니다. Livelock은 모두가 계속 움직이지만 유용한 진전이 거의 없는 상태입니다. 과한 retry가 대표적입니다. 요청이 timeout되고, client가 즉시 재시도하고, 서버는 원래 요청과 재시도를 모두 처리하려다 더 느려지고, timeout이 더 늘어나는 흐름은 시스템이 바쁘게 움직이지만 성공률을 낮춥니다.
+
+이런 문제를 줄이는 방법은 하나가 아닙니다. Priority inheritance는 lock을 가진 낮은 priority task가 높은 priority task를 막고 있을 때 일시적으로 priority를 올려 주는 방식입니다. Lock hold time을 줄이고, lock을 shard하거나, background job의 concurrency와 I/O rate를 제한하고, queue에 backpressure를 걸고, retry에 exponential backoff와 jitter를 넣는 것도 해결책입니다. Kafka log cleaner, Cassandra compaction, Spark shuffle service 같은 background path는 "남는 시간에만 도는 일"이 아니라 foreground request와 같은 CPU, disk, memory, network를 공유하는 참가자입니다.
+
+## Scheduler 관측은 on-CPU와 off-CPU를 나눠야 한다
+
+프로파일링을 할 때 CPU flame graph만 보면 CPU에서 실행된 시간만 보입니다. 하지만 tail latency의 큰 부분은 CPU 밖에서 기다린 시간일 수 있습니다. Off-CPU profiling은 thread가 실행되지 못한 시간을 봅니다. 왜 sleep했는지, futex wait였는지, disk I/O wait였는지, network read였는지, scheduler delay였는지 분리하면 "코드가 느리다"와 "코드가 기다린다"를 구분할 수 있습니다.
+
+Linux에서는 `perf sched`, eBPF 기반 off-CPU trace, `/proc/schedstat`, `pidstat -w`, `vmstat`의 run queue와 context switch 같은 지표가 도움이 됩니다. JVM에서는 async-profiler의 wall-clock/off-CPU 모드, Java Flight Recorder, thread dump를 함께 볼 수 있습니다. `RUNNABLE` thread가 CPU에서 burning 중인지, native syscall 안에서 기다리는지, safepoint에 묶였는지는 단일 도구로 닫히지 않을 수 있습니다.
+
+```
+high p99 latency
+  -> CPU profile shows little user code time
+  -> thread dump shows many runnable/native frames
+  -> off-CPU trace shows futex wait and disk wait
+  -> fix target moves from algorithm to lock/I/O/backpressure
+```
+
+이 관측 방식은 면접에서도 좋은 답변이 됩니다. "CPU 사용률이 낮은데 latency가 높으면 무엇을 보겠습니까?"라는 질문에는 "CPU가 남는지보다 request thread가 어디서 시간을 보냈는지 보겠습니다. On-CPU time, run queue delay, lock/futex wait, disk/network I/O wait, GC pause, cgroup throttling을 분리하겠습니다"라고 답할 수 있습니다.
+
+## cgroup CPU quota와 container scheduling
+
+컨테이너에서 CPU 문제가 헷갈리는 이유는 process가 보는 CPU와 실제 사용할 수 있는 CPU 시간이 다를 수 있기 때문입니다. cpuset은 사용할 수 있는 CPU 집합을 제한할 수 있고, CPU quota는 일정 period 안에서 사용할 수 있는 CPU 시간을 제한합니다. Host 전체 CPU가 여유로워도 container가 자기 quota를 다 쓰면 throttle될 수 있습니다. 이때 애플리케이션 안에서는 thread가 runnable인데 주기적으로 멈추는 것처럼 보일 수 있습니다.
+
+```
+cgroup period = 100 ms
+quota = 200 ms
+  -> container can use roughly 2 CPU cores worth of time per period
+  -> many runnable threads consume quota early
+  -> remaining period: throttled
+  -> request latency gets periodic spikes
+```
+
+Kafka broker를 container에 넣고 CPU quota를 낮게 잡으면 network thread, request handler, replica fetcher, log cleaner가 한 cgroup 안에서 quota를 나눠 씁니다. Cassandra에서는 compaction과 foreground read/write가 같은 quota를 태웁니다. Spark executor에서는 task slot 수가 cgroup quota보다 과하면 runnable task가 많아지고 throttling이 tail latency와 stage runtime으로 올라올 수 있습니다. 그래서 containerized workload에서는 OS scheduler뿐 아니라 cgroup accounting을 함께 봐야 합니다.
+
+관측은 `/sys/fs/cgroup`의 CPU stat, Kubernetes metrics, container runtime stats, application-level latency를 나란히 놓고 봅니다. CPU throttling count가 늘고 p99가 period 경계와 비슷한 리듬으로 튄다면, thread 수를 늘리는 해결은 반대 방향일 수 있습니다. CPU request/limit, executor core, Kafka thread pool, Cassandra concurrent settings를 같이 조정해야 합니다.
+
+## Interview replay: 요청 하나가 CPU를 기다리는 전체 문장
+
+이 장을 면접 답변으로 압축하면 다음 흐름이 됩니다. "요청이 들어오면 네트워크 stack이 socket buffer를 채우고, event loop나 worker thread가 깨어나 runnable 상태가 됩니다. 그 thread는 바로 실행되는 것이 아니라 scheduler가 CPU를 줄 때까지 run queue에서 기다릴 수 있습니다. 실행 중에는 사용자 코드 계산뿐 아니라 lock, futex, disk I/O, network I/O, GC, cgroup quota 때문에 다시 sleep하거나 throttled될 수 있습니다. 그래서 CPU 사용률과 latency를 직접 연결하지 않고, on-CPU time과 off-CPU wait를 나눠 봐야 합니다."
+
+이 답변에 꼬리 질문이 오면 다음 기준으로 내려가면 됩니다. Process는 주소 공간과 파일, credential, signal 상태 같은 자원 묶음입니다. Thread는 그 안에서 CPU에 올라가는 실행 흐름입니다. Scheduler는 runnable thread 사이에서 CPU 시간을 배분합니다. Blocking I/O나 futex wait는 thread를 runnable에서 빼고, wakeup event가 오면 다시 runnable로 올립니다. Context switch는 register보다 cache/TLB locality까지 흔듭니다. NUMA와 affinity는 "어느 CPU에서 실행되는가"와 "어느 memory를 주로 읽는가"를 연결합니다. 이 정도를 말하면 단어 암기가 아니라 실제 서버 흐름을 이해하고 있다는 신호가 됩니다.
+
+## Work stealing, queue ownership, partition affinity를 같이 보기
+
+OS scheduler는 CPU를 배분하지만, 많은 runtime과 제품은 그 위에 자기만의 queue와 scheduler를 또 만듭니다. Java executor, Netty event loop, Kafka request queue, Cassandra stage executor, Spark task scheduler는 모두 "할 일을 어떤 worker에게 줄 것인가"를 결정합니다. 이 계층을 OS scheduler와 분리해서 보면 절반만 보는 것입니다. User-space scheduler가 어떤 thread를 깨우고, OS scheduler가 그 thread에 언제 CPU를 주며, thread가 다시 어떤 queue에서 다음 일을 가져오는지가 이어져야 합니다.
+
+```
+product scheduler
+  -> chooses work item for worker thread
+  -> worker becomes runnable or stays busy
+
+OS scheduler
+  -> chooses runnable thread for CPU
+  -> CPU executes worker
+
+worker
+  -> touches partition/cache/socket/file
+  -> may block or enqueue downstream work
+```
+
+Work stealing은 idle worker가 다른 worker queue에서 일을 훔쳐 오는 방식입니다. 전체 처리량을 높일 수 있지만, cache locality와 partition ordering을 깨뜨릴 수 있습니다. Partition affinity는 특정 key, partition, shard의 일을 같은 worker에 배치해 locality와 ordering을 얻으려는 방식입니다. Kafka는 partition order와 request 처리 경로가 있고, Cassandra는 token range와 memtable/SSTable locality가 있으며, Spark는 partition별 task와 data locality가 있습니다. 일을 아무 worker에게나 주면 CPU utilization은 좋아 보일 수 있지만, cache miss, lock contention, ordering repair, remote fetch가 늘 수 있습니다.
+
+이 관점은 "thread pool을 늘릴까요?"라는 질문에 더 좋은 답을 줍니다. Queue가 CPU-bound work로 꽉 찼고 run queue도 길다면 thread를 늘려도 scheduler 경쟁만 늘 수 있습니다. Queue는 길지만 worker들이 disk I/O에서 자고 있다면 I/O parallelism과 device queue depth를 봐야 합니다. Queue가 특정 partition에만 몰리면 worker 수보다 partition skew와 routing을 봐야 합니다. Queue가 짧은데 latency가 길면 downstream wait나 lock을 봐야 합니다.
+
+## Time slice와 tail latency의 관계
+
+Time slice는 task가 한 번 CPU를 받았을 때 계속 실행될 수 있는 시간 감각입니다. 실제 Linux scheduling은 단순 고정 time slice만으로 설명되지 않지만, "짧게 번갈아 실행한다"는 비용은 여전히 중요합니다. Tail latency가 중요한 서버에서는 긴 CPU-bound 작업 하나가 event loop나 request thread를 밀어내는 순간 p99가 흔들립니다. 반대로 너무 잦은 preemption은 useful work보다 context switch와 cache miss를 늘립니다.
+
+```
+event loop thread should run briefly and often
+  -> read ready sockets
+  -> enqueue work
+  -> flush responses
+
+CPU-heavy task on same limited cores
+  -> event loop wakeup delayed
+  -> all connections see extra latency
+```
+
+Kafka broker에서 log cleaner나 compression이 CPU를 많이 쓰면 network thread의 wakeup이 늦어질 수 있습니다. Cassandra compaction은 disk뿐 아니라 CPU도 씁니다. Spark executor에서 serialization, compression, user-defined function이 CPU를 오래 쓰면 shuffle fetch나 heartbeat 처리도 늦어질 수 있습니다. 이때 해결은 단순히 "CPU를 더 준다"가 아닐 수 있습니다. Thread class를 분리하고, background concurrency를 줄이고, CPU quota를 조정하고, event loop가 맡는 일을 줄이는 식으로 scheduling surface를 정리해야 합니다.
+
+Tail latency를 볼 때는 평균 runnable wait보다 percentile을 봅니다. 대부분 request는 빠르지만 특정 순간 run queue가 burst로 길어지면 p99만 튈 수 있습니다. `runqlat` 같은 eBPF 도구나 scheduler trace는 runnable이 된 thread가 실제 CPU를 받기까지 기다린 시간을 보여 줄 수 있습니다. 이 값이 튀면 application 코드가 느린 것이 아니라 CPU scheduling delay가 request path에 섞인 것입니다.
+
+## Signal과 graceful shutdown은 scheduler와 lifecycle의 마지막 시험이다
+
+Process lifecycle의 끝도 scheduling과 관련됩니다. Service가 `SIGTERM`을 받으면 handler나 shutdown hook이 실행되어야 하고, 그 코드도 CPU를 받아야 합니다. 종료 deadline이 짧고 run queue가 길거나 GC pause가 겹치면 graceful shutdown이 마무리되기 전에 orchestrator가 `SIGKILL`을 보낼 수 있습니다. 그러면 log flush, offset commit, partition revoke, in-flight request drain이 중간에 끊길 수 있습니다.
+
+```
+orchestrator sends SIGTERM
+  -> process records pending signal
+  -> user handler or runtime hook runs
+  -> service stops accepting
+  -> drains in-flight work
+  -> flushes/commits necessary state
+  -> exits before grace period
+
+if deadline passes
+  -> SIGKILL
+  -> no user cleanup path
+```
+
+Kafka broker shutdown은 controller와 replica state, log flush, client connection close가 얽힙니다. Cassandra node drain은 memtable flush와 gossip state, coordinator behavior를 생각해야 합니다. Spark executor decommission은 running task와 shuffle block, driver heartbeat를 생각해야 합니다. OS signal은 시작일 뿐이고, 실제 안전한 종료는 product protocol과 scheduler가 함께 만들어야 합니다.
+
+## 문서를 덮고 실행해 볼 작은 관측
+
+Linux 환경이라면 간단한 CPU-bound loop와 sleep loop를 동시에 돌려 `pidstat -w`, `top -H`, `perf sched` 또는 eBPF run queue 도구로 차이를 볼 수 있습니다. CPU-bound thread는 runnable 상태로 CPU를 기다리고, sleep loop는 timer나 I/O event 전까지 runnable이 아닙니다. 같은 "느린 프로그램"이어도 하나는 CPU time 경쟁이고, 다른 하나는 wakeup과 wait의 문제입니다.
+
+```
+CPU-bound worker
+  -> high on-CPU time
+  -> run queue delay if cores are saturated
+
+sleeping/I/O worker
+  -> low CPU usage
+  -> elapsed time dominated by wait and wakeup
+```
+
+이 작은 실험을 제품에 옮기면, Kafka producer latency가 CPU saturation 때문인지 socket/disk wait 때문인지, Cassandra read latency가 compaction CPU 때문인지 SSTable read wait 때문인지, Spark stage delay가 task scheduling 때문인지 shuffle fetch wait 때문인지 구분하는 습관이 생깁니다. Scheduler 공부의 끝은 알고리즘 이름이 아니라, request의 시간을 on-CPU와 off-CPU, runnable wait와 blocked wait로 나눠 설명하는 능력입니다.
+
+마지막으로 한 문장을 더 붙이면, scheduler는 application 바깥의 블랙박스가 아닙니다. 애플리케이션이 thread 수, queue 구조, blocking call, retry, background job, CPU quota를 어떻게 설계하느냐가 scheduler에게 전달되는 입력을 바꿉니다. 좋은 백엔드 설계는 OS scheduler를 이기려 하지 않고, scheduler가 예측 가능한 작은 실행 단위와 bounded queue를 보도록 도와줍니다.

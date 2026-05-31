@@ -1,6 +1,6 @@
 # 10. Source Ledger
 
-확인 날짜: 2026-05-31
+확인 날짜: 2026-06-01
 
 이 문서는 참고문헌 목록이 아니라 claim-level 근거 장부입니다. 본문은 공식 문서와 논문을 그대로 요약한 문서가 아니며, 여기서는 어떤 설명이 직접 근거인지, 강한 추론인지, 일반 원리인지, 버전 확인이 필요한지 분리합니다.
 
@@ -44,6 +44,14 @@ Evidence tier:
 | Partial failure, logical time, and happens-before require reasoning beyond wall-clock timestamps. | Lamport paper https://lamport.org/pubs/time-clocks.pdf | Direct evidence | Wall-clock synchronized systems can add bounded-time assumptions, but not assumed here. |
 | Consensus is stronger than quorum response counting. | Raft paper https://raft.github.io/raft.pdf | Direct evidence | Raft is an explanatory consensus protocol, not every system's implementation. |
 | CAP is a partition-time impossibility result, not a complete product taxonomy. | Gilbert/Lynch CAP proof https://groups.csail.mit.edu/tds/papers/Gilbert/Brewer2.pdf and PACELC paper https://www.cs.umd.edu/~abadi/papers/abadi-pacelc.pdf | Direct evidence | Product behavior depends on operation, configuration, and failure mode. |
+| Executable loading and dynamic linking must be explained as OS/runtime startup boundaries rather than JVM magic. | Linux man-pages `execve(2)` https://man7.org/linux/man-pages/man2/execve.2.html and System V ABI/ELF references | Direct evidence + General principle | Exact executable format and ABI differ by OS/architecture. |
+| Dirty writeback, directory fsync, and crash consistency require filesystem/storage-specific caveats. | Linux man-pages `fsync(2)`, kernel filesystem docs, filesystem documentation | Direct evidence + Version-check-needed | Filesystem, mount option, device cache, and network filesystem semantics differ. |
+| Failure detectors and membership are suspicion mechanisms, not perfect crash detectors. | Cassandra architecture/gossip docs and distributed systems failure detector literature | Direct evidence + Strong inference | Product algorithms and timeout defaults are version/config sensitive. |
+| Kafka consumer lag is a result metric that can come from broker fetch, consumer processing, downstream sink, skew, or rebalance. | Kafka consumer docs and design docs https://kafka.apache.org/documentation/ | Direct evidence + Strong inference | Exact metric names and group protocol details differ by release. |
+| Cassandra tombstones preserve deletion semantics until compaction/repair windows make removal safe. | Cassandra tombstone/compaction docs https://cassandra.apache.org/doc/latest/ | Direct evidence | Version and compaction strategy affect details. |
+| Spark task retry/speculation can duplicate external side effects unless the sink/commit protocol is idempotent or transactional. | Spark programming guide and structured streaming docs https://spark.apache.org/docs/latest/ | Direct evidence + Strong inference | Sink-specific semantics must be checked for target connector. |
+| Container cgroup limits can kill a process even if host-level memory appears available. | Linux man-pages `cgroups(7)` and kernel cgroup docs https://docs.kernel.org/admin-guide/cgroup-v2.html | Direct evidence | cgroup v1/v2 and runtime accounting differ. |
+| `io_uring` is a completion-oriented Linux I/O interface with operation/version/security boundaries. | Linux man-pages `io_uring_setup(2)` and kernel docs https://man7.org/linux/man-pages/man2/io_uring_setup.2.html | Direct evidence | Kernel version, operation support, and security policy matter. |
 
 ## Primary Sources
 
@@ -56,6 +64,20 @@ Evidence tier:
 | Cassandra | Apache Cassandra 5.0.8 docs | https://cassandra.apache.org/doc/5.0.8/ | ring, Dynamo model, storage engine, guarantees, hints, compaction |
 | Spark | Apache Spark latest docs | https://spark.apache.org/docs/latest/ | driver/executor, RDD, shuffle, tuning, monitoring, streaming |
 | Distributed theory | Lamport, Raft, CAP, PACELC, Dynamo, Bigtable, LSM, RDD papers | paper URLs in rows above | time/order, consensus, consistency tradeoff, storage and compute lineage |
+
+## Reachability Sampling
+
+2026-06-01 작업에서는 final verification에서 official source URL의 reachability를 표본 확인한다. URL이 reachable하더라도 본문 claim의 충분조건은 아니다. 이 ledger는 source가 official/primary인지, claim이 direct인지 inference인지, version boundary가 있는지를 함께 본다.
+
+| URL | Expected role |
+|---|---|
+| https://man7.org/linux/man-pages/man2/write.2.html | Linux `write(2)` contract |
+| https://man7.org/linux/man-pages/man2/fsync.2.html | Linux `fsync(2)` contract |
+| https://docs.kernel.org/mm/page_cache.html | Linux page cache mechanism |
+| https://docs.kernel.org/networking/napi.html | Linux NAPI network processing |
+| https://kafka.apache.org/documentation/ | Kafka official documentation |
+| https://cassandra.apache.org/doc/latest/ | Cassandra official documentation |
+| https://spark.apache.org/docs/latest/ | Spark official documentation |
 
 ## Version-Sensitive Boundaries
 

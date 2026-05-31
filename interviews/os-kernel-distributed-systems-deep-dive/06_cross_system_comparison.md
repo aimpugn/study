@@ -171,3 +171,166 @@ Kafka에서는 producer request가 broker ack를 못 받았거나 consumer fetch
 - Cassandra architecture/storage/guarantees docs: ring, RF/CL, commit log, SSTable, repair.
 - Spark cluster/RDD/tuning docs: driver/executor, partition, shuffle, lineage, memory.
 - Linux page cache, `write(2)`, `sendfile(2)`, networking docs for shared OS layer.
+
+## 같은 단어, 다른 소유자
+
+Kafka, Cassandra, Spark를 비교할 때 가장 먼저 해야 할 일은 같은 단어가 가리키는 소유자를 나누는 것입니다. Partition이라는 단어는 세 시스템에 모두 나오지만 의미가 다릅니다. Kafka partition은 log ordering과 consumer group assignment의 단위입니다. Cassandra partition은 partition key로 결정되는 storage row group이며 token range와 replica ownership으로 이어집니다. Spark partition은 distributed dataset의 계산 단위이고 task scheduling과 shuffle의 단위입니다. 단어가 같다고 같은 보장을 뜻하지 않습니다.
+
+```
+Kafka partition
+  -> ordered append log within a topic
+  -> offset sequence and leader/follower replication
+
+Cassandra partition
+  -> rows sharing a partition key
+  -> replica placement and read/write lookup unit
+
+Spark partition
+  -> slice of a dataset
+  -> task input and shuffle distribution unit
+```
+
+Log도 마찬가지입니다. Kafka log는 사용자가 직접 읽는 data structure입니다. Cassandra commitlog는 crash recovery를 위한 write-ahead log이고, query path의 primary storage는 SSTable/memtable입니다. Spark lineage는 byte log가 아니라 계산 graph입니다. Streaming checkpoint는 source offset과 state를 포함한 recovery boundary입니다. "로그 기반이라 복구된다"는 문장은 각 시스템에서 전혀 다른 의미를 갖습니다.
+
+## Durability boundary 비교
+
+내구성을 비교할 때는 user-visible success, local persistence, replica persistence, recovery visibility를 나눠야 합니다. Kafka produce ack는 `acks`와 ISR 조건에 따라 의미가 달라집니다. Cassandra write success는 consistency level과 replica response, commitlog sync policy에 묶입니다. Spark action 성공은 job output commit protocol과 sink semantics에 묶이고, streaming은 checkpoint와 sink idempotency를 함께 봐야 합니다.
+
+| System | Success boundary | Local OS boundary | Distributed boundary | Caveat |
+|---|---|---|---|---|
+| Kafka | produce ack by `acks` policy | log append/page cache/flush policy | ISR/high watermark/leader epoch | external side effects and unclean election require care |
+| Cassandra | coordinator receives enough CL responses | commitlog/memtable/SSTable flush | RF/CL/repair/gossip convergence | QUORUM is not blanket linearizability |
+| Spark | job/stage/task or streaming batch completes | shuffle/checkpoint/local disk files | lineage recomputation, checkpoint, sink commit | external sink duplicate unless idempotent |
+
+이 표에서 중요한 점은 어느 system이 더 좋다는 순위가 아닙니다. 각 system이 해결하려는 문제가 다르므로 내구성 경계도 다릅니다. Kafka는 append log와 replay가 중심이고, Cassandra는 always-on replicated storage가 중심이며, Spark는 distributed computation과 recomputation이 중심입니다.
+
+## Backpressure 비교
+
+Backpressure는 세 시스템 모두에 있지만 신호가 다릅니다. Kafka에서는 producer throughput, broker request queue, replica lag, consumer lag, quota가 신호입니다. Cassandra에서는 pending tasks, dropped messages, compaction backlog, coordinator timeout, repair/streaming backlog가 신호입니다. Spark에서는 scheduler delay, shuffle wait, source rate, streaming batch duration, executor backlog가 신호입니다.
+
+```
+common shape
+  producer faster than consumer
+  -> queue grows
+  -> latency grows
+  -> timeout/retry begins
+  -> useful throughput may drop
+```
+
+Kafka에서 consumer lag가 커질 때 producer를 멈추거나 consumer 처리량을 늘릴 수 있습니다. Cassandra에서 coordinator timeout이 늘 때 client retry를 줄이고 admission control을 걸어야 할 수 있습니다. Spark streaming에서 batch duration이 trigger interval보다 길어지면 source rate limit이나 state/shuffle 최적화가 필요합니다. Backpressure를 이해하지 못하면 retry를 "회복"으로 보고 실제로는 overload를 키우게 됩니다.
+
+## Ordering 비교
+
+Kafka는 partition 안 offset order가 중심입니다. Cassandra는 일반 write에서 전역 order를 만들지 않고 timestamp와 reconciliation rule을 사용합니다. Spark는 dataset partition과 stage/task execution order가 있지만, distributed record processing의 전역 order를 기본으로 보장하지 않습니다. Ordering 질문은 항상 "어느 범위 안에서"라고 물어야 합니다.
+
+```
+Kafka
+  same partition: ordered offsets
+  across partitions: no default total order
+
+Cassandra
+  per cell/row reconciliation by timestamp/version rules
+  concurrent writes depend on conflict resolution
+
+Spark
+  partition-level computation
+  shuffle can reorder data
+  explicit sort/window required for order-sensitive results
+```
+
+이 차이는 interview에서 자주 드러납니다. "Kafka는 순서를 보장하나요?"라는 질문의 답은 "partition 안에서는 offset order를 보장하지만 topic 전체 partition 사이 전역 순서는 기본으로 보장하지 않습니다"입니다. "Cassandra는 최신 값을 보장하나요?"는 RF/CL, LWT, timestamp, repair를 봐야 합니다. "Spark 결과는 항상 같은 순서인가요?"는 operation과 partitioning, sort 여부를 봐야 합니다.
+
+## Recovery 비교
+
+Kafka recovery는 log와 offset, replica state를 중심으로 합니다. Broker는 log segment를 recover하고 follower는 leader를 따라잡으며 consumer는 committed offset부터 다시 읽습니다. Cassandra recovery는 commitlog replay, memtable/SSTable, repair를 중심으로 합니다. Spark recovery는 failed task recomputation, lost executor recovery, lineage, checkpoint를 중심으로 합니다.
+
+```
+Kafka restart
+  -> recover local logs
+  -> rejoin cluster
+  -> leader/follower catch-up
+  -> consumers resume by offset
+
+Cassandra restart
+  -> replay commitlog
+  -> expose SSTables/memtables
+  -> gossip membership
+  -> repair for divergence
+
+Spark recovery
+  -> reschedule failed tasks
+  -> recompute lost partitions by lineage
+  -> use checkpoint for state/lineage cut
+```
+
+OS 관점에서는 모두 process restart, file recovery, network reconnect, scheduler, page cache warmup을 겪습니다. 분산 관점에서는 membership view, ownership, replay boundary가 다릅니다. 그래서 recovery time을 줄이려면 각 system의 기준점을 알아야 합니다. Kafka는 log segment와 replica catch-up, Cassandra는 commitlog/repair/compaction, Spark는 lineage length/checkpoint/shuffle persistence를 봅니다.
+
+## Resource pressure 비교
+
+세 시스템의 resource profile은 다릅니다. Kafka는 disk-friendly append와 network fetch, page cache가 중요합니다. Cassandra는 write path는 빠르게 받지만 compaction과 read amplification, memory/cache 균형이 중요합니다. Spark는 CPU, memory, network, disk를 job shape에 따라 폭발적으로 바꿉니다.
+
+| Resource | Kafka | Cassandra | Spark |
+|---|---|---|---|
+| CPU | compression, network thread, request handler | compaction, serialization, read merge, GC | task compute, serialization, compression, GC |
+| Memory | page cache, socket buffer, broker heap | memtable, cache, off-heap, page cache | executor heap/off-heap, cache, shuffle buffers |
+| Disk | append log, segment read, flush | commitlog, SSTable, compaction | shuffle spill, cache/checkpoint/local dirs |
+| Network | producer/fetch/replica | coordinator/replica/gossip/repair | shuffle fetch, driver/executor, remote reads |
+
+이 표는 tuning의 방향을 정해 줍니다. Kafka에서 heap을 무작정 키우면 page cache 여유를 줄일 수 있습니다. Cassandra에서 compaction을 억제하면 당장 disk pressure는 줄어도 read amplification이 커질 수 있습니다. Spark에서 executor memory를 늘리면 spill은 줄지만 GC와 cgroup pressure가 커질 수 있습니다.
+
+## 같은 장애를 세 시스템에 투영하기
+
+Disk latency가 갑자기 증가했다고 합시다. Kafka에서는 produce append, flush, fetch from cold segment, replica catch-up이 느려질 수 있습니다. Cassandra에서는 commitlog sync, SSTable read, compaction, memtable flush가 느려질 수 있습니다. Spark에서는 shuffle spill/write/read, checkpoint, local cache read가 느려질 수 있습니다. 같은 lower-layer 사건이 서로 다른 product metric으로 올라옵니다.
+
+Network loss가 증가하면 Kafka producer/fetch timeout, replica lag, consumer lag가 나타날 수 있습니다. Cassandra에서는 coordinator timeout, gossip suspicion, repair/streaming slowdown이 나타납니다. Spark에서는 shuffle fetch failure, executor lost suspicion, task retry가 늘 수 있습니다. Memory pressure가 커지면 Kafka page cache miss와 GC, Cassandra GC/compaction/cache miss, Spark spill/GC/OOM으로 다르게 나타납니다.
+
+이 비교의 목적은 "세 시스템을 한 줄로 요약"하는 것이 아닙니다. 하나의 OS 사건이 각 제품의 어떤 queue, log, replica, task로 올라오는지 보는 능력을 만드는 것입니다.
+
+## Interview replay: 비교 답변의 구조
+
+비교 질문을 받으면 먼저 같은 추상화 수준을 맞춥니다. "Kafka와 Cassandra는 둘 다 분산 저장 계층을 갖지만 Kafka는 append log와 stream replay가 중심이고, Cassandra는 partitioned replicated table storage가 중심입니다. Spark는 저장소라기보다 distributed computation runtime이며 lineage와 shuffle, checkpoint가 중심입니다." 이렇게 시작하면 제품 범주가 섞이지 않습니다.
+
+그 다음 같은 축으로 비교합니다. Data placement는 Kafka partition, Cassandra token/replica, Spark partition입니다. Recovery는 Kafka offset/log, Cassandra commitlog/repair, Spark lineage/checkpoint입니다. Durability는 Kafka ack/ISR, Cassandra CL/commitlog, Spark sink/checkpoint입니다. OS pressure는 Kafka page cache/network, Cassandra compaction/disk/cache, Spark shuffle/memory/disk입니다. 이 축을 유지하면 답변이 길어져도 흐트러지지 않습니다.
+
+## State ownership 비교
+
+세 시스템은 상태를 소유하는 방식도 다릅니다. Kafka에서 source of truth는 partition log입니다. Consumer의 local state는 offset과 처리 결과를 기준으로 다시 만들 수 있어야 합니다. Cassandra에서 source of truth는 replica들이 가진 partition data와 그 수렴을 돕는 repair 체계입니다. Spark에서 많은 중간 state는 lineage로 다시 만들 수 있지만, checkpoint나 external sink로 나간 state는 별도 소유자가 생깁니다.
+
+```
+Kafka
+  durable stream state -> broker partition logs
+  consumer progress -> committed offsets
+
+Cassandra
+  table state -> replicated SSTables/memtables per token range
+  convergence -> repair/gossip/hints
+
+Spark
+  computation state -> lineage and task attempts
+  materialized state -> cache/checkpoint/sink
+```
+
+State owner를 모르면 복구 책임을 잘못 둡니다. Kafka consumer가 외부 DB에 쓴 뒤 offset commit 전에 죽으면 broker log는 안전해도 sink 중복 문제가 남습니다. Cassandra replica 하나가 오래 내려가면 살아 있는 replica의 상태와 hint/repair 책임을 봐야 합니다. Spark task가 실패하면 lineage로 재계산할 수 있지만, 이미 외부 API를 호출했다면 그 side effect는 Spark lineage가 소유하지 않습니다.
+
+## Security와 isolation 비교
+
+운영 환경에서는 세 시스템 모두 container, namespace, cgroup, network policy, TLS, authentication/authorization 아래에서 실행됩니다. Kafka는 listener, ACL, TLS/SASL, inter-broker auth가 중요합니다. Cassandra는 client/internode encryption, authentication, authorization, network exposure, node identity가 중요합니다. Spark는 driver/executor communication, UI exposure, shuffle service, secret propagation, Kubernetes/YARN permission이 중요합니다.
+
+OS isolation은 security와 performance를 동시에 바꿉니다. cgroup CPU quota는 Kafka network thread와 Cassandra compaction, Spark task를 모두 throttle할 수 있습니다. Network namespace와 policy는 broker/client, coordinator/replica, driver/executor path를 막을 수 있습니다. Seccomp와 capability는 observability 도구를 제한합니다. 보안 설정을 성능 문제에서 분리하면 "왜 tcpdump가 안 되지", "왜 perf가 안 되지", "왜 inter-broker connection이 timeout이지" 같은 질문을 놓칩니다.
+
+## 한 문장 비교 훈련
+
+Kafka는 "순서 있는 partition log를 중심으로 replay와 fan-out을 제공하는 시스템"입니다. Cassandra는 "partition key와 replica quorum을 중심으로 항상 켜져 있는 write/read storage를 제공하는 시스템"입니다. Spark는 "lineage와 task scheduling, shuffle을 중심으로 큰 계산을 분산 실행하는 runtime"입니다. 이 세 문장을 먼저 말하고, 그 뒤 OS 자원과 분산 보장을 붙이면 비교가 안정됩니다.
+
+```
+Kafka answer expands toward:
+  log, offset, ISR, page cache, sendfile, consumer group
+
+Cassandra answer expands toward:
+  token, replica, CL, commitlog, SSTable, compaction, repair
+
+Spark answer expands toward:
+  DAG, stage, task, shuffle, lineage, checkpoint, executor resource
+```
+
+마지막 확인은 "같은 해결책을 세 시스템에 기계적으로 적용하지 않는가"입니다. Kafka lag에 consumer 수를 늘리는 감각을 Cassandra read timeout이나 Spark skew에 그대로 가져오면 틀릴 수 있습니다. Cassandra compaction 조절 감각을 Kafka log cleaner나 Spark shuffle cleanup에 그대로 옮겨도 안 됩니다. 비교 문서의 목적은 차이를 외우는 것이 아니라, 같은 lower-layer 사건이 각 시스템의 다른 의미 경계로 올라간다는 점을 몸에 익히는 것입니다.

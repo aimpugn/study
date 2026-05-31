@@ -1,8 +1,10 @@
 # Claim Review Audit
 
-검수 날짜: 2026-05-31
+검수 날짜: 2026-06-01
 
 이 문서는 학습 본문이 아니라 이번 corpus rewrite의 review ledger입니다. 이전 버전의 label-heavy PASS 판정은 superseded되었습니다. 또한 이전 `READY_FOR_SCOPED_COMMIT` 판정도 OS 세부 범위 누락 공격을 받은 뒤 superseded되었습니다. 현재 기준은 prose-first deep study, lower-layer trace, source boundary, unsafe command repair, claim-level evidence, 그리고 OS 상세 문서와 제품 문서의 실제 연결입니다.
+
+2026-06-01 확장 작업에서 새 기준이 추가되었습니다. `01`부터 `08`까지 substantive 문서는 모두 20,000자 이상이어야 하며, 이 숫자는 품질의 충분조건이 아니라 하한입니다. 최종 판정은 OS textbook-family coverage, distributed systems depth, Kafka/Cassandra/Spark bridge trace, source ledger, forbidden pattern scan, reader-journey audit, staged scope check를 함께 통과해야 합니다.
 
 ## Activated Roles
 
@@ -13,6 +15,8 @@
 | Protocol Sentinel | premature WHOLE_COMPLETE, unsafe command, source ledger weakness, staging boundary 감시 | HOLD before repairs, incorporated into rework gates |
 | Main Orchestrator | repairs, corpus rewrite, verification, commit boundary | in progress until final verification and commit |
 | Coverage Critic | current corpus over-closed OS scope, network path, multiplexing, glossary/source/experiments gaps | REWORK, then ACCEPT_REPAIR after OS detail expansion |
+| 2026-06-01 Coverage Critic | 기존 13개 substantive 파일 유지 계획, OS 교과서 범위, 제품 bridge, padding risk 공격 | DOWNGRADE as-is, ACCEPT_REPAIR after matrix-driven repair |
+| 2026-06-01 Protocol Sentinel | plan-only/slice-only, <20k, source weakness, forbidden phrase, unrelated staging, push veto | VETO list incorporated into WORK and final verification |
 
 ## Claim Cards
 
@@ -36,6 +40,9 @@
 | Blocking/non-blocking and sync/async are small terminology details. | User called these out as foundational; conflating readiness with async completion causes wrong Netty/Kafka/Spark reasoning. | ACCEPT_REPAIR | Added blocking/non-blocking, synchronous/asynchronous, readiness/completion, select/poll/epoll/kqueue/io_uring discussion in `01d` and interview answer in `07`. |
 | Glossary and source ledger already cover the expanded OS scope. | They lacked DMA, NAPI, futex, cgroup, namespace, mmap, OOM, dentry/inode, qdisc, epoll readiness and related primary-source rows. | ACCEPT_REPAIR | Expanded `09` with OS detailed terms and related trace/experiment references; expanded `10` with man7/kernel docs rows. |
 | Experiments are sufficient with `write`, page cache, socket queue, JVM dump, product CLI commands. | Missing experiments for epoll readiness, mmap/page fault, cgroup memory, perf/off-CPU entry, and packet path overclaim boundary. | ACCEPT_REPAIR | Expanded `08` with those experiments and explicit PASS/FAIL/overclaim warnings. |
+| Keeping the existing substantive file set is enough. | Possible, but only if every textbook-family topic maps to real sections and final reader audit shows no shallow cram. | ACCEPT_REPAIR | WORK matrix now maps OS/distributed/product topic families; body docs expanded to 20k+ and final verification must reverse-audit coverage. |
+| Every substantive doc over 20,000 chars is complete. | Length can be padded and is not a deep-study proof. | REBUT | Added trace density, counterexample, observation path, product/interview bridge, source linkage, anti-padding, reader journey gates in WORK. |
+| Product docs are deep if they list features. | Kafka/Cassandra/Spark must descend into OS resource path and return to distributed semantics. | ACCEPT_REPAIR | `03`, `04`, `05` now add end-to-end append/write/read/shuffle traces, OS pressure maps, and external side-effect boundaries. |
 
 ## Gold Slice Confirmation
 
@@ -76,7 +83,7 @@ The expansion standard is not "copy this section's length." It is:
 The corpus is not complete merely because these repairs are written. Before `WHOLE_COMPLETE`, the main workflow must verify and record:
 
 - required target file set exists;
-- forbidden Mermaid syntax is absent;
+- forbidden diagram-fence syntax is absent;
 - old repeated labels no longer dominate major topic files;
 - unsafe broad process-kill command is absent;
 - `nodetool compact` is explicitly local-only/opt-in;

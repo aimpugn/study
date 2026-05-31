@@ -333,3 +333,213 @@ what I must not overclaim:
 ```
 
 예를 들어 `write()` 실험 뒤에는 `observed state: write and fsync syscalls`, `where it sits: process -> kernel syscall boundary`, `what changed: file bytes accepted then fd sync requested`, `what I must not overclaim: write alone proves durable storage`처럼 씁니다.
+
+## 14. `wc`, `du`, `df`는 서로 다른 질문에 답한다
+
+문서 corpus 검증에서도 쓰지만, 운영에서도 크기 숫자는 질문이 다릅니다. `wc -c`는 file byte 수를 봅니다. `du`는 filesystem block 사용량을 봅니다. `df`는 filesystem 전체 free space를 봅니다. Sparse file, compression, block size, hard link, reflink, snapshot, deleted-but-open file 때문에 숫자가 다를 수 있습니다. Kafka log segment, Cassandra SSTable, Spark spill file을 볼 때도 같은 차이가 나타납니다.
+
+안전한 local 관찰:
+
+```bash
+tmp=$(mktemp -d)
+printf 'hello\n' > "$tmp/a.txt"
+ln "$tmp/a.txt" "$tmp/b.txt"
+wc -c "$tmp/a.txt" "$tmp/b.txt"
+du -sk "$tmp"
+df -k "$tmp"
+rm -rf "$tmp"
+```
+
+PASS는 "파일 내용 크기", "디스크 block 사용량", "filesystem 여유 공간"을 구분하는 것입니다. FAIL은 `df`가 충분하니 특정 process write가 안전하다고 단정하거나, `du`만 보고 open-deleted file이나 quota를 놓치는 것입니다.
+
+## 15. cgroup 관측은 host와 process 사이의 중간 계층이다
+
+컨테이너 환경에서는 host 전체 metric과 process metric 사이에 cgroup이 있습니다. CPU throttling, memory OOM, I/O pressure는 cgroup 단위로 나타날 수 있습니다. Host CPU가 남아도 container quota가 다 되면 throttling되고, host memory가 남아도 cgroup limit을 넘으면 process가 kill될 수 있습니다.
+
+관찰 경로는 배포 환경에 따라 다르지만 Linux에서는 보통 `/sys/fs/cgroup` 아래에서 cpu, memory event를 볼 수 있습니다. Kubernetes에서는 `kubectl top`, container runtime metric, kubelet event, pod status reason을 함께 봅니다. PASS는 "host는 여유인데 container가 제한에 걸릴 수 있다"를 이해하는 것입니다. FAIL은 container OOM을 JVM heap OOM과 같은 것으로 기록하는 것입니다.
+
+## 16. source ledger reachability는 사실성의 전부가 아니다
+
+Source URL이 200을 반환한다고 본문 claim이 자동으로 맞는 것은 아닙니다. Reachability는 자료에 접근 가능하다는 최소 조건입니다. 본문 claim이 source의 어느 부분에 기대는지, version-sensitive한지, 공식 문서인지, 논문인지, man page인지, 추론인지 따로 적어야 합니다. 이 corpus의 `10_source_ledger.md`가 link list가 아니라 claim-level ledger인 이유입니다.
+
+간단한 reachability check:
+
+```bash
+while read -r url; do
+  curl -I -L --max-time 10 "$url" >/dev/null && echo "OK $url" || echo "FAIL $url"
+done <<'URLS'
+https://man7.org/linux/man-pages/man2/write.2.html
+https://docs.kernel.org/mm/page_cache.html
+https://kafka.apache.org/documentation/
+https://cassandra.apache.org/doc/latest/
+https://spark.apache.org/docs/latest/
+URLS
+```
+
+PASS는 URL 접근성과 claim support tier를 분리하는 것입니다. FAIL은 link가 살아 있다는 이유로 제품 version별 동작이나 kernel implementation detail을 확정하는 것입니다.
+
+## 17. 관측 장부를 쓰는 이유
+
+실험은 기억보다 기록이 중요합니다. 같은 명령을 실행해도 kernel version, filesystem, container permission, hardware, load, product version에 따라 결과가 달라집니다. 그래서 결과를 "정답"으로 적기보다 관측 조건과 한계를 적어야 합니다.
+
+```text
+experiment:
+environment:
+command:
+observed state:
+where it sits:
+claim supported:
+claim not supported:
+next check:
+```
+
+이 형식은 OS와 분산 시스템 모두에 유용합니다. Kafka broker 하나를 멈춘 실험은 leader election과 producer behavior를 일부 보여 주지만 모든 outage를 증명하지 않습니다. Cassandra node 하나를 끊은 실험은 CL별 behavior를 보여 주지만 long partition, repair, clock skew를 모두 증명하지 않습니다. Spark executor kill 실험은 task retry를 보여 주지만 external sink 중복을 자동으로 검증하지 않습니다. 관측 장부는 배운 것을 과장하지 않게 해 줍니다.
+
+## 18. 작은 실험을 제품 장애로 이어 붙이기
+
+이 문서의 실험들은 작습니다. 작은 `write()` 실험은 Kafka flush policy 전체를 증명하지 않습니다. 작은 socket 실험은 real NIC DMA/NAPI를 증명하지 않습니다. 작은 Spark local mode 실험은 cluster shuffle을 증명하지 않습니다. 그래도 가치가 있습니다. 각 실험은 큰 시스템의 한 층을 손으로 만져 보게 해 줍니다.
+
+```
+small experiment
+  -> reveals one lower-layer mechanism
+  -> records what it does not prove
+  -> becomes a question to ask in production
+```
+
+예를 들어 page cache 실험 뒤에는 Kafka segment read에서 page cache hit/miss를 어떻게 추론할지 묻습니다. Futex/lock 실험 뒤에는 JVM thread dump와 off-CPU profile을 어떻게 볼지 묻습니다. Socket queue 실험 뒤에는 Kafka fetch timeout이나 Cassandra read timeout에서 `ss`와 packet capture를 어떻게 함께 볼지 묻습니다. Spark local shuffle 실험 뒤에는 cluster에서 shuffle read blocked time과 disk spill을 어떻게 볼지 묻습니다.
+
+## 19. 마지막 점검표
+
+실험을 마친 뒤에는 세 가지를 꼭 확인합니다. 첫째, 내가 직접 관측한 것은 무엇인가. 둘째, 그 관측이 어느 계층의 claim만 지지하는가. 셋째, 제품이나 분산 환경으로 확대하려면 어떤 추가 증거가 필요한가. 이 세 가지가 없으면 실험은 배움을 주는 대신 과신을 만들 수 있습니다.
+
+```
+direct observation
+  -> local command output
+
+supported claim
+  -> narrow mechanism
+
+not yet supported
+  -> production behavior, version-specific guarantee, distributed recovery
+```
+
+이 구분을 지키면 실험 문서는 단순 명령 모음이 아니라 reasoning 도구가 됩니다. 면접에서도 "제가 직접 증명한 범위는 여기까지이고, 실제 운영에서는 이 지표를 추가로 보겠습니다"라고 말할 수 있습니다. 그것이 OS와 분산 시스템을 공부하는 가장 안전한 태도입니다.
+
+## 20. Kafka 관측 rehearsal
+
+실제 Kafka cluster가 없는 환경에서도 관측 질문은 미리 연습할 수 있습니다. Produce latency를 받으면 `request queue`, `local append`, `remote replication`, `response send`로 나눕니다. Consumer lag를 받으면 `broker fetch`, `consumer processing`, `downstream sink`, `partition skew`, `rebalance`로 나눕니다. Cluster가 있다면 broker metrics, client metrics, disk/network/GC/cgroup metric을 같은 timeline에 놓습니다.
+
+기록 예시는 다음과 같습니다.
+
+```text
+observed state:
+  consumer lag for partition 7 grows faster than others
+where it sits:
+  Kafka partition-level progress, not yet root cause
+what changed:
+  partition 7 input rate or processing time may differ
+what I must not overclaim:
+  adding consumers helps only if partition assignment and downstream allow it
+next check:
+  per-partition rate, consumer processing time, rebalance log, downstream latency
+```
+
+이 rehearsal은 실제 장애에서 질문 순서를 줄여 줍니다. Lag 숫자 하나를 보고 consumer 수부터 늘리지 않고, partition과 queue owner를 먼저 찾게 됩니다.
+
+## 21. Cassandra 관측 rehearsal
+
+Cassandra cluster가 있다면 `nodetool tpstats`, table metrics, client latency, GC log, disk I/O, network metric을 같이 봅니다. Cluster가 없다면 trace를 종이에 그리는 것만으로도 효과가 있습니다. Write timeout은 coordinator가 CL을 만족할 enough response를 받지 못했다는 뜻입니다. Read timeout은 replica read path, coordinator reconciliation, network, GC, disk, compaction과 모두 양립합니다.
+
+```text
+observed state:
+  write timeout at CL=QUORUM
+where it sits:
+  coordinator did not receive enough replica responses before deadline
+what changed:
+  one or more replicas may be slow or unavailable
+what I must not overclaim:
+  write definitely failed, or definitely succeeded everywhere
+next check:
+  coordinator logs, replica logs, pending tasks, commitlog sync, GC, iostat, network
+```
+
+Compaction rehearsal도 해 봅니다. Pending compaction이 늘면 foreground read/write와 같은 disk와 CPU를 공유하는지 봅니다. Tombstone warning이 있으면 delete/TTL pattern과 repair/compaction window를 봅니다. Cassandra는 product metric과 OS metric이 강하게 붙어 있으므로, 한쪽만 보면 원인을 과하게 단순화하기 쉽습니다.
+
+## 22. Spark 관측 rehearsal
+
+Spark가 있는 환경에서는 Spark UI가 가장 좋은 시작점입니다. Jobs, Stages, Tasks, Executors, SQL 탭을 보며 stage별 duration, task skew, shuffle read/write, spill, GC time, scheduler delay, executor lost reason을 확인합니다. Cluster가 없다면 local mode로 DAG와 shuffle 개념만 익히고, local mode가 cluster network와 executor loss를 증명하지 않는다는 한계를 적습니다.
+
+```text
+observed state:
+  one task in a stage is much slower than the rest
+where it sits:
+  Spark stage/task distribution
+what changed:
+  partition skew, bad executor, slow disk/network, GC, cgroup throttle could fit
+what I must not overclaim:
+  more executors will fix it
+next check:
+  task input size, shuffle read time, spill, GC, executor host metrics, skewed key
+```
+
+Structured Streaming rehearsal에서는 batch duration, input rate, processed rows per second, state operator size, checkpoint latency, sink commit latency를 봅니다. Batch가 trigger interval보다 오래 걸리면 backlog가 쌓입니다. Source rate를 낮추는 것이 답일 수도 있고, state/shuffle/sink를 고치는 것이 답일 수도 있습니다.
+
+## 23. 관측 timeline을 맞추는 법
+
+여러 도구를 함께 볼 때 가장 흔한 실수는 시간이 어긋난 지표를 한 원인처럼 붙이는 것입니다. Application latency spike가 10:00:05에 있었는데 disk metric은 10:02 평균이고 GC log는 timezone이 다르면 잘못된 결론이 나옵니다. 관측은 같은 시간축에 놓아야 합니다.
+
+```text
+timeline
+  10:00:00 producer latency starts rising
+  10:00:03 broker request queue time rises
+  10:00:04 disk await rises
+  10:00:06 consumer lag rises
+  10:00:10 retries increase
+```
+
+이 timeline은 causality의 증명은 아니지만, 가설을 정렬합니다. Disk await가 먼저인지 request queue가 먼저인지, retry가 원인인지 결과인지, GC pause가 spike와 겹치는지 볼 수 있습니다. 분산 시스템에서는 clock skew가 있으므로 node별 timestamp와 timezone, NTP 상태도 조심합니다. 관측 timeline은 "동시에 보였다"와 "원인이다"를 구분하게 해 줍니다.
+
+## 24. 안전한 실험과 위험한 실험
+
+Local file write, loopback socket, small Spark local job 같은 실험은 비교적 안전합니다. Production broker kill, Cassandra node network partition, disk fill, clock skew injection은 위험할 수 있습니다. 장애 주입은 sandbox나 staging, 명시적 승인, rollback, blast radius, monitoring, stop condition이 있어야 합니다. 이 문서는 학습 실험을 제공하지만, production chaos experiment를 무단으로 실행하라는 뜻이 아닙니다.
+
+안전한 실험도 side effect를 남길 수 있습니다. 임시 파일을 지우고, background process를 종료하고, port 충돌을 피하고, 권한이 필요한 명령을 dry-run으로 확인해야 합니다. `tcpdump`, `perf`, eBPF는 권한과 privacy 문제가 있습니다. Packet capture는 민감한 payload를 포함할 수 있으므로 목적과 저장 위치, 삭제 기준을 정해야 합니다.
+
+## 25. 마지막 replay: 관측을 주장으로 바꾸는 단계
+
+관측은 claim 후보입니다. `iostat`에서 await가 높았다고 바로 "디스크가 원인"이라고 확정하지 않습니다. 그 시간에 application request가 disk I/O를 기다렸는지, queue가 어떤 path에서 커졌는지, 다른 지표와 맞는지 봅니다. `ss`에서 send queue가 컸다고 바로 "네트워크가 원인"이라고 하지 않습니다. 상대가 읽지 못하는지, local event loop가 쓰지 못하는지, downstream이 막혔는지 봅니다.
+
+```
+observation
+  -> candidate mechanism
+  -> alternative explanations
+  -> next measurement
+  -> supported claim with boundary
+```
+
+이 단계가 닫히면 실험 문서는 면접 답변으로도 바뀝니다. "제가 본 것은 X이고, 이는 Y 경로를 지지하지만 Z까지 증명하지는 않습니다. 그래서 다음에는 A를 보겠습니다." 이 문장은 OS, Kafka, Cassandra, Spark 어디서나 통합니다. 실험의 목표는 더 많은 명령을 외우는 것이 아니라, 관측에서 과장 없는 claim을 만드는 습관입니다.
+
+## 26. 실험을 다시 읽는 순서
+
+이 문서를 한 번에 다 실행하려 하지 않아도 됩니다. 먼저 OS 단일 머신 실험으로 `write`, `fsync`, socket queue, process/thread, memory 지표를 익힙니다. 그 다음 Kafka/Cassandra/Spark rehearsal로 product metric을 같은 시간축에 올려 봅니다. 마지막으로 source ledger reachability와 claim boundary를 점검합니다. 이 순서가 좋은 이유는 작은 관측에서 시작해 분산 시스템 claim으로 올라가기 때문입니다.
+
+```
+local mechanism
+  -> product symptom
+  -> distributed uncertainty
+  -> claim boundary
+```
+
+각 실험을 마친 뒤에는 "이 실험이 실제 production에서 무엇을 바로 증명하지 못하는가"를 꼭 적습니다. Local loopback은 real NIC를 증명하지 않습니다. Local filesystem은 cloud block storage를 증명하지 않습니다. Spark local mode는 cluster shuffle을 증명하지 않습니다. 그러나 이 한계를 적는 순간, 작은 실험은 오히려 더 좋은 학습 도구가 됩니다.
+
+## 27. 면접에서 실험을 말하는 법
+
+면접에서 명령어를 줄줄 말하기보다, 실험이 어떤 claim을 가르는지 말하는 편이 좋습니다. "`strace`로 `write`와 `fsync` 호출을 나눠 보고, `iostat`으로 device I/O를 보며, Kafka metric으로 produce ack latency를 함께 보겠습니다"처럼 계층을 연결합니다. Cassandra라면 `nodetool`과 GC log, disk I/O, network를 함께 보고, Spark라면 Spark UI와 executor OS metric을 함께 봅니다.
+
+이렇게 말하면 도구 이름이 목적이 아니라는 점이 드러납니다. 목적은 request가 어느 queue에서 기다렸는지, 어떤 boundary까지 성공했는지, 어떤 retry가 중복을 만들 수 있는지 확인하는 것입니다. 도구는 그 질문에 답하기 위한 관측 표면입니다.
+
+## 28. 이 문서의 완료 기준
+
+이 실험 문서는 모든 환경에서 같은 숫자를 만들기 위한 문서가 아닙니다. 완료 기준은 독자가 각 실험의 위치와 한계를 설명할 수 있는 것입니다. `write()` 실험 뒤에는 durable storage를 과장하지 않아야 합니다. Socket 실험 뒤에는 loopback과 NIC path를 구분해야 합니다. Spark local 실험 뒤에는 cluster scheduling과 remote shuffle을 구분해야 합니다. Source check 뒤에는 URL reachability와 claim support를 구분해야 합니다.
+
+이 기준을 통과하면 실험은 단순한 command collection이 아니라 OS와 분산 시스템을 검증하는 사고 훈련이 됩니다. 관측을 좁게 말하고, 필요한 다음 관측을 정직하게 남기는 습관이 이 corpus 전체의 verification language입니다.

@@ -4,6 +4,8 @@
 
 OS 커널은 한 머신 안에서 이 질문을 다룹니다. CPU는 한 순간에 제한된 실행 흐름만 처리할 수 있고, 메모리는 프로세스마다 다른 주소 공간으로 보이며, 디스크와 네트워크 카드는 여러 프로세스가 함께 쓰는 장치입니다. 커널은 user mode와 kernel mode, syscall, scheduler, virtual memory, page cache, socket buffer 같은 장치로 이 공유 문제를 관리합니다.
 
+OS 파트는 특정 교과서의 목차를 베끼지 않습니다. 대신 OSTEP의 virtualization/concurrency/persistence/security, CSAPP의 exceptional control flow와 system-level I/O, Operating Systems: Principles and Practice와 Operating System Concepts 계열의 process/thread/scheduling/synchronization/deadlock/memory/storage/I/O/protection/security/virtualization 주제군을 실제 백엔드 요청 경로에 맞게 다시 묶습니다. 그래서 부팅과 실행 파일, process lifecycle, virtual memory, VFS/page cache/block layer, NIC/TCP/epoll, futex/cgroup/namespace/observability가 모두 `01` 계열에서 독립적으로 닫힙니다.
+
 분산 시스템은 같은 질문이 여러 머신으로 흩어졌을 때 등장합니다. 한 머신 안에서는 커널이 전역 상태를 많이 알고 있지만, 여러 머신 사이에는 완전한 전역 시계도 없고, 네트워크 지연과 노드 crash를 즉시 구분할 수도 없습니다. 그래서 log, partition, replica, quorum, consensus, checkpoint, retry, backpressure 같은 구조가 필요해집니다.
 
 Kafka, Cassandra, Spark는 이 원리를 서로 다른 목적에 맞게 조립한 시스템입니다. Kafka는 record의 순서와 재생을 partition log로 다룹니다. Cassandra는 write 가용성과 scale-out을 위해 mutation을 commit log, memtable, SSTable, repair 흐름으로 다룹니다. Spark는 큰 계산을 DAG, stage, task, shuffle, lineage, checkpoint로 나누어 실패한 조각을 다시 계산합니다.
@@ -47,6 +49,8 @@ multiple machines
 | 5 | [01e_concurrency_isolation_observability.md](01e_concurrency_isolation_observability.md) | lock, futex, cgroup, namespace, `/proc`, perf/eBPF 관측은 장애 추론에서 어떤 증거가 되는가? |
 
 여기서 배우는 습관은 "API 이름을 외우기 전에 그 API가 커널 안에서 어떤 객체와 queue를 건드리는지 본다"입니다. OS 파트는 Kafka/Cassandra/Spark를 이해하기 위한 낮은 하한선이 아니라, 세 시스템이 실제로 기대는 물리적 실행 경로입니다.
+
+각 OS 상세 문서는 20,000자 이상의 독립 장문 문서로 확장되어 있습니다. 읽는 동안 분량 자체보다 trace를 붙잡으세요. 예를 들어 `01d`에서는 packet이 NIC RX ring, NAPI, TCP, socket buffer, epoll, scheduler를 지나 request가 되는지 말할 수 있어야 하고, `01c`에서는 `write()` 성공, dirty page, writeback, `fsync()`, Kafka ack, Cassandra CL success를 서로 다른 계층의 성공으로 나눌 수 있어야 합니다.
 
 이 단계를 지나면 다음 질문에 답할 수 있어야 합니다.
 
