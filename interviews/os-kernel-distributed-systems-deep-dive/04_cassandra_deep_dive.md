@@ -41,6 +41,17 @@ client mutation
 
 commit log sync 정책은 `write()`와 `fsync()`의 차이를 Cassandra 버전으로 다시 만나는 지점입니다. `batch` 모드에서는 write ack 전에 commit log fsync를 기다리는 쪽으로 더 강한 내구성을 선택합니다. `periodic` 모드에서는 정해진 주기로 sync하면서 latency를 낮춥니다. 어떤 모드가 맞는지는 workload와 손실 허용 범위에 달려 있습니다.
 
+이 write path는 [01c_filesystem_page_cache_block_io.md](01c_filesystem_page_cache_block_io.md)의 durable write 구분을 그대로 사용합니다. commit log append가 빠른 이유는 random update보다 순차 write에 가깝기 때문입니다. 하지만 ack 시점이 commit log file의 page cache 반영인지, fsync 완료인지, replica CL 충족인지에 따라 crash 후 믿을 수 있는 상태가 달라집니다.
+
+```
+mutation reaches replica
+  -> append commit log record
+  -> update memtable
+  -> maybe wait for commitlog sync policy
+  -> send ack to coordinator
+  -> later memtable flush creates SSTable
+```
+
 ## 3. Read path는 여러 후보에서 최신 값을 조립한다
 
 read는 write보다 단순하지 않습니다. coordinator는 replica에 read를 보내고, replica는 먼저 memtable을 보고, Bloom filter로 SSTable에 key가 없을 가능성을 빠르게 걸러내며, partition index와 summary를 통해 SSTable 안의 위치를 찾습니다. 여러 SSTable에 같은 key의 다른 version이 있으면 timestamp와 tombstone 규칙에 따라 결과를 merge합니다.
@@ -59,6 +70,8 @@ read key K
 Bloom filter는 "있다"를 보장하는 도구가 아닙니다. false positive가 있을 수 있지만 false negative를 피하도록 설계된 확률적 자료구조입니다. 즉 Bloom filter가 "없다"고 말하면 해당 SSTable을 건너뛰고, "있을 수 있다"고 말하면 실제 disk 구조를 더 봅니다.
 
 compaction은 read 비용을 줄이고 space를 회수하지만 background I/O를 크게 씁니다. compaction이 밀리면 SSTable 수가 늘고 read amplification이 커집니다. tombstone이 많으면 read가 오래된 delete marker까지 검사해야 해서 latency가 커질 수 있습니다. 그래서 Cassandra 성능 문제는 write latency, read latency, compaction throughput, tombstone, disk bandwidth를 함께 봐야 합니다.
+
+block I/O 관점에서 compaction은 foreground 요청과 같은 disk queue를 두고 경쟁합니다. 여러 SSTable을 sequential하게 읽고 새 SSTable을 쓰더라도, 동시에 commit log append와 normal read가 들어오면 page cache, device queue, CPU decompression/merge 비용이 겹칩니다. [01c_filesystem_page_cache_block_io.md](01c_filesystem_page_cache_block_io.md)의 block layer trace를 Cassandra에 대입하면 pending compaction이 왜 read latency와 write latency를 동시에 흔드는지 보입니다.
 
 ## 4. Tunable consistency는 quorum이라는 단어 하나로 끝나지 않는다
 
@@ -112,6 +125,10 @@ write pressure
 ```
 
 따라서 Cassandra를 볼 때 JVM heap만 보면 부족합니다. memtable flush가 밀리는지, commit log disk가 느린지, SSTable 수가 많은지, compaction pending이 늘었는지, page cache hit가 줄었는지, network repair traffic이 많은지 함께 봐야 합니다.
+
+network도 같은 방식으로 내려가야 합니다. coordinator가 replica에게 read/write를 보내고 repair가 streaming을 수행하는 동안 [01d_network_stack_and_io_multiplexing.md](01d_network_stack_and_io_multiplexing.md)의 socket receive queue와 TCP send buffer가 모두 관여합니다. read timeout은 replica process crash, compaction으로 인한 scheduler delay, GC pause, socket queue backlog, packet loss/retransmission과 모두 양립할 수 있습니다. "timeout이면 replica 실패"라고 말하면 분산 시스템의 partial failure와 OS network path를 동시에 놓친 답이 됩니다.
+
+container 환경에서는 [01e_concurrency_isolation_observability.md](01e_concurrency_isolation_observability.md)의 cgroup 질문도 필요합니다. Cassandra가 heap 밖에서 page cache와 off-heap memory를 쓰고, compaction과 repair가 disk/network를 강하게 쓰기 때문에, container memory/I/O limit은 단순한 배포 옵션이 아니라 storage engine의 실제 동작 조건입니다.
 
 ## 현실 시나리오 1: stale read가 의심된다
 

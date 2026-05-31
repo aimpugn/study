@@ -93,6 +93,50 @@ what is partitioned?
 
 ## 자주 나오는 질문에 대한 압축 답변과 꼬리 경로
 
+### blocking, non-blocking, synchronous, asynchronous는 어떻게 다르나요?
+
+짧은 답변:
+
+> blocking/non-blocking은 호출한 thread가 준비될 때까지 잠드는지의 축이고, synchronous/asynchronous는 작업 완료를 호출 흐름에서 직접 받는지 나중에 별도 경로로 받는지의 축입니다. epoll은 보통 완료가 아니라 readiness, 즉 "읽거나 쓸 수 있을 가능성"을 알려 줍니다.
+
+꼬리 경로:
+
+```
+blocking read
+  -> no data
+  -> thread sleeps in kernel wait queue
+  -> packet arrives
+  -> thread runnable
+
+non-blocking + epoll
+  -> fd registered
+  -> epoll_wait returns readable
+  -> application read() drains until EAGAIN
+```
+
+조심할 말: "`epoll`은 async I/O입니다"라고 말하면 범위가 흐립니다. epoll은 readiness multiplexing이고, application이 실제 read/write와 partial 처리 책임을 가집니다.
+
+### 패킷 하나는 어떻게 request가 되나요?
+
+짧은 답변:
+
+> NIC가 받은 packet은 DMA ring, interrupt/NAPI, kernel TCP/IP stack, socket receive queue를 거친 뒤 epoll/read를 통해 application buffer로 올라오고, 그 byte를 application protocol parser가 request로 해석합니다.
+
+꼬리 경로:
+
+```
+NIC RX ring
+  -> NAPI poll
+  -> TCP reassembly
+  -> socket receive queue
+  -> epoll readiness
+  -> application read buffer
+  -> protocol frame parser
+  -> request object
+```
+
+조심할 말: packet 도착과 handler 실행을 같은 사건으로 말하면 안 됩니다. socket이 readable이어도 thread scheduling, event loop, parser, downstream I/O가 남아 있습니다.
+
 ### Kafka는 왜 빠른가요?
 
 짧은 답변:
@@ -170,6 +214,25 @@ Raft-like consensus:
 ```
 
 조심할 말: Cassandra 일반 QUORUM을 consensus라고 부르면 안 됩니다.
+
+### CPU는 낮은데 latency가 높으면 어디를 보나요?
+
+짧은 답변:
+
+> CPU 사용률이 낮아도 요청 thread가 socket I/O, disk I/O, lock/futex, GC, scheduler wait, cgroup throttle에서 기다릴 수 있습니다. 먼저 요청 경로의 어느 queue나 wait state가 커졌는지 봅니다.
+
+꼬리 경로:
+
+```
+request arrives
+  -> socket queue
+  -> runnable thread
+  -> lock or futex wait
+  -> disk/network syscall
+  -> downstream response
+```
+
+조심할 말: "CPU가 낮으니 서버는 여유 있습니다"는 위험합니다. off-CPU time, run queue, thread dump, `ss`, `iostat`, GC log를 함께 봐야 합니다.
 
 ## 나쁜 답변을 고치는 방법
 

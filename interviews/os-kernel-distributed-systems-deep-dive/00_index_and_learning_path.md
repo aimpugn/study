@@ -32,9 +32,21 @@ multiple machines
 
 이 지도에서 `상태`라는 말은 추상적인 기분이 아닙니다. 파일 offset, dirty page, socket send queue, Kafka offset, Cassandra timestamped cell, Spark shuffle block처럼 실제로 저장되거나 관찰되는 값입니다. 좋은 면접 답변은 이 상태가 어디에 있고 누가 바꾸며 장애가 나면 어떤 값이 남는지 말할 수 있어야 합니다.
 
-## 1단계: 한 머신의 하한선을 세운다
+## 1단계: 한 머신을 작은 운영체제 교과서가 아니라 실제 서버 경로로 이해한다
 
-[01_os_kernel_foundations.md](01_os_kernel_foundations.md)는 `write(fd, buf, len)`에서 시작합니다. 이 함수 하나를 제대로 설명하면 user mode와 kernel mode, fd table, VFS, page cache, `fsync()`, partial write, socket buffer까지 이어집니다. 여기서 배우는 습관은 "API 이름을 외우기 전에 그 API가 커널 안에서 어떤 객체와 queue를 건드리는지 본다"입니다.
+[01_os_kernel_foundations.md](01_os_kernel_foundations.md)는 OS 파트의 허브입니다. 여기서 `write(fd, buf, len)` 하나가 왜 단순한 라이브러리 호출이 아닌지, 그리고 이 질문이 Kafka의 log append, Cassandra의 commit log, Spark의 shuffle spill까지 어떻게 이어지는지 먼저 봅니다.
+
+그 다음에는 다섯 개의 상세 문서로 내려갑니다.
+
+| 순서 | 문서 | 붙잡을 질문 |
+|---|---|---|
+| 1 | [01a_process_scheduling.md](01a_process_scheduling.md) | process와 thread는 CPU 시간을 어떻게 나누고, 왜 runnable인데도 요청이 늦어지는가? |
+| 2 | [01b_memory_and_address_space.md](01b_memory_and_address_space.md) | virtual address, page table, TLB, page fault, mmap, OOM은 JVM/DB/process 메모리 증상과 어떻게 이어지는가? |
+| 3 | [01c_filesystem_page_cache_block_io.md](01c_filesystem_page_cache_block_io.md) | `write()`, page cache, dirty page, writeback, fsync, block layer는 durable write와 성능을 어떻게 동시에 만드는가? |
+| 4 | [01d_network_stack_and_io_multiplexing.md](01d_network_stack_and_io_multiplexing.md) | NIC로 들어온 packet은 driver, NAPI, TCP, socket buffer, epoll, application thread를 거쳐 어떻게 request가 되는가? |
+| 5 | [01e_concurrency_isolation_observability.md](01e_concurrency_isolation_observability.md) | lock, futex, cgroup, namespace, `/proc`, perf/eBPF 관측은 장애 추론에서 어떤 증거가 되는가? |
+
+여기서 배우는 습관은 "API 이름을 외우기 전에 그 API가 커널 안에서 어떤 객체와 queue를 건드리는지 본다"입니다. OS 파트는 Kafka/Cassandra/Spark를 이해하기 위한 낮은 하한선이 아니라, 세 시스템이 실제로 기대는 물리적 실행 경로입니다.
 
 이 단계를 지나면 다음 질문에 답할 수 있어야 합니다.
 
@@ -42,6 +54,8 @@ multiple machines
 - CPU가 바쁘지 않아 보여도 thread가 runnable queue에서 기다릴 수 있는 이유는 무엇인가?
 - page fault와 GC pause, disk writeback은 모두 latency로 보일 수 있는데 서로 무엇이 다른가?
 - page cache가 성능을 높이는 동시에 durability 오해를 만들 수 있는 이유는 무엇인가?
+- blocking/non-blocking, synchronous/asynchronous, readiness/completion은 왜 같은 축이 아닌가?
+- NIC가 packet을 받았다는 사실과 application thread가 request를 처리했다는 사실 사이에는 어떤 kernel queue와 scheduling 지점이 있는가?
 
 ## 2단계: 여러 머신에서는 관측이 불완전하다는 사실을 받아들인다
 

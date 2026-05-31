@@ -2,7 +2,17 @@
 
 OS 커널을 공부하는 이유는 "운영체제 면접 키워드"를 외우기 위해서가 아닙니다. Kafka broker, Cassandra node, Spark executor는 결국 하나의 OS process이고, 그 process는 CPU 시간, 가상 메모리, 파일, page cache, socket buffer, disk queue를 커널에게 빌려 씁니다. 애플리케이션 로그에는 `timeout`, `GC pause`, `request latency`, `consumer lag`, `shuffle spill`처럼 보이지만, 많은 경우 아래층에서는 runnable task가 CPU를 기다리거나, dirty page가 writeback을 기다리거나, socket buffer가 비거나 차기를 기다리고 있습니다.
 
-이 문서는 한 머신 안에서 커널이 무엇을 관리하는지 lower layer부터 쌓습니다. 목적은 `syscall`, `context switch`, `page fault`, `page cache`, `socket buffer`라는 말을 아는 것이 아니라, 한 요청이 실제로 어디서 어디로 이동하는지 설명하는 것입니다.
+이 문서는 한 머신 안에서 커널이 무엇을 관리하는지 lower layer부터 쌓는 허브입니다. 목적은 `syscall`, `context switch`, `page fault`, `page cache`, `socket buffer`라는 말을 아는 것이 아니라, 한 요청이 실제로 어디서 어디로 이동하는지 설명하는 것입니다.
+
+다만 이 파일 하나로 OS를 끝내면 다시 낮은 하한선에 갇힙니다. 먼저 이 허브에서 전체 감각을 잡고, 곧바로 아래 상세 문서로 내려가야 합니다.
+
+| 상세 문서 | 왜 필요한가 |
+|---|---|
+| [01a_process_scheduling.md](01a_process_scheduling.md) | Kafka network thread, Cassandra compaction thread, Spark executor task가 결국 OS scheduler 위에서 CPU 시간을 나눠 쓰기 때문입니다. |
+| [01b_memory_and_address_space.md](01b_memory_and_address_space.md) | JVM heap, off-heap, mmap, page cache, OOM kill을 같은 physical memory 경쟁으로 읽어야 하기 때문입니다. |
+| [01c_filesystem_page_cache_block_io.md](01c_filesystem_page_cache_block_io.md) | Kafka segment, Cassandra commit log/SSTable, Spark shuffle spill은 모두 file/page cache/block I/O 경로를 지나기 때문입니다. |
+| [01d_network_stack_and_io_multiplexing.md](01d_network_stack_and_io_multiplexing.md) | broker request, replica fetch, Cassandra gossip/repair, Spark shuffle fetch가 NIC부터 socket buffer와 epoll까지 이어지는 경로를 지나기 때문입니다. |
+| [01e_concurrency_isolation_observability.md](01e_concurrency_isolation_observability.md) | lock/futex/cgroup/namespace와 `/proc`, `perf`, eBPF 관측 없이는 "느리다"를 lower layer 증거로 좁힐 수 없기 때문입니다. |
 
 ## 1. `write()`는 왜 커널에 부탁해야 하는가
 

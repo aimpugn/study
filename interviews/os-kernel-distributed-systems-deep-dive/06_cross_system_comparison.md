@@ -111,6 +111,16 @@ backpressure를 이해하지 못하면 worker 수나 thread 수를 늘리는 처
 
 이 표는 "어디를 봐야 하는가"를 정하기 위한 지도입니다. 예를 들어 disk saturation이 있으면 Kafka는 leader append와 follower fetch, Cassandra는 compaction과 commit log, Spark는 shuffle spill을 먼저 떠올립니다. 같은 disk라도 시스템마다 만들어내는 증상이 다릅니다.
 
+OS 상세 문서와 연결하면 비교 질문이 더 구체적입니다.
+
+| OS 상세 경로 | Kafka에서 묻는 질문 | Cassandra에서 묻는 질문 | Spark에서 묻는 질문 |
+|---|---|---|---|
+| [process/scheduler](01a_process_scheduling.md) | network/request/log cleaner thread가 CPU를 받는가? | request/compaction/repair thread가 서로 굶기지 않는가? | executor task thread와 driver scheduling이 어디서 기다리는가? |
+| [memory/address](01b_memory_and_address_space.md) | heap 밖 page cache와 network buffer가 충분한가? | memtable, off-heap, page cache, heap이 어떻게 경쟁하는가? | heap, overhead, off-heap, spill buffer, page cache가 cgroup limit 안에 맞는가? |
+| [file/block I/O](01c_filesystem_page_cache_block_io.md) | segment append/read, writeback, fsync 정책이 latency를 바꾸는가? | commit log, SSTable read, compaction write가 device queue를 채우는가? | shuffle spill/checkpoint/local disk read가 stage를 붙잡는가? |
+| [network/multiplexing](01d_network_stack_and_io_multiplexing.md) | produce/fetch/replica traffic의 socket queue가 밀리는가? | coordinator-replica, gossip, repair streaming 중 어디가 막히는가? | shuffle fetch와 driver/executor RPC가 TCP/backpressure를 겪는가? |
+| [concurrency/isolation/observability](01e_concurrency_isolation_observability.md) | lock/futex/thread wait와 cgroup throttle이 보이는가? | compaction/repaired data/GC/cgroup OOM을 분리했는가? | task skew, GC, off-CPU, container OOM을 증거로 구분했는가? |
+
 ## 현실 시나리오 1: 한 노드의 disk가 느려졌다
 
 Kafka에서는 해당 broker가 leader인 partition의 produce latency가 늘고 follower fetch가 밀리며 ISR 변화가 생길 수 있습니다. consumer lag도 늘 수 있지만, lag의 직접 원인이 consumer인지 broker disk인지 분리해야 합니다.
@@ -132,6 +142,20 @@ Spark:     spill/shuffle block -> stage skew / task retry
 Kafka producer retry가 idempotence 없이 중복 append를 만들 수 있습니다. Cassandra client retry가 timeout된 write의 적용 여부를 모른 채 다시 쓰면 last-write-wins와 timestamp conflict를 복잡하게 만들 수 있습니다. Spark task retry는 pure computation에는 유용하지만 external side effect를 가진 `foreachPartition` 같은 코드에서는 중복 write를 만들 수 있습니다.
 
 retry는 실패를 없애는 기능이 아니라 불확실한 상태에서 다시 시도하는 정책입니다. 그래서 request id, idempotent sink, transaction boundary, rate limit, backoff, circuit breaker가 함께 필요합니다.
+
+## 현실 시나리오 3: network timeout이 세 시스템에서 다르게 보인다
+
+같은 `timeout`이라는 로그라도 내부 상태는 다릅니다.
+
+```
+common lower layer:
+  packet loss or delayed processing
+    -> TCP retransmission or socket queue backlog
+    -> application thread wakeup delayed
+    -> request timeout observed
+```
+
+Kafka에서는 producer request가 broker ack를 못 받았거나 consumer fetch가 늦은 상태일 수 있습니다. Cassandra에서는 coordinator가 CL을 만족할 replica 응답을 제때 받지 못한 상태일 수 있습니다. Spark에서는 reduce task가 shuffle block fetch를 기다리다 실패한 상태일 수 있습니다. 세 경우 모두 [01d_network_stack_and_io_multiplexing.md](01d_network_stack_and_io_multiplexing.md)의 network path를 통과하지만, 위쪽의 recovery 의미는 다릅니다. Kafka는 producer retry/idempotence/offset, Cassandra는 적용 여부 불명확성과 CL/repair, Spark는 task retry와 external side effect를 각각 봐야 합니다.
 
 ## 문서를 덮고 확인할 것
 

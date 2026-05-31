@@ -2,7 +2,7 @@
 
 검수 날짜: 2026-05-31
 
-이 문서는 학습 본문이 아니라 이번 corpus rewrite의 review ledger입니다. 이전 버전의 label-heavy PASS 판정은 superseded되었습니다. 현재 기준은 prose-first deep study, lower-layer trace, source boundary, unsafe command repair, claim-level evidence입니다.
+이 문서는 학습 본문이 아니라 이번 corpus rewrite의 review ledger입니다. 이전 버전의 label-heavy PASS 판정은 superseded되었습니다. 또한 이전 `READY_FOR_SCOPED_COMMIT` 판정도 OS 세부 범위 누락 공격을 받은 뒤 superseded되었습니다. 현재 기준은 prose-first deep study, lower-layer trace, source boundary, unsafe command repair, claim-level evidence, 그리고 OS 상세 문서와 제품 문서의 실제 연결입니다.
 
 ## Activated Roles
 
@@ -12,6 +12,7 @@
 | Evidence Auditor | `write()`, fd, page cache, fsync, Cassandra/Spark/Kafka source boundary 공격 | ACCEPT_REPAIR / DOWNGRADE rows incorporated |
 | Protocol Sentinel | premature WHOLE_COMPLETE, unsafe command, source ledger weakness, staging boundary 감시 | HOLD before repairs, incorporated into rework gates |
 | Main Orchestrator | repairs, corpus rewrite, verification, commit boundary | in progress until final verification and commit |
+| Coverage Critic | current corpus over-closed OS scope, network path, multiplexing, glossary/source/experiments gaps | REWORK, then ACCEPT_REPAIR after OS detail expansion |
 
 ## Claim Cards
 
@@ -30,6 +31,11 @@
 | OS lock/concurrency coverage is enough if lock contention is mentioned. | Lock contention alone does not teach race, deadlock, lost wakeup, memory ordering, or JVM wait states. | ACCEPT_REPAIR | Expanded `01` lock section with shared-state protection, lost update, deadlock, lost wakeup, memory ordering, JVM/OS wait trace. |
 | Consensus coverage is enough if quorum is contrasted with consensus. | A reader still needs a state-machine replication trace with leader term, log index, majority append, commit, apply. | ACCEPT_REPAIR | Expanded `02` with Raft-like log entry trace and KRaft/Cassandra boundary. |
 | Spark DataFrame coverage can be satisfied by naming DataFrame next to RDD. | The frozen scope asks for RDD/DataFrame/DAG; a reader needs the logical plan -> physical plan -> stage/task bridge. | ACCEPT_REPAIR | Expanded `05` with DataFrame/Dataset, Catalyst plan, physical plan, exchange/shuffle, and explain-plan reasoning boundary. |
+| The OS kernel scope can remain inside one 255-line overview file. | The user explicitly rejected a low OS lower bound; critic found process lifecycle, VM, block I/O, network stack, multiplexing, cgroups, namespaces, and observability either missing or too thin. | ACCEPT_REPAIR | Demoted `01_os_kernel_foundations.md` to hub and added `01a` through `01e` detailed OS modules. |
+| Network coverage is enough if it mentions socket buffers. | Required packet path includes NIC DMA ring, interrupt/NAPI, softirq, TCP queues, accept/listen queues, epoll readiness, request parsing, send buffer, qdisc/NIC transmit queue. | ACCEPT_REPAIR | Added [01d_network_stack_and_io_multiplexing.md](../01d_network_stack_and_io_multiplexing.md) with inbound/outbound trace and product bridges. |
+| Blocking/non-blocking and sync/async are small terminology details. | User called these out as foundational; conflating readiness with async completion causes wrong Netty/Kafka/Spark reasoning. | ACCEPT_REPAIR | Added blocking/non-blocking, synchronous/asynchronous, readiness/completion, select/poll/epoll/kqueue/io_uring discussion in `01d` and interview answer in `07`. |
+| Glossary and source ledger already cover the expanded OS scope. | They lacked DMA, NAPI, futex, cgroup, namespace, mmap, OOM, dentry/inode, qdisc, epoll readiness and related primary-source rows. | ACCEPT_REPAIR | Expanded `09` with OS detailed terms and related trace/experiment references; expanded `10` with man7/kernel docs rows. |
+| Experiments are sufficient with `write`, page cache, socket queue, JVM dump, product CLI commands. | Missing experiments for epoll readiness, mmap/page fault, cgroup memory, perf/off-CPU entry, and packet path overclaim boundary. | ACCEPT_REPAIR | Expanded `08` with those experiments and explicit PASS/FAIL/overclaim warnings. |
 
 ## Gold Slice Confirmation
 
@@ -54,15 +60,16 @@ The expansion standard is not "copy this section's length." It is:
 |---|---|
 | README / 00 | Reframed corpus as self-contained prose-first learning path, not fixed label template. |
 | 01 OS | Rewrote entire file around syscall, scheduler, memory, page cache, socket, observability traces. |
+| 01a-01e OS detail modules | Added process/scheduling, memory/address, filesystem/block I/O, network/multiplexing, concurrency/isolation/observability as first-class reading path. |
 | 02 Distributed | Replaced CAP/quorum keyword flow with partial failure, time/order, log, partition, replication, consistency, recovery, backpressure. |
-| 03 Kafka | Rewrote as partition log, page cache, replication/ISR, consumer offset, delivery semantics, compaction. |
-| 04 Cassandra | Rewrote as token ownership, commit log/memtable/SSTable, read path, CL/RF, repair, compaction. |
-| 05 Spark | Rewrote as driver/executor, lazy graph, DataFrame logical/physical plan, partition/task, dependency/stage, shuffle/spill, lineage/checkpoint. |
-| 06 Comparison | Rebuilt around same words with different promises: log, partition, replication, consistency, recovery, OS resource. |
-| 07 Interview | Rebuilt around state/owner/order/failure/verification and short answer plus tail trace. |
-| 08 Experiments | Repaired unsafe process kill; constrained heavy Cassandra compaction; clarified local-only/pass-fail boundaries. |
-| 09 Glossary | Added Korean-first meaning, English original, confusion pair, first appearance, interview one-liner. |
-| 10 Source Ledger | Replaced source list with claim-level ledger and version-sensitive boundaries. |
+| 03 Kafka | Rewrote as partition log, page cache, replication/ISR, consumer offset, delivery semantics, compaction; then reconnected broker append/fetch/replica path to OS file/network/scheduler modules. |
+| 04 Cassandra | Rewrote as token ownership, commit log/memtable/SSTable, read path, CL/RF, repair, compaction; then reconnected commit log, compaction, repair streaming, cgroup resource limits to OS modules. |
+| 05 Spark | Rewrote as driver/executor, lazy graph, DataFrame logical/physical plan, partition/task, dependency/stage, shuffle/spill, lineage/checkpoint; then reconnected shuffle fetch, executor memory, cgroup OOM to OS modules. |
+| 06 Comparison | Rebuilt around same words with different promises: log, partition, replication, consistency, recovery, OS resource; then added explicit OS module comparison map. |
+| 07 Interview | Rebuilt around state/owner/order/failure/verification and short answer plus tail trace; then added multiplexing, packet path, low-CPU/high-latency answers. |
+| 08 Experiments | Repaired unsafe process kill; constrained heavy Cassandra compaction; clarified local-only/pass-fail boundaries; added epoll, mmap/page fault, cgroup, perf/off-CPU, packet-path boundary experiments. |
+| 09 Glossary | Added Korean-first meaning, English original, confusion pair, first appearance, interview one-liner; then added OS detailed terminology table with related trace/experiment field. |
+| 10 Source Ledger | Replaced source list with claim-level ledger and version-sensitive boundaries; then added official source rows for process lifecycle, mmap, epoll, TCP/socket, NAPI, futex, cgroup, namespace, proc, eBPF. |
 
 ## Remaining Verification Before Completion
 
@@ -77,3 +84,14 @@ The corpus is not complete merely because these repairs are written. Before `WHO
 - WORK ledger re-judges every row after current edits;
 - staged files are restricted to corpus root and the WORK ledger;
 - no push is performed.
+
+## Post-Expansion Critic Confirmation
+
+After the REWORK finding, the repair surface changed materially:
+
+- `01_os_kernel_foundations.md` is no longer treated as the whole OS course. It is a hub.
+- `01a` through `01e` now carry the previously missing OS detail.
+- `03`, `04`, `05`, and `06` link those OS details back to product internals.
+- `08`, `09`, and `10` were expanded so the experiments, glossary, and source ledger no longer describe the old smaller scope.
+
+Closure remains conditional on final verification commands and scoped commit. If any final check finds stale links, forbidden format, source URL failure without boundary note, or unrelated staging, this audit returns to REWORK.

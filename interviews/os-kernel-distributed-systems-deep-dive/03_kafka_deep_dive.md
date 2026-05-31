@@ -47,6 +47,18 @@ fetch path:
 
 여기서 `acks=all`이나 replication은 `fsync()`와 같은 말이 아닙니다. replication ack는 leader와 follower replica가 Kafka protocol의 조건을 만족했다는 뜻이고, local disk flush 정책은 별도의 설정과 filesystem/storage 경계에 기대는 문제입니다. 내구성 질문이 나오면 "page cache에 있음", "broker process가 ack함", "replica가 복제함", "storage device가 flush함"을 분리해야 합니다.
 
+이 구분은 [01c_filesystem_page_cache_block_io.md](01c_filesystem_page_cache_block_io.md)의 파일 경로와 그대로 연결됩니다. broker가 segment file에 append할 때 사용자 공간의 record byte는 system call을 거쳐 page cache의 dirty page가 되고, background writeback이나 flush 정책을 통해 block layer와 device queue로 내려갑니다. follower가 leader log를 fetch하는 동안 같은 disk와 page cache는 read path로도 쓰입니다. 따라서 produce latency가 높을 때는 Kafka request queue만 볼 것이 아니라 dirty writeback, disk queue, page cache hit, follower fetch lag를 함께 보아야 합니다.
+
+```
+producer batch reaches broker
+  -> network receive queue
+  -> request handler thread
+  -> append to segment file
+  -> page cache dirty page
+  -> replica fetch reads same segment range
+  -> socket send buffer to follower/consumer
+```
+
 ## 3. Replication과 ISR은 어느 replica가 따라오고 있는지 관리한다
 
 Kafka partition에는 leader가 있고 follower가 있습니다. producer와 consumer의 일반 요청은 leader를 중심으로 처리됩니다. follower는 leader의 log를 fetch해 따라옵니다. ISR(in-sync replicas)은 leader와 충분히 동기화되어 있다고 간주되는 replica 집합입니다. producer가 `acks=all`을 요구하면 leader는 필요한 ISR 조건을 만족할 때 성공을 반환합니다.
@@ -68,6 +80,8 @@ committed / high watermark:
 leader가 죽으면 다른 replica가 leader가 됩니다. 이때 어떤 replica를 leader로 뽑을지, leader가 가진 log가 어디까지 안전한지, consumer에게 어느 offset까지 보여 줄지 모두 correctness와 관련됩니다. 단순히 "replica가 있으니 안전하다"가 아니라 "어떤 offset이 몇 replica에 있으며, leader election 뒤 log가 어떻게 잘리거나 이어지는가"를 봐야 합니다.
 
 Kafka의 modern metadata path는 ZooKeeper에서 KRaft로 이동했습니다. 이 문서는 Kafka 4.x 문서 기준의 KRaft 중심 설명을 우선하며, ZooKeeper-era 상세 동작은 version-sensitive 또는 historical로 다룹니다.
+
+network 관점에서는 leader와 follower의 관계가 단순한 method call이 아닙니다. follower fetch request도 [01d_network_stack_and_io_multiplexing.md](01d_network_stack_and_io_multiplexing.md)의 packet path를 지나고, socket receive queue, broker event loop, request handler, page cache read, socket send buffer를 거칩니다. follower가 lagging이라는 말은 follower process가 느리다는 한 문장이 아니라, leader disk read, leader network send, follower network receive, follower append, follower disk write 중 어느 상태가 밀렸는지 다시 나누어야 한다는 뜻입니다.
 
 ## 4. Consumer group은 병렬성과 소유권을 offset으로 표현한다
 
@@ -99,6 +113,8 @@ producer rate > consumer processing rate
 lag를 줄이려고 consumer 수만 늘리면 partition 수, key distribution, downstream capacity가 곧 한계가 됩니다. partition이 12개면 같은 group에서 동시에 active하게 읽을 수 있는 consumer도 보통 12개가 상한입니다. downstream DB가 병목이면 consumer를 늘릴수록 DB retry와 timeout만 늘 수 있습니다.
 
 producer 쪽도 backpressure가 있습니다. broker가 느리거나 network가 막히면 producer buffer가 차고, `linger.ms`, `batch.size`, `buffer.memory`, `max.in.flight.requests.per.connection` 같은 설정이 latency와 throughput, ordering에 영향을 줍니다. 설정 이름을 외우기보다 "어느 queue가 자라고 어느 순서 보장이 깨질 수 있는가"를 먼저 봐야 합니다.
+
+OS scheduler도 이 backpressure를 가릴 수 있습니다. [01a_process_scheduling.md](01a_process_scheduling.md)에서 본 것처럼 socket이 readable이 되어도 network thread가 CPU를 받지 못하면 request 처리는 늦어집니다. producer client도 non-blocking network I/O와 selector loop를 사용하므로, user thread가 `send()`를 호출한 시점과 broker가 실제 batch를 받은 시점 사이에는 producer buffer, selector thread, kernel socket send buffer, TCP window가 있습니다.
 
 ## 6. Compaction과 retention은 log를 어떻게 오래 살릴지 정한다
 

@@ -169,7 +169,100 @@ jcmd <pid> Thread.print | sed -n '1,120p'
 
 PASS는 `RUNNABLE`, `WAITING`, `TIMED_WAITING`, `BLOCKED` 상태를 구분해 보는 것입니다. FAIL은 모든 `RUNNABLE`을 CPU 실행 중으로 해석하는 것입니다. JVM의 `RUNNABLE`은 native I/O wait를 포함해 OS CPU running과 정확히 같지 않을 수 있습니다.
 
-## 6. Kafka local 관찰
+## 6. epoll readiness와 non-blocking read를 본다
+
+목적은 epoll이 "작업 완료"가 아니라 "fd에서 읽을 수 있을 가능성"을 알려 주며, application이 non-blocking read를 반복해 `EAGAIN`까지 drain해야 한다는 점을 확인하는 것입니다.
+
+전제는 Linux와 Python 3입니다. macOS의 `selectors`는 kqueue로 매핑될 수 있으므로 결과 표현은 다르지만 readiness 모델을 관찰할 수 있습니다.
+
+```bash
+python3 - <<'PY'
+import os, select
+
+r, w = os.pipe()
+os.set_blocking(r, False)
+
+ep = select.epoll()
+ep.register(r, select.EPOLLIN)
+
+os.write(w, b"hello")
+print("events:", ep.poll(0))
+print("read:", os.read(r, 2))
+print("events after partial read:", ep.poll(0))
+print("read rest:", os.read(r, 1024))
+try:
+    os.read(r, 1)
+except BlockingIOError as e:
+    print("EAGAIN after drain:", e.errno)
+PY
+```
+
+PASS는 event가 readiness를 알려 주고, 일부만 읽으면 아직 읽을 byte가 남을 수 있으며, 완전히 drain한 뒤 non-blocking read가 `EAGAIN`으로 돌아오는 것을 보는 것입니다. FAIL은 epoll event를 "read 작업이 끝났다"로 해석하는 것입니다. 이 실험은 pipe로 readiness 감각을 보는 것이며, TCP packet path 전체를 증명하지는 않습니다.
+
+## 7. mmap과 page fault 감각을 본다
+
+목적은 `mmap()`이 파일 byte를 process address space에 보이게 만들지만, 실제 page는 첫 접근 시점의 page fault와 page cache를 통해 올라올 수 있음을 관찰하는 것입니다.
+
+Linux:
+
+```bash
+python3 - <<'PY' &
+import mmap, os, time
+
+path = "/tmp/mmap-demo.bin"
+with open(path, "wb") as f:
+    f.truncate(64 * 1024 * 1024)
+
+with open(path, "r+b") as f:
+    m = mmap.mmap(f.fileno(), 0)
+    print("pid", os.getpid(), flush=True)
+    time.sleep(5)
+    total = 0
+    for i in range(0, len(m), 4096):
+        total += m[i]
+    print("touched", total)
+    time.sleep(5)
+PY
+pid=$!
+sleep 1
+awk '{print "before minor_faults="$10, "major_faults="$12}' /proc/$pid/stat 2>/dev/null || true
+sleep 7
+awk '{print "after minor_faults="$10, "major_faults="$12}' /proc/$pid/stat 2>/dev/null || true
+wait "$pid"
+rm -f /tmp/mmap-demo.bin
+```
+
+PASS는 mmap 후 실제 접근 시점에 page fault 관련 counters가 움직일 수 있음을 이해하는 것입니다. FAIL은 counter 해석이 어렵다고 mmap과 page fault 관계가 없다고 결론 내리는 것입니다. `/proc/<pid>/stat` field 해석은 Linux 문서를 확인해야 하며, 이 명령은 학습용 힌트입니다.
+
+## 8. container/cgroup memory limit 관측 위치를 확인한다
+
+목적은 container나 cgroup 환경에서 process가 보는 memory 문제가 host 전체 memory와 다를 수 있음을 확인하는 것입니다.
+
+Linux cgroup v2가 있는 환경:
+
+```bash
+test -f /sys/fs/cgroup/memory.current && cat /sys/fs/cgroup/memory.current
+test -f /sys/fs/cgroup/memory.max && cat /sys/fs/cgroup/memory.max
+cat /proc/self/cgroup
+```
+
+PASS는 현재 process가 속한 cgroup과 memory limit/current 사용량을 확인하는 것입니다. FAIL은 host의 `free` 결과만 보고 container OOM 가능성을 배제하는 것입니다. macOS Docker Desktop에서는 Linux VM 내부에서 확인해야 하므로 host 터미널 결과와 다를 수 있습니다.
+
+## 9. perf/off-CPU 관측의 입구를 확인한다
+
+목적은 CPU flame graph만으로는 sleep, lock, I/O wait를 설명하지 못한다는 점을 확인하는 것입니다.
+
+Linux:
+
+```bash
+perf stat -e context-switches,cpu-migrations,page-faults sleep 2
+```
+
+가능하면 별도 test process에 대해 `perf record`나 eBPF/bpftrace를 사용할 수 있지만, 권한과 kernel 설정이 필요합니다.
+
+PASS는 context switch와 page fault 같은 event가 CPU 사용률과 별개로 관찰될 수 있음을 보는 것입니다. FAIL은 production에서 권한/overhead 검토 없이 profiling을 켜는 것입니다.
+
+## 10. Kafka local 관찰
 
 목적은 topic partition과 consumer group offset/lag가 실제로 분리된 상태임을 보는 것입니다. 전제는 local Kafka cluster가 있고 실험용 topic을 사용한다는 것입니다.
 
@@ -180,7 +273,7 @@ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group de
 
 PASS는 partition별 current offset, log end offset, lag를 구분해 보는 것입니다. FAIL은 lag를 곧바로 consumer thread 부족으로 단정하는 것입니다. broker disk, partition skew, downstream processing이 모두 후보입니다.
 
-## 7. Cassandra local 관찰
+## 11. Cassandra local 관찰
 
 목적은 Cassandra node의 상태와 compaction/repair 관련 신호를 읽는 것입니다. 전제는 개인 local Cassandra cluster입니다.
 
@@ -196,7 +289,7 @@ nodetool compactionstats
 
 PASS는 pending compaction, thread pool pending/blocked, node status를 읽고 어떤 queue가 자라는지 말하는 것입니다. FAIL은 `compact`를 일반 점검 명령처럼 실행하는 것입니다.
 
-## 8. Spark local 관찰
+## 12. Spark local 관찰
 
 목적은 action이 job/stage/task로 나뉘고, shuffle이 stage boundary와 spill metric을 만든다는 점을 보는 것입니다.
 
@@ -209,6 +302,24 @@ spark-submit --master local[2] examples/src/main/python/wordcount.py /tmp/input.
 실제 path는 설치 방식마다 다릅니다. Spark UI가 떠 있다면 `Jobs`, `Stages`, `Executors`, `SQL` 탭에서 task duration, shuffle read/write, spill, GC time을 봅니다.
 
 PASS는 job -> stage -> task 계층과 shuffle metric을 구분하는 것입니다. FAIL은 local mode 결과를 cluster scheduling, remote shuffle, executor loss와 동일하게 해석하는 것입니다.
+
+## 13. packet/request path는 한 명령으로 증명되지 않는다
+
+목적은 NIC, TCP, socket, epoll, application parser가 여러 관측 표면에 걸쳐 있다는 점을 확인하는 것입니다. local loopback으로 `tcpdump`나 `ss`를 볼 수 있지만, loopback은 실제 NIC DMA/NAPI path를 그대로 지나지 않을 수 있습니다.
+
+안전한 local 관찰:
+
+```bash
+python3 -m http.server 18081 >/tmp/http-demo.log 2>&1 &
+pid=$!
+sleep 1
+curl -s http://127.0.0.1:18081/ >/dev/null
+ss -tin sport = :18081 or dport = :18081 2>/dev/null || netstat -an | grep 18081 || true
+kill "$pid"
+rm -f /tmp/http-demo.log
+```
+
+PASS는 socket connection 관측이 application request 처리와 별도 표면임을 이해하는 것입니다. FAIL은 loopback 실험으로 NIC DMA ring, hardware interrupt, real network latency를 모두 증명했다고 말하는 것입니다.
 
 ## 실험 후 기록할 것
 

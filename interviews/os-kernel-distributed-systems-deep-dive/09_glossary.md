@@ -59,6 +59,32 @@
 - Kafka compaction과 Cassandra compaction: Kafka는 key별 log 정리, Cassandra는 SSTable merge입니다.
 - Spark cache와 checkpoint: cache는 성능 최적화, checkpoint는 lineage를 끊는 recovery 기준점입니다.
 
+## OS 상세 용어와 관련 trace
+
+| 용어 | 쉬운 한국어 의미 | 헷갈리는 개념 | 첫 등장 | 관련 trace/실험 | 면접 한 문장 |
+|---|---|---|---|---|---|
+| fork | 현재 process 문맥을 복제해 child process를 만드는 system call | exec | 01a | process lifecycle trace | `fork()`는 새 프로그램으로 바꾸는 일이 아니라 현재 process를 복제하는 일입니다. |
+| exec | 현재 process의 주소 공간을 새 program image로 교체하는 system call | fork | 01a | shell fork/exec trace | `execve()` 뒤에는 PID 문맥 일부가 이어지지만 user code와 data는 새 프로그램으로 바뀝니다. |
+| zombie process | 종료했지만 parent가 exit status를 회수하기 전 process table에 남은 기록 | sleep process | 01a | wait/zombie 설명 | zombie는 CPU를 쓰는 살아 있는 process가 아니라 종료 상태 전달을 위한 흔적입니다. |
+| NUMA | CPU와 memory 위치에 따라 접근 비용이 달라지는 구조 | core count | 01a | scheduler/affinity 설명 | NUMA에서는 CPU 개수보다 thread와 memory가 어느 node에 놓였는지가 latency를 바꿀 수 있습니다. |
+| mmap | 파일이나 memory를 process address space에 mapping하는 system call | read | 01b | mmap/page fault 실험 | mmap은 파일 I/O를 없애는 것이 아니라 page fault와 page cache 경로로 늦춰 만날 수 있습니다. |
+| TLB | virtual address 번역 결과를 CPU가 cache하는 작은 표 | page cache | 01b | address translation trace | TLB miss가 많으면 같은 코드도 주소 번역 비용 때문에 느려질 수 있습니다. |
+| OOM killer | memory를 확보하지 못할 때 kernel이 process를 골라 종료시키는 동작 | JVM OOM | 01b | cgroup memory 실험 | container에서는 host memory가 남아 있어도 cgroup limit 때문에 OOM kill이 날 수 있습니다. |
+| dentry | directory name과 inode 연결을 cache하는 kernel object | inode | 01c | path->inode trace | path lookup은 문자열을 매번 처음부터 disk에서 찾는 것이 아니라 dentry/inode cache를 거칩니다. |
+| inode | 파일의 metadata와 data 위치를 나타내는 filesystem object | file path | 01c | path/fd/inode trace | fd는 path가 아니라 open file description을 통해 inode-backed file 상태를 가리킵니다. |
+| block layer | filesystem 요청을 storage device queue로 바꾸는 kernel 계층 | filesystem | 01c | writeback->device trace | disk saturation은 file API 위쪽 증상으로 보이지만 block queue에서 병목이 잡힐 수 있습니다. |
+| DMA | 장치가 CPU 대신 memory에 직접 data를 읽고 쓰는 방식 | CPU copy | 01d | packet path trace | NIC packet 수신은 보통 DMA ring을 통해 memory에 들어온 뒤 kernel network stack으로 올라갑니다. |
+| NAPI | Linux network stack에서 interrupt와 polling을 섞어 packet을 처리하는 방식 | epoll | 01d | packet path trace | NAPI는 application event loop가 아니라 driver/kernel 쪽 packet 처리 방식입니다. |
+| softirq | interrupt 이후 미뤄 둔 kernel work를 처리하는 software interrupt context | user thread | 01d | NAPI trace | packet 처리는 hard interrupt에서 끝나지 않고 softirq/NAPI poll로 이어질 수 있습니다. |
+| listen backlog | 아직 application이 accept하지 않은 연결이 기다리는 kernel queue 크기와 관련된 설정 | application queue | 01d | accept queue trace | accept loop가 느리면 application handler 전에 kernel 연결 대기열이 먼저 병목이 될 수 있습니다. |
+| accept queue | handshake가 끝난 connection이 `accept()`를 기다리는 queue | socket receive buffer | 01d | accept queue trace | `accept()`가 늦으면 client는 서버 user code에 닿기 전부터 지연될 수 있습니다. |
+| readiness | fd에서 read/write를 시도할 수 있을 가능성이 있다는 알림 | completion | 01d | epoll 실험 | epoll readiness는 작업 완료가 아니며 application이 직접 read/write를 수행해야 합니다. |
+| qdisc | kernel에서 outgoing packet을 NIC queue로 보내기 전 queueing/shaping하는 계층 | TCP send buffer | 01d | response send trace | response write 이후에도 qdisc와 NIC transmit queue에서 지연될 수 있습니다. |
+| futex | user-space atomic lock과 kernel sleep/wake를 연결하는 Linux primitive | mutex 자체 | 01e | futex wait/wake trace | futex는 lock이 늘 kernel로 들어가지 않게 하고, 오래 기다릴 때만 sleep 경로를 씁니다. |
+| cgroup | process group의 CPU/memory/I/O 사용량을 제한하고 계측하는 Linux 기능 | namespace | 01e | cgroup memory 실험 | cgroup은 무엇이 보이는가가 아니라 얼마나 쓸 수 있는가를 제한합니다. |
+| namespace | process가 보는 PID, mount, network 같은 세계를 분리하는 Linux 기능 | cgroup | 01e | container isolation trace | namespace는 container가 독립된 system처럼 보이게 하지만 자원 한도는 cgroup이 다룹니다. |
+| eBPF | 제한된 program을 kernel hook에 붙여 관측/필터링하는 mechanism | 로그 수집기 | 01e | perf/eBPF 관측 | eBPF는 kernel event를 세밀하게 볼 수 있지만 권한, overhead, 민감 정보 경계를 확인해야 합니다. |
+
 ## 문서를 덮고 확인할 것
 
 용어 하나를 고를 때마다 다음 문장으로 말해 봅니다.

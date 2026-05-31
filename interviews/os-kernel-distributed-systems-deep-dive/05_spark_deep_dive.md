@@ -110,6 +110,19 @@ reduce task
 
 따라서 "shuffle이 느리다"는 말은 network가 느리다는 뜻만이 아닙니다. key skew로 한 reduce partition만 커질 수 있고, serialization 비용이 클 수 있으며, executor memory가 부족해 spill이 많을 수 있고, local disk가 느릴 수 있으며, GC가 늘어날 수 있습니다. OS 관점에서는 executor JVM heap, off-heap buffer, page cache, local disk I/O, TCP connection이 모두 관련됩니다.
 
+[01d_network_stack_and_io_multiplexing.md](01d_network_stack_and_io_multiplexing.md)의 network path를 Spark에 대입하면 reduce task의 shuffle fetch는 remote executor의 file read와 socket send, local executor의 socket receive queue와 TCP reassembly, deserialization, memory allocation을 모두 포함합니다. fetch failure가 "네트워크가 끊겼다" 하나로 닫히지 않는 이유입니다.
+
+```
+reduce task fetches shuffle block
+  -> remote executor reads local shuffle file
+  -> page cache or disk read
+  -> socket send buffer
+  -> TCP network path
+  -> local socket receive queue
+  -> deserialize and merge
+  -> spill again if memory is insufficient
+```
+
 ## 6. Cache와 persist는 recomputation을 줄이지만 memory 압력을 만든다
 
 Spark lineage 덕분에 RDD/DataFrame partition은 필요할 때 다시 계산될 수 있습니다. 같은 dataset을 여러 action에서 반복 쓰면 매번 다시 계산하지 않도록 cache/persist를 사용할 수 있습니다. memory에 올리면 빠르지만, memory가 부족하면 eviction이나 spill, GC pressure가 생깁니다. disk persistence를 선택하면 recomputation은 줄지만 disk I/O가 늘어납니다.
@@ -125,6 +138,8 @@ with cache:
 ```
 
 cache는 correctness 도구가 아니라 performance 도구입니다. executor가 죽어 cache가 사라지면 Spark는 lineage로 다시 계산할 수 있습니다. 그러나 source가 nondeterministic하거나 외부 side effect가 있으면 재계산 결과가 달라질 수 있습니다. 이때 checkpoint가 필요합니다.
+
+메모리 관점에서는 [01b_memory_and_address_space.md](01b_memory_and_address_space.md)의 구분이 그대로 필요합니다. Spark executor heap 안의 storage/execution memory, off-heap buffer, JVM thread stack, Python worker memory, mmap/page cache, container overhead가 같은 memory limit 안에서 경쟁합니다. heap을 늘렸는데 오히려 느려지는 이유는 GC pause 증가, page cache 축소, spill pattern 변화, cgroup OOM risk가 같이 움직이기 때문입니다.
 
 ## 7. Lineage와 checkpoint는 실패 후 어디서 다시 시작할지 정한다
 
@@ -178,6 +193,8 @@ Spark UI stage
 memory를 늘리면 spill이 줄 수 있지만 GC pause가 커질 수도 있습니다. executor heap이 커지고 object가 많아지면 GC가 오래 걸립니다. off-heap memory, shuffle buffer, OS page cache, container memory limit까지 함께 봐야 합니다.
 
 Spark tuning에서 memory는 storage와 execution이 나눠 쓰는 자원입니다. cache가 너무 많은 memory를 차지하면 execution memory가 부족해 spill이 늘 수 있고, execution이 memory를 많이 쓰면 cache가 evict될 수 있습니다. OS 관점에서는 local disk spill과 page cache도 같이 움직입니다.
+
+container에서 executor를 실행한다면 [01e_concurrency_isolation_observability.md](01e_concurrency_isolation_observability.md)의 cgroup memory도 같이 확인해야 합니다. Spark 설정의 executor memory는 전체 process resident memory를 뜻하지 않습니다. overhead memory, off-heap, Python worker, native library, page cache까지 더해 cgroup limit을 넘으면 JVM OutOfMemoryError가 아니라 container OOM kill로 보일 수 있습니다.
 
 ## 문서를 덮고 확인할 것
 

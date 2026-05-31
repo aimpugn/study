@@ -2,16 +2,17 @@
 
 이 코퍼스는 OS 커널, 분산 시스템 원리, Kafka, Cassandra, Spark를 따로 외우는 문서가 아닙니다. 목표는 한 백엔드 개발자가 `write()` 하나에서 시작해 page cache, fsync, replication, quorum, shuffle, checkpoint까지 이어지는 상태 이동을 자기 말로 설명하게 만드는 것입니다.
 
-첫 번째 기준은 self-contained입니다. 다른 문서를 이미 읽었다고 가정하지 않습니다. 같은 개념이 앞뒤에서 다시 나오더라도, 그 문서 안에서 필요한 만큼 다시 설명합니다. 두 번째 기준은 prose-first입니다. `질문/직관/실패 모드` 같은 내부 작성 체크리스트를 본문 목차로 반복하지 않고, 독자가 읽는 순서대로 원인, 역사, 작은 상태, 내부 경로, 깨지는 지점, 확인 방법이 자연스럽게 이어지게 씁니다.
+첫 번째 기준은 self-contained입니다. 다른 문서를 이미 읽었다고 가정하지 않습니다. 같은 개념이 앞뒤에서 다시 나오더라도, 그 문서 안에서 필요한 만큼 다시 설명합니다. 두 번째 기준은 prose-first입니다. `질문/직관/깨지는 지점` 같은 내부 작성 체크리스트를 본문 목차로 반복하지 않고, 독자가 읽는 순서대로 원인, 역사, 작은 상태, 내부 경로, 깨지는 지점, 확인 방법이 자연스럽게 이어지게 씁니다.
 
 ## 읽는 순서
 
 1. [00_index_and_learning_path.md](00_index_and_learning_path.md)에서 전체 지도를 잡습니다.
-2. [01_os_kernel_foundations.md](01_os_kernel_foundations.md)에서 한 머신 안의 CPU, 메모리, 파일, 네트워크가 커널을 통해 어떻게 관리되는지 배웁니다.
-3. [02_distributed_system_foundations.md](02_distributed_system_foundations.md)에서 여러 머신 사이의 실패, 시간, 순서, 복제, 일관성, 회복을 배웁니다.
-4. [03_kafka_deep_dive.md](03_kafka_deep_dive.md), [04_cassandra_deep_dive.md](04_cassandra_deep_dive.md), [05_spark_deep_dive.md](05_spark_deep_dive.md)를 읽으며 같은 원리가 제품 내부 구조에서 어떻게 다르게 나타나는지 봅니다.
-5. [06_cross_system_comparison.md](06_cross_system_comparison.md)과 [07_interview_reasoning_playbook.md](07_interview_reasoning_playbook.md)에서 세 시스템을 비교하고 면접식 짧은 답변으로 압축합니다.
-6. [08_experiments_and_observability.md](08_experiments_and_observability.md), [09_glossary.md](09_glossary.md), [10_source_ledger.md](10_source_ledger.md)는 실험, 용어, 근거를 확인할 때 함께 봅니다.
+2. [01_os_kernel_foundations.md](01_os_kernel_foundations.md)에서 커널 학습의 허브를 먼저 읽습니다.
+3. OS 상세 문서인 [01a_process_scheduling.md](01a_process_scheduling.md), [01b_memory_and_address_space.md](01b_memory_and_address_space.md), [01c_filesystem_page_cache_block_io.md](01c_filesystem_page_cache_block_io.md), [01d_network_stack_and_io_multiplexing.md](01d_network_stack_and_io_multiplexing.md), [01e_concurrency_isolation_observability.md](01e_concurrency_isolation_observability.md)를 순서대로 읽습니다. 여기서 CPU, 메모리, 디스크, 네트워크, 동시성, 컨테이너 제한, 관측 도구를 실제 요청 경로로 묶습니다.
+4. [02_distributed_system_foundations.md](02_distributed_system_foundations.md)에서 여러 머신 사이의 실패, 시간, 순서, 복제, 일관성, 회복을 배웁니다.
+5. [03_kafka_deep_dive.md](03_kafka_deep_dive.md), [04_cassandra_deep_dive.md](04_cassandra_deep_dive.md), [05_spark_deep_dive.md](05_spark_deep_dive.md)를 읽으며 같은 원리가 제품 내부 구조에서 어떻게 다르게 나타나는지 봅니다.
+6. [06_cross_system_comparison.md](06_cross_system_comparison.md)과 [07_interview_reasoning_playbook.md](07_interview_reasoning_playbook.md)에서 세 시스템을 비교하고 면접식 짧은 답변으로 압축합니다.
+7. [08_experiments_and_observability.md](08_experiments_and_observability.md), [09_glossary.md](09_glossary.md), [10_source_ledger.md](10_source_ledger.md)는 실험, 용어, 근거를 확인할 때 함께 봅니다.
 
 ## 통과 기준
 
