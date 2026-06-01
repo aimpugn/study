@@ -1,5 +1,38 @@
 # 08. Experiments and Observability
 
+## 목차
+
+- [도구를 고르는 기준](#도구를-고르는-기준)
+- [1. `write()`와 `fsync()`가 다른 system call임을 본다](#1-write와-fsync가-다른-system-call임을-본다)
+- [2. page cache 효과를 조심스럽게 본다](#2-page-cache-효과를-조심스럽게-본다)
+- [3. runnable queue와 context switch를 안전하게 만든다](#3-runnable-queue와-context-switch를-안전하게-만든다)
+- [4. socket queue와 backpressure 감각을 본다](#4-socket-queue와-backpressure-감각을-본다)
+- [5. JVM thread dump로 waiting과 blocked를 본다](#5-jvm-thread-dump로-waiting과-blocked를-본다)
+- [6. epoll readiness와 non-blocking read를 본다](#6-epoll-readiness와-non-blocking-read를-본다)
+- [7. mmap과 page fault 감각을 본다](#7-mmap과-page-fault-감각을-본다)
+- [8. container/cgroup memory limit 관측 위치를 확인한다](#8-containercgroup-memory-limit-관측-위치를-확인한다)
+- [9. perf/off-CPU 관측의 입구를 확인한다](#9-perfoff-cpu-관측의-입구를-확인한다)
+- [10. Kafka local 관찰](#10-kafka-local-관찰)
+- [11. Cassandra local 관찰](#11-cassandra-local-관찰)
+- [12. Spark local 관찰](#12-spark-local-관찰)
+- [13. packet/request path는 한 명령으로 증명되지 않는다](#13-packetrequest-path는-한-명령으로-증명되지-않는다)
+- [실험 후 기록할 것](#실험-후-기록할-것)
+- [14. `wc`, `du`, `df`는 서로 다른 질문에 답한다](#14-wc-du-df는-서로-다른-질문에-답한다)
+- [15. cgroup 관측은 host와 process 사이의 중간 계층이다](#15-cgroup-관측은-host와-process-사이의-중간-계층이다)
+- [16. source ledger reachability는 사실성의 전부가 아니다](#16-source-ledger-reachability는-사실성의-전부가-아니다)
+- [17. 관측 장부를 쓰는 이유](#17-관측-장부를-쓰는-이유)
+- [18. 작은 실험을 제품 장애로 이어 붙이기](#18-작은-실험을-제품-장애로-이어-붙이기)
+- [19. 마지막 점검표](#19-마지막-점검표)
+- [20. Kafka 관측 rehearsal](#20-kafka-관측-rehearsal)
+- [21. Cassandra 관측 rehearsal](#21-cassandra-관측-rehearsal)
+- [22. Spark 관측 rehearsal](#22-spark-관측-rehearsal)
+- [23. 관측 timeline을 맞추는 법](#23-관측-timeline을-맞추는-법)
+- [24. 안전한 실험과 위험한 실험](#24-안전한-실험과-위험한-실험)
+- [25. 마지막 replay: 관측을 주장으로 바꾸는 단계](#25-마지막-replay-관측을-주장으로-바꾸는-단계)
+- [26. 실험을 다시 읽는 순서](#26-실험을-다시-읽는-순서)
+- [27. 면접에서 실험을 말하는 법](#27-면접에서-실험을-말하는-법)
+- [28. 이 문서의 완료 기준](#28-이-문서의-완료-기준)
+
 이 문서의 실험은 benchmark 경쟁이 아니라 개념 검증입니다. 숫자가 예쁘게 나오지 않아도 괜찮습니다. 중요한 것은 "문서에서 말한 상태 이동이 실제 관찰 표면에서 어떻게 보이는가"입니다.
 
 모든 실험은 개인 local 환경에서 실행하는 것을 전제로 합니다. production, shared server, 회사 개발 cluster에서 그대로 실행하지 않습니다. 특히 CPU 부하, disk I/O, Cassandra compaction, Spark shuffle은 주변 작업에 피해를 줄 수 있습니다.
@@ -7,7 +40,7 @@
 ## 도구를 고르는 기준
 
 | 보고 싶은 상태 | Linux 예 | macOS 예 | 주의 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | system call | `strace` | `dtruss`, `dtrace` | macOS SIP/권한 제한 가능 |
 | CPU runnable/context switch | `vmstat`, `pidstat` | `top`, Activity Monitor | 필드 의미가 다름 |
 | disk I/O | `iostat -xz` | `iostat -w` | 옵션 차이 큼 |
@@ -399,7 +432,7 @@ next check:
 
 이 문서의 실험들은 작습니다. 작은 `write()` 실험은 Kafka flush policy 전체를 증명하지 않습니다. 작은 socket 실험은 real NIC DMA/NAPI를 증명하지 않습니다. 작은 Spark local mode 실험은 cluster shuffle을 증명하지 않습니다. 그래도 가치가 있습니다. 각 실험은 큰 시스템의 한 층을 손으로 만져 보게 해 줍니다.
 
-```
+```text
 small experiment
   -> reveals one lower-layer mechanism
   -> records what it does not prove
@@ -412,7 +445,7 @@ small experiment
 
 실험을 마친 뒤에는 세 가지를 꼭 확인합니다. 첫째, 내가 직접 관측한 것은 무엇인가. 둘째, 그 관측이 어느 계층의 claim만 지지하는가. 셋째, 제품이나 분산 환경으로 확대하려면 어떤 추가 증거가 필요한가. 이 세 가지가 없으면 실험은 배움을 주는 대신 과신을 만들 수 있습니다.
 
-```
+```text
 direct observation
   -> local command output
 
@@ -509,7 +542,7 @@ Local file write, loopback socket, small Spark local job 같은 실험은 비교
 
 관측은 claim 후보입니다. `iostat`에서 await가 높았다고 바로 "디스크가 원인"이라고 확정하지 않습니다. 그 시간에 application request가 disk I/O를 기다렸는지, queue가 어떤 path에서 커졌는지, 다른 지표와 맞는지 봅니다. `ss`에서 send queue가 컸다고 바로 "네트워크가 원인"이라고 하지 않습니다. 상대가 읽지 못하는지, local event loop가 쓰지 못하는지, downstream이 막혔는지 봅니다.
 
-```
+```text
 observation
   -> candidate mechanism
   -> alternative explanations
@@ -523,7 +556,7 @@ observation
 
 이 문서를 한 번에 다 실행하려 하지 않아도 됩니다. 먼저 OS 단일 머신 실험으로 `write`, `fsync`, socket queue, process/thread, memory 지표를 익힙니다. 그 다음 Kafka/Cassandra/Spark rehearsal로 product metric을 같은 시간축에 올려 봅니다. 마지막으로 source ledger reachability와 claim boundary를 점검합니다. 이 순서가 좋은 이유는 작은 관측에서 시작해 분산 시스템 claim으로 올라가기 때문입니다.
 
-```
+```text
 local mechanism
   -> product symptom
   -> distributed uncertainty

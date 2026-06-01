@@ -1,5 +1,14 @@
 # Claim Review Audit
 
+## 목차
+
+- [Activated Roles](#activated-roles)
+- [Claim Cards](#claim-cards)
+- [Gold Slice Confirmation](#gold-slice-confirmation)
+- [Repairs That Changed The Corpus](#repairs-that-changed-the-corpus)
+- [Remaining Verification Before Completion](#remaining-verification-before-completion)
+- [Post-Expansion Critic Confirmation](#post-expansion-critic-confirmation)
+
 검수 날짜: 2026-06-01
 
 이 문서는 학습 본문이 아니라 이번 corpus rewrite의 review ledger입니다. 이전 버전의 label-heavy PASS 판정은 superseded되었습니다. 또한 이전 `READY_FOR_SCOPED_COMMIT` 판정도 OS 세부 범위 누락 공격을 받은 뒤 superseded되었습니다. 현재 기준은 prose-first deep study, lower-layer trace, source boundary, unsafe command repair, claim-level evidence, 그리고 OS 상세 문서와 제품 문서의 실제 연결입니다.
@@ -9,7 +18,7 @@
 ## Activated Roles
 
 | Role | Responsibility | Result |
-|---|---|---|
+| --- | --- | --- |
 | Curriculum Critic | gold slice가 독자의 반문을 닫는지 검수 | ACCEPT_REPAIR after one wording fix |
 | Evidence Auditor | `write()`, fd, page cache, fsync, Cassandra/Spark/Kafka source boundary 공격 | ACCEPT_REPAIR / DOWNGRADE rows incorporated |
 | Protocol Sentinel | premature WHOLE_COMPLETE, unsafe command, source ledger weakness, staging boundary 감시 | HOLD before repairs, incorporated into rework gates |
@@ -21,7 +30,7 @@
 ## Claim Cards
 
 | Claim | Attack | Closure | Repair |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | The previous corpus already met the original intent. | User explicitly rated it around 30-40/100 and objected to checklist-like labels, vague boundary wording, and shallow mechanisms. | DOWNGRADE | Treat previous corpus as source material, not accepted baseline. |
 | Gold-slice-first is a valid rewrite strategy. | If the slice only gets longer but does not connect syscall/page cache to Kafka/Cassandra/Spark, it will not generalize. | ACCEPT_REPAIR | `01` section 1 now includes boundary definition, historical causality, syscall descent, partial write, page cache/durability, and product bridges. |
 | `경계` can be used in explanations. | The word is harmful if left abstract; reader asks "what boundary and how?" | ACCEPT_REPAIR | Define boundary as CPU privilege, address access, and kernel-owned data structure access before using it. |
@@ -64,7 +73,7 @@ The expansion standard is not "copy this section's length." It is:
 ## Repairs That Changed The Corpus
 
 | Area | Repair |
-|---|---|
+| --- | --- |
 | README / 00 | Reframed corpus as self-contained prose-first learning path, not fixed label template. |
 | 01 OS | Rewrote entire file around syscall, scheduler, memory, page cache, socket, observability traces. |
 | 01a-01e OS detail modules | Added process/scheduling, memory/address, filesystem/block I/O, network/multiplexing, concurrency/isolation/observability as first-class reading path. |

@@ -1,9 +1,15 @@
 # 09. Glossary
 
+## 목차
+
+- [헷갈리는 쌍 빠른 점검](#헷갈리는-쌍-빠른-점검)
+- [OS 상세 용어와 관련 trace](#os-상세-용어와-관련-trace)
+- [문서를 덮고 확인할 것](#문서를-덮고-확인할-것)
+
 이 용어장은 영어 단어를 한국어로 치환하기 위한 표가 아닙니다. 목표는 처음 보는 용어를 쉬운 한국어로 붙잡고, 공식 문서를 다시 찾을 수 있게 원어를 남기며, 자주 헷갈리는 쌍을 바로 분리하는 것입니다.
 
 | 용어 | 쉬운 한국어 의미 | 헷갈리는 개념 | 첫 등장 | 면접 한 문장 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | 사용자 모드(user mode) | 애플리케이션 코드가 제한된 권한으로 실행되는 CPU 상태 | 커널 모드 | 01 | user mode 코드는 장치와 커널 자료구조를 직접 만지지 못하고 syscall로 요청합니다. |
 | 커널 모드(kernel mode) | CPU가 권한 있는 명령과 커널 자료구조 접근을 허용하는 실행 상태 | root user | 01 | kernel mode는 사용자 계정 권한이 아니라 CPU와 OS가 정한 privileged execution state입니다. |
 | 시스템 콜(system call) | 사용자 코드가 커널 기능을 요청하는 공식 진입 경로 | 일반 함수 호출 | 01 | `write()` wrapper는 함수처럼 보이지만 실제 파일 쓰기는 syscall entry로 커널에 요청합니다. |
@@ -62,7 +68,7 @@
 ## OS 상세 용어와 관련 trace
 
 | 용어 | 쉬운 한국어 의미 | 헷갈리는 개념 | 첫 등장 | 관련 trace/실험 | 면접 한 문장 |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | fork | 현재 process 문맥을 복제해 child process를 만드는 system call | exec | 01a | process lifecycle trace | `fork()`는 새 프로그램으로 바꾸는 일이 아니라 현재 process를 복제하는 일입니다. |
 | exec | 현재 process의 주소 공간을 새 program image로 교체하는 system call | fork | 01a | shell fork/exec trace | `execve()` 뒤에는 PID 문맥 일부가 이어지지만 user code와 data는 새 프로그램으로 바뀝니다. |
 | zombie process | 종료했지만 parent가 exit status를 회수하기 전 process table에 남은 기록 | sleep process | 01a | wait/zombie 설명 | zombie는 CPU를 쓰는 살아 있는 process가 아니라 종료 상태 전달을 위한 흔적입니다. |
