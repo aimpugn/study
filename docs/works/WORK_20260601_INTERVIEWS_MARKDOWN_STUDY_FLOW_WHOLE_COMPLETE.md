@@ -8,8 +8,8 @@
 - 대상 경로: `/Users/rody/VscodeProjects/study/interviews`
 - 작업 유형: `refactor_docs | audit | execute`
 - 작업 깊이: `full`
-- 현재 상태: `READY_FOR_COMMIT`
-- 완료 게이트: `verification PASS; commit pending`
+- 현재 상태: `COMMITTED_WITH_FOLLOW_UP_REPAIRS`
+- 완료 게이트: `original verification PASS; follow-up summary-recall repair tracked separately`
 - finish: `test+commit`
 - requested closure scope: `study/interviews` 아래 `rg --files -g '*.md'`로 잡힌 모든 Markdown 파일
 - whole-request objective id: `WHOLE_INTERVIEWS_MD_TECHNICAL_STUDY_FLOW_20260601`
@@ -153,13 +153,13 @@ Total inventory: 63 Markdown files.
 | `database-deep-dive/13-operations-security-troubleshooting.md` | deep-dive doc | 검토했으나 비수정 | already troubleshooting-focused with operational verification surfaces. |
 | `database-deep-dive/14-search-document-nosql-engine.md` | deep-dive doc | 검토했으나 비수정 | already maps search/document/NoSQL engine states and operational checks. |
 | `os-kernel-distributed-systems-deep-dive/README.md` | deep-dive hub | 검토했으나 비수정 | already states self-contained, prose-first, trace-centered corpus criteria. |
-| `os-kernel-distributed-systems-deep-dive/00_index_and_learning_path.md` | deep-dive index | 검토했으나 비수정 | already gives API->state->buffer/log->failure->verification learning path. |
+| `os-kernel-distributed-systems-deep-dive/00_index_and_learning_path.md` | deep-dive index | 수정함 | follow-up summary-recall repair converted early question-form map/table cues into declarative state/owner/order/recovery summaries. |
 | `os-kernel-distributed-systems-deep-dive/01_os_kernel_foundations.md` | deep-dive doc | 수정함 | anti-regression review found a question-first cue; added explicit memory summary before active recall questions. |
 | `os-kernel-distributed-systems-deep-dive/01a_process_scheduling.md` | deep-dive doc | 검토했으나 비수정 | process/scheduler state flow already present. |
 | `os-kernel-distributed-systems-deep-dive/01b_memory_and_address_space.md` | deep-dive doc | 검토했으나 비수정 | memory/page/table/fault/OOM flow already present. |
 | `os-kernel-distributed-systems-deep-dive/01c_filesystem_page_cache_block_io.md` | deep-dive doc | 검토했으나 비수정 | filesystem/page cache/dirty page/writeback flow already present. |
 | `os-kernel-distributed-systems-deep-dive/01d_network_stack_and_io_multiplexing.md` | deep-dive doc | 검토했으나 비수정 | NIC/socket buffer/epoll path already present. |
-| `os-kernel-distributed-systems-deep-dive/01e_concurrency_isolation_observability.md` | deep-dive doc | 검토했으나 비수정 | lock/futex/cgroup/observability flow already present. |
+| `os-kernel-distributed-systems-deep-dive/01e_concurrency_isolation_observability.md` | deep-dive doc | 수정함 | follow-up summary-recall repair replaced a quoted organizing question in the intro with a declarative `공유 상태 -> 대기 주체 -> 관측 증거` summary. |
 | `os-kernel-distributed-systems-deep-dive/02_distributed_system_foundations.md` | deep-dive doc | 검토했으나 비수정 | failure/replica/log/quorum concepts already state-flow oriented. |
 | `os-kernel-distributed-systems-deep-dive/03_kafka_deep_dive.md` | deep-dive doc | 검토했으나 비수정 | producer/log/page cache/replica/offset flow already present. |
 | `os-kernel-distributed-systems-deep-dive/04_cassandra_deep_dive.md` | deep-dive doc | 검토했으나 비수정 | coordinator/commit log/memtable/SSTable/repair flow already present. |
@@ -173,11 +173,12 @@ Total inventory: 63 Markdown files.
 
 ## 7. Implementation Summary
 
-- 수정함: 15 files.
-- 검토했으나 비수정: 48 files.
+- 수정함: 17 files.
+- 검토했으나 비수정: 46 files.
 - HOLD: 0 files.
 - root generated topic docs: 10/10 received `먼저 기억할 정리` and TOC entry.
 - OS foundation deep-dive: 1/1 targeted anti-regression repair received `먼저 기억할 정리`.
+- Summary-recall follow-up: 2/2 targeted intro/map repairs converted question-form cues into declarative memory summaries.
 - source raw docs: preserved; guidance added only to source hub/context files outside original chunks.
 
 ## 8. Verification Log
@@ -192,14 +193,14 @@ Total inventory: 63 Markdown files.
 
 ## 9. Final Status
 
-Whole-request objective status: `READY_FOR_COMMIT`.
+Whole-request objective status: `COMMITTED_WITH_FOLLOW_UP_REPAIRS`.
 
 - requested closure scope: all 63 Markdown files under `study/interviews`.
-- achieved closure scope: all 63 Markdown files classified; 15 modified, 48 reviewed without modification, 0 HOLD.
+- achieved closure scope: all 63 Markdown files classified; 17 modified across the original run and follow-up repairs, 46 reviewed without modification, 0 HOLD.
 - stage/tranche registry source: this WORK ledger's inventory table.
 - this work stage/tranche id: `WHOLE_INTERVIEWS_MD_TECHNICAL_STUDY_FLOW_20260601`.
 - remaining open tranche disclosure: none inside the requested inventory.
-- next action: explicit staging of this work's files only, `git diff --cached --check`, commit.
+- next action: none for the original work; current follow-up is tracked in `WORK_20260601_INTERVIEWS_SUMMARY_RECALL_WHOLE_COMPLETE.md`.
 
 ## 10. Follow-Up Repair: summary bullets, not questions
 
@@ -210,3 +211,14 @@ User feedback after commit `105d063` correctly identified that `os-kernel-distri
 - repair: replaced the question list with four summary reminders: resource ownership, call path, return-vs-completion, and verification layer.
 - scope check: `rg` found this question-list pattern only in that file's `먼저 기억할 정리` section; the root topic summaries were already statement-form summaries.
 - verification: targeted `rg` found no remaining old question-list phrasing, an `awk` scan found no question-form bullet lines inside `먼저 기억할 정리` sections, and `git diff --check` passed for the follow-up files.
+
+## 11. Follow-Up Repair: whole summary-recall scan
+
+The subsequent whole-inventory summary-recall task found two additional early summary/map surfaces that should be declarative rather than question-shaped.
+
+- repair targets:
+  - `os-kernel-distributed-systems-deep-dive/00_index_and_learning_path.md`
+  - `os-kernel-distributed-systems-deep-dive/01e_concurrency_isolation_observability.md`
+- issue: `00_index...` used question-form entries in `먼저 붙잡을 지도` and early guide tables; `01e...` used a quoted question as the intro's organizing summary.
+- repair: converted both to memory-restoring statement form while leaving active recall, source raw, interview question titles, and replay sections intact.
+- authoritative follow-up ledger: `docs/works/WORK_20260601_INTERVIEWS_SUMMARY_RECALL_WHOLE_COMPLETE.md`.

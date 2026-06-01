@@ -37,11 +37,11 @@ single machine
 multiple machines
   request or record
     |
-    +-- partition: which machine owns this slice?
-    +-- log/order: in what order was the state change recorded?
-    +-- replication: who else has copied it?
-    +-- consistency: which read must see which write?
-    +-- recovery: after failure, where do we restart?
+    +-- partition: key와 routing이 상태 조각의 owner를 정한다
+    +-- log/order: 상태 변경은 재생 가능한 순서로 기록된다
+    +-- replication: 다른 node가 같은 변경을 복사해 장애에 대비한다
+    +-- consistency: read는 어떤 write까지 봐야 하는지 계약을 가진다
+    +-- recovery: 실패 뒤 다시 시작할 checkpoint나 log 위치가 필요하다
 ```
 
 이 지도에서 `상태`라는 말은 추상적인 기분이 아닙니다. 파일 offset, dirty page, socket send queue, Kafka offset, Cassandra timestamped cell, Spark shuffle block처럼 실제로 저장되거나 관찰되는 값입니다. 좋은 면접 답변은 이 상태가 어디에 있고 누가 바꾸며 장애가 나면 어떤 값이 남는지 말할 수 있어야 합니다.
@@ -52,13 +52,13 @@ multiple machines
 
 그 다음에는 다섯 개의 상세 문서로 내려갑니다.
 
-| 순서 | 문서 | 붙잡을 질문 |
+| 순서 | 문서 | 핵심 기억 |
 | --- | --- | --- |
-| 1 | [01a_process_scheduling.md](01a_process_scheduling.md) | process와 thread는 CPU 시간을 어떻게 나누고, 왜 runnable인데도 요청이 늦어지는가? |
-| 2 | [01b_memory_and_address_space.md](01b_memory_and_address_space.md) | virtual address, page table, TLB, page fault, mmap, OOM은 JVM/DB/process 메모리 증상과 어떻게 이어지는가? |
-| 3 | [01c_filesystem_page_cache_block_io.md](01c_filesystem_page_cache_block_io.md) | `write()`, page cache, dirty page, writeback, fsync, block layer는 durable write와 성능을 어떻게 동시에 만드는가? |
-| 4 | [01d_network_stack_and_io_multiplexing.md](01d_network_stack_and_io_multiplexing.md) | NIC로 들어온 packet은 driver, NAPI, TCP, socket buffer, epoll, application thread를 거쳐 어떻게 request가 되는가? |
-| 5 | [01e_concurrency_isolation_observability.md](01e_concurrency_isolation_observability.md) | lock, futex, cgroup, namespace, `/proc`, perf/eBPF 관측은 장애 추론에서 어떤 증거가 되는가? |
+| 1 | [01a_process_scheduling.md](01a_process_scheduling.md) | process와 thread는 scheduler 위에서 CPU 시간을 나눠 받고, runnable 상태여도 run queue에서 늦어질 수 있다. |
+| 2 | [01b_memory_and_address_space.md](01b_memory_and_address_space.md) | virtual address, page table, TLB, page fault, mmap, OOM은 JVM/DB/process 메모리 증상을 물리 메모리 경쟁으로 연결한다. |
+| 3 | [01c_filesystem_page_cache_block_io.md](01c_filesystem_page_cache_block_io.md) | `write()`, page cache, dirty page, writeback, fsync, block layer는 빠른 반환과 durable write를 서로 다른 시점으로 나눈다. |
+| 4 | [01d_network_stack_and_io_multiplexing.md](01d_network_stack_and_io_multiplexing.md) | NIC로 들어온 packet은 driver, NAPI, TCP, socket buffer, epoll, scheduler를 지나 application request가 된다. |
+| 5 | [01e_concurrency_isolation_observability.md](01e_concurrency_isolation_observability.md) | lock, futex, cgroup, namespace, `/proc`, perf/eBPF 관측은 장애 추론을 공유 상태, 대기 주체, 증거로 나눈다. |
 
 여기서 배우는 습관은 "API 이름을 외우기 전에 그 API가 커널 안에서 어떤 객체와 queue를 건드리는지 본다"입니다. OS 파트는 Kafka/Cassandra/Spark를 이해하기 위한 낮은 하한선이 아니라, 세 시스템이 실제로 기대는 물리적 실행 경로입니다.
 
@@ -87,13 +87,13 @@ multiple machines
 
 Kafka, Cassandra, Spark 문서는 기능 목록이 아닙니다. 각 문서는 하나의 작은 요청이 시스템 안에서 어떻게 바뀌는지 추적합니다.
 
-| 문서 | 첫 질문 | 내부에서 따라갈 상태 |
+| 문서 | 핵심 기억 | 내부에서 따라갈 상태 |
 | --- | --- | --- |
-| [03_kafka_deep_dive.md](03_kafka_deep_dive.md) | producer가 보낸 record는 언제부터 다시 읽을 수 있는 log가 되는가? | batch, leader partition, log segment, page cache, replica fetch, high watermark, consumer offset |
-| [04_cassandra_deep_dive.md](04_cassandra_deep_dive.md) | write가 빠른데 read와 compaction은 왜 복잡해지는가? | token, replica, commit log, memtable, SSTable, Bloom filter, tombstone, repair |
-| [05_spark_deep_dive.md](05_spark_deep_dive.md) | 하나의 action은 왜 수많은 task와 shuffle file로 쪼개지는가? | DAG, stage boundary, partition, executor memory, spill, shuffle block, lineage, checkpoint |
+| [03_kafka_deep_dive.md](03_kafka_deep_dive.md) | producer record는 leader partition의 log에 append되고, high watermark와 consumer offset을 거쳐 다시 읽을 수 있는 기록이 된다. | batch, leader partition, log segment, page cache, replica fetch, high watermark, consumer offset |
+| [04_cassandra_deep_dive.md](04_cassandra_deep_dive.md) | 빠른 write path는 commit log와 memtable로 먼저 받아들이고, read와 compaction은 여러 SSTable과 replica state를 다시 조립한다. | token, replica, commit log, memtable, SSTable, Bloom filter, tombstone, repair |
+| [05_spark_deep_dive.md](05_spark_deep_dive.md) | 하나의 action은 DAG, stage, task, shuffle file로 쪼개지고, 실패한 조각은 lineage나 checkpoint를 기준으로 다시 계산된다. | DAG, stage boundary, partition, executor memory, spill, shuffle block, lineage, checkpoint |
 
-세 문서를 읽을 때는 "왜 이 시스템은 이렇게 만들었나"를 계속 물어야 합니다. Kafka는 순서 있는 append와 재생을 싸게 만들기 위해 log를 중심에 둡니다. Cassandra는 여러 노드가 쓰기를 계속 받아야 하므로 write path를 append와 memory buffer 중심으로 만들고, 그 대가로 read repair와 compaction을 받아들입니다. Spark는 대용량 계산을 실패 가능한 작은 조각으로 나누기 위해 data partition과 lineage를 중심에 둡니다.
+세 문서의 공통 축은 각 시스템이 어떤 비용을 줄이기 위해 어떤 내부 상태를 중심에 두는지입니다. Kafka는 순서 있는 append와 재생을 싸게 만들기 위해 log를 중심에 둡니다. Cassandra는 여러 노드가 쓰기를 계속 받아야 하므로 write path를 append와 memory buffer 중심으로 만들고, 그 대가로 read repair와 compaction을 받아들입니다. Spark는 대용량 계산을 실패 가능한 작은 조각으로 나누기 위해 data partition과 lineage를 중심에 둡니다.
 
 ## 4단계: 비교로 원리를 분리한다
 

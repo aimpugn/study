@@ -26,7 +26,7 @@
 
 운영 장애를 제대로 설명하려면 "느리다"는 증상을 lock, futex, wait queue, cgroup limit, namespace, `/proc` 값, perf/eBPF trace 같은 관측 가능한 상태로 바꿔야 합니다. OS는 process를 격리하고 자원을 나눠 주지만, 동시에 같은 머신 안의 모든 process가 CPU, memory, disk, network를 경쟁하게 만듭니다. 커널 동시성과 관측 도구를 모르면 Kafka/Cassandra/Spark의 병목을 제품 metric만으로 오판합니다.
 
-이 문서에서는 lock과 memory ordering, futex, container resource isolation, 관측 표면을 하나의 질문으로 묶습니다. "어느 공유 상태를 누가 기다리고 있으며, 그 증거는 어디서 볼 수 있는가?"
+이 문서의 핵심 축은 `공유 상태 -> 대기 주체 -> 관측 증거`입니다. Lock은 공유 상태를 보호하고, futex와 wait queue는 잠든 실행 흐름을 남기며, cgroup과 namespace는 자원과 권한의 경계를 만듭니다. 관측 도구는 이 대기와 경쟁을 추측이 아니라 thread dump, `/proc`, perf/eBPF trace, cgroup event 같은 증거로 바꿉니다.
 
 ## race는 두 실행 흐름이 같은 상태를 다른 순서로 본다는 문제다
 
