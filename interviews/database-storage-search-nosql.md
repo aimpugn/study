@@ -1,6 +1,7 @@
 # 데이터베이스, 저장소, 검색/NoSQL
 
 - [데이터베이스, 저장소, 검색/NoSQL](#데이터베이스-저장소-검색nosql)
+    - [먼저 기억할 정리](#먼저-기억할-정리)
     - [DB 접근과 저장소 운영](#db-접근과-저장소-운영)
         - [3. MySQL 관련 질문](#3-mysql-관련-질문)
             - [원문: 3. MySQL 관련 질문](#원문-3-mysql-관련-질문)
@@ -86,6 +87,24 @@
 트랜잭션, 인덱스, 락, 복제, 파티셔닝, Elasticsearch, Couchbase처럼 데이터를 저장하고 찾는 전체 축을 함께 다룹니다.
 
 > 원문 배치본입니다. source chunk의 문장은 유지하고, 대분류/중분류/소분류 계층에 맞게 Markdown heading depth만 조정했습니다. 원본 span과 SHA-256은 manifest에서 검증할 수 있습니다.
+
+## 먼저 기억할 정리
+
+DB와 검색 문서는 SQL 문장이나 제품 이름보다 "row가 어떤 저장 상태와 실행 경로를 지나 결과가 되는가"를 먼저 잡아야 합니다.
+
+```text
+query / mutation
+  -> parser / planner
+  -> index or shard routing
+  -> buffer pool / page cache
+  -> lock or MVCC visibility check
+  -> WAL / transaction log / replication stream
+  -> result row, document, or ack
+```
+
+비교축은 저장, 조회, 동시성, 복구입니다. 인덱스는 단순히 빠른 자료구조가 아니라 읽어야 할 row stream을 줄이는 물리 구조이고, WAL/redo/undo는 장애 뒤에 어떤 변경을 다시 만들거나 되돌릴지 남기는 기록입니다. Elasticsearch나 Couchbase를 볼 때도 shard, replica, segment, heap, cache, query fan-out처럼 보이지 않는 상태가 어디에 있는지 확인해야 합니다.
+
+검증 anchor는 `EXPLAIN`, slow query log, lock wait/deadlock log, buffer pool 지표, WAL/replication lag, shard allocation, JVM heap/GC 지표입니다. "빠르다", "일관적이다", "고가용이다" 같은 말은 어떤 상태와 어떤 관측값으로 확인되는지까지 내려가야 면접 답변이 단단해집니다.
 
 ## DB 접근과 저장소 운영
 

@@ -10,8 +10,18 @@
 원문 질문 은행과 시나리오는 [source](source/)에 보관하고, 앞으로의 정리와 학습은 아래 새 curriculum 문서를 기준으로 진행합니다.
 `검색/NoSQL`은 독립 문서로 분리하지 않고 `데이터베이스, 저장소, 검색/NoSQL` 안에 포함합니다.
 
-현재 파일은 아직 딥 리라이트 완료본이 아니라 `원문 배치본`입니다.
-다음 단계에서 각 소주제를 `짧은 직답 -> 깊은 메커니즘 -> 예시 -> 꼬리 질문 -> 검증/근거` 구조로 승격합니다.
+현재 root curriculum 파일은 아직 딥 리라이트 완료본이 아니라 `원문 배치본` 위에 수동 학습 bridge를 덧댄 상태입니다.
+각 root 문서는 원문 chunk를 보존하되, 앞부분에 주제별 `먼저 기억할 정리`, 숨은 상태 흐름, 검증 anchor를 추가해 원문을 읽기 전에 비교축을 잡도록 했습니다.
+다음 단계에서 각 소주제를 정식 답변 자산으로 승격할 때는 `짧은 직답 -> 깊은 메커니즘 -> 예시 -> 꼬리 질문 -> 검증/근거` 구조로 다시 씁니다.
+
+## 전체 문서 읽기 기준
+
+이 디렉터리의 Markdown은 성격이 서로 다릅니다. `source/`의 raw 파일은 원문 증거이고, root curriculum 문서는 원문 chunk를 보존한 분류본이며, `database-deep-dive/`와 `os-kernel-distributed-systems-deep-dive/`는 정식 심화 학습 문서입니다. 따라서 모든 파일에 같은 양식을 강제로 입히지 않고, 각 문서가 맡은 역할에 맞게 아래 기준을 적용합니다.
+
+- 정식 학습 문서는 먼저 기억할 구조를 평서문으로 정리하고, 질문은 그 뒤의 replay 장치로 둡니다.
+- 원문 배치본은 SHA-256과 source span을 보존해야 하므로 원문 chunk를 직접 고치지 않습니다. 대신 문서 앞쪽에서 읽을 축, 숨은 상태, 검증 anchor를 먼저 잡습니다.
+- source reservoir는 정식 답변 품질로 다듬는 대상이 아니라 원문 확인과 재생성 검증 대상입니다. 여기서 뽑은 질문은 `_question-index.md`와 root curriculum을 거쳐 정식 문서로 승격합니다.
+- 시스템 내부의 핵심이 queue, cache, buffer, table, lock, transaction log, scheduler, broker, coordinator 같은 보이지 않는 상태라면, 문서는 그 상태가 어디에 남고 누가 소비하는지 드러내야 합니다.
 
 ## 대분류
 
@@ -44,3 +54,5 @@
 ```sh
 python3 interviews/tools/build_interview_curriculum.py
 ```
+
+이 명령은 root curriculum 문서를 다시 생성합니다. 현재 root 문서 앞쪽의 수동 학습 bridge는 generator 산출물이 아니므로, 재생성 후에는 이 README의 읽기 기준에 맞춰 다시 적용해야 합니다.

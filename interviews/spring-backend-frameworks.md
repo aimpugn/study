@@ -1,6 +1,7 @@
 # Spring과 백엔드 프레임워크
 
 - [Spring과 백엔드 프레임워크](#spring과-백엔드-프레임워크)
+    - [먼저 기억할 정리](#먼저-기억할-정리)
     - [AOP와 어노테이션 처리](#aop와-어노테이션-처리)
         - [jvm 계열 언어에서 어노테이션 선언 방법 및 spring 어노테이션 동작 원리](#jvm-계열-언어에서-어노테이션-선언-방법-및-spring-어노테이션-동작-원리)
             - [원문: jvm 계열 언어에서 어노테이션 선언 방법 및 spring 어노테이션 동작 원리](#원문-jvm-계열-언어에서-어노테이션-선언-방법-및-spring-어노테이션-동작-원리)
@@ -99,6 +100,25 @@
 Spring Boot, IoC, Bean, Transaction, Servlet/Tomcat, WebClient/WebFlux처럼 백엔드 프레임워크가 런타임 위에 올리는 실행 모델을 다룹니다.
 
 > 원문 배치본입니다. source chunk의 문장은 유지하고, 대분류/중분류/소분류 계층에 맞게 Markdown heading depth만 조정했습니다. 원본 span과 SHA-256은 manifest에서 검증할 수 있습니다.
+
+## 먼저 기억할 정리
+
+Spring 문서는 어노테이션 이름을 외우는 문서가 아니라 "프레임워크가 객체 생성, 호출 경계, 요청 처리, transaction 상태를 어디에서 대신 관리하는가"를 보는 문서입니다.
+
+```text
+java -jar
+  -> JVM class loading
+  -> SpringApplication / ApplicationContext
+  -> bean definition and lifecycle
+  -> proxy / interceptor / transaction manager
+  -> Tomcat worker or Netty event loop
+  -> controller / service / repository
+  -> connection pool / DB session
+```
+
+비교축은 객체 소유권과 호출 경계입니다. `@Component`와 `@Bean`은 객체를 누가 등록하고 조립하는지의 문제이고, AOP proxy는 메서드 호출이 proxy 경계를 지나야 advice나 transaction이 적용된다는 문제입니다. Servlet MVC와 WebFlux는 HTTP 요청을 어떤 thread/event loop 흐름으로 이어 가는지가 다릅니다. `@Transactional`도 annotation 자체가 아니라 transaction manager, connection binding, commit/rollback 경계가 함께 움직여야 의미가 있습니다.
+
+검증 anchor는 startup log, bean definition, proxy class, actuator metrics, thread dump, connection pool metric, transaction log입니다. "Spring이 해 준다"는 말을 만나면 어떤 객체와 상태를 Spring이 소유하는지 바로 풀어야 합니다.
 
 ## AOP와 어노테이션 처리
 

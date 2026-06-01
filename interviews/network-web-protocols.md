@@ -1,6 +1,7 @@
 # 네트워크와 웹 프로토콜
 
 - [네트워크와 웹 프로토콜](#네트워크와-웹-프로토콜)
+    - [먼저 기억할 정리](#먼저-기억할-정리)
     - [HTTP/gRPC와 스트리밍](#httpgrpc와-스트리밍)
         - [HTTP 요청이 일반적인 TCP 연결 방식과 Keep-Alive TCP 연결 방식 이루어지는 경우](#http-요청이-일반적인-tcp-연결-방식과-keep-alive-tcp-연결-방식-이루어지는-경우)
             - [원문: HTTP 요청이 일반적인 TCP 연결 방식과 Keep-Alive TCP 연결 방식 이루어지는 경우](#원문-http-요청이-일반적인-tcp-연결-방식과-keep-alive-tcp-연결-방식-이루어지는-경우)
@@ -35,6 +36,24 @@
 TCP/IP, HTTP, keep-alive, gRPC, proxy, Nginx처럼 프로세스 밖으로 나간 요청이 흐르는 경로를 다룹니다.
 
 > 원문 배치본입니다. source chunk의 문장은 유지하고, 대분류/중분류/소분류 계층에 맞게 Markdown heading depth만 조정했습니다. 원본 span과 SHA-256은 manifest에서 검증할 수 있습니다.
+
+## 먼저 기억할 정리
+
+네트워크 문서는 HTTP 문장만 보면 안 됩니다. 요청 하나는 애플리케이션 메시지, TCP 연결, kernel socket buffer, proxy hop, TLS session, 상대 서버의 처리 상태가 함께 움직이는 흐름입니다.
+
+```text
+HTTP request
+  -> client socket send buffer
+  -> TCP segment / congestion window
+  -> network path / NAT / firewall
+  -> server socket receive buffer
+  -> proxy or application parser
+  -> response path back through send buffer
+```
+
+비교축은 "연결을 새로 만드는 비용", "연결 안에서 메시지를 재사용하는 방식", "느린 수신자가 어디에 압력을 남기는가"입니다. Keep-Alive는 HTTP 요청마다 TCP handshake를 새로 하지 않게 하지만, idle timeout, half-open 상태, proxy buffering, socket buffer 압력 같은 운영 상태를 함께 만들어 냅니다. Streaming도 "한 번에 다 만들지 않는다"에서 끝나지 않고, file read, page cache, TCP window, proxy buffer, client receive speed가 맞물립니다.
+
+검증 anchor는 `ss`, packet capture, proxy access/error log, TCP state, TLS handshake log, response header, client-side timeout입니다. connection refused와 timeout은 같은 실패가 아니며, 어느 층에서 거절됐는지 또는 어디서 기다리다 끝났는지를 분리해야 합니다.
 
 ## HTTP/gRPC와 스트리밍
 

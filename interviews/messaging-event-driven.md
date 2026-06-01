@@ -1,6 +1,7 @@
 # 메시징과 이벤트 기반 구조
 
 - [메시징과 이벤트 기반 구조](#메시징과-이벤트-기반-구조)
+    - [먼저 기억할 정리](#먼저-기억할-정리)
     - [Broker 비교와 선택](#broker-비교와-선택)
         - [RabbitMQ와 Kafka](#rabbitmq와-kafka)
             - [원문: RabbitMQ와 Kafka](#원문-rabbitmq와-kafka)
@@ -23,6 +24,23 @@
 RabbitMQ, Kafka, AMQP, consumer, client library처럼 서비스 사이의 비동기 메시지 흐름을 다룹니다.
 
 > 원문 배치본입니다. source chunk의 문장은 유지하고, 대분류/중분류/소분류 계층에 맞게 Markdown heading depth만 조정했습니다. 원본 span과 SHA-256은 manifest에서 검증할 수 있습니다.
+
+## 먼저 기억할 정리
+
+메시징 문서는 "비동기로 보낸다"가 아니라 생산자와 소비자의 시간, 실패, 처리 속도를 어디에서 분리하는지 설명해야 합니다. 메시지는 함수 호출처럼 상대 서비스의 stack으로 바로 들어가지 않고, broker가 소유한 queue, exchange, log, offset, ack 상태에 남습니다.
+
+```text
+producer request
+  -> broker append or enqueue
+  -> routing / partition ownership
+  -> durable queue or log segment
+  -> consumer delivery or fetch
+  -> ack, offset commit, retry, dead-letter decision
+```
+
+RabbitMQ와 Kafka를 비교할 때는 "둘 다 메시지 브로커"에서 멈추면 약합니다. RabbitMQ는 exchange와 queue, routing key, ack를 중심으로 delivery를 중재하는 감각이 강하고, Kafka는 partition log, offset, replication, consumer group을 중심으로 재생 가능한 record stream을 다루는 감각이 강합니다. 어떤 시스템이 더 좋다는 말보다, 메시지가 어디에 남고 누가 읽은 위치를 책임지는지가 비교축입니다.
+
+검증 anchor는 broker queue depth, unacked message, consumer lag, offset commit, partition leadership, retry/dead-letter log입니다. 빠르게 publish가 성공해도 consumer 처리, ack, offset commit, downstream side effect는 아직 남아 있을 수 있습니다.
 
 ## Broker 비교와 선택
 

@@ -1,6 +1,7 @@
 # 동시성, 비동기, I/O
 
 - [동시성, 비동기, I/O](#동시성-비동기-io)
+    - [먼저 기억할 정리](#먼저-기억할-정리)
     - [Blocking, non-blocking, async 구분](#blocking-non-blocking-async-구분)
         - [HTTP 요청을 Async로 처리했을 때의 이점](#http-요청을-async로-처리했을-때의-이점)
             - [원문: HTTP 요청을 Async로 처리했을 때의 이점](#원문-http-요청을-async로-처리했을-때의-이점)
@@ -202,6 +203,28 @@
 스레드, 락, 대기, 이벤트 루프, 논블로킹 I/O처럼 많은 요청을 안전하고 효율적으로 처리하는 실행 모델을 다룹니다.
 
 > 원문 배치본입니다. source chunk의 문장은 유지하고, 대분류/중분류/소분류 계층에 맞게 Markdown heading depth만 조정했습니다. 원본 span과 SHA-256은 manifest에서 검증할 수 있습니다.
+
+## 먼저 기억할 정리
+
+동시성 문서는 "동시에 많이 한다"는 말로 시작하면 금방 흐려집니다. 먼저 비교축을 나눠야 합니다.
+
+- blocking / non-blocking은 호출한 쪽이 지금 기다리는가를 묻습니다.
+- synchronous / asynchronous는 완료 결과를 같은 호출 흐름에서 받는가, 나중의 callback/future/event로 받는가를 묻습니다.
+- concurrency / parallelism은 여러 작업이 겹쳐 진행되는가, 실제로 여러 CPU에서 동시에 실행되는가를 묻습니다.
+- event loop / thread pool / coroutine scheduler는 작업이 멈췄다가 다시 이어질 위치를 누가 기억하는가를 묻습니다.
+
+숨은 상태는 대부분 queue와 wait set에 남습니다. 네트워크 I/O는 socket buffer와 readiness event에 남고, coroutine은 continuation state에 남으며, Java monitor는 entry set과 wait set에 thread를 남깁니다. 따라서 빠르게 반환된 작업이 정말 끝난 것인지, 아니면 event loop queue, executor queue, kernel buffer, wait set에 남아 있는지 계속 구분해야 합니다.
+
+```text
+request
+  -> non-blocking socket call
+  -> kernel socket buffer / readiness event
+  -> event loop callback
+  -> worker or coroutine continuation
+  -> response write
+```
+
+검증 anchor는 thread dump, scheduler queue, event loop lag, socket 상태, `epoll_wait`/`kqueue` 관측, lock wait 로그입니다. "CPU를 안 쓴다"와 "진행이 안전하다"는 같은 말이 아니므로, 어떤 상태가 어디서 기다리는지까지 확인해야 합니다.
 
 ## Blocking, non-blocking, async 구분
 

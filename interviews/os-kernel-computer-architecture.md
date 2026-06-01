@@ -1,6 +1,7 @@
 # OS, 커널, 컴퓨터 구조
 
 - [OS, 커널, 컴퓨터 구조](#os-커널-컴퓨터-구조)
+    - [먼저 기억할 정리](#먼저-기억할-정리)
     - [CPU와 숫자 표현](#cpu와-숫자-표현)
         - [부동소수점](#부동소수점)
             - [원문: 부동소수점](#원문-부동소수점)
@@ -130,6 +131,28 @@
 프로세스, 커널, 부팅, CPU, 메모리, 파일 디스크립터처럼 애플리케이션 아래층의 실행 조건을 다룹니다.
 
 > 원문 배치본입니다. source chunk의 문장은 유지하고, 대분류/중분류/소분류 계층에 맞게 Markdown heading depth만 조정했습니다. 원본 span과 SHA-256은 manifest에서 검증할 수 있습니다.
+
+## 먼저 기억할 정리
+
+OS와 커널 문서는 "컴퓨터가 알아서 해 준다"를 구체적인 중재 구조로 바꾸는 문서입니다. 프로세스는 자기 코드와 주소 공간을 가진 것처럼 보이지만, CPU 시간, 물리 메모리, 파일, 네트워크 장치는 여러 프로세스가 공유합니다. 그래서 커널은 아래 항목을 한곳에서 조정합니다.
+
+- CPU 시간: runnable task, scheduler, context switch
+- 메모리: virtual address, page table, page fault, page cache
+- 파일과 장치: file descriptor table, VFS, block queue, device driver
+- 네트워크: socket, socket buffer, TCP state, NIC queue
+
+중요한 비교축은 "프로세스 안에서 끝나는 계산"과 "커널이 공유 자원을 중재하는 요청"입니다. `strlen()`이나 단순 산술은 현재 프로세스의 register, stack, heap 안에서 끝날 수 있지만, `write(fd, buf, len)`은 file descriptor table, page cache, filesystem metadata, block device queue 같은 커널 상태를 거칩니다.
+
+```text
+process buffer
+  -> syscall boundary
+  -> descriptor table lookup
+  -> kernel page cache or socket buffer
+  -> device / network queue
+  -> later completion, writeback, error, or wakeup
+```
+
+검증 anchor는 `/proc`, `strace`, `lsof`, `ss`, `vmstat`, `iostat`, scheduler/load 지표, kernel log입니다. 빠르게 반환된 호출도 page cache, dirty page, socket buffer, device queue에 남아 나중의 지연이나 실패로 보일 수 있습니다.
 
 ## CPU와 숫자 표현
 

@@ -6,7 +6,13 @@
 
 그다음에는 메모리와 I/O도 같은 관점으로 읽게 됩니다. virtual address가 page table과 page fault를 거쳐 physical memory에 닿는 과정, file write가 page cache와 dirty writeback을 지나 내구성 문제로 이어지는 과정, socket send/receive buffer가 분산 시스템 지연의 첫 대기열이 되는 과정을 연결합니다. 이 연결이 잡히면 Kafka broker, Cassandra node, Spark executor에서 보이는 `timeout`, `consumer lag`, `compaction`, `shuffle spill` 같은 증상을 제품 이름이 아니라 OS 자원 이동으로 다시 해석할 수 있습니다.
 
-읽을 때는 아래 질문을 계속 들고 가면 좋습니다.
+## 먼저 기억할 정리
+
+OS 커널은 애플리케이션이 CPU, 메모리, 파일, 네트워크 장치를 직접 만지지 못하게 막는 단순한 장벽이 아닙니다. 커널은 여러 프로세스가 공유하는 자원을 안전하게 나누고, 요청을 실제 하드웨어와 커널 자료구조의 상태 변화로 바꾸는 중재자입니다.
+
+이 문서의 핵심 흐름은 `사용자 코드 -> system call/trap -> 커널 자료구조 -> cache/buffer/queue/table -> 장치 또는 다른 프로세스 -> 관측 가능한 지연/오류`입니다. `write()`가 빨리 끝났는데 데이터가 아직 dirty page로 남아 있을 수 있고, socket write가 성공했는데 실제 전송은 send buffer와 NIC queue 뒤에 남아 있을 수 있으며, CPU 사용률이 낮아도 thread가 lock, I/O, scheduler queue에서 기다릴 수 있습니다.
+
+이 정리를 붙잡은 뒤에는 아래 질문으로 각 절을 다시 확인하면 됩니다.
 
 - 지금 설명하는 자원은 누가 소유하고 누가 중재하는가.
 - 애플리케이션이 호출한 함수는 커널 안에서 어떤 queue, cache, buffer, table을 지나가는가.
@@ -16,6 +22,7 @@
 ## 목차
 
 - [이 문서에서 배울 수 있는 것](#이-문서에서-배울-수-있는-것)
+- [먼저 기억할 정리](#먼저-기억할-정리)
 - [1. `write()`는 왜 커널에 부탁해야 하는가](#1-write는-왜-커널에-부탁해야-하는가)
 - [2. Interrupt, Trap, Syscall은 CPU 흐름을 어떻게 바꾸는가](#2-interrupt-trap-syscall은-cpu-흐름을-어떻게-바꾸는가)
 - [3. Process, Thread, Scheduler는 CPU 시간을 어떻게 나누는가](#3-process-thread-scheduler는-cpu-시간을-어떻게-나누는가)

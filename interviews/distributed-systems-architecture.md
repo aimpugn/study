@@ -1,6 +1,7 @@
 # 분산 시스템과 아키텍처
 
 - [분산 시스템과 아키텍처](#분산-시스템과-아키텍처)
+    - [먼저 기억할 정리](#먼저-기억할-정리)
     - [MSA와 결제 시스템 설계](#msa와-결제-시스템-설계)
         - [결제 MSA에서 결제 PG사 기능 구현](#결제-msa에서-결제-pg사-기능-구현)
             - [원문: 결제 MSA에서 결제 PG사 기능 구현](#원문-결제-msa에서-결제-pg사-기능-구현)
@@ -27,6 +28,23 @@
 MSA, consistency, availability, topology, saga, idempotency처럼 작은 기술 단위를 큰 시스템 설계로 조립하는 판단 축을 다룹니다.
 
 > 원문 배치본입니다. source chunk의 문장은 유지하고, 대분류/중분류/소분류 계층에 맞게 Markdown heading depth만 조정했습니다. 원본 span과 SHA-256은 manifest에서 검증할 수 있습니다.
+
+## 먼저 기억할 정리
+
+분산 시스템과 아키텍처 문서는 박스 그림을 예쁘게 만드는 문서가 아닙니다. 요청, 상태 변경, 실패 관측이 여러 노드로 흩어졌을 때 누가 조정자(coordinator)가 되고, 어떤 replica가 어떤 순서의 변경을 봤으며, 실패 후 어디서 다시 시작할 수 있는지를 설명해야 합니다.
+
+```text
+client request
+  -> gateway / coordinator
+  -> replica or participant set
+  -> quorum, log, or state transition
+  -> timeout / retry / compensation decision
+  -> observable result or unknown state
+```
+
+비교축은 consistency, availability, latency, operational complexity입니다. Saga, outbox, idempotency, retry는 서로 다른 실패를 줄이는 도구이지, 하나만 붙이면 분산 시스템 문제가 사라지는 마법이 아닙니다. Timeout은 실패가 확정됐다는 뜻이 아니라 응답을 못 봤다는 관측일 수 있으므로, 이후 상태를 어떻게 확인하고 중복 실행을 어떻게 막을지가 중요합니다.
+
+검증 anchor는 request id, transaction/outbox table, broker log, replica lag, quorum result, retry log, timeout metric, compensation history입니다. 설계 답변은 "어떤 구성요소를 둔다"보다 "어떤 상태가 어디에 기록되고, 실패하면 무엇을 다시 읽어 판단하는가"로 닫아야 합니다.
 
 ## MSA와 결제 시스템 설계
 

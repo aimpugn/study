@@ -1,6 +1,7 @@
 # 보안과 암호학
 
 - [보안과 암호학](#보안과-암호학)
+    - [먼저 기억할 정리](#먼저-기억할-정리)
     - [TLS/HTTPS 핸드셰이크](#tlshttps-핸드셰이크)
         - [HTTPS 통신 과정](#https-통신-과정)
             - [원문: HTTPS 통신 과정](#원문-https-통신-과정)
@@ -24,6 +25,22 @@
 TLS, HTTPS, Diffie-Hellman, OAuth, token, privacy처럼 통신과 인증을 안전하게 만드는 기술 단위를 다룹니다.
 
 > 원문 배치본입니다. source chunk의 문장은 유지하고, 대분류/중분류/소분류 계층에 맞게 Markdown heading depth만 조정했습니다. 원본 span과 SHA-256은 manifest에서 검증할 수 있습니다.
+
+## 먼저 기억할 정리
+
+보안과 암호학 문서는 알고리즘 이름을 외우는 문서가 아니라 "무엇을 믿고, 어떤 비밀을 어디에 남기며, 어떤 공격을 줄이는가"를 분리하는 문서입니다. TLS/HTTPS는 HTTP를 감싸는 단어가 아니라, 서버 인증, 키 교환, 대칭키 세션, 기록 계층 암호화가 순서대로 맞물린 흐름입니다.
+
+```text
+client hello
+  -> server certificate로 신원 확인
+  -> key exchange로 shared secret 재료 합의
+  -> session keys 생성
+  -> encrypted HTTP records 전송
+```
+
+비교축은 인증, 기밀성, 무결성, 키 교환입니다. 인증서는 "이 서버가 맞는가"를 다루고, Diffie-Hellman/ECDHE는 "세션마다 새 비밀을 어떻게 합의하는가"를 다루며, 전방 비밀성은 장기 개인키가 나중에 유출되어도 과거 세션이 같이 열리지 않게 하는 성질입니다. OAuth나 token 질문으로 넘어가면 암호화 자체보다 "누가 어떤 권한을 위임받았는가"와 "토큰이 어디에 저장되고 언제 폐기되는가"가 핵심 상태가 됩니다.
+
+검증 anchor는 인증서 체인, TLS 버전과 cipher suite, handshake capture, token 저장 위치, 만료/회전 로그입니다. 보안 문서는 확정적으로 말하기 전에 프로토콜 버전과 설정 경계를 함께 확인해야 합니다.
 
 ## TLS/HTTPS 핸드셰이크
 
