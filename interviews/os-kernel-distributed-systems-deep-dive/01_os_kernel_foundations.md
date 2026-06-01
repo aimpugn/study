@@ -1,7 +1,21 @@
 # 01. OS Kernel Foundations
 
+## 이 문서에서 배울 수 있는 것
+
+이 문서는 "애플리케이션 코드는 OS 위에서 실행된다"는 막연한 말을 실제 경로로 바꿔 줍니다. 읽고 나면 `write()` 한 번이 왜 커널 진입으로 바뀌는지, CPU가 interrupt, trap, syscall로 어떻게 실행 흐름을 바꾸는지, process와 thread가 scheduler 위에서 CPU 시간을 어떻게 나눠 쓰는지 설명할 수 있어야 합니다.
+
+그 다음에는 메모리와 I/O를 같은 관점으로 읽게 됩니다. virtual address가 page table과 page fault를 거쳐 physical memory에 닿는 과정, file write가 page cache와 dirty writeback을 지나 내구성 문제로 이어지는 과정, socket send/receive buffer가 distributed latency의 첫 대기열이 되는 과정을 연결합니다. 이 연결이 잡히면 Kafka broker, Cassandra node, Spark executor에서 보이는 `timeout`, `consumer lag`, `compaction`, `shuffle spill` 같은 증상을 제품 이름이 아니라 OS 자원 이동으로 다시 해석할 수 있습니다.
+
+읽을 때는 아래 질문을 계속 들고 가면 좋습니다.
+
+- 지금 설명하는 자원은 누가 소유하고 누가 중재하는가.
+- 애플리케이션이 호출한 함수는 커널 안에서 어떤 queue, cache, buffer, table로 바뀌는가.
+- 빠르게 반환된 작업이 실제로는 어디에 남아 있고, 어떤 조건에서 나중에 지연이나 유실처럼 보이는가.
+- CPU, memory, disk, network 중 어느 층의 증거를 보면 이 설명을 다시 확인할 수 있는가.
+
 ## 목차
 
+- [이 문서에서 배울 수 있는 것](#이-문서에서-배울-수-있는-것)
 - [1. `write()`는 왜 커널에 부탁해야 하는가](#1-write는-왜-커널에-부탁해야-하는가)
 - [2. Interrupt, Trap, Syscall은 CPU 흐름을 어떻게 바꾸는가](#2-interrupt-trap-syscall은-cpu-흐름을-어떻게-바꾸는가)
 - [3. Process, Thread, Scheduler는 CPU 시간을 어떻게 나누는가](#3-process-thread-scheduler는-cpu-시간을-어떻게-나누는가)
