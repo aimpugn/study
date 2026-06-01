@@ -200,3 +200,13 @@ Whole-request objective status: `READY_FOR_COMMIT`.
 - this work stage/tranche id: `WHOLE_INTERVIEWS_MD_TECHNICAL_STUDY_FLOW_20260601`.
 - remaining open tranche disclosure: none inside the requested inventory.
 - next action: explicit staging of this work's files only, `git diff --cached --check`, commit.
+
+## 10. Follow-Up Repair: summary bullets, not questions
+
+User feedback after commit `105d063` correctly identified that `os-kernel-distributed-systems-deep-dive/01_os_kernel_foundations.md` still used question-form bullets inside `먼저 기억할 정리`.
+
+- repair target: `os-kernel-distributed-systems-deep-dive/01_os_kernel_foundations.md`
+- issue: the section said "아래 질문으로 각 절을 다시 확인" and listed questions, which undercut the intended memory-reminder role.
+- repair: replaced the question list with four summary reminders: resource ownership, call path, return-vs-completion, and verification layer.
+- scope check: `rg` found this question-list pattern only in that file's `먼저 기억할 정리` section; the root topic summaries were already statement-form summaries.
+- verification: targeted `rg` found no remaining old question-list phrasing, an `awk` scan found no question-form bullet lines inside `먼저 기억할 정리` sections, and `git diff --check` passed for the follow-up files.
