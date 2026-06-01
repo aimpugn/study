@@ -30,6 +30,7 @@
 ## 승격된 심화 문서
 
 - [소켓이란 무엇이고 소켓 프로그래밍이란 무엇인가](socket-programming.md)
+- [OS 스레드, Java 스레드, Spring 스케줄링 실행 모델](thread-scheduling-java-spring.md)
 
 ## 보존 규칙
 
