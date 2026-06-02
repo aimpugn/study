@@ -41,6 +41,7 @@
 
 - [소켓이란 무엇이고 소켓 프로그래밍이란 무엇인가](socket-programming.md)
 - [OS 스레드, Java 스레드, Spring 스케줄링 실행 모델](thread-scheduling-java-spring.md)
+- [실무 엔지니어를 위한 Linux 커널·하드웨어 내부 구조](linux-kernel-hardware-practical-internals.md): 하드웨어, Linux 커널, OS 지표, DB/애플리케이션 자원 사용, 장애 분기, 면접 답변을 한 파일에서 닫는 완결형 통합 교본입니다.
 
 ## 보존 규칙
 
