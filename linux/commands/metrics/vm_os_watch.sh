@@ -6,6 +6,8 @@
 #   /proc 의 누적 카운터를 1초 간격으로 두 번 떠서 그 차이(Δ)로 CPU·부하·메모리·
 #   스왑·디스크·네트워크의 "그 1초"를 계산해 보여 준다. 임계값을 넘은 수치는
 #   색(노랑=주의, 빨강=위험)으로 강조하고, 동시에 경보 이력 파일에 남긴다.
+#   LVM 이면 물리 디스크 아래에 LV 행(마운트 이름)을 들여 보여 줘서, "sda 가
+#   느리다"에서 멈추지 않고 "스왑인가 /var 인가"까지 화면에서 바로 가른다.
 #   의존성은 bash + gawk + coreutils 뿐이다 (sysstat 불필요).
 #
 # 사용법
@@ -32,7 +34,10 @@
 #
 # 환경 변수 (전부 선택)
 #   INTERVAL=1            갱신 주기(초) — 첫 위치 인자와 동일
-#   DISKS="sda dm-2"      감시 디스크 지정 (기본: sd*/vd*/xvd*/nvme* 자동 감지)
+#   DISKS="sda dm-2"      감시 디스크 지정 (기본: sd*/vd*/xvd*/nvme* + LV 자동 감지).
+#                         지정하면 그 목록"만" 본다 — LV 도 원하면 dm-N 을 함께 적는다
+#   SHOW_LV=1             LV(논리볼륨) 행 표시 — 물리 디스크 수치를 마운트별로 분해 (0=끔).
+#                         OS 디스크에 /·/var·swap 이 동거하는 구성에서 "누가 누르는가"를 가른다
 #   LOGF=경로             경보 이력 파일 (--log 과 동일, 인자가 우선)
 #   ROTATE_MB=5           로그 회전 기준 MB (0=끔)
 #   LEGACY_LOG=/tmp/...   이어붙일 과거 로그 위치 (기본: /tmp/vm_os_watch_alerts.log)
@@ -110,6 +115,47 @@ NCPU=$(nproc)
 VIRT=$(systemd-detect-virt 2>/dev/null || echo '?')
 HAVE_VMT=0; command -v vmware-toolbox-cmd >/dev/null 2>&1 && HAVE_VMT=1
 BALLOON_MB=-1; HVSWAP_MB=-1
+
+# ── LV(논리볼륨, device-mapper) 이름 해석 ────────────────────────────────────
+# 왜 필요한가: 물리 디스크(sda)의 수치는 그 위 모든 LV 의 "합산"이다. OS 디스크에
+# /(루트)·/var(로그)·swap·/home 이 동거하는 흔한 구성에서는 sda 의 await 가 높아도
+# 어느 용도가 누르는지 가를 수 없다. dm-N 별 수치를 마운트포인트 이름으로 풀어
+# 물리 디스크 아래에 보여 주면, lsblk 를 외우지 않아도 화면에서 바로 읽힌다.
+# (전용 디스크 1:1 구성이면 LV 행은 물리 행과 같은 값을 보일 뿐이다 — 그것도 정보다.)
+# 이름·마운트·부모는 부팅 후 사실상 고정이라 시작 시 1회만 해석한다. SHOW_LV=0 으로 끔.
+SHOW_LV="${SHOW_LV:-1}"
+DMMAP=""        # 형식: "dm-0|/|sda dm-2|/jboss|sdb ..." (이름|라벨|부모디스크)
+if [ "$SHOW_LV" = 1 ]; then
+    for d in /sys/block/dm-*; do
+        [ -e "$d" ] || continue
+        dm=${d##*/}
+        lvname=$(cat "$d/dm/name" 2>/dev/null)
+        # 라벨 = 마운트포인트. /proc/mounts 의 디바이스(/dev/mapper/이름 등)를
+        # readlink 로 실경로(/dev/dm-N)로 풀어 대조한다 — 표기 방식과 무관하게 맞는다.
+        mp=""
+        while read -r dev mnt _; do
+            [ "$(readlink -f "$dev" 2>/dev/null)" = "/dev/$dm" ] && { mp="$mnt"; break; }
+        done < /proc/mounts
+        # 마운트가 아니면 스왑인지 확인 (/proc/swaps 도 디바이스 경로를 적는다)
+        if [ -z "$mp" ]; then
+            while read -r dev _; do
+                [ "$(readlink -f "$dev" 2>/dev/null)" = "/dev/$dm" ] && { mp="[SWAP]"; break; }
+            done < <(awk 'NR>1{print $1}' /proc/swaps 2>/dev/null)
+        fi
+        [ -n "$mp" ] || mp="lv:${lvname:-$dm}"          # 미마운트 LV 는 LV 이름으로
+        # 부모 물리 디스크 = slaves/ 의 첫 항목(보통 파티션 sda3)의 sysfs 부모.
+        # 이름에서 숫자를 떼는 방식은 nvme0n1p1 에서 틀리므로, sysfs 의
+        # "파티션의 부모 디렉터리 = 디스크" 구조를 그대로 쓴다.
+        # LV 가 여러 PV(디스크)에 걸치면 첫 번째 기준으로만 묶는다 — 표시 순서용일
+        # 뿐이고, 수치는 dm 자체의 카운터라서 어느 쪽이든 정확하다.
+        parent=""
+        for s in "$d"/slaves/*; do [ -e "$s" ] || continue; parent=${s##*/}; break; done
+        if [ -n "$parent" ] && [ -e "/sys/class/block/$parent/partition" ]; then
+            parent=$(basename "$(readlink -f "/sys/class/block/$parent/..")")
+        fi
+        DMMAP="$DMMAP $dm|$mp|${parent:-?}"
+    done
+fi
 
 # ── 경보 이력 파일 ────────────────────────────────────────────────────────────
 resolve_log_path() {
@@ -221,6 +267,45 @@ function row(val, label) { printf("  %s   %s\n", val, label) }
 # dpos: 누적 카운터의 Δ. 음수면 0 으로 — 디바이스 재생성·카운터 리셋 직후의
 #       한 프레임이 거대한 음수/허위 경보로 나타나는 것을 막는다.
 function dpos(cur, prv) { cur -= prv; return cur < 0 ? 0 : cur }
+# disk_stats_row: 블록 장치 하나의 Δ를 계산해 표 한 행과 경보를 낸다.
+#   name  = /proc/diskstats 의 장치명 — 경보 키에 쓰는 안정 식별자 (sda, dm-2 …)
+#   label = 화면 라벨 (물리 디스크 = 장치명, LV = 마운트포인트)
+#   is_lv = 1 이면 한 칸 들여 표시해 "물리 행의 분해"임이 보이게 한다
+# 물리와 LV 가 같은 공식을 쓰는 이유: dm 도 블록 장치라 diskstats 필드 의미가 같다.
+function disk_stats_row(name, label, is_lv,    rd, wr, rmb, wmb, ios, awt, ut, aq, la, lu, lq, disp, id) {
+    if (!((0,name,"rd") in DSK)) return         # 새로 나타난 장치: 이전 값이 없으면 다음 프레임부터
+    rd  = dpos(DSK[1,name,"rd"], DSK[0,name,"rd"])
+    wr  = dpos(DSK[1,name,"wr"], DSK[0,name,"wr"])
+    rmb = dpos(DSK[1,name,"rdsec"], DSK[0,name,"rdsec"]) * 512 / 1048576 / dt   # 섹터=512B 고정
+    wmb = dpos(DSK[1,name,"wrsec"], DSK[0,name,"wrsec"]) * 512 / 1048576 / dt
+    ios = rd + wr
+    awt = (ios > 0) ? (dpos(DSK[1,name,"rdms"], DSK[0,name,"rdms"]) + dpos(DSK[1,name,"wrms"], DSK[0,name,"wrms"])) / ios : 0
+    ut  = 100 * dpos(DSK[1,name,"ticks"], DSK[0,name,"ticks"]) / (dt*1000); if (ut > 100) ut = 100
+    aq  = dpos(DSK[1,name,"wticks"], DSK[0,name,"wticks"]) / (dt*1000)
+    la = lvl_high(awt, W_AWAIT, C_AWAIT)
+    lu = lvl_high(ut,  W_UTIL,  C_UTIL)
+    lq = lvl_high(aq,  W_AQU,   C_AQU)
+    disp = is_lv ? " " substr(label, 1, 8) : label      # LV 는 들여쓰기 포함 9칸에 맞춘다
+    id   = is_lv ? label "(" name ")" : name            # 경보 문구용 식별 — 예: /jboss(dm-2)
+    printf("  %-9s %5d   %5d   %6.1f   %6.1f  %s  %s   %s\n",
+        disp, int(rd/dt+0.5), int(wr/dt+0.5), rmb, wmb,
+        paint(sprintf("%7.1fms", awt), la), paint(sprintf("%6.1f", aq), lq), paint(sprintf("%4d%%", int(ut+0.5)), lu))
+    if (la)               alert(la, "disk_" name "_await", sprintf("디스크 %s 평균응답(await) %.1fms (주의 %s / 위험 %s)", id, awt, W_AWAIT, C_AWAIT))
+    if (lq >= 2)          alert(lq, "disk_" name "_aqu",   sprintf("디스크 %s 큐길이(aqu) %.1f", id, aq))
+    if (lu >= 2 && la==0) alert(1,  "disk_" name "_util",  sprintf("디스크 %s 사용률(util) %d%% 포화 근접", id, int(ut)))
+    # util 경보를 await 정상일 때만 내는 이유: 가상 디스크의 util 은 병렬성
+    # 때문에 과대평가될 수 있어, 지연 동반 없는 100% 는 정보성으로만 알린다.
+}
+
+# DMMAP("dm-0|/|sda …")을 표로 푼다 — LV_LABEL[dm]=마운트 라벨, LV_PARENT[dm]=물리 디스크.
+# 해석(마운트 찾기·부모 추적)은 bash 쪽 시작 시 1회 — 여기서는 결과만 받아 쓴다.
+BEGIN {
+    n = split(DMMAP, _e, " ")
+    for (i = 1; i <= n; i++) if (_e[i] != "") {
+        split(_e[i], _f, /[|]/)
+        LV_LABEL[_f[1]] = _f[2]; LV_PARENT[_f[1]] = _f[3]
+    }
+}
 
 # ── 입력 파싱 ──────────────────────────────────────────────────────────────
 # ix: 지금 줄이 이전(0)/현재(1) 어느 스냅샷 소속인지. 매 줄 갱신된다.
@@ -247,12 +332,18 @@ sec==1 && $1=="procs_blocked" { BLOCKED[ix]=$2; next }
 #   $13 io_ticks: I/O 가 1개라도 진행 중이던 누적 ms  → util 의 원천
 #   $14 weighted: 진행 중 개수×시간의 적분(ms·개)     → 평균 큐 길이의 원천
 # 파티션(sda1)이 아닌 디스크 전체(sda)만 잡는다 — 합산이 중복되지 않게.
+# 단, LV(dm-N)는 물리와 "겹치는" 게 목적이다: 물리 행 = 합산, LV 행 = 그 분해.
 sec==2 {
     name=$3
     if (DISKS != "") ok = index(" " DISKS " ", " " name " ") > 0
-    else             ok = (name ~ /^(sd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme[0-9]+n[0-9]+)$/)
+    else             ok = (name ~ /^(sd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme[0-9]+n[0-9]+)$/ || (name in LV_LABEL))
     if (ok) {
-        if (ix==1 && !(name in SEEN)) { DISK_ORDER[++DISK_N]=name; SEEN[name]=1 }
+        if (ix==1 && !(name in SEEN)) {
+            SEEN[name]=1
+            # LV 는 부모 디스크 아래에 들여 보여 주기 위해 따로 모은다 (dm 번호 순서 유지)
+            if (name in LV_LABEL) { LV_ORDER[++LV_N]=name; CHILDREN[LV_PARENT[name]] = CHILDREN[LV_PARENT[name]] " " name }
+            else                  DISK_ORDER[++DISK_N]=name
+        }
         DSK[ix,name,"rd"]=$4;    DSK[ix,name,"rdsec"]=$6;  DSK[ix,name,"rdms"]=$7
         DSK[ix,name,"wr"]=$8;    DSK[ix,name,"wrsec"]=$10; DSK[ix,name,"wrms"]=$11
         DSK[ix,name,"ticks"]=$13; DSK[ix,name,"wticks"]=$14
@@ -375,31 +466,18 @@ END {
     # 게스트의 await 에는 ESXi·데이터스토어·어레이 왕복이 전부 합산된다 — 그래서
     # await 가 높을 때 "어디가" 느린지는 esxtop(GAVG=KAVG+DAVG)으로만 가른다.
     printf("\n[ 디스크 ]  /proc/diskstats %s초 차분\n", sprintf("%.0f", dt))
-    printf("  %s\n", DIM "초당요청(r/s·w/s, requests/sec) · 처리량(rMB/s·wMB/s) · 평균응답(await, average wait) · 큐길이(aqu, avg queue size) · 사용률(util, utilization)" RST)
+    printf("  %s\n", DIM "초당요청(r/s·w/s) · 처리량(rMB/s·wMB/s) · 평균응답(await, 큐 대기 포함 ms) · 큐길이(aqu) · 사용률(util) — 들여쓴 행 = LV(마운트 기준), 물리 행의 분해" RST)
     printf("  장치        r/s     w/s    rMB/s    wMB/s      await     aqu    util\n")
     for (i=1; i<=DISK_N; i++) {
         name = DISK_ORDER[i]
-        if (!((0,name,"rd") in DSK)) continue   # 새로 나타난 디스크: 이전 값이 없으면 다음 프레임부터
-        rd  = dpos(DSK[1,name,"rd"], DSK[0,name,"rd"])
-        wr  = dpos(DSK[1,name,"wr"], DSK[0,name,"wr"])
-        rmb = dpos(DSK[1,name,"rdsec"], DSK[0,name,"rdsec"]) * 512 / 1048576 / dt   # 섹터=512B
-        wmb = dpos(DSK[1,name,"wrsec"], DSK[0,name,"wrsec"]) * 512 / 1048576 / dt
-        ios = rd + wr
-        awt = (ios > 0) ? (dpos(DSK[1,name,"rdms"], DSK[0,name,"rdms"]) + dpos(DSK[1,name,"wrms"], DSK[0,name,"wrms"])) / ios : 0
-        ut  = 100 * dpos(DSK[1,name,"ticks"], DSK[0,name,"ticks"]) / (dt*1000); if (ut > 100) ut = 100
-        aq  = dpos(DSK[1,name,"wticks"], DSK[0,name,"wticks"]) / (dt*1000)
-        la = lvl_high(awt, W_AWAIT, C_AWAIT)
-        lu = lvl_high(ut,  W_UTIL,  C_UTIL)
-        lq = lvl_high(aq,  W_AQU,   C_AQU)
-        printf("  %-9s %5d   %5d   %6.1f   %6.1f  %s  %s   %s\n",
-            name, int(rd/dt+0.5), int(wr/dt+0.5), rmb, wmb,
-            paint(sprintf("%7.1fms", awt), la), paint(sprintf("%6.1f", aq), lq), paint(sprintf("%4d%%", int(ut+0.5)), lu))
-        if (la)               alert(la, "disk_" name "_await", sprintf("디스크 %s 평균응답(await) %.1fms (주의 %s / 위험 %s)", name, awt, W_AWAIT, C_AWAIT))
-        if (lq >= 2)          alert(lq, "disk_" name "_aqu",   sprintf("디스크 %s 큐길이(aqu) %.1f", name, aq))
-        if (lu >= 2 && la==0) alert(1,  "disk_" name "_util",  sprintf("디스크 %s 사용률(util) %d%% 포화 근접", name, int(ut)))
-        # util 경보를 await 정상일 때만 내는 이유: 가상 디스크의 util 은 병렬성
-        # 때문에 과대평가될 수 있어, 지연 동반 없는 100% 는 정보성으로만 알린다.
+        disk_stats_row(name, name, 0)
+        # 이 물리 디스크 위의 LV 들 — 물리 행(합산)을 용도별로 분해해 바로 아래에 보여 준다.
+        # "sda 가 높다"에서 멈추지 않고 "스왑이 미는가, /var 로그인가"까지 한 화면에서 읽힌다.
+        kidn = split(CHILDREN[name], kids, " ")
+        for (j=1; j<=kidn; j++) if (kids[j] != "") { disk_stats_row(kids[j], LV_LABEL[kids[j]], 1); LV_DONE[kids[j]]=1 }
     }
+    # 부모가 감시 목록에 없는 LV (여러 PV 에 걸친 LV 등 특수 구성)는 마지막에 따로
+    for (i=1; i<=LV_N; i++) if (!(LV_ORDER[i] in LV_DONE)) disk_stats_row(LV_ORDER[i], LV_LABEL[LV_ORDER[i]], 1)
 
     # ── 네트워크 ────────────────────────────────────────────────────────────
     # bytes Δ × 8 ÷ 10^6 = Mbit/s. 오류·드롭은 절대량보다 "증가" 자체가 신호다.
@@ -437,7 +515,7 @@ while :; do
     (( LOOP % 5 == 0 )) && refresh_vmt
 
     OUT_RAW=$(awk \
-        -v NCPU="$NCPU" -v DISKS="$DISKS" -v BALLOON="$BALLOON_MB" -v HVSWAP="$HVSWAP_MB" \
+        -v NCPU="$NCPU" -v DISKS="$DISKS" -v DMMAP="$DMMAP" -v BALLOON="$BALLOON_MB" -v HVSWAP="$HVSWAP_MB" \
         -v W_CPU_WA="$W_CPU_WA" -v C_CPU_WA="$C_CPU_WA" -v W_CPU_ST="$W_CPU_ST" -v C_CPU_ST="$C_CPU_ST" \
         -v W_LOAD="$W_LOAD" -v C_LOAD="$C_LOAD" -v W_MEMA="$W_MEMA" -v C_MEMA="$C_MEMA" \
         -v C_SWAP="$C_SWAP" -v W_AWAIT="$W_AWAIT" -v C_AWAIT="$C_AWAIT" \

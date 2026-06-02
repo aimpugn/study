@@ -15,6 +15,8 @@
 #               avail 2.1G(13%), sda: r20 w380, await (162+16074)/400=40.6ms,
 #               aqu 16236/1000=16.2, util 984/1000→98%, net 12.30/3.10 Mb/s
 #               경보 6건(전부 주의): cpu_wa load proc_d mem_avail vmw_balloon disk_sda_await
+#               dm 행 2개 포함: dm-0(Δrd10·Δrdms300 → await 30ms), dm-2(조용) —
+#               DMMAP 없이 돌리면 dm 은 무시되고, 2b 의 LV 테스트에서만 활성화된다
 #   cur_swapin: si Δ4페이지×4KiB=16K/s, so 0 → swap_in 정보성 주의 1건만
 #   cur_swapout:so Δ600×4=2400K/s(≥2048 위험), avail 5%(≤7 위험) → 위험 2건
 #   cur_clean:  전부 정상 → 경보 0건, 상태 0/0
@@ -68,12 +70,39 @@ check "warn: 디스크 await 40.6ms"     has "40.6ms"
 check "warn: 디스크 aqu 16.2"         has "16.2"
 check "warn: 디스크 util 98%"         has "98%"
 check "warn: 파티션 sda1 미표시"      not "sda1"
+check "warn: DMMAP 없으면 dm 미표시"  not "dm-0"
 check "warn: 루프백 lo 미표시"        not "  lo "
 check "warn: 네트워크 12.30 Mb/s"     has "12.30"
 for k in cpu_wa load proc_d mem_avail vmw_balloon disk_sda_await; do
     check "warn: 경보 $k 발행"        has "@A@|1|$k"
 done
 check "warn: 상태 위험0·주의6"        has "@S@|0|6"
+
+# ── 2b. LV(논리볼륨) 표시 — DMMAP 을 주면 dm 행이 마운트 라벨로, 부모 디스크 아래에 ─
+# dm-0(라벨 /, 부모 sda): Δrd10·Δrdms300 → await 30ms 주의 + 경보 키는 dm 이름 유지.
+# dm-2(라벨 /jboss, 부모 sdb): 조용. sdb 가 픽스처에 없으므로 dm-2 는
+# "부모가 감시 목록에 없는 LV" 경로(마지막 출력)까지 함께 검증한다.
+run_case_lv() {
+    gawk -v NCPU=4 -v DISKS="" -v DMMAP="dm-0|/|sda dm-2|/jboss|sdb" -v BALLOON=512 -v HVSWAP=0 \
+         -v W_CPU_WA=20 -v C_CPU_WA=40 -v W_CPU_ST=5 -v C_CPU_ST=15 \
+         -v W_LOAD=100 -v C_LOAD=200 -v W_MEMA=15 -v C_MEMA=7 \
+         -v C_SWAP=2048 -v W_AWAIT=20 -v C_AWAIT=50 \
+         -v W_UTIL=90 -v C_UTIL=99 -v W_AQU=8 -v C_AQU=32 \
+         -v W_D=1 -v C_D=5 \
+         -v YEL="[Y]" -v RED="[R]" -v DIM="" -v RST="[/]" \
+         -f prog.awk prev.snap cur_warn.snap
+}
+OUT=$(run_case_lv)
+hasre(){ grep -qE -- "$1" <<<"$OUT"; }
+check "LV: 루트(/) 행 — 들여쓴 라벨"   hasre '^   / +10 '
+check "LV: dm-0 await 30ms 노랑"       has "[Y]   30.0ms[/]"
+check "LV: / 가 sda 바로 아래"         bash -c 'printf "%s\n" "$1" | grep -v "^@" | grep -A1 "^  sda " | tail -1 | grep -q "^   /"' _ "$OUT"
+check "LV: 경보 키는 dm 이름"          has "@A@|1|disk_dm-0_await"
+check "LV: 경보 문구는 라벨(dm)"       has "/(dm-0)"
+check "LV: 고아 LV(/jboss) 표시"       hasre '^   /jboss'
+check "LV: 조용한 dm-2 경보 없음"      not "disk_dm-2"
+check "LV: 물리 sda 행 유지(40.6ms)"   has "40.6ms"
+check "LV: 상태 위험0·주의7"           has "@S@|0|7"
 
 # ── 3. 스왑 분기 ─────────────────────────────────────────────────────────────
 OUT=$(run_case cur_swapin.snap -1 -1)

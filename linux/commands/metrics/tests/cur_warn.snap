@@ -10,6 +10,8 @@ procs_blocked 3
 #DISK
    8       0 sda 10020 0 800640 50162 90380 0 6449664 916074 33 60984 966236 0 0 0 0
    8       1 sda1 9020 0 700640 45162 80380 0 6049664 816074 33 55984 866236 0 0 0 0
+ 253       0 dm-0 5010 0 400800 20300 40000 0 3200000 500000 0 30290 520300 0 0 0 0
+ 253       2 dm-2 101 0 8008 51 200 0 16000 100 0 101 151 0 0 0 0
 #NET
 Inter-|   Receive                                                |  Transmit
  face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
