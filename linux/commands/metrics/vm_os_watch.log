@@ -1,0 +1,49 @@
+── VM OS WATCH ── HOSTNAME [vmware guest, vCPU 4] ── 2026-06-02 16:53:19 ── 가동 916d 23h 20m ── 갱신 1s ──
+
+[ CPU ]  /proc/stat 1초 차분
+        3.6%   사용자 코드 실행 (us, user)
+        1.2%   커널 코드 실행 (sy, system+irq+softirq)
+        0.0%   I/O 완료 대기 (wa, iowait) — 힌트일 뿐, 판정은 디스크 평균응답으로
+        0.0%   하이퍼바이저에 빼앗긴 시간 (st, steal) — VMware 는 0 고정일 수 있음
+       95.1%   유휴 (id, idle)
+
+[ 부하 · 프로세스 ]  /proc/loadavg · /proc/stat
+        0.15   평균 부하 1분 (load average 1m) — vCPU 4 개의 4%
+   0.16/0.10   평균 부하 5분/15분 (load average 5m/15m)
+           1   실행 대기 프로세스 (r, procs_running)
+           0   디스크 응답 대기 고착 프로세스 (D, uninterruptible sleep) — 지속 시 스토리지 의심
+
+[ 메모리 · 스왑 ]  /proc/meminfo · /proc/vmstat
+       18.8G   실제 가용 메모리 (avail, MemAvailable) — 전체 31.3G 의 60%
+       18.6G   페이지 캐시 (cached+buffers) — 줄어들면 읽기가 디스크로 떨어짐
+          0M   디스크 미기록 쓰기 (dirty) — writeback 대기 중인 양
+       4651M   스왑 사용량 (swap used)
+       16K/s   스왑 읽어들임 (si, swap-in) — 디스크에서 메모리로
+        0K/s   스왑 내려씀 (so, swap-out) — 0 이 아니면 메모리 부족이 디스크 I/O 로 전이
+          0M   VMware 풍선 회수 (balloon, vmmemctl) — >0 이면 호스트가 메모리 회수 중
+          0M   VMware 하이퍼바이저 스왑 (hvswap, host-level swap) — >0 이면 심각
+
+[ 디스크 ]  /proc/diskstats 1초 차분
+  초당요청(r/s·w/s, requests/sec) · 처리량(rMB/s·wMB/s) · 평균응답(await, average wait) · 큐길이(aqu, avg queue size) · 사용률(util, utilization)
+  장치        r/s     w/s    rMB/s    wMB/s      await     aqu    util
+  sda           1       0      0.0      0.0      1.0ms     0.0      0%
+  sdb           0       0      0.0      0.0      0.0ms     0.0      0%
+  sdc           0       0      0.0      0.0      0.0ms     0.0      0%
+
+[ 네트워크 ]  /proc/net/dev 1초 차분
+  ens192      수신 (rx)     0.85 Mb/s   송신 (tx)     0.51 Mb/s   오류·유실 (err+drop) 0
+
+[ 최근 경보 ]  임계 초과 시각 기록 — 전체 이력: /tmp/vm_os_watch_alerts.log
+06-02 16:49:57 [WARN] 스왑 I/O 발생 si 8K/s · so 0K/s — 메모리 부족이 디스크로 전이
+06-02 16:52:15 [WARN] 스왑 I/O 발생 si 12K/s · so 0K/s — 메모리 부족이 디스크로 전이
+06-02 16:52:54 [WARN] 스왑 I/O 발생 si 16K/s · so 0K/s — 메모리 부족이 디스크로 전이
+
+[ 읽는 법 ]
+  · 색: 노랑 = 주의, 빨강 = 위험 / 같은 경보는 30초에 1번만 이력에 기록
+  · 평균응답 (await, average wait) — 요청 1건 완료까지의 ms. 디스크 판정의 중심. 게스트 값엔 ESXi·어레이 왕복까지 합산
+  · 큐길이 (aqu, average queue size) — 동시 진행 요청 수 ≈ IOPS x 응답(초). 계속 늘면 디스크가 못 따라가는 중
+  · 사용률 (util, utilization) — 바빴던 시간 비율. 가상 디스크는 100% 여도 여유가 있을 수 있는 보조 지표
+  · I/O 대기 (wa, iowait) 와 부하 (load) 는 힌트 — 디스크 문제 판정은 평균응답(
+   · D 1/5 — W_*·C_* 환경변수로 조정
+
+
