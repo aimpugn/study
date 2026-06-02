@@ -1,0 +1,26 @@
+#T 1000000001.000000000
+#STAT
+cpu  100014 500 40005 800380 20000 0 3001 0 0 0
+procs_running 1
+procs_blocked 0
+#DISK
+   8       0 sda 10001 0 800008 50001 90000 0 6400000 900000 0 60001 950001 0 0 0 0
+   8       1 sda1 9001 0 700008 45001 80000 0 6000000 800000 0 55001 850001 0 0 0 0
+#NET
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+ens192: 50106250 40100 0 0 0 0 0 0 20063750 30100 0 0 0 0 0 0
+    lo: 1999 19 0 0 0 0 0 0 1999 19 0 0 0 0 0 0
+#VM
+pswpin 104
+pswpout 800
+#MEM
+MemTotal:       32768000 kB
+MemAvailable:    1638400 kB
+Buffers:          102400 kB
+Cached:          2097152 kB
+Dirty:            512000 kB
+SwapTotal:       8388608 kB
+SwapFree:        3626024 kB
+#LOAD
+0.15 0.16 0.10 1/234 12345
