@@ -1,5 +1,7 @@
 # vm_stat
 
+> macOS 전용 도구다. 이름이 비슷한 Linux 의 `vmstat` 은 전혀 다른 도구이며 [storage_io_vmware.md](./storage_io_vmware.md) 6.1절에 정리했다.
+
 ## description
 
 > show Mach virtual memory statistics

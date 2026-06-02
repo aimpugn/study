@@ -1,6 +1,6 @@
 # io
 
-> Linux/VMware VM 의 스토리지 I/O 는 원리·점검을 묶어 [storage_io_vmware.md](./storage_io_vmware.md) 에 따로 정리했다. 아래는 macOS 기준 메모.
+> Linux/VMware VM 의 스토리지 I/O 는 [storage_io_vmware.md](./storage_io_vmware.md) 단일 정리본에 묶었다 (Linux iostat 명령은 그 6.2절). 아래는 macOS 기준 메모.
 
 ## iostat
 
