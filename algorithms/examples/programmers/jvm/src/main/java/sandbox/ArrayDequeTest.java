@@ -24,6 +24,7 @@ public final class ArrayDequeTest {
     }
 
     public static void main(String[] args) {
+        methodSelectionGuide();
         stackWithOfficialMethods();
         stackWithTailAsTopForAlgorithmTrace();
         fifoQueue();
@@ -31,6 +32,40 @@ public final class ArrayDequeTest {
         emptyAndNullPolicy();
 
         System.out.println("All ArrayDeque guide checks passed");
+    }
+
+    private static void methodSelectionGuide() {
+        // 먼저 역할을 고르고, 그 역할을 드러내는 메서드 묶음을 같이 씁니다.
+        //
+        // 1. 큐라면 offer/poll/peek를 기본으로 봅니다.
+        //    offer(e)는 offerLast(e)와 같아서 뒤에 넣고, poll()은 pollFirst()와 같아서 앞에서 뺍니다.
+        //    add(e)도 ArrayDeque에서는 뒤에 넣지만 "큐에 넣는다"는 의도가 offer보다 덜 선명합니다.
+        //
+        // 2. 스택인데 Java 공식 스택 이름을 쓰고 싶다면 push/pop/peek를 씁니다.
+        //    push(e)는 addFirst(e)와 같아서 앞쪽을 top으로 봅니다.
+        //
+        // 3. 알고리즘 추적에서 입력 순서를 [1, 2, 3]처럼 그대로 보여 주고
+        //    오른쪽 끝을 top으로 삼고 싶다면 addLast/peekLast/pollLast를 씁니다.
+        //
+        // 4. 양끝을 모두 쓰는 진짜 deque라면 offerFirst/offerLast/pollFirst/pollLast처럼
+        //    first/last를 이름에 직접 드러냅니다.
+        //
+        // 5. add/remove/get 계열은 실패하면 예외를 던지고, offer/poll/peek 계열은
+        //    실패를 값(false/null)으로 표현합니다. 알고리즘에서는 보통 isEmpty()로 가드를 치고
+        //    poll/peek를 쓰는 흐름이 읽기 편합니다. 비어 있으면 안 되는 불변식을 강하게 확인하려면
+        //    remove/getFirst/pop처럼 예외를 던지는 메서드가 더 선명할 수 있습니다.
+        Deque<String> queueLanguage = new ArrayDeque<>();
+        assertEquals(true, queueLanguage.offer("tail"), "offer는 큐 언어로 뒤쪽 삽입 성공 여부를 돌려준다");
+        assertContents(queueLanguage, List.of("tail"), "offer(e)는 offerLast(e)와 같은 위치에 넣는다");
+
+        Deque<String> collectionLanguage = new ArrayDeque<>();
+        assertEquals(true, collectionLanguage.add("tail"), "add도 뒤쪽에 넣지만 Collection 언어에 가깝다");
+        assertContents(collectionLanguage, List.of("tail"), "add(e)는 addLast(e)와 같은 위치에 넣는다");
+
+        Deque<String> stackLanguage = new ArrayDeque<>();
+        stackLanguage.push("bottom");
+        stackLanguage.push("top");
+        assertContents(stackLanguage, List.of("top", "bottom"), "push(e)는 addFirst(e)와 같은 위치에 넣는다");
     }
 
     private static void stackWithOfficialMethods() {
