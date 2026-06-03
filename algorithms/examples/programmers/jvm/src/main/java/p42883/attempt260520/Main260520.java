@@ -2,6 +2,7 @@ package p42883.attempt260520;
 
 import support.TestCase2;
 
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -10,6 +11,33 @@ import java.util.Objects;
  * <a href="https://school.programmers.co.kr/learn/courses/30/lessons/42883?language=java">큰 수 만들기</a>
  */
 class Solution {
+    public String solutionByStack(String number, int k) {
+        int targetLength = number.length() - k;
+        int remove = k;
+        var stack = new ArrayDeque<Character>(number.length());
+
+        for (int i = 0; i < number.length(); i++) {
+            char digit = number.charAt(i);
+
+            while (
+                remove > 0
+                    && !stack.isEmpty()
+                    && stack.peekLast() < digit
+            ) {
+                stack.pollLast();
+                remove--;
+            }
+
+            stack.addLast(digit);
+        }
+
+        var answer = new StringBuilder(targetLength);
+        while (answer.length() < targetLength) {
+            answer.append(stack.pollFirst());
+        }
+        return answer.toString();
+    }
+
     public String solution(String number, int k) {
         int targetLength = number.length() - k;
         int remove = k;
@@ -146,7 +174,7 @@ public class Main260520 {
         );
 
         for (var testCase : testCases) {
-            var result = solution.solution(testCase.input(), testCase.input2());
+            var result = solution.solutionByStack(testCase.input(), testCase.input2());
             assertEquals(testCase, result);
         }
     }
