@@ -24,7 +24,6 @@ public final class ArrayDequeTest {
     }
 
     public static void main(String[] args) {
-        methodSelectionGuide();
         stackWithOfficialMethods();
         stackWithTailAsTopForAlgorithmTrace();
         fifoQueue();
@@ -34,45 +33,13 @@ public final class ArrayDequeTest {
         System.out.println("All ArrayDeque guide checks passed");
     }
 
-    private static void methodSelectionGuide() {
-        // 먼저 역할을 고르고, 그 역할을 드러내는 메서드 묶음을 같이 씁니다.
-        //
-        // 1. 큐라면 offer/poll/peek를 기본으로 봅니다.
-        //    offer(e)는 offerLast(e)와 같아서 뒤에 넣고, poll()은 pollFirst()와 같아서 앞에서 뺍니다.
-        //    add(e)도 ArrayDeque에서는 뒤에 넣지만 "큐에 넣는다"는 의도가 offer보다 덜 선명합니다.
-        //
-        // 2. 스택인데 Java 공식 스택 이름을 쓰고 싶다면 push/pop/peek를 씁니다.
-        //    push(e)는 addFirst(e)와 같아서 앞쪽을 top으로 봅니다.
-        //
-        // 3. 알고리즘 추적에서 입력 순서를 [1, 2, 3]처럼 그대로 보여 주고
-        //    오른쪽 끝을 top으로 삼고 싶다면 addLast/peekLast/pollLast를 씁니다.
-        //
-        // 4. 양끝을 모두 쓰는 진짜 deque라면 offerFirst/offerLast/pollFirst/pollLast처럼
-        //    first/last를 이름에 직접 드러냅니다.
-        //
-        // 5. add/remove/get 계열은 실패하면 예외를 던지고, offer/poll/peek 계열은
-        //    실패를 값(false/null)으로 표현합니다. 알고리즘에서는 보통 isEmpty()로 가드를 치고
-        //    poll/peek를 쓰는 흐름이 읽기 편합니다. 비어 있으면 안 되는 불변식을 강하게 확인하려면
-        //    remove/getFirst/pop처럼 예외를 던지는 메서드가 더 선명할 수 있습니다.
-        Deque<String> queueLanguage = new ArrayDeque<>();
-        assertEquals(true, queueLanguage.offer("tail"), "offer는 큐 언어로 뒤쪽 삽입 성공 여부를 돌려준다");
-        assertContents(queueLanguage, List.of("tail"), "offer(e)는 offerLast(e)와 같은 위치에 넣는다");
-
-        Deque<String> collectionLanguage = new ArrayDeque<>();
-        assertEquals(true, collectionLanguage.add("tail"), "add도 뒤쪽에 넣지만 Collection 언어에 가깝다");
-        assertContents(collectionLanguage, List.of("tail"), "add(e)는 addLast(e)와 같은 위치에 넣는다");
-
-        Deque<String> stackLanguage = new ArrayDeque<>();
-        stackLanguage.push("bottom");
-        stackLanguage.push("top");
-        assertContents(stackLanguage, List.of("top", "bottom"), "push(e)는 addFirst(e)와 같은 위치에 넣는다");
-    }
-
     private static void stackWithOfficialMethods() {
         Deque<String> stack = new ArrayDeque<>(3);
 
         // Deque의 공식 스택 메서드는 앞쪽(first/head)을 top으로 봅니다.
         // push(e) == addFirst(e), pop() == removeFirst()입니다.
+        // add(e)는 addLast(e)와 같아서 뒤쪽에 넣습니다. 그래서 add/pop을 섞으면
+        // "마지막에 넣은 값이 먼저 나온다"는 스택 의도가 코드에서 흐려집니다.
         // top 확인은 비어 있어도 괜찮으면 peek(), 비어 있으면 버그라면 getFirst()를 씁니다.
         stack.push("1");
         stack.push("2");
@@ -83,6 +50,12 @@ public final class ArrayDequeTest {
         assertEquals("3", stack.peek(), "peek는 top을 확인만 한다");
         assertEquals("3", stack.pop(), "pop은 top을 꺼낸다");
         assertContents(stack, List.of("2", "1"), "pop 이후 top 하나만 제거되어야 한다");
+
+        Deque<String> addBased = new ArrayDeque<>(3);
+        addBased.add("1");
+        addBased.add("2");
+        addBased.add("3");
+        assertContents(addBased, List.of("1", "2", "3"), "add는 스택 top이 아니라 뒤쪽 tail에 넣는다");
     }
 
     private static void stackWithTailAsTopForAlgorithmTrace() {
@@ -90,6 +63,8 @@ public final class ArrayDequeTest {
 
         // 단조 스택처럼 입력을 왼쪽에서 오른쪽으로 보면서 "오른쪽 끝이 top"이라고
         // 생각하면 addLast/peekLast/pollLast가 눈에 더 잘 들어옵니다.
+        // push/pop도 스택으로는 정석이지만, push는 앞쪽에 넣기 때문에 출력이 [3, 2, 1]처럼
+        // 뒤집혀 보입니다. 입력 순서와 스택 상태를 같이 추적하려면 last 계열이 더 읽기 쉽습니다.
         stack.addLast("1");
         stack.addLast("2");
         stack.addLast("3");
@@ -105,7 +80,8 @@ public final class ArrayDequeTest {
         Deque<String> queue = new ArrayDeque<>(3);
 
         // Queue 관점에서는 offer(e) == offerLast(e), poll() == pollFirst()입니다.
-        // add(e)도 뒤에 넣지만, 큐 역할을 드러낼 때는 offer/poll/peek 묶음이 더 선명합니다.
+        // add(e)도 뒤에 넣지만, Collection의 "추가"라는 말에 가깝습니다.
+        // 큐 역할을 드러낼 때는 offer/poll/peek 묶음이 더 선명합니다.
         queue.offer("1");
         queue.offer("2");
         queue.offer("3");
@@ -115,12 +91,21 @@ public final class ArrayDequeTest {
         assertEquals("1", queue.peek(), "peek는 가장 먼저 나갈 값을 확인만 한다");
         assertEquals("1", queue.poll(), "poll은 가장 먼저 들어온 값을 꺼낸다");
         assertContents(queue, List.of("2", "3"), "poll 이후 앞쪽 값 하나만 제거되어야 한다");
+
+        Deque<String> addBased = new ArrayDeque<>(3);
+        assertEquals(true, addBased.add("1"), "add도 ArrayDeque에서는 뒤쪽 삽입에 성공한다");
+        assertEquals(true, addBased.offer("2"), "offer는 큐 언어로 뒤쪽 삽입 성공 여부를 돌려준다");
+        assertContents(addBased, List.of("1", "2"), "add와 offer는 여기서는 같은 끝에 넣지만 의도가 다르다");
     }
 
     private static void doubleEndedQueue() {
         Deque<String> deque = new ArrayDeque<>(3);
 
         // 양끝을 모두 쓰는 문제라면 first/last를 메서드 이름에 직접 드러내는 편이 안전합니다.
+        // offerFirst/offerLast는 실패를 false로 표현하는 계열이고,
+        // addFirst/addLast는 실패를 예외로 표현하는 계열입니다.
+        // ArrayDeque는 크기 제한이 없어서 보통 둘 다 성공하지만, 양끝 큐 예제에서는
+        // first와 last 방향을 드러내는 이름 자체가 가장 중요합니다.
         deque.offerLast("middle");
         deque.offerFirst("front");
         deque.offerLast("back");
