@@ -33,7 +33,7 @@
 #
 # 주의
 #   - 2~5번은 디스크에, 6번은 메모리에 "실제" 부하를 건다 — 그게 목적이다. 운영 서버라면 한가한 시간에,
-#     공유 데이터스토어(VMware)라면 그 시간만큼 이웃 VM 에게 noisy neighbor 가 된다는 점을 인지하고.
+#     VMware 공유 데이터스토어라면 그 시간만큼 이웃 VM 에게도 경합(noisy neighbor)을 만든다는 점을 인지하고.
 #   - 쓰는 곳은 일반 파일뿐이다: $LABD (기본 /var/tmp/vm_os_lab), /dev/shm/vm_os_lab.mem
 #   - 환경변수: LAB_MB(파일 크기 MB, 기본 256) LAB_SEC(단계 길이 초, 기본 20) LAB_AUTO=1(Enter 생략)
 #     운영 장비에서 줄여서: LAB_SEC=10 LAB_MB=64 bash vm_os_lab.sh 2
