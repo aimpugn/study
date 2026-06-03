@@ -580,7 +580,7 @@ GC 루트 = 지금 당장 코드가 손에 쥔 것들
             ┌────────────────── 평상시 ──────────────────┐
             │   young GC 반복 (Eden 차면 비움, 짧은 STW) │
             └──────────────────┬─────────────────────────┘
-                               │ Old가 전체 힙의 45 % 점유 (기본값, 이후 적응형)
+                               │ Old 영역 점유가 임계치 도달 (기본 45 %, 이후 적응형)
                                ▼
             동시 마킹 (concurrent marking)
             — 앱을 세우지 않고 나란히 달리며 Old 리전들의 생존자 지도 작성
@@ -604,7 +604,7 @@ GC 알고리즘별 비교와 선택 기준은 [gc.md](./gc.md) 참조.
 
 ### 8.5 Allocated/Promoted — 출생률과 이주율
 
-- **Allocated** (`jvm_gc_memory_allocated_bytes_total`의 기울기) — **할당률**: 초당 몇 바이트가 Eden에서 태어나는가. 도시의 출생률.
+- **Allocated** (`jvm_gc_memory_allocated_bytes_total`의 기울기) — **할당률**: 초당 몇 바이트가 Eden에서 태어나는가. 도시의 출생률. (정확히는 young 영역 할당분만 집계하므로, 리전을 통째로 차지하며 Old에 곧장 들어가는 Humongous 대형 객체는 빠진다.)
 - **Promoted** (`jvm_gc_memory_promoted_bytes_total`의 기울기) — **승격률**: 초당 몇 바이트가 Old로 이주하는가.
 
 이 두 값이 GC 리듬을 통째로 결정한다.
@@ -702,13 +702,14 @@ Old가 차는 속도 ≈ 승격률
 | Threads | live 73, daemon 25, peak 77 | peak≈live, 증가 추세 없음 | 안정 |
 | Thread States | RUNNABLE 42, BLOCKED 0 | RUNNABLE 다수는 epoll 대기(5.4), 락 경합 없음 | 건강 |
 | GC Pressure | 0.0 % | 청소 부담 없음 | 양호 |
-| File Descriptors | 93 / 약 65,536 | 사용률 0.14 % | 여유 |
+| File Descriptors | 93 / 66 K (≈65,536) | 사용률 0.14 % | 여유 |
 | Buffer direct | 33.6 MB / 20개 | NIO 서버 전형치, used=capacity 정상 (10.2) | 정상 |
 | Buffer mapped | 0 B | mmap 미사용 | 정상 |
 
 검산 메모 하나. 원본 기록에서 Non-Heap 행이 Heap 행과 같은 "committed 512 / max 512"로 적혀 있는데, Total과의 산수가 맞지 않는다. Total이 합산 패널이므로 실제 화면은 다음이었을 가능성이 높다.
 
 ```text
+(아래는 캡처 실측이 아니라 Total − Heap 역산으로 얻은 추정값이다)
 Non-Heap used      = Total used      − Heap used      = 162 − 83.7 ≈  78 MiB
 Non-Heap committed = Total committed − Heap committed = 594 − 512  =  82 MiB
 Non-Heap max       = Total max       − Heap max       ≈ 1.73 GiB − 512 MiB ≈ 1.23 GiB
