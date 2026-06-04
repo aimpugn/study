@@ -8,7 +8,7 @@
 - [blocking과 non-blocking은 thread가 기다리는 방식의 차이다](#blocking과-non-blocking은-thread가-기다리는-방식의-차이다)
 - [synchronous/asynchronous는 완료를 누가 언제 알려 주는가의 축이다](#synchronousasynchronous는-완료를-누가-언제-알려-주는가의-축이다)
 - [multiplexing은 많은 fd를 적은 thread로 기다리는 방법이다](#multiplexing은-많은-fd를-적은-thread로-기다리는-방법이다)
-- [accept queue와 listen backlog는 연결이 application에 도달하기 전의 대기열이다](#accept-queue와-listen-backlog는-연결이-application에-도달하기-전의-대기열이다)
+- [accept queue와 listen backlog는 연결이 application에 도달하기 전의 큐다](#accept-queue와-listen-backlog는-연결이-application에-도달하기-전의-큐다)
 - [response가 나가는 길도 queue와 flow control을 지난다](#response가-나가는-길도-queue와-flow-control을-지난다)
 - [backend request path 전체 trace](#backend-request-path-전체-trace)
 - [제품으로 다시 연결하기](#제품으로-다시-연결하기)
@@ -24,9 +24,27 @@
 - [TLS와 compression은 network path를 다시 CPU path로 끌어온다](#tls와-compression은-network-path를-다시-cpu-path로-끌어온다)
 - [Packet capture와 socket 지표를 함께 읽기](#packet-capture와-socket-지표를-함께-읽기)
 
-분산 시스템에서 request는 갑자기 application method 안으로 생겨나지 않습니다. NIC가 frame을 받고, driver가 DMA ring의 buffer를 확인하고, interrupt 또는 polling 경로가 kernel network stack을 깨우고, TCP가 byte stream을 조립하고, socket receive buffer에 data를 넣고, epoll이 "이 fd에서 읽을 수 있다"고 application thread를 깨워야 합니다. 이 경로를 모르면 Kafka fetch latency, Cassandra read timeout, Spark shuffle fetch failure를 "네트워크 문제"라는 한 덩어리로만 말하게 됩니다.
+분산 시스템에서 요청은 애플리케이션 메서드 안에서 갑자기 시작되지 않습니다. NIC가 frame을 받고, driver가 DMA ring의 buffer를 확인하고, interrupt 또는 polling 경로가 kernel network stack을 깨우고, TCP가 byte stream을 조립하고, socket receive buffer에 data를 넣고, epoll이 "이 fd에서 읽을 수 있다"고 application thread를 깨워야 합니다. 이 경로를 모르면 Kafka fetch latency, Cassandra read timeout, Spark shuffle fetch failure를 "네트워크 문제"라는 한 덩어리로만 말하게 됩니다.
 
 이 문서는 packet이 request가 되고 response가 다시 packet으로 나가는 길을 먼저 그린 뒤, blocking/non-blocking, synchronous/asynchronous, readiness/completion, multiplexing을 분리합니다.
+
+처음 붙잡을 상태는 세 개의 큐(queue)입니다.
+
+- **NIC RX queue는 장치가 받은 packet을 host memory와 driver가 함께 처리하기 전의 첫 줄**입니다.
+- **socket receive queue는 TCP가 application에게 넘길 byte stream을 커널 안에 쌓아 두는 자리**입니다.
+- **event loop의 ready list는 "지금 읽거나 쓸 수 있을 가능성이 있는 fd"를 application thread가 처리하도록 알려 주는 목록**입니다.
+
+```text
+wire packet
+  -> NIC RX queue
+  -> driver / NAPI / TCP
+  -> socket receive queue
+  -> epoll readiness
+  -> application read()
+  -> parser builds request
+```
+
+이 trace를 보면 packet 도착, fd readiness, request parsing, response completion이 같은 이벤트가 아니라는 점이 분명해집니다.
 
 ## NIC에서 application thread까지
 
@@ -49,7 +67,7 @@ wire
 
 ## interrupt만으로는 고속 network를 감당하기 어렵다
 
-packet마다 interrupt를 하나씩 받으면 고속 network에서 CPU가 interrupt 처리에 압도됩니다. Linux networking은 NAPI라는 event handling 방식을 사용합니다. 기본 아이디어는 packet이 도착하면 interrupt가 NAPI poll을 schedule하고, 이후 일정 budget 안에서 여러 packet을 polling으로 처리하는 것입니다. 작업이 남으면 다시 poll되고, 끝나면 interrupt를 다시 열 수 있습니다.
+packet마다 interrupt를 하나씩 받으면 고속 network에서 CPU가 interrupt 처리에 압도됩니다. Linux networking은 NAPI라는 방식을 사용합니다. NAPI는 packet이 도착했을 때 interrupt로 커널 작업을 깨우되, 그 뒤에는 정해진 처리량 안에서 여러 packet을 polling으로 모아 처리합니다. 작업이 남으면 다시 poll되고, 끝나면 interrupt를 다시 받을 수 있게 엽니다.
 
 ```text
 packet arrival
@@ -60,6 +78,8 @@ packet arrival
   -> packets enter network stack
   -> when work complete, interrupts unmasked
 ```
+
+이 단계에서 CPU는 packet 처리 일을 하고 있지만, 아직 application request handler가 실행된 것은 아닙니다. Kernel deferred work가 packet을 socket receive queue까지 올리고, 그 뒤에야 epoll/read를 기다리던 application thread가 runnable 상태가 됩니다.
 
 이 구조는 latency와 throughput의 tradeoff입니다. interrupt를 줄이면 batch 처리로 throughput이 좋아질 수 있지만, packet이 application에 보이기까지 기다리는 시간이 늘 수 있습니다. busy polling은 application이 packet 도착을 기다리며 CPU를 태우는 대신 latency를 줄이려는 선택입니다. 일반 서버에서는 무조건 켜는 최적화가 아니라 workload와 CPU 여유를 보고 판단해야 합니다.
 
@@ -130,9 +150,9 @@ event loop
 
 edge-triggered epoll은 상태 변화가 있을 때 event를 주므로, non-blocking fd를 끝까지 drain하지 않으면 다시 event를 못 받을 수 있습니다. level-triggered epoll은 조건이 계속 참이면 반복해서 event를 줍니다. edge-triggered가 더 고급이라 항상 좋다는 식으로 외우면 안 됩니다. application이 fd를 어떻게 drain하고 backpressure를 어떻게 표현하는지가 핵심입니다.
 
-## accept queue와 listen backlog는 연결이 application에 도달하기 전의 대기열이다
+## accept queue와 listen backlog는 연결이 application에 도달하기 전의 큐다
 
-server socket은 `listen()` 상태에서 connection을 받습니다. TCP handshake와 accept 대기열은 application이 `accept()`로 connection fd를 가져가기 전의 kernel 상태입니다. backlog가 가득 차거나 application accept loop가 느리면 client connection이 실패하거나 지연될 수 있습니다.
+server socket은 `listen()` 상태에서 connection을 받습니다. TCP handshake와 accept queue는 application이 `accept()`로 connection fd를 가져가기 전의 kernel 상태입니다. backlog가 가득 차거나 application accept loop가 느리면 client connection이 실패하거나 지연될 수 있습니다.
 
 ```text
 client SYN
@@ -199,7 +219,7 @@ application response bytes
 
 ## NIC queue, RSS, interrupt affinity는 request가 처음 줄을 서는 자리다
 
-네트워크 병목을 application thread 수로만 보면 첫 대기열을 놓칩니다. Packet은 먼저 NIC에 도착합니다. 현대 NIC는 여러 RX/TX queue를 가지고, RSS(receive-side scaling) 같은 방식으로 flow를 여러 queue에 나눌 수 있습니다. 각 queue는 특정 CPU interrupt나 NAPI poll context와 연결될 수 있고, 이 연결이 어긋나면 한 CPU만 softirq로 바쁘고 application worker는 다른 CPU에서 cache miss와 wakeup 비용을 겪을 수 있습니다.
+네트워크 병목을 application thread 수로만 보면 첫 큐를 놓칩니다. Packet은 먼저 NIC에 도착합니다. 현대 NIC는 여러 RX/TX queue를 가지고, RSS(receive-side scaling) 같은 방식으로 flow를 여러 queue에 나눌 수 있습니다. 각 queue는 특정 CPU interrupt나 NAPI poll context와 연결될 수 있고, 이 연결이 어긋나면 한 CPU만 softirq로 바쁘고 application worker는 다른 CPU에서 cache miss와 wakeup 비용을 겪을 수 있습니다.
 
 ```text
 incoming flow
@@ -209,6 +229,8 @@ incoming flow
   -> CPU runs driver poll
   -> packet enters kernel network stack
 ```
+
+여기서 "누가 packet 일을 하는가"를 분리해야 합니다. NIC는 DMA로 memory에 frame을 놓고, 특정 CPU가 interrupt와 NAPI poll을 처리하며, 그 CPU가 packet을 TCP/socket 상태로 올립니다. Application thread는 그 뒤에 scheduler가 CPU를 줄 때 실행됩니다.
 
 Interrupt affinity는 어느 CPU가 device interrupt를 처리할지 정하는 설정입니다. Receive packet steering이나 transmit packet steering 같은 kernel 기능은 packet processing을 여러 CPU로 분산하려고 합니다. 하지만 무조건 분산이 좋은 것은 아닙니다. Packet을 처리하는 CPU, application thread가 실행되는 CPU, memory가 놓인 NUMA node가 너무 멀어지면 data가 계속 CPU 사이를 이동합니다. Low-latency 환경에서는 NIC queue, IRQ affinity, NAPI budget, application worker affinity를 함께 맞추려는 이유가 여기 있습니다.
 

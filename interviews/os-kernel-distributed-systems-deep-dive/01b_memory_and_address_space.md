@@ -3,7 +3,7 @@
 ## 목차
 
 - [virtual address는 process에게 주는 보호된 착시다](#virtual-address는-process에게-주는-보호된-착시다)
-- [TLB는 주소 번역의 page cache에 가깝다](#tlb는-주소-번역의-page-cache에-가깝다)
+- [TLB는 최근 주소 번역 결과를 들고 있는 CPU 캐시다](#tlb는-최근-주소-번역-결과를-들고-있는-cpu-캐시다)
 - [page fault는 오류일 수도 있고 정상 실행 경로일 수도 있다](#page-fault는-오류일-수도-있고-정상-실행-경로일-수도-있다)
 - [mmap은 파일을 메모리처럼 보이게 하지만 I/O를 없애지 않는다](#mmap은-파일을-메모리처럼-보이게-하지만-io를-없애지-않는다)
 - [heap, off-heap, page cache는 같은 물리 메모리 위에서 경쟁한다](#heap-off-heap-page-cache는-같은-물리-메모리-위에서-경쟁한다)
@@ -26,6 +26,24 @@
 
 이 문서에서는 virtual address가 physical frame으로 번역되는 흐름에서 시작해, page fault, copy-on-write, mmap, allocator, OOM, page cache가 backend system의 증상으로 어떻게 올라오는지 설명합니다.
 
+처음 붙잡을 이름은 네 가지입니다.
+
+- **virtual address는 process가 자기 주소처럼 보는 값**입니다. 같은 숫자 주소라도 process마다 다른 physical frame으로 번역될 수 있습니다.
+- **page table은 virtual page와 physical frame의 연결과 권한을 적어 둔 커널/하드웨어 협력 구조**입니다.
+- **TLB는 최근 주소 번역 결과를 CPU 안에 저장해 page table walk를 줄이는 캐시(cache)**입니다.
+- **page fault는 지금 접근한 virtual address를 그대로 사용할 수 없을 때 CPU가 커널로 들어가게 만드는 trap**입니다. 오류일 수도 있고, lazy allocation이나 copy-on-write처럼 정상 실행 경로일 수도 있습니다.
+
+```text
+load virtual address X
+  -> TLB lookup
+  -> page table permission and frame lookup
+  -> physical memory access
+     or page fault trap
+  -> kernel maps, loads, copies, or rejects
+```
+
+이 trace를 잡아야 JVM heap, off-heap buffer, page cache, `mmap()` file, cgroup OOM을 같은 물리 메모리 경쟁으로 연결할 수 있습니다.
+
 ## virtual address는 process에게 주는 보호된 착시다
 
 process가 포인터 `0x1000`을 읽는다고 해도 CPU가 곧바로 물리 메모리 주소 0x1000을 읽는 것은 아닙니다. CPU의 MMU(memory management unit)는 virtual address를 page table을 통해 physical frame으로 번역합니다. page table은 "이 process의 virtual page가 어느 physical frame에 연결되는가, 읽기/쓰기/실행 권한은 무엇인가"를 담은 구조입니다.
@@ -42,9 +60,10 @@ process B virtual address 0x4000
 
 같은 숫자 주소가 process마다 다른 물리 page를 가리킬 수 있기 때문에 process isolation이 가능합니다. 한 process가 다른 process의 heap을 그냥 포인터로 읽을 수 없는 이유가 여기 있습니다. user/kernel 구분도 이 주소 변환과 권한 검사 위에 올라갑니다. user process가 kernel-only mapping이나 권한 없는 page를 접근하면 CPU는 instruction을 계속 실행하지 않고 page fault를 발생시켜 커널로 들어갑니다.
 
-## TLB는 주소 번역의 page cache에 가깝다
+## TLB는 최근 주소 번역 결과를 들고 있는 CPU 캐시다
 
 page table walk는 비용이 큽니다. CPU는 최근 virtual-to-physical 번역 결과를 TLB(translation lookaside buffer)에 캐시합니다. TLB hit가 나면 page table을 다시 걷지 않고 바로 physical frame을 찾을 수 있습니다. TLB miss가 많아지면 같은 CPU 사용률에서도 memory access latency가 커질 수 있습니다.
+파일 내용을 page cache에 담아 두면 같은 파일 page를 다시 읽을 때 빠른 것처럼, TLB는 주소 번역 결과를 가까운 곳에 둬서 같은 memory range를 다시 접근할 때 비용을 줄입니다.
 
 ```text
 load [virtual X]
@@ -72,11 +91,21 @@ user instruction touches virtual address X
        invalid address? send SIGSEGV
 ```
 
+**VMA(virtual memory area)는 process 주소 공간 안의 연속된 virtual range에 대한 커널 기록**입니다.
+커널은 page fault가 났을 때 VMA를 보고 "이 주소가 원래 허용된 범위인가, 어떤 권한과 backing object를 가져야 하는가"를 판단합니다.
+
+| VMA가 담는 정보 | 예 | page fault 때 커널이 묻는 질문 |
+| --- | --- | --- |
+| virtual range | stack 근처 주소 범위 | stack growth로 인정할 수 있는가? |
+| permission | read/write/execute | 지금 접근이 허용된 권한인가? |
+| backing object | anonymous memory, mmap file | 새 page를 만들지, file page를 가져올지 판단한다 |
+| sharing rule | private, shared | copy-on-write로 분리할지, shared mapping을 갱신할지 판단한다 |
+
 stack이 커질 때 page를 늦게 할당하는 것도 page fault로 처리될 수 있습니다. `mmap()`으로 파일을 매핑한 뒤 첫 접근에서 파일 page를 가져오는 것도 page fault입니다. `fork()` 직후 부모와 자식이 같은 physical page를 공유하다가 한쪽이 쓰려 할 때 copy-on-write가 발생하는 것도 page fault입니다. 반대로 권한 없는 주소나 해제된 mapping을 접근하면 segmentation fault가 됩니다.
 
 ## mmap은 파일을 메모리처럼 보이게 하지만 I/O를 없애지 않는다
 
-`mmap()`은 파일이나 anonymous memory를 process의 address space에 매핑합니다. 파일을 `read()`로 buffer에 복사하는 대신, 파일의 byte range를 virtual address range로 보이게 만들 수 있습니다. 그러나 "mmap은 디스크 I/O가 없다"는 뜻이 아닙니다. 파일-backed mapping은 해당 page를 처음 만질 때 page fault를 통해 page cache와 storage path를 만날 수 있습니다. dirty mmap page도 이후 writeback되어야 합니다.
+`mmap()`은 파일이나 anonymous memory를 process의 address space에 매핑합니다. 파일을 `read()`로 buffer에 복사하는 대신, 파일의 byte range를 virtual address range로 보이게 만들 수 있습니다. 그러나 "mmap은 디스크 I/O가 없다"는 뜻이 아닙니다. 파일-backed mapping은 해당 page를 처음 만질 때 page fault를 통해 page cache와 storage path를 만날 수 있습니다.
 
 ```text
 mmap(file)
@@ -91,7 +120,16 @@ first load from mapped page
   -> instruction retries
 ```
 
-Kafka의 log segment, Cassandra SSTable, Lucene/OpenSearch index, Spark spill file 같은 구조를 볼 때 mmap과 page cache의 관계를 이해하면 "파일인데 왜 memory pressure와 관련 있지?"라는 질문이 풀립니다. file-backed page도 physical memory를 씁니다. 메모리가 부족하면 커널은 clean page cache를 버리거나 dirty page를 writeback하고, anonymous memory는 swap 후보가 될 수 있습니다.
+쓰기 쪽은 mapping mode와 sync 방식에 따라 달라집니다.
+
+| mapping / 동작 | 어떤 일이 생기는가 | 주의점 |
+| --- | --- | --- |
+| `MAP_SHARED`로 매핑한 file page를 수정 | 변경된 file-backed page가 dirty가 되고 나중에 writeback될 수 있다 | `msync()`나 `fsync()` 같은 동기화와 filesystem 보장을 따로 봐야 한다 |
+| `MAP_PRIVATE`로 매핑한 page를 수정 | copy-on-write로 private anonymous page가 생길 수 있다 | 원본 파일 변경으로 곧장 이해하면 안 된다 |
+| 매핑된 파일이 truncate됨 | 이후 접근에서 SIGBUS 같은 예외가 날 수 있다 | 파일 수명과 mapping 수명을 함께 봐야 한다 |
+| DAX나 `MAP_SYNC` 같은 특수 경로 | page cache를 거치지 않는 persistent memory 성격이 들어올 수 있다 | kernel, filesystem, hardware 지원 경계가 강하다 |
+
+Kafka의 log segment, Cassandra SSTable, Lucene/OpenSearch index, Spark spill file 같은 구조를 볼 때는 먼저 "file-backed이고 page-cache-sensitive할 수 있다" 정도로 말하는 편이 안전합니다. 특정 제품과 버전이 `mmap()`을 직접 쓰는지는 별도 근거가 필요합니다. 그래도 공통 원리는 같습니다. file-backed page도 physical memory를 씁니다. 메모리가 부족하면 커널은 clean page cache를 버리거나 dirty page를 writeback하고, anonymous memory는 swap 후보가 될 수 있습니다.
 
 ## heap, off-heap, page cache는 같은 물리 메모리 위에서 경쟁한다
 
@@ -241,7 +279,7 @@ container memory limit
 
 Spark executor에서 흔히 보는 문제는 executor heap은 limit 안에 있는데 container가 killed 되는 경우입니다. Shuffle buffer, off-heap memory, Python worker, Arrow buffer, thread stack, page cache, memory overhead가 합쳐져 limit을 넘을 수 있습니다. Cassandra는 off-heap memtable이나 cache, compression buffer, file cache가 heap 밖에서 커질 수 있습니다. Kafka는 page cache와 network buffer, log segment access가 heap 밖 memory를 중요하게 만듭니다.
 
-관측할 때는 JVM GC log, native memory tracking, `/proc/<pid>/smaps`, cgroup memory events, container runtime OOM reason, kernel log를 함께 봅니다. Java `OutOfMemoryError`는 JVM 내부 allocation 실패이고, Linux OOM kill은 kernel이 process를 죽인 사건입니다. 같은 "메모리 부족"이라도 복구와 증거가 다릅니다. 전자는 heap dump나 exception stack이 남을 수 있고, 후자는 process가 바로 사라져 supervisor log와 kernel/cgroup event를 봐야 할 수 있습니다.
+관측할 때는 JVM GC log, native memory tracking, `/proc/<pid>/smaps`, cgroup memory events, container runtime OOM reason, kernel log를 함께 봅니다. Java `OutOfMemoryError`는 JVM 내부 allocation 실패이고, Linux OOM kill은 kernel이 process를 종료한 OS 레벨 이벤트입니다. 같은 "메모리 부족"이라도 복구와 증거가 다릅니다. 전자는 heap dump나 exception stack이 남을 수 있고, 후자는 process가 바로 사라져 supervisor log와 kernel/cgroup event를 봐야 할 수 있습니다.
 
 ## Interview replay: 메모리 문제를 한 문장으로 시작하고 아래로 내려가기
 
@@ -351,4 +389,4 @@ one symptom: process killed
 
 그래서 좋은 관측 보고서는 "메모리 사용률 90%"라고만 쓰지 않습니다. 어떤 메모리가 90%인지, 회수 가능한지, 회수하면 어떤 I/O가 늘어나는지, process가 죽기 전에 어떤 latency 신호가 먼저 나타났는지까지 적어야 다음 조치가 안전해집니다.
 
-그 차이가 실제 장애 복구 시간을 줄입니다.
+이 구분이 있어야 다음 확인 지점을 좁힐 수 있습니다. Java heap 문제라면 heap dump와 GC log를 먼저 보고, cgroup OOM이라면 kernel log와 `memory.events`를 먼저 봅니다. 관측 대상이 좁아질수록 불필요한 튜닝을 줄이고 복구 방향을 더 빨리 잡을 수 있습니다.

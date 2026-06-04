@@ -5,11 +5,41 @@
 - [읽는 순서](#읽는-순서)
 - [통과 기준](#통과-기준)
 
-이 코퍼스는 OS 커널, 분산 시스템 원리, Kafka, Cassandra, Spark를 따로 외우는 문서가 아닙니다. 목표는 한 백엔드 개발자가 `write()` 하나에서 시작해 page cache, fsync, replication, quorum, shuffle, checkpoint까지 이어지는 상태 이동을 자기 말로 설명하게 만드는 것입니다.
+이 코퍼스는 OS 커널, 분산 시스템 원리, Kafka, Cassandra, Spark를 따로 외우는 문서가 아닙니다.
+목표는 한 백엔드 개발자가 `write()` 하나에서 시작해 page cache, `fsync()`, replication, quorum, shuffle, checkpoint까지 이어지는 상태 이동을 자기 말로 설명하게 만드는 것입니다.
+제품 이름은 뒤에 붙습니다.
+먼저 붙잡아야 할 것은 요청이 어느 계층에서 어떤 상태로 바뀌고, 그 상태가 실패 뒤 어디에 남는가입니다.
 
-첫 번째 기준은 self-contained입니다. 다른 문서를 이미 읽었다고 가정하지 않습니다. 같은 개념이 앞뒤에서 다시 나오더라도, 그 문서 안에서 필요한 만큼 다시 설명합니다. 두 번째 기준은 prose-first입니다. `질문/직관/깨지는 지점` 같은 내부 작성 체크리스트를 본문 목차로 반복하지 않고, 독자가 읽는 순서대로 원인, 역사, 작은 상태, 내부 경로, 깨지는 지점, 확인 방법이 자연스럽게 이어지게 씁니다.
+가장 작은 첫 장면은 아래처럼 볼 수 있습니다.
 
-이번 확장판에서 `01`부터 `08`까지의 substantive 문서는 모두 20,000자 이상의 장문 학습 문서입니다. 다만 문자 수는 하한일 뿐입니다. 각 문서는 최소 하나 이상의 실제 상태 이동 trace를 중심으로 OS 객체, 분산 상태, 제품 내부 queue/log/buffer를 연결하고, 관측 경로와 과장하면 안 되는 지점을 함께 남깁니다.
+```text
+application calls write(fd, bytes)
+  -> kernel finds open file state from fd
+  -> bytes become dirty page in page cache
+  -> writeback or fsync pushes the page toward storage
+  -> product protocol later decides ack, retry, replay, or recovery
+```
+
+이 한 줄의 요청이 파일, 메모리, 장치 큐(queue), 제품 내부 log를 차례로 만나기 때문에 OS와 분산 시스템을 따로 외우면 실제 장애 질문에서 설명이 끊깁니다.
+
+첫 번째 기준은 self-contained입니다.
+다른 문서를 이미 읽었다고 가정하지 않습니다.
+같은 개념이 앞뒤에서 다시 나오더라도, 그 문서 안에서 필요한 만큼 다시 설명합니다.
+두 번째 기준은 prose-first입니다.
+`질문/직관/깨지는 지점` 같은 내부 작성 체크리스트를 본문 목차로 반복하지 않고, 독자가 읽는 순서대로 원인, 역사, 작은 상태, 내부 경로, 깨지는 지점, 확인 방법이 자연스럽게 이어지게 씁니다.
+
+문서의 강도는 글자 수가 아니라 다시 설명 가능한 경로로 판단합니다.
+각 문서는 최소 하나 이상의 실제 상태 이동 trace를 중심으로 OS 객체, 분산 상태, 제품 내부 queue/log/buffer를 연결하고, 관측 경로와 과장하면 안 되는 지점을 함께 남깁니다.
+읽는 동안에는 아래 모양을 계속 다시 그리면 됩니다.
+
+```text
+external request or record
+  -> kernel/runtime object
+  -> queue/cache/buffer/log
+  -> ordering or ownership rule
+  -> failure point
+  -> recovery or verification path
+```
 
 ## 읽는 순서
 
@@ -30,6 +60,11 @@
 - Cassandra의 quorum read/write는 왜 "항상 최신"이라는 말로 끝나지 않는가?
 - Spark shuffle이 느릴 때 왜 executor heap, spill file, network, skew를 같이 봐야 하는가?
 - 장애 질문이 오면 어떤 상태가 어디에 기록되었고, 실패 후 어디서 다시 시작할 수 있는지 어떻게 추론하는가?
+
+이 질문들은 모두 같은 구조로 돌아갑니다.
+먼저 움직이는 대상을 고르고, 그 대상이 어느 queue, cache, buffer, log에 들어가는지 말한 뒤, 어떤 성공 조건이 어느 계층에서 닫히는지 나누어야 합니다.
+예를 들어 Kafka의 `acks=all`은 replica protocol의 성공 조건이고, `fsync()`는 파일 변경을 storage 쪽에 더 강하게 반영해 달라는 OS 요청입니다.
+둘은 모두 "성공"처럼 보이지만 같은 증거를 남기지 않습니다.
 
 `audit/claim_review.md`는 이 코퍼스 자체에 대한 검수 기록입니다. 학습 본문이 아니라, 어떤 claim이 어떤 공격을 받았고 어떤 수리를 거쳐 살아남았는지 추적하기 위한 장부입니다.
 

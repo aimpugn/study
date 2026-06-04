@@ -14,7 +14,7 @@
 - [Page cache writeback은 application 밖에서 계속 움직인다](#page-cache-writeback은-application-밖에서-계속-움직인다)
 - [`fsync()`와 directory fsync를 분리해야 한다](#fsync와-directory-fsync를-분리해야-한다)
 - [Crash consistency는 순서를 잃었을 때도 구조를 복구하는 문제다](#crash-consistency는-순서를-잃었을-때도-구조를-복구하는-문제다)
-- [Block layer와 장치 queue는 병렬성을 주지만 대기열도 만든다](#block-layer와-장치-queue는-병렬성을-주지만-대기열도-만든다)
+- [Block layer와 장치 queue는 병렬성을 주지만 큐도 만든다](#block-layer와-장치-queue는-병렬성을-주지만-큐도-만든다)
 - [Device driver, DMA, interrupt completion은 storage에도 있다](#device-driver-dma-interrupt-completion은-storage에도-있다)
 - [Remote filesystem과 distributed storage는 local file API의 경계를 흐린다](#remote-filesystem과-distributed-storage는-local-file-api의-경계를-흐린다)
 - [Interview replay: 파일 쓰기에서 제품 내구성까지 한 번에 말하기](#interview-replay-파일-쓰기에서-제품-내구성까지-한-번에-말하기)
@@ -25,6 +25,26 @@
 Kafka가 log segment에 append하고, Cassandra가 commit log와 SSTable을 쓰고, Spark가 shuffle spill file을 만드는 순간 세 시스템은 모두 파일 시스템과 block I/O 위에 올라갑니다. 파일을 쓴다는 말은 단순히 "디스크에 byte를 보낸다"가 아닙니다. file descriptor table, open file description, inode, dentry, VFS, page cache, dirty page, writeback, journaling, block layer, device queue가 순서대로 끼어듭니다.
 
 이 문서의 목표는 `write()` 성공, page cache 반영, `fsync()` 완료, replication ack, storage device flush를 구분해 말하는 것입니다. 이 구분이 없으면 "Kafka는 ack했는데 왜 데이터가 사라질 수 있나", "Cassandra commit log sync가 왜 latency를 키우나", "Spark spill은 왜 memory 문제가 아니라 disk 문제로도 보이나" 같은 질문에서 흔들립니다.
+
+처음에는 파일 쓰기를 네 이름으로 나누면 됩니다.
+
+- **path는 파일을 찾기 위한 이름**입니다. 디렉터리 탐색을 통해 inode에 도달합니다.
+- **file descriptor는 process 안에서 열린 파일 상태를 가리키는 작은 정수 handle**입니다. 파일 자체가 아니라 커널 테이블의 index입니다.
+- **page cache는 파일 내용을 page 단위로 들고 있는 커널 메모리 캐시**입니다. 빠른 read/write를 돕지만 storage 내구성과는 다른 시점을 만듭니다.
+- **block device queue는 filesystem이 만든 I/O 요청이 실제 저장 장치 앞에서 기다리는 큐(queue)**입니다.
+
+```text
+path lookup
+  -> inode
+  -> open file state
+  -> fd number
+  -> write(fd, bytes)
+  -> page cache dirty page
+  -> later writeback / fsync
+  -> block device queue
+```
+
+이 trace를 잡으면 "파일에 썼다"라는 말을 `fd` lookup, page cache 변경, dirty page writeback, device completion으로 나누어 설명할 수 있습니다.
 
 ## path, file descriptor, inode는 서로 다른 이름표다
 
@@ -41,6 +61,16 @@ path string
 ```
 
 inode는 파일의 metadata와 data block 위치를 나타내는 filesystem object입니다. dentry는 directory name과 inode 연결을 cache합니다. VFS는 ext4, XFS, tmpfs, NFS 같은 filesystem이 공통 file API로 보이게 하는 커널 계층입니다. 이 구조를 모르면 `rename()`이 왜 atomic하게 보일 수 있는지, 새 파일 생성 후 directory `fsync()`를 왜 따로 이야기하는지, fd를 이미 얻은 뒤 path를 바꿔도 fd가 계속 파일을 가리킬 수 있는 이유를 설명하기 어렵습니다.
+
+초보자는 각 이름표의 소유자와 수명을 같이 보면 덜 흔들립니다.
+
+| 이름 | 주로 누가 소유하는가 | 언제 바뀌는가 | 헷갈리면 생기는 오해 |
+| --- | --- | --- | --- |
+| path | directory tree와 namespace | rename, mount, directory update | path가 바뀌면 열린 fd도 사라진다고 착각한다 |
+| dentry | kernel cache | directory lookup, cache eviction | 이름과 inode 연결을 매번 disk에서만 찾는다고 생각한다 |
+| inode | filesystem | file metadata update, unlink/link | 서로 다른 path가 같은 파일 identity를 가질 수 있음을 놓친다 |
+| open file description | kernel의 열린 파일 상태 | `open()`, `dup()`, `fork()` 공유 | 두 fd가 file offset을 공유할 수 있음을 놓친다 |
+| fd number | process fd table | `open()`, `close()`, `dup2()` | fd 숫자를 파일 자체로 착각한다 |
 
 ## `write()`에서 block device까지 내려가는 길
 
@@ -91,7 +121,7 @@ Kafka가 최근 record를 빠르게 consumer에게 줄 수 있는 이유 중 하
 
 ## `fsync()`는 만능 주문이 아니라 더 강한 동기화 요청이다
 
-`fsync(fd)`는 file의 in-core data와 필요한 metadata를 storage 쪽으로 동기화하려는 system call입니다. `fdatasync()`는 보통 data와 data를 읽는 데 필요한 metadata에 더 초점을 둡니다. 하지만 directory entry와 rename pattern, filesystem journal, drive write cache, network filesystem은 추가 caveat를 만듭니다.
+`fsync(fd)`는 file의 in-core data와 필요한 metadata를 storage 쪽으로 동기화하려는 system call입니다. `fdatasync()`는 보통 data와 data를 읽는 데 필요한 metadata에 더 초점을 둡니다. 하지만 directory entry와 rename pattern, filesystem journal, drive write cache, network filesystem은 추가 주의점을 만듭니다.
 
 예를 들어 새 파일을 쓰고 atomic하게 교체하려는 흔한 패턴은 단순히 파일 `fsync()` 하나로 끝나지 않습니다.
 
@@ -143,16 +173,23 @@ Kafka는 append-only segment와 sequential read/write로 이 경로에 유리한
 
 이 상황에서 먼저 나눠야 할 성공은 네 가지입니다.
 
-| 성공처럼 보이는 사건 | 실제 뜻 | 아직 남는 질문 |
+| 성공처럼 보이는 이벤트 | 실제 뜻 | 아직 남는 질문 |
 | --- | --- | --- |
 | `write()` returned N | kernel/file path가 N byte를 받아들임 | dirty page가 storage에 갔는가? |
-| `fsync()` returned 0 | file sync 요청이 성공함 | directory entry, device cache, filesystem caveat는? |
-| Kafka `acks=all` | Kafka ISR 조건을 만족함 | local flush 정책, unclean election, replica state는? |
-| Cassandra CL success | 필요한 replica 응답 수를 받음 | commit log sync mode, failed replica, repair state는? |
+| `fsync()` returned 0 | file sync 요청이 성공함 | directory entry, device cache, filesystem 주의점은? |
+| Kafka `acks=all` | leader가 in-sync replica 조건을 기준으로 protocol ack를 반환함 | `min.insync.replicas`, 현재 ISR size, high watermark visibility, unclean leader election, local flush 정책은? |
+| Cassandra CL success | coordinator가 consistency level에 필요한 replica 응답 수를 받음 | 각 replica의 commitlog/memtable ack, `commitlog_sync`, read repair, regular repair, LWT/Accord 경로는? |
 
 장애 후 복구를 설명하려면 이 중 어느 지점까지 증거가 남았는지 찾아야 합니다. "파일을 썼다"라는 말 하나로는 부족합니다.
 
+Kafka와 Cassandra의 성공 조건은 OS storage 성공과 같은 층이 아닙니다.
+
+- Kafka `acks=all`은 replica protocol의 조건입니다. `min.insync.replicas`보다 적은 in-sync replica만 남으면 성공할 수 없고, high watermark가 어디까지 올라갔는지에 따라 consumer에게 보이는 범위가 달라집니다. 하지만 이 말만으로 각 broker가 local disk flush까지 끝냈다고 말할 수는 없습니다.
+- Cassandra consistency level은 coordinator가 몇 replica 응답을 성공으로 볼지 정하는 read/write 계약입니다. Replica 안에서는 commitlog append와 memtable 반영, commitlog sync mode가 따로 있고, read repair와 regular repair는 replica 간 차이를 나중에 줄이는 경로입니다. LWT나 Accord 계열의 합의 경로는 일반 write CL 답변과 분리해 말해야 합니다.
+
 ## 문서를 덮고 확인할 것
+
+이 절까지의 기억 지도는 짧습니다. path는 이름이고, inode는 filesystem의 파일 identity에 가깝고, fd는 process 안에서 열린 파일 상태를 가리키는 handle입니다. `write()`는 page cache의 dirty page를 만들 수 있고, block layer와 device queue는 그 dirty page가 storage로 내려갈 때의 대기 지점입니다.
 
 - path, fd, open file description, inode를 한 문장씩 구분해 보세요.
 - buffered `write()`가 page cache dirty page를 만들고, `fsync()`가 더 강한 storage 동기화 요청이라는 흐름을 그려 보세요.
@@ -173,9 +210,9 @@ user process
   -> page cache and block mapping
 ```
 
-Pathname은 문자열입니다. Dentry는 directory entry lookup 결과를 cache하는 커널 객체입니다. Inode는 파일의 metadata와 실제 파일 identity에 가까운 객체입니다. File descriptor는 process-local integer이고, open file description은 file offset과 status flag를 담는 kernel-side 열린 파일 상태입니다. 이 네 개를 섞으면 subtle한 버그를 설명하지 못합니다. 두 fd가 같은 open file description을 공유하면 file offset도 공유할 수 있습니다. Hard link는 서로 다른 pathname이 같은 inode를 가리키는 구조입니다. Rename은 pathname과 directory entry를 바꾸지만 이미 열린 fd가 가리키는 file object를 곧바로 무효화하지 않습니다.
+Pathname은 문자열입니다. Dentry는 directory entry lookup 결과를 cache하는 커널 객체입니다. Inode는 파일의 metadata와 실제 파일 identity에 가까운 객체입니다. File descriptor는 process-local integer이고, open file description은 file offset과 status flag를 담는 kernel-side 열린 파일 상태입니다. 이 네 개를 섞으면 눈에 잘 안 띄는 버그를 설명하지 못합니다. 두 fd가 같은 open file description을 공유하면 file offset도 공유할 수 있습니다. Hard link는 서로 다른 pathname이 같은 inode를 가리키는 구조입니다. Rename은 pathname과 directory entry를 바꾸지만 이미 열린 fd가 가리키는 file object를 곧바로 무효화하지 않습니다.
 
-권한도 VFS 경로에서 해석됩니다. Process credential, filesystem permission bit, ACL, mount option, capability, namespace가 모두 영향을 줄 수 있습니다. Container 안에서 `/data`가 보인다는 사실과 host에서 같은 path가 무엇을 가리키는지는 mount namespace 때문에 다를 수 있습니다. Kafka log directory permission 문제, Cassandra data directory ownership 문제, Spark local directory mount 문제는 모두 "파일을 열 수 없다"라는 단순 오류로 보이지만, 실제로는 path lookup, namespace, permission, quota, mount option 중 하나가 깨진 것입니다.
+권한도 VFS 경로에서 해석됩니다. 프로세스 권한 정보(process credential), 파일 시스템 권한 비트, ACL, 마운트 옵션, capability, namespace가 모두 영향을 줄 수 있습니다. 컨테이너 안에서 `/data`가 보인다는 사실과 host에서 같은 path가 무엇을 가리키는지는 mount namespace 때문에 다를 수 있습니다. Kafka log directory permission 문제, Cassandra data directory ownership 문제, Spark local directory mount 문제는 모두 "파일을 열 수 없다"라는 단순 오류로 보이지만, 실제로는 path lookup, namespace, permission, quota, mount option 중 하나가 깨진 것입니다.
 
 ## Page cache writeback은 application 밖에서 계속 움직인다
 
@@ -209,9 +246,9 @@ write temp file
   -> fsync(parent directory) may be needed for directory entry durability
 ```
 
-파일시스템마다 보장과 caveat가 다르고, storage device의 volatile cache, write barrier, mount option, network filesystem도 영향을 줍니다. 그래서 `fsync()`는 강한 요청이지만 만능 보증 문장은 아닙니다. 정확한 보장은 운영체제, filesystem, device, mount option, application pattern에 묶어 말해야 합니다.
+파일시스템마다 보장과 주의점이 다르고, storage device의 volatile cache, write barrier, mount option, network filesystem도 영향을 줍니다. 그래서 `fsync()`는 강한 요청이지만 만능 보증 문장은 아닙니다. 정확한 보장은 운영체제, filesystem, device, mount option, application pattern에 묶어 말해야 합니다.
 
-Kafka의 durability 설정도 같은 방식으로 읽어야 합니다. Producer가 ack를 받는다는 것은 broker protocol 관점의 성공입니다. 그 record가 leader broker page cache에만 있는지, replica ISR에 복제되었는지, flush policy에 의해 storage sync까지 갔는지는 별도 축입니다. Cassandra write success도 commitlog sync mode, replica response, consistency level, hinted handoff, repair 상태와 함께 봐야 합니다. Spark checkpoint도 checkpoint file을 썼다는 사실과 외부 storage의 rename/fsync/visibility 보장은 구분해야 합니다.
+Kafka의 durability 설정도 같은 방식으로 읽어야 합니다. Producer가 ack를 받는다는 것은 broker protocol 관점의 성공입니다. 그 record가 leader broker page cache에만 있는지, replica ISR에 복제되었는지, flush policy에 의해 storage sync까지 갔는지는 별도 축입니다. Cassandra write success도 commitlog sync mode, replica response, consistency level, hinted handoff, repair 상태와 함께 봐야 합니다. Spark checkpoint도 checkpoint file을 썼다는 사실과 외부 storage의 rename/fsync/visibility 보장은 구분해야 합니다. 특히 object storage나 Hadoop/Spark commit protocol을 쓰는 경우에는 POSIX local filesystem의 `rename()`/directory `fsync()` 감각이 그대로 옮겨가지 않을 수 있으므로 storage backend별 보장을 확인해야 합니다.
 
 ## Crash consistency는 순서를 잃었을 때도 구조를 복구하는 문제다
 
@@ -239,17 +276,25 @@ application recovery
 
 Log-structured thinking은 storage를 in-place update가 아니라 append와 merge로 다루는 사고입니다. 순차 append는 disk와 SSD에 유리하고 crash recovery가 쉬워질 수 있지만, 오래된 version과 tombstone, compaction, space amplification이 따라옵니다. Cassandra의 LSM storage는 이 tradeoff를 정면으로 선택합니다. Kafka의 partition log도 append와 segment retention을 중심으로 생각합니다. Spark shuffle file은 장기 저장 log는 아니지만, stage 사이의 materialized intermediate data라는 점에서 failure와 cleanup 질문을 만듭니다.
 
-## Block layer와 장치 queue는 병렬성을 주지만 대기열도 만든다
+## Block layer와 장치 queue는 병렬성을 주지만 큐도 만든다
 
 Block layer는 filesystem이 만든 I/O 요청을 device가 처리할 수 있는 request로 정리합니다. HDD 시절에는 seek를 줄이는 scheduling이 중요했고, SSD/NVMe에서는 여러 queue와 parallel command가 중요합니다. Queue depth는 동시에 outstanding 상태로 둘 수 있는 I/O 수입니다. 너무 낮으면 device parallelism을 쓰지 못하고, 너무 높으면 latency가 늘고 tail이 길어질 수 있습니다. I/O scheduler는 throughput과 latency 사이에서 요청을 정렬하거나 merge하거나 fairness를 조절합니다.
+
+이 절에서 새로 나오는 이름은 아래처럼 이어집니다.
+
+- bio: file offset에서 block 위치로 바뀐 뒤 만들어지는 낮은 수준의 block I/O 단위입니다.
+- block request: device queue가 처리할 수 있도록 bio를 묶거나 정리한 요청입니다.
+- queue depth: 장치 앞에 동시에 outstanding 상태로 둘 수 있는 요청 수입니다.
+- completion: 장치가 I/O를 끝냈다고 kernel에 알려 waiting task나 writeback path가 다음으로 갈 수 있게 하는 이벤트입니다.
 
 ```text
 many application writes
   -> dirty pages
-  -> writeback submits bios
-  -> block layer queues requests
-  -> device processes with finite parallelism
-  -> completions wake waiting contexts
+  -> writeback submits bio objects
+  -> block layer builds device requests
+  -> device queue waits with finite queue depth
+  -> driver submits commands
+  -> completion event clears wait or dirty state
 ```
 
 NVMe는 빠르지만 무한히 빠르지 않습니다. Random write, fsync-heavy workload, write amplification, device garbage collection, thermal throttling, filesystem metadata update가 latency를 만들 수 있습니다. Network-attached storage나 cloud block device는 더 많은 층이 있습니다. Application은 local file처럼 보지만 실제로는 network, remote storage controller, replication, throttling policy가 뒤에 있을 수 있습니다. 그래서 cloud 환경에서 `fsync()` latency가 튈 때는 local kernel trace와 provider metric을 함께 봐야 합니다.

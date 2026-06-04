@@ -24,6 +24,24 @@
 
 이 문서의 목표는 process와 thread라는 단어를 외우는 것이 아닙니다. `accept()`로 들어온 연결이 어떤 실행 흐름 위에서 request handler가 되고, 그 실행 흐름이 언제 CPU를 받지 못하며, 언제 block되어 scheduler에게 CPU를 돌려주는지를 말할 수 있게 되는 것입니다.
 
+처음에는 네 가지 객체만 붙잡으면 됩니다.
+
+- **process는 커널이 프로그램 실행을 관리하기 위해 만든 자원 묶음**입니다. 주소 공간, 열린 파일, 권한, signal 처리 상태, 자원 제한이 함께 붙습니다.
+- **thread는 scheduler가 CPU에 올리는 실행 흐름**입니다. 같은 process 안의 thread들은 많은 자원을 공유하지만, 각자 register 상태와 stack을 가집니다.
+- **run queue는 CPU를 받을 준비가 된 task들이 기다리는 큐(queue)**입니다. runnable이라고 해서 지금 CPU에서 실행 중이라는 뜻은 아닙니다.
+- **context switch는 현재 task의 실행 상태를 저장하고 다음 task의 실행 상태를 CPU에 올리는 전환**입니다. register 저장뿐 아니라 cache/TLB locality에도 영향을 줄 수 있습니다.
+
+```text
+socket readable
+  -> worker thread becomes runnable
+  -> waits in run queue
+  -> scheduler chooses it
+  -> user code runs
+  -> lock or I/O wait puts it back to sleep
+```
+
+이 작은 trace가 뒤쪽의 Kafka network thread, Cassandra compaction thread, Spark executor task 설명을 모두 떠받칩니다.
+
 ## 왜 process라는 단위가 필요했는가
 
 초기의 프로그램 실행 모델은 지금처럼 수십 개 service process와 수백 개 thread가 동시에 떠 있는 모습이 아니었습니다. 한 기계가 한 번에 하나의 작업을 길게 수행하던 시기에는 "내 프로그램이 CPU와 메모리를 쓴다"라는 단순한 모델이 어느 정도 통했습니다. 하지만 비싼 컴퓨터를 여러 사용자가 함께 쓰고, I/O를 기다리는 동안 다른 일을 실행해야 한다는 요구가 커지면서 운영체제는 두 가지를 동시에 해결해야 했습니다.
@@ -105,7 +123,7 @@ Kafka broker에서 request handler thread가 많아도 disk flush나 replica fet
 
 process는 실행이 끝나도 곧바로 모든 흔적이 사라지지 않습니다. child process가 종료하면 kernel은 exit status 같은 최소 정보를 남겨 parent가 `wait()`로 회수할 수 있게 합니다. parent가 회수하기 전의 child는 zombie입니다. zombie는 CPU를 쓰는 살아 있는 process가 아니라, parent에게 종료 사실을 전달하기 위해 process table에 남아 있는 작은 기록입니다.
 
-signal은 process나 thread에 비동기 사건을 전달하는 Unix식 장치입니다. `SIGTERM`은 종료 요청, `SIGKILL`은 잡을 수 없는 강제 종료, `SIGCHLD`는 child 상태 변화 알림처럼 쓰입니다. 서버 종료 시 graceful shutdown이 어려운 이유는 signal 하나가 곧바로 "모든 request가 안전하게 끝났다"를 뜻하지 않기 때문입니다. accept loop를 멈추고, inflight request를 기다리고, offset이나 transaction을 정리하고, file/socket을 닫는 application-level protocol이 별도로 필요합니다.
+signal은 process나 thread에 비동기 이벤트를 전달하는 Unix식 장치입니다. `SIGTERM`은 종료 요청, `SIGKILL`은 잡을 수 없는 강제 종료, `SIGCHLD`는 child 상태 변화 알림처럼 쓰입니다. 서버 종료 시 graceful shutdown이 어려운 이유는 signal 하나가 곧바로 "모든 request가 안전하게 끝났다"를 뜻하지 않기 때문입니다. accept loop를 멈추고, inflight request를 기다리고, offset이나 transaction을 정리하고, file/socket을 닫는 application-level protocol이 별도로 필요합니다.
 
 ```text
 SIGTERM received
@@ -117,7 +135,7 @@ SIGTERM received
   -> parent or supervisor observes exit status
 ```
 
-이 흐름은 Kafka consumer shutdown, Spark executor decommission, Cassandra node drain 같은 제품 동작을 볼 때 그대로 다시 등장합니다. process 종료는 OS 사건이고, 안전한 서비스 종료는 application protocol입니다.
+이 흐름은 Kafka consumer shutdown, Spark executor decommission, Cassandra node drain 같은 제품 동작을 볼 때 그대로 다시 등장합니다. process 종료는 OS 레벨 이벤트이고, 안전한 서비스 종료는 application protocol입니다.
 
 ## NUMA와 CPU affinity는 "CPU가 몇 개냐"보다 아래 질문이다
 
@@ -132,6 +150,27 @@ Kafka, Cassandra, Spark는 모두 JVM process이지만 scheduler 관점에서는
 - Kafka broker는 network thread, request handler, replica fetcher, log cleaner가 CPU와 disk/network를 나눠 씁니다. producer latency가 늘었을 때 request queue만 보지 말고 해당 thread들이 runnable인지, I/O sleep인지, lock을 기다리는지 봐야 합니다.
 - Cassandra는 foreground request thread와 background compaction/repair thread가 같은 CPU와 disk bandwidth를 공유합니다. compaction thread를 늘리는 것은 queue 하나를 줄이는 대신 다른 queue의 latency를 키울 수 있습니다.
 - Spark executor는 task thread가 많을수록 병렬성이 늘 수 있지만, executor heap과 local disk, shuffle fetch가 같이 압박을 받습니다. core 수, task 수, partition 수는 scheduler와 resource pressure를 함께 보는 설정입니다.
+
+제품 이름을 OS 상태로 내리면 아래처럼 보입니다.
+
+```text
+Kafka produce latency
+  -> network thread accepts request
+  -> request queue waits for handler
+  -> handler may wait on log append, page cache writeback, replica fetch progress
+  -> observe request queue time, CPU runnable/off-CPU, disk and replica metrics
+
+Cassandra foreground write
+  -> request executor handles mutation
+  -> replica writes commitlog and memtable
+  -> compaction/flush competes for CPU and disk
+  -> observe executor pending tasks, compaction backlog, commitlog sync latency
+
+Spark task runtime
+  -> executor task thread gets CPU
+  -> may wait on GC, shuffle fetch, local spill disk, remote block
+  -> observe executor CPU, GC time, shuffle read/write, disk I/O, scheduler delay
+```
 
 문서를 덮고 아래 trace를 말할 수 있어야 합니다.
 
@@ -155,7 +194,9 @@ incoming request
 
 Round-robin은 task를 돌아가며 일정 시간씩 실행하는 단순한 모델입니다. Time slice가 너무 짧으면 context switch가 잦아지고 cache locality가 깨집니다. 너무 길면 한 task가 CPU를 오래 잡아 interactive responsiveness가 나빠집니다. Priority scheduling은 중요한 task를 먼저 실행할 수 있지만, 낮은 priority task가 계속 밀리는 starvation을 만들 수 있습니다. Multilevel feedback queue는 자주 잠드는 interactive task와 CPU를 오래 쓰는 batch task를 다르게 보며, task의 최근 행동을 기준으로 queue를 이동시켜 응답성과 처리량을 절충하려 합니다.
 
-현대 Linux의 일반 task scheduling은 단순 round-robin으로 설명하기 어렵습니다. CFS 계열의 핵심 사고는 task가 자기 weight에 맞게 공정한 CPU 시간을 받도록 실행 시간을 accounting하는 것입니다. 여기서 weight, nice value, cgroup CPU share, runnable time, wakeup placement, CPU affinity가 함께 작동합니다. Real-time scheduling class는 또 다른 규칙을 갖습니다. 그러니 "리눅스 scheduler는 round-robin인가요?"라는 질문에는 "일반 task에는 단순 round-robin보다 공정한 CPU 시간 배분에 가까운 모델을 쓴다. 다만 scheduling class와 cgroup 설정에 따라 달라진다"라고 답하는 것이 안전합니다.
+현대 Linux의 일반 task scheduling은 단순 round-robin으로 설명하기 어렵습니다. 오랫동안 일반 task 설명의 중심에는 CFS(Completely Fair Scheduler)가 있었고, CFS의 핵심 사고는 task가 자기 weight에 맞게 공정한 CPU 시간을 받도록 실행 시간을 accounting하는 것이었습니다. 다만 최신 kernel 문서 기준으로는 Linux 6.6 이후 일반 task 선택이 EEVDF(Earliest Eligible Virtual Deadline First) 방향으로 이동하고 있으므로, "현재 Linux는 CFS 하나로 동작한다"고 단정하면 안 됩니다. CFS와 EEVDF 모두 runnable task의 공정한 CPU 배분을 다루지만, EEVDF는 lag와 virtual deadline을 이용해 다음 task를 고르는 쪽으로 설명됩니다.
+
+그래서 면접에서는 구현명을 먼저 박지 말고 이렇게 답하는 편이 안전합니다. "일반 task에는 단순 round-robin보다 공정한 CPU 시간 배분에 가까운 모델을 쓴다. 실제 선택 규칙은 kernel version, scheduling class, cgroup 설정에 따라 달라지고, 최근 Linux에서는 CFS 설명만으로는 부족해 EEVDF도 확인해야 한다." 여기서 weight, nice value, cgroup CPU share, runnable time, wakeup placement, CPU affinity가 함께 작동합니다. Real-time scheduling class는 또 다른 규칙을 갖습니다.
 
 ```text
 two CPU-bound tasks, same weight
