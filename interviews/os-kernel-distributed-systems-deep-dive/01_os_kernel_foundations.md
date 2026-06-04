@@ -88,12 +88,36 @@ hardware
 한 머신 안에는 수십 개의 process와 수백 개의 thread가 있고, JVM, 데이터베이스, 로그 수집기, sidecar, kernel thread가 같은 CPU와 메모리, 파일시스템, 네트워크 장치를 함께 씁니다.
 
 여기서 운영체제가 풀어야 하는 문제는 단순합니다.
+다만 각 문제에는 이미 커널이 사용하는 대표 해법이 붙어 있습니다.
 
 - 누가 CPU를 얼마나 오래 쓸 수 있는가
+    - scheduler: 실행 가능한 thread 중 다음에 CPU를 받을 대상을 고릅니다.
+    - timer interrupt: 현재 실행 중인 thread를 주기적으로 끊어 scheduler가 개입할 기회를 만듭니다.
+    - run queue: CPU를 받을 준비가 된 task들이 기다리는 대기열입니다.
+    - context switch: 현재 task의 실행 상태를 저장하고 다른 task의 실행 상태를 CPU에 올립니다.
 - 어느 프로세스가 어느 메모리를 볼 수 있는가
+    - virtual memory: process마다 독립된 주소 공간을 가진 것처럼 보이게 합니다.
+    - page table: virtual address가 어느 physical page로 이어지는지 기록합니다.
+    - MMU: CPU가 memory address를 사용할 때 page table을 기준으로 주소 변환과 권한 검사를 수행합니다.
+    - page fault: 필요한 mapping이 없거나 권한이 맞지 않을 때 커널로 들어가게 만드는 trap입니다.
 - 누가 어떤 파일과 장치에 접근할 수 있는가
+    - user mode/kernel mode 경계: 애플리케이션이 장치와 커널 자료구조를 직접 만지지 못하게 막습니다.
+    - permission: user, group, capability, file mode를 기준으로 접근 가능 여부를 판단합니다.
+    - file descriptor table: process 안의 작은 정수 `fd`를 커널의 열린 파일 상태로 연결합니다.
+    - VFS: 여러 filesystem과 file-like object를 공통 파일 API로 다루게 합니다.
+    - device driver: 특정 장치와 실제로 통신하는 커널 코드를 제공합니다.
 - 장치에서 사건이 오면 어떤 실행 흐름을 깨워야 하는가
+    - interrupt: 장치가 CPU에게 처리할 일이 생겼다고 알립니다.
+    - NAPI/softirq: network packet 처리를 interrupt handler 안에서 모두 끝내지 않고 뒤쪽 경로에서 나누어 처리합니다.
+    - wait queue: 특정 조건을 기다리는 task들을 커널 안에 묶어 둡니다.
+    - scheduler wakeup: 기다리던 조건이 만족된 task를 다시 runnable 상태로 바꿉니다.
 - 빠르게 반환된 작업이 실제로는 어디에 남아 있는가
+    - page cache: file page를 kernel memory에 들고 있어 read/write를 빠르게 만듭니다.
+    - dirty page: memory에는 최신 내용이 있지만 storage에는 아직 완전히 반영되지 않았을 수 있는 page입니다.
+    - socket buffer: socket으로 오가야 할 byte를 kernel 안에서 잠시 기다리게 하는 queue입니다.
+    - device queue: storage나 NIC 같은 장치가 처리할 작업이 줄 서 있는 자리입니다.
+    - writeback: dirty page를 나중에 storage 쪽으로 밀어내는 커널 작업입니다.
+    - `fsync()`: 애플리케이션이 page cache에 남은 변경 data를 storage 쪽에 더 강하게 반영해 달라고 기다리는 요청입니다.
 
 이 문제 때문에 kernel은 application 옆의 helper library가 아니라 더 높은 권한을 가진 중재자가 됩니다.
 라이브러리 함수는 보통 현재 process 안에서 실행됩니다.
