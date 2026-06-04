@@ -3,6 +3,7 @@
 데이터베이스 저장 구조를 설명할 때 "디스크에 row를 저장합니다"라고 말하면 거의 모든 중요한 판단을 놓칩니다. DBMS는 보통 row 하나를 독립 파일처럼 다루지 않습니다. row는 page 안에 들어가고, page는 파일 또는 tablespace 안에 있으며, query와 update는 page를 buffer에 올리고 수정하고 다시 내려보내는 흐름으로 실행됩니다. 그래서 저장소 면접 질문의 중심은 "row가 어디 있나요?"가 아니라 "어떤 page를 읽고, 그 page가 어느 cache에 있으며, dirty page가 언제 어떤 방식으로 안정화되는가?"입니다.
 
 이 문서는 file, page, row, heap, clustered index, buffer pool, OS page cache, dirty page, checkpoint, fsync, random/sequential I/O를 하나의 흐름으로 연결합니다. PostgreSQL과 MySQL/InnoDB를 중심으로 설명하되, 제품별 용어가 같은 구조를 뜻한다고 가정하지 않습니다. PostgreSQL의 table heap과 InnoDB의 clustered index는 모두 row를 저장하지만, row 위치와 index lookup의 비용 구조가 다릅니다. 이 문서가 page와 flush 시간축을 잡는다면, log와 복구 시간축은 [WAL, redo, undo, crash recovery, PITR](03-wal-redo-undo-crash-recovery-pitr.md), access path 선택은 [인덱스와 옵티마이저](04-index-query-optimizer.md), 대용량 DDL의 page/write 증폭은 [스키마와 migration](05-schema-constraints-migration.md)에서 이어서 다룹니다.
+- [처음 잡을 지도](#처음-잡을-지도)
 - [2-5분 개요](#2-5분-개요)
 - [먼저 잡아야 할 작은 모델](#먼저-잡아야-할-작은-모델)
 - [깊은 메커니즘](#깊은-메커니즘)
@@ -25,6 +26,22 @@
 - [면접 꼬리 질문](#면접-꼬리-질문)
 - [함정 질문](#함정-질문)
 - [더 깊게 볼 자료](#더-깊게-볼-자료)
+
+## 처음 잡을 지도
+
+이 문서의 첫 벽돌은 row가 아니라 page입니다.
+애플리케이션은 row 하나를 바꾸는 것처럼 보지만, 저장 엔진은 그 row가 들어 있는 page를 buffer에 올리고, page를 dirty 상태로 만들고, log와 flush 시간축을 따로 관리합니다.
+
+| 움직이는 것 | 누가 소유하거나 관리하는가 | 면접에서 확인해야 할 질문 |
+| --- | --- | --- |
+| row | DBMS의 table 또는 clustered index 안에 있는 record/tuple | row 하나를 찾으려면 어떤 page와 index를 지나야 하는가 |
+| page | DBMS storage manager와 buffer pool | 이 page가 memory에 있는가, 없으면 어디서 읽어 오는가 |
+| dirty page | DBMS buffer manager | commit 뒤 data file에 아직 안 내려간 page를 crash 뒤 어떻게 복구하는가 |
+| WAL/redo record | log manager와 durable storage 경계 | client에게 성공을 말하기 전에 어떤 log가 안정화되어야 하는가 |
+| fsync/checkpoint | DBMS와 OS/storage 사이의 경계 | write call이 끝난 것과 전원 장애 뒤 남는 것은 어떻게 다른가 |
+
+이 지도를 잡고 나면 저장소 성능 질문은 "row가 많아서 느립니다"보다 더 구체적으로 바뀝니다.
+어떤 page를 얼마나 자주 읽는지, 그 page가 DB buffer나 OS page cache에 있는지, dirty page flush와 checkpoint가 언제 몰리는지, `fsync`가 어느 지점에서 대기 시간을 만드는지를 물어야 합니다.
 
 ## 2-5분 개요
 
@@ -59,7 +76,7 @@ WHERE id = 42;
 
 3. row update
    P10 안의 accounts[42] record 또는 tuple version이 바뀝니다.
-   P10 is dirty.
+   P10은 dirty page가 됩니다.
 
 4. log write
    변경을 복구할 수 있는 WAL/redo record가 log buffer에 생깁니다.
@@ -73,28 +90,28 @@ WHERE id = 42;
 이 trace에서 움직이는 대상은 row가 아니라 page입니다.
 
 ```text
-before
+변경 전(before)
   disk data file:
 P10: balance=10000, page_lsn=100
   DB buffer:
 empty
 
-read
+읽기(read)
   DB buffer:
 P10: balance=10000, clean
 
-update
+수정(update)
   DB buffer:
 P10: balance=9000, dirty, page_lsn=120
   WAL/redo:
-LSN 120 describes the change
+LSN 120이 이 변경을 설명한다
 
-commit
+커밋(commit)
   WAL/redo durable up to LSN 130
-  client sees success
-  disk data file may still have balance=10000
+  client는 성공 응답을 본다
+  disk data file에는 아직 balance=10000이 남아 있을 수 있다
 
-checkpoint/flush
+checkpoint/flush 뒤
   disk data file:
 P10: balance=9000, page_lsn=120
   DB buffer:
@@ -119,19 +136,19 @@ P10: clean
 ```text
 SELECT * FROM accounts WHERE id = 42
 
-buffer hit path
-  DB buffer has page P10
-  executor reads row from memory
+DB buffer hit path
+  DB buffer에 page P10이 있다
+  executor가 memory에서 row를 읽는다
 
 DB buffer miss but OS cache hit
-  DBMS asks OS to read file block
-  OS page cache has it
-  copy into DB buffer is still needed
+  DBMS가 OS에 file block 읽기를 요청한다
+  OS page cache에는 그 block이 있다
+  그래도 DB buffer로 가져오는 작업은 필요하다
 
 physical read
-  OS cache misses too
-  storage device reads block/page
-  DBMS receives page and places it in buffer
+  OS cache에도 없다
+  storage device가 block/page를 읽는다
+  DBMS가 page를 받아 buffer에 둔다
 ```
 
 이 read path에서는 "읽었다"라는 말도 세 단계로 나뉩니다.
@@ -224,7 +241,7 @@ DB buffer lookup
 
 여기서 DBMS buffer와 OS page cache는 같은 데이터를 두 번 들고 있을 수도 있습니다. 이를 double buffering이라고 부르기도 합니다. 이것이 항상 낭비라는 뜻은 아닙니다. DBMS buffer는 page의 dirty 여부, pageLSN, replacement 정책, latch와 transaction visibility 같은 DBMS 의미를 붙잡습니다. OS page cache는 file offset과 block 단위 재사용, read-ahead, writeback을 관리합니다. 두 계층의 목적이 다르기 때문에, 어떤 DBMS와 storage 설정에서는 buffered I/O를 쓰고, 어떤 구성에서는 direct I/O나 유사 설정으로 OS cache 경로를 줄이기도 합니다. 제품과 설정을 모르면 "DBMS가 OS cache를 완전히 우회한다"고 단정하지 않는 편이 안전합니다.
 
-DBMS가 자체 buffer manager를 갖는 이유도 여기서 분명해집니다. 운영체제 page cache는 여러 프로세스를 공평하게 다루는 범용 cache에 가깝고, 어떤 file block이 transaction commit에 필요한 dirty page인지, 어떤 page가 checkpoint 전에는 eviction되면 안 되는지, 어떤 page가 오래된 snapshot 때문에 아직 의미를 잃지 않았는지 알지 못합니다. DBMS는 같은 8KB 또는 16KB 조각을 보더라도 그 안에서 pageLSN, pin, latch, visibility, dirty 상태를 함께 봅니다. 그래서 "OS cache가 있으니 DB buffer는 단순 중복이다"라는 말은 절반만 맞습니다. 두 cache는 같은 bytes를 잡을 수 있지만, 그 bytes에 붙는 의미와 퇴출 기준이 다릅니다.
+DBMS가 자체 buffer manager를 갖는 이유도 여기서 분명해집니다. 운영체제 page cache는 여러 프로세스를 공평하게 다루는 범용 cache에 가깝고, 어떤 file block이 transaction commit에 필요한 dirty page인지, 어떤 dirty page를 eviction 전에 flush해야 하는지, 어떤 page나 version이 pin, latch, WAL 순서, 오래된 snapshot 때문에 아직 정리되면 안 되는지 알지 못합니다. DBMS는 같은 8KB 또는 16KB 조각을 보더라도 그 안에서 pageLSN, pin, latch, visibility, dirty 상태를 함께 봅니다. 그래서 "OS cache가 있으니 DB buffer는 단순 중복이다"라는 말은 절반만 맞습니다. 두 cache는 같은 bytes를 잡을 수 있지만, 그 bytes에 붙는 의미와 퇴출 기준이 다릅니다.
 
 운영에서 "cache hit ratio가 높다"는 지표를 볼 때는 어떤 층의 hit인지 확인해야 합니다. InnoDB buffer pool hit가 높으면 storage read pressure가 낮다는 좋은 신호일 수 있습니다. PostgreSQL shared buffer hit가 높아도, checkpoint fsync나 OS writeback에서 latency가 생길 수 있습니다. 반대로 DBMS buffer hit가 낮아도 OS cache가 흡수하고 있다면 물리 device read는 적을 수 있습니다. 하지만 DBMS는 OS cache 내부 상태를 transaction 의미와 직접 연결하지 못하므로, 안정성은 WAL/fsync 같은 명시적 flush 경계로 닫아야 합니다.
 
@@ -508,6 +525,8 @@ MySQL InnoDB는 buffer pool을 매우 중심적인 tuning 대상으로 둡니다
 checkpoint도 제품별 용어가 다릅니다. PostgreSQL은 WAL checkpoint record와 dirty buffer flush를 기준으로 recovery start point를 줄입니다. InnoDB는 fuzzy checkpointing으로 modified pages를 작은 batch로 flush하고, crash recovery에서 checkpoint label 이후 log를 적용합니다. 두 제품 모두 "checkpoint는 log를 없애는 버튼"이 아니라 "data file과 log의 관계를 안전한 기준점으로 맞추는 작업"입니다. checkpoint가 복구 시작점을 어떻게 줄이는지는 [WAL과 PITR 문서](03-wal-redo-undo-crash-recovery-pitr.md)의 checkpoint 절에서 같은 trace로 다시 확인할 수 있습니다.
 
 fsync와 durability 설정도 제품마다 이름이 다릅니다. PostgreSQL은 WAL sync method와 synchronous commit, checkpoint flush behavior를 봐야 하고, InnoDB는 redo log flush policy, doublewrite buffer, checkpoint, storage cache를 함께 봐야 합니다. 면접 답변에서는 특정 설정값을 외우는 것보다 "commit 응답 시점, durable log, data page flush, crash recovery의 역할"을 분리하는 것이 더 강합니다.
+
+여기까지의 기억 지도는 page 위치와 시간축을 분리하는 것입니다. row는 page 안에 있고, page는 DB buffer에 올라오며, 수정된 page는 dirty page가 됩니다. commit은 data file 전체가 즉시 바뀌었다는 뜻이 아니라 log가 먼저 안정화되어 crash 뒤 재생할 근거가 생겼다는 뜻일 수 있습니다. checkpoint와 fsync는 그 뒤 data file, WAL/redo, OS page cache, storage device 사이의 간격을 줄이거나 보장하는 경계입니다.
 
 ## 직접 재생해 보기
 

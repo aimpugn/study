@@ -39,5 +39,6 @@ official-pg-wal-config	official-primary	https://www.postgresql.org/docs/current/
 official-pg-monitoring-stats	official-primary	https://www.postgresql.org/docs/current/monitoring-stats.html	PostgreSQL monitoring stats	official PostgreSQL reference for pg_stat_io, pg_stat_wal, checkpoint write/sync time, and DB/OS I/O observation boundaries
 official-mysql-disk-io	official-primary	https://dev.mysql.com/doc/refman/8.4/en/innodb-disk-io.html	MySQL InnoDB disk I/O	official MySQL reference for InnoDB read-ahead and doublewrite flush behavior
 official-mysql-doublewrite	official-primary	https://dev.mysql.com/doc/refman/8.4/en/innodb-doublewrite-buffer.html	MySQL InnoDB doublewrite buffer	official MySQL reference for doublewrite buffer, fsync, and incomplete page write recovery claims
+official-mysql-binlog-format	official-primary	https://dev.mysql.com/doc/refman/8.4/en/binary-log-formats.html	MySQL binary logging formats	MySQL 8.4 official reference for statement-based, row-based, mixed binary logging and row-based default.
 python-validator-plus-critic	tool-and-review	interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py	process	validator PASS가 충분조건이 아니라 critic review와 함께 쓰인다는 경계다.
 validator-required-sections	tool	interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py	structure	필수 섹션과 reader-facing 금지 패턴을 확인한다.

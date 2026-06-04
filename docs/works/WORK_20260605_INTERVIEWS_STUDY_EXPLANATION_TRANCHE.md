@@ -7,7 +7,7 @@
 - 저장소: `/Users/rody/VscodeProjects/study`
 - 작업 유형: `refactor_docs | explain | audit | execute`
 - 작업 깊이: `full`
-- 현재 상태: `PARTIAL_FOR_WHOLE_REQUEST / SECOND_TRANCHE_VERIFIED`
+- 현재 상태: `PARTIAL_FOR_WHOLE_REQUEST / THIRD_TRANCHE_VERIFIED`
 - 완료 게이트: `BLOCK_COMPLETE`
 - finish: `test+commit`
 
@@ -206,3 +206,133 @@
 - whole-request verdict: `PARTIAL / BLOCK_COMPLETE`.
 - remaining disclosure: content/support Markdown target count remains 50 after excluding `source/`, `audit/`, and project rule/fact docs. First tranche judged 7 Markdown files. Second tranche judged 3 Markdown files. Therefore 40 content/support Markdown files still need a tranche judgement before whole-request COMPLETE.
 - next immediate target: classify and improve the next highest-impact tranche. Candidate route is the database deep-dive suite unless a later refresh shows a more urgent root-hub or cross-topic blocker.
+
+## 16. Third Tranche: Database Deep Dive Suite
+
+- tranche id: `2026-06-05-database-deep-dive-suite`
+- requested whole objective: same as section 1, `interviews/` organized prose rewrite excluding `source/`.
+- valid closure scope in this tranche:
+    - `interviews/database-deep-dive/README.md`
+    - `interviews/database-deep-dive/validation.md`
+    - `interviews/database-deep-dive/01-database-system-mental-model.md`
+    - `interviews/database-deep-dive/02-storage-pages-buffer-io.md`
+    - `interviews/database-deep-dive/03-wal-redo-undo-crash-recovery-pitr.md`
+    - `interviews/database-deep-dive/04-index-query-optimizer.md`
+    - `interviews/database-deep-dive/05-schema-constraints-migration.md`
+    - `interviews/database-deep-dive/06-transaction-acid-boundary.md`
+    - `interviews/database-deep-dive/07-mvcc-snapshot-visibility.md`
+    - `interviews/database-deep-dive/08-isolation-lock-deadlock.md`
+    - `interviews/database-deep-dive/09-replication-lag-backup-failover.md`
+    - `interviews/database-deep-dive/10-partition-sharding-distributed-sql.md`
+    - `interviews/database-deep-dive/11-mysql-postgresql-engine-deep-dive.md`
+    - `interviews/database-deep-dive/12-application-boundaries-idempotency-money-outbox.md`
+    - `interviews/database-deep-dive/13-operations-security-troubleshooting.md`
+    - `interviews/database-deep-dive/14-search-document-nosql-engine.md`
+- support / verification surfaces changed but not counted as prose targets:
+    - `interviews/database-deep-dive/audit/claim-audit.tsv`
+    - `interviews/database-deep-dive/audit/evidence-refs.tsv`
+- non-goals:
+    - no rewrite of `interviews/database-deep-dive/audit/*.md` or audit TSV as prose.
+    - no rewrite of `interviews/database-deep-dive/tools/*`.
+    - no whole-request COMPLETE claim.
+- alternative considered:
+    - count only the three entry docs that were already modified: rejected because the Protocol Sentinel correctly noted this would leave DB-suite scope ambiguous.
+    - judge all 16 DB Markdown files and repair only material findings: selected. The DB suite already has a dedicated structural/source/audit validator and a prior orchestrator finding of `READY_FOR_FINAL_COMMIT`; this loop adds beginner-first entry-path repairs, source-boundary repairs, and per-file judgement rows without pretending every file was line-rewritten.
+
+## 17. Third Tranche Multi-Agent And Dialectic Findings
+
+- Beginner Reviewer / Kierkegaard:
+    - finding: `01` asked beginners to absorb too many layers before the first concrete model, and `01`/`02` replay sections needed a memory-restoring checkpoint before active replay.
+    - repair: `01` now opens with four judgement axes, adds a small row-level SELECT trace, and adds an UPDATE timeline that connects structure/value, lock/version, page/buffer, WAL/redo, commit, and replica/PITR boundaries. `02` now adds a page-first map and a memory summary before replay.
+- Korean Learning-Prose Reviewer / Cicero:
+    - finding: README and `01` used English-first terms such as `page`, `log`, `relation`, `tuple`, `row stream`, `client code`, `token`, and `bag` before a Korean mental hook.
+    - repair: entry prose now leads with Korean concepts and keeps English terms in parentheses only where they help official-doc searchability.
+- Senior DB/Backend Reviewer / Pauli:
+    - finding: the suite needed one compact end-to-end request state trace across lock, version visibility, page mutation, log flush, lock release, and replica/PITR boundary.
+    - repair: `01` now includes the `UPDATE accounts SET balance = balance - 100 WHERE id = 42` timeline. README and `validation.md` point to this semantic replay requirement.
+    - finding: `02` overstated checkpoint as an eviction boundary, and `03` compressed MySQL binary log format caveats.
+    - repair: `02` now describes eviction/cleanup in terms of dirty-page flush, pin/latch, WAL ordering, and old snapshot boundaries. `03` now separates MySQL statement-based, row-based, and mixed binary logging and records row-based default for MySQL 8.4 with an official evidence row.
+- Protocol Sentinel / Helmholtz:
+    - finding: DB-suite closure may count as 16 only if every DB Markdown target gets an explicit judgement; otherwise the remaining count must be 37 for the three edited entry files.
+    - repair: this WORK records all 16 DB Markdown target judgements below and keeps whole-request status `PARTIAL / BLOCK_COMPLETE`.
+- Dialectic synthesis:
+    - starting claim: "edit the smallest high-value entry tranche and count only 3 files."
+    - attack: this would undercount the DB-suite review surface and let validator/audit evidence sit outside whole-request math.
+    - response lane: `ACCEPT_REPAIR`.
+    - revised claim: "judge the full DB suite using existing validator/audit/orchestrator evidence plus this loop's reviewer findings, but limit writes to material repairs."
+    - verification path: DB validator, diff check, anti-regression scan, per-file judgement table, and path-limited commit.
+
+## 18. Third Tranche Edits
+
+- `interviews/database-deep-dive/README.md`:
+    - changed the opening route from English keyword inventory to Korean-first concept map.
+    - added the SQL request -> structure/value -> logical meaning -> row stream -> page/buffer/index -> snapshot/lock/WAL -> commit/recovery/replication flow.
+    - added purpose-based reading groups for DBMS overview, query performance, transaction/concurrency, operations, and application/search expansion.
+    - added a source-boundary paragraph that separates official product facts, repo source material, and audit ledgers.
+- `interviews/database-deep-dive/01-database-system-mental-model.md`:
+    - split the overloaded opening into a direct thesis plus four judgement axes.
+    - added `처음 잡을 지도`.
+    - added a cross-topic UPDATE timeline for lock/version/page/log/commit/replica/PITR movement.
+    - made the first SELECT trace Korean-first and added a three-row state movement trace.
+    - repaired `token`, relation/tuple/bag, and session definitions so official terms arrive after a Korean hook.
+    - added a memory-restoring summary before replay.
+- `interviews/database-deep-dive/02-storage-pages-buffer-io.md`:
+    - added `처음 잡을 지도` with row/page/dirty page/WAL/fsync ownership.
+    - changed English-first trace labels to Korean-first state movement labels.
+    - repaired checkpoint/eviction wording so checkpoint is not treated as a blanket eviction boundary.
+    - added a memory-restoring summary before replay.
+- `interviews/database-deep-dive/03-wal-redo-undo-crash-recovery-pitr.md`:
+    - added a MySQL binary log format caveat: statement-based, row-based, mixed, and row-based default in MySQL 8.4.
+    - clarified that replica/PITR binary log events are not page-level InnoDB redo replay.
+    - added official source link for MySQL binary logging formats.
+- `interviews/database-deep-dive/validation.md`:
+    - added semantic replay validation so validator PASS is not mistaken for sufficient learning quality.
+- `interviews/database-deep-dive/audit/claim-audit.tsv` and `interviews/database-deep-dive/audit/evidence-refs.tsv`:
+    - added the MySQL binary log format official evidence and claim row so the new load-bearing statement is auditable.
+
+## 19. Third Tranche Per-File Judgement
+
+| File | Judgement | Reason |
+| --- | --- | --- |
+| `README.md` | 수정함 | Entry map, Korean-first terminology, route grouping, and source boundary were material beginner blockers. |
+| `validation.md` | 수정함 | Validator PASS needed an explicit semantic replay gate. |
+| `01-database-system-mental-model.md` | 수정함 | First model, SELECT row-state movement, UPDATE cross-topic timeline, and terminology bridges were material reviewer findings. |
+| `02-storage-pages-buffer-io.md` | 수정함 | Page-first map, checkpoint/eviction wording, Korean-first trace, and replay summary were material reviewer findings. |
+| `03-wal-redo-undo-crash-recovery-pitr.md` | 수정함 | MySQL binary log format caveat was a material senior-review finding and needed official support. |
+| `04-index-query-optimizer.md` | 검토했으나 비수정 | Existing canonical doc passed DB validator, has required deep-dive sections, replay experiments, official sources, and no material reviewer finding in this loop. |
+| `05-schema-constraints-migration.md` | 검토했으나 비수정 | Existing canonical doc passed DB validator, links schema change to page/WAL/replication risk, and no material reviewer finding appeared in this loop. |
+| `06-transaction-acid-boundary.md` | 검토했으나 비수정 | Existing canonical doc passed DB validator, has transaction boundary/replay/tail-question structure, and no material reviewer finding appeared in this loop. |
+| `07-mvcc-snapshot-visibility.md` | 검토했으나 비수정 | Existing canonical doc passed DB validator, has snapshot/version/cleanup replay surfaces, and no material reviewer finding appeared in this loop. |
+| `08-isolation-lock-deadlock.md` | 검토했으나 비수정 | Existing canonical doc passed DB validator, covers lock/deadlock/isolation traps, and no material reviewer finding appeared in this loop. |
+| `09-replication-lag-backup-failover.md` | 검토했으나 비수정 | Existing canonical doc passed DB validator and already owns detailed replication/backup/failover scope; `03` now points to it rather than duplicating it. |
+| `10-partition-sharding-distributed-sql.md` | 검토했으나 비수정 | Existing canonical doc passed DB validator, covers partition/shard/distributed SQL replay, and no material reviewer finding appeared in this loop. |
+| `11-mysql-postgresql-engine-deep-dive.md` | 검토했으나 비수정 | Existing canonical doc passed DB validator and already separates heap/clustered, tuple/undo, WAL/redo/binlog boundaries. |
+| `12-application-boundaries-idempotency-money-outbox.md` | 검토했으나 비수정 | Existing canonical doc passed DB validator and has application boundary replay; no material reviewer finding appeared in this loop. |
+| `13-operations-security-troubleshooting.md` | 검토했으나 비수정 | Existing canonical doc passed DB validator and has operational diagnosis/replay/trap coverage; no material reviewer finding appeared in this loop. |
+| `14-search-document-nosql-engine.md` | 검토했으나 비수정 | Existing canonical doc passed DB validator and uses search/document-store official sources; no material reviewer finding appeared in this loop. |
+
+## 20. Third Tranche Verification Log
+
+- `python3 interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py`
+    - result before WORK update: PASS, structural/source/audit validator passed.
+- `git diff --check -- docs/works/WORK_20260605_INTERVIEWS_STUDY_EXPLANATION_TRANCHE.md interviews/database-deep-dive`
+    - result before WORK update: PASS, no whitespace errors.
+- anti-regression scan over `interviews/database-deep-dive/*.md` for `same logical answer`, `different physical work`, `P10 is dirty`, `checkpoint 전에는 eviction`, `source reservoir`, `검증 anchor`, `20,000자 하한`, and the validator-forbidden generic PASS phrase:
+    - result before WORK update: PASS for regression targets. Remaining `client code` appears only as Korean-first parenthetical `애플리케이션 코드(client code)`.
+- official source check:
+    - MySQL 8.4 binary logging formats official doc confirms statement-based, row-based, mixed formats and row-based default.
+- scoped diff stat before WORK update:
+    - 7 files changed, 201 insertions, 52 deletions in DB docs/audit support.
+- post-WORK final verification:
+    - `python3 interviews/database-deep-dive/tools/validate_interview_database_deep_dive.py`: PASS.
+    - `git diff --check -- docs/works/WORK_20260605_INTERVIEWS_STUDY_EXPLANATION_TRANCHE.md interviews/database-deep-dive`: PASS.
+    - anti-regression scan over reader DB docs and WORK: no reader-doc regression matches. Matches in WORK are historical records of previous scans and this verification note.
+    - repo-root-aware local Markdown link/anchor check over `interviews/database-deep-dive/*.md`: PASS.
+    - scoped final diff stat: 8 files changed, 332 insertions, 53 deletions.
+
+## 21. Third Tranche Status
+
+- third tranche verdict: `TRANCHE_COMPLETE_FOR_THIS_LOOP`.
+- whole-request verdict: `PARTIAL / BLOCK_COMPLETE`.
+- remaining disclosure: content/support Markdown target count remains 50 after excluding `source/`, `audit/`, and project rule/fact docs. First tranche judged 7 Markdown files. Second tranche judged 3 Markdown files. Third tranche judged 16 database deep-dive Markdown files. Therefore 24 content/support Markdown files still need a tranche judgement before whole-request COMPLETE.
+- next immediate target: classify and improve the next highest-impact remaining tranche outside database deep-dive. Candidate route is the remaining OS/distributed-system non-DB docs or any root-adjacent generated curriculum docs not yet judged.

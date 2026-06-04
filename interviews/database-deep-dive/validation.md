@@ -14,4 +14,8 @@
 
     `audit/composition-audit.tsv`는 각 문서의 필수 섹션이 어떤 thesis를 맡는지, 어떤 claim을 지지하는지, 어떤 큰 단위 오류를 막는지 기록합니다. 작은 문장이 맞아도 전체 설명이 틀릴 수 있으므로 이 검증이 필요합니다.
 
-완료 판정은 validator PASS만으로 닫지 않습니다. 전체 문서 수, planned 상태 0개, source boundary 갱신, claim/composition audit 연결, 다중 검수 결과, path-limited commit/push가 함께 닫혀야 합니다.
+4. 의미 재생 검증
+
+    구조와 audit가 맞아도 독자가 상태 이동을 다시 그리지 못하면 면접 준비 문서로는 부족합니다. 최소한 `client request -> SQL 구조/값 -> 계획 선택 -> page/buffer -> WAL/redo -> lock/snapshot -> replica/backup/PITR 경계` 중 핵심 경로 하나를 손으로 다시 설명할 수 있어야 합니다. 현재 공통 기준선은 `01-database-system-mental-model.md`의 한 UPDATE timeline과 `02-storage-pages-buffer-io.md`의 page/dirty/log/checkpoint trace입니다.
+
+완료 판정은 validator PASS만으로 닫지 않습니다. 전체 문서 수, planned 상태 0개, source boundary 갱신, claim/composition audit 연결, 의미 재생 검증, 다중 검수 결과, path-limited commit/push가 함께 닫혀야 합니다.
