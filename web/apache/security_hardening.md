@@ -236,11 +236,97 @@ expose_php = Off
 
 한 줄 요약: **origin 하드닝은 "잃을 게 없는 위생 + 최종 방어선"이라 무조건 하고, WAF는 그 앞에 중앙 집중 차단·헤더 가공 계층으로 얹는다. 어느 한쪽만 믿지 않는다.**
 
-## 직접 확인해 볼 수 있는 포인트
+## 검증 — `curl`로 직접 확인하기
 
-- 현재 노출 상태 확인: `curl -I https://대상/` 로 `Server`, `X-Powered-By` 헤더를 봅니다.
-- `TRACE` 상태 확인: `curl -i -X TRACE https://대상/` — 차단되면 `405`, 열려 있으면 `200`과 함께 요청이 echo 됩니다.
-- origin 직접 확인: WAF를 우회해 origin IP로 직접 같은 요청을 보내, 앞단이 아니라 origin 자체가 막고 있는지 검증합니다(이것이 "최종 방어선" 여부를 가르는 테스트입니다).
+설정을 넣었으면 실제로 막혔는지 눈으로 확인해야 합니다. 핵심은 세 가지입니다 — (1) 헤더가 줄었는가, (2) TRACE가 막혔는가, (3) 그걸 **어느 계층이** 막고 있는가. 아래 명령은 "무엇을 실행하면, 어떤 출력이 PASS이고 무엇이 FAIL인지"까지 같이 봅니다.
+
+### 1. 노출 헤더 확인 (`Server`, `X-Powered-By`)
+
+```bash
+curl -sI https://example.com
+```
+
+`-I`는 HEAD 요청으로 응답 헤더만 받습니다. `-s`는 진행률 표시를 끕니다. HEAD를 막는 서버라면 GET으로 헤더만 뽑습니다.
+
+```bash
+curl -s -D - -o /dev/null https://example.com    # -D -: 헤더를 표준출력으로 덤프, -o /dev/null: 본문 버림
+```
+
+특정 헤더만 보려면(유닉스·Git Bash):
+
+```bash
+curl -sI https://example.com | grep -iE 'server|x-powered-by'
+```
+
+출력 해석:
+
+- `Server: Apache/2.4.41 (Unix) OpenSSL/...` → 아직 `Full`. `ServerTokens` 미적용 (**FAIL**).
+- `Server: Apache` → `ServerTokens Prod` 적용됨 (**PASS**). `Apache` 토큰이 남는 건 정상이며, 완전 제거는 앞단(WAF)의 몫입니다.
+- `X-Powered-By: PHP/...` 줄이 보이면 → `expose_php = Off` 미적용 (**FAIL**).
+- `X-Powered-By` 줄이 아예 없으면 → **PASS**.
+
+### 2. `TRACE` 차단 확인
+
+```bash
+curl -i -X TRACE https://example.com
+```
+
+`-X TRACE`로 메서드를 지정하고 `-i`로 응답 상태줄·헤더·본문을 함께 봅니다.
+
+- `HTTP/1.1 405 Method Not Allowed` → `TraceEnable off` 적용됨 (**PASS**).
+- `HTTP/1.1 200` 과 함께 보낸 요청이 본문에 그대로 돌아옴 → TRACE 열림 (**FAIL**).
+
+echo가 실제로 일어나는지(=XST의 핵심)는 표식 헤더가 되돌아오는지로 확실히 봅니다.
+
+```bash
+curl -i -X TRACE -H "X-XST-Probe: leaked" https://example.com
+```
+
+TRACE가 열려 있으면 응답 본문에 `X-XST-Probe: leaked`가 그대로 찍힙니다(요청 헤더가 echo되므로). 차단되면 `405`라 본문에 나타나지 않습니다. IIS 계열 변형인 `TRACK`도 같은 방식으로 확인합니다.
+
+```bash
+curl -i -X TRACK https://example.com
+```
+
+### 3. WAF가 막는지, origin이 막는지 — 계층 가르기
+
+이것이 "최종 방어선" 검증의 핵심입니다. 그냥 도메인으로 쏘면 BIG-IP가 먼저 응답하므로, origin을 직접 때려 봐야 `TraceEnable off`가 origin 자체에 살아 있는지 알 수 있습니다.
+
+```bash
+# WAF 경유 (평소 경로)
+curl -i -X TRACE https://example.com
+
+# origin 직접 (DNS를 origin IP로 강제)
+curl -i -X TRACE https://example.com --resolve example.com:443:<ORIGIN_IP>
+```
+
+`--resolve host:port:IP`는 DNS를 무시하고 지정한 IP로 연결하되, TLS SNI와 `Host` 헤더는 도메인 그대로 유지합니다(그래서 인증서·가상호스트 매칭이 깨지지 않습니다).
+
+| WAF 경유 | origin 직접 | 해석 |
+| --- | --- | --- |
+| `405` | `405` | 양쪽이 막음 — 방어 심층화 성립(이상적) |
+| `405` | `200` + echo | WAF만 막고 origin은 무방비 — 내부망·WAF 장애 시 노출되는 위험 |
+| `200` | `200` | 둘 다 열림 — 즉시 차단 필요 |
+
+헤더(`Server` 위장)도 같은 방식으로 origin에 직접 물어, 그 위장이 origin에서 되는지 WAF에서만 되는지 가릅니다.
+
+### 4. 허용 메서드 한눈에
+
+```bash
+curl -i -X OPTIONS https://example.com        # 응답의 Allow: 헤더에 허용 메서드가 나열됨
+nmap -p443 --script http-methods example.com  # TRACE 포함 위험 메서드를 스캔
+```
+
+`OPTIONS` 응답의 `Allow:`에 `TRACE`가 없어야 합니다. 다만 서버가 `OPTIONS`에 `Allow`를 정확히 채우지 않는 경우도 있어, 확실한 판정은 2번처럼 `-X`로 개별 확인하는 쪽입니다.
+
+### 5. Windows에서의 함정
+
+PowerShell의 `curl`은 `Invoke-WebRequest`의 별칭이라 `-I`·`-X` 같은 curl 옵션이 먹지 않습니다. 진짜 curl을 쓰려면 **`curl.exe`** 로 명시하고, 본문 버리기는 `-o /dev/null` 대신 **`-o NUL`** 을 씁니다.
+
+```powershell
+curl.exe -i -X TRACE https://example.com
+(Invoke-WebRequest https://example.com -Method Head).Headers   # PowerShell 네이티브로 헤더 보기
+```
 
 ## 출처
 
