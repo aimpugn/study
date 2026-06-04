@@ -7,7 +7,7 @@
 - 저장소: `/Users/rody/VscodeProjects/study`
 - 작업 유형: `refactor_docs | explain | audit | execute`
 - 작업 깊이: `full`
-- 현재 상태: `PARTIAL_FOR_WHOLE_REQUEST / FIRST_TRANCHE_VERIFIED`
+- 현재 상태: `PARTIAL_FOR_WHOLE_REQUEST / SECOND_TRANCHE_VERIFIED`
 - 완료 게이트: `BLOCK_COMPLETE`
 - finish: `test+commit`
 
@@ -121,3 +121,88 @@
 - whole-request verdict: `PARTIAL`, because the full `interviews/` organized corpus is not yet fully rewritten or explicitly skipped.
 - remaining disclosure: after excluding `source/`, `audit/`, and project rule/fact docs, 43 content/support Markdown files still need a tranche judgement. That judgement may be `improve`, `already sufficient`, `support/provenance skip`, or `HOLD`, but it must be recorded before whole-request COMPLETE.
 - next immediate target: classify and improve the next highest-impact tranche. Candidate routes are the root interview hub docs or the database deep-dive suite.
+
+## 11. Second Tranche: Root Hub Docs
+
+- tranche id: `2026-06-05-root-hub-docs`
+- requested whole objective: same as section 1, `interviews/` organized prose rewrite excluding `source/`.
+- achieved closure scope in this tranche:
+    - `interviews/README.md`
+    - `interviews/_question-index.md`
+    - `interviews/core-interview-guide.md`
+    - `interviews/tools/build_interview_curriculum.py` as generator durability support, not as an additional prose target.
+- non-goals:
+    - no raw `source/` rewrite.
+    - no broad regeneration of the 10 대주제 문서 in this tranche.
+    - no whole-request COMPLETE claim.
+- alternative considered:
+    - database deep-dive suite: high learning value, but root hub clarity affects every next tranche.
+    - root hub docs: selected because beginner routing, source provenance, and quick-answer assembly were blocking all later document use.
+
+## 12. Second Tranche Multi-Agent Findings
+
+- Beginner Reviewer / Boole:
+    - finding: README did not clearly say which file a complete beginner should read first, how `core-interview-guide.md`, `_question-index.md`, 대주제 문서, deep dive 문서 differ, or how a WebFlux question moves across them.
+    - repair: README now has a purpose-based reading table and a concrete WebFlux route from quick answer to source span to deep mechanism.
+    - finding: `_question-index.md` could be mistaken for answer content.
+    - repair: index now says it is a source-location table and includes a 대분류-to-reading-route table plus WebFlux worked example.
+- Senior Backend/Interview Reviewer / Hooke:
+    - finding: README overclaimed the promoted Linux document as closing all interview answers in one file.
+    - repair: wording was narrowed to a scoped claim: Linux/VMware metrics and failure analysis are connected to interview answers.
+    - finding: quick answer assembly, provenance tracing, and deep learning routes were conflated.
+    - repair: root README separates quick review, source/index trace, and deep dive routes.
+- Korean Learning-Prose Reviewer / Avicenna:
+    - finding: root docs leaked internal or English-heavy terms such as `root curriculum`, `source reservoir`, `검증 anchor`, `추적 표면`, and `provenance`.
+    - repair: reader-facing prose now prefers `대주제 문서`, `원문 저장소`, `확인 방법`, `원문 위치 확인`, and `출처 추적`.
+    - finding: active recall appeared before enough memory-restoring summary in the core guide.
+    - repair: core guide already had a final memory map from the previous editing pass, and this tranche added earlier state-movement maps before the priority question lists.
+- Protocol Sentinel / Volta:
+    - finding: this tranche can close only root hub docs and must leave the whole request as `PARTIAL`.
+    - repair: this WORK records the reduced closure scope, generator support write set, verification commands, and remaining count.
+    - finding: generator can overwrite README and `_question-index.md`, so editing only the generated files would not be durable.
+    - repair: `build_interview_curriculum.py` templates were updated, but the generator was not run to avoid broad generated churn.
+
+## 13. Second Tranche Edits
+
+- `interviews/README.md`:
+    - added the interview-answer state trace: question -> problem -> hidden state/invariant -> runtime/OS/DB/network/service path -> cost/failure signal -> evidence.
+    - added a reading-start table for quick review, source location, OS/distributed deep dive, DB deep dive, and raw source confirmation.
+    - added a WebFlux worked reading route so a beginner can see how a single question moves through core guide, index, 대주제 docs, and deep mechanism docs.
+    - downgraded the promoted Linux document claim from a universal complete guide to a scoped integrated guide.
+    - removed reader-facing internal jargon and clarified regeneration caveats.
+- `interviews/_question-index.md`:
+    - reframed the file as a source-location index, not as a learning body.
+    - added a five-step source-to-study promotion procedure.
+    - added column explanations, 대분류-to-document mapping, and a WebFlux source-route example.
+- `interviews/core-interview-guide.md`:
+    - added a "how to read this document" section and a five-axis state map.
+    - added a state-movement table for the first eight priority questions.
+    - marked section 1 as the expanded worked example and sections 2-23 as answer skeletons that should route to deeper docs when needed.
+    - added the whole HTTP request state trace before the DNS record detail table.
+- `interviews/tools/build_interview_curriculum.py`:
+    - updated README and question-index templates so future regeneration preserves the root hub explanation frame.
+    - not executed in this tranche because running it would rewrite broad generated surfaces outside the frozen write scope.
+
+## 14. Second Tranche Verification Log
+
+- `python3 -m py_compile interviews/tools/build_interview_curriculum.py`
+    - result: PASS, no syntax errors.
+- anti-regression scan over `interviews/README.md`, `interviews/_question-index.md`, `interviews/core-interview-guide.md`, and `interviews/tools/build_interview_curriculum.py` for `WHOLE_COMPLETE`, `ALLOW_COMPLETE`, `전체 완료`, `완결형 통합 교본`, `root curriculum`, `검증 anchor`, `source reservoir`, `추적 표면`, `problem being tested`, `hidden state`, `verification evidence`, `substantive`, `20,000`, `사건`, `Container`, `container는`, `대기열`, `provenance`
+    - result: PASS, no matches.
+- `git diff --check -- interviews/README.md interviews/_question-index.md interviews/core-interview-guide.md interviews/tools/build_interview_curriculum.py`
+    - result: PASS, no whitespace errors.
+- one-off local Markdown link/anchor check over root hub docs
+    - first run found the checker did not remove `+` from `B+Tree` while the existing ToC anchor did.
+    - after adjusting the checker to GitHub-style `+` removal, result: PASS, all local file targets and local anchors resolved.
+- post-WORK final verification:
+    - `git diff --check -- interviews/README.md interviews/_question-index.md interviews/core-interview-guide.md interviews/tools/build_interview_curriculum.py docs/works/WORK_20260605_INTERVIEWS_STUDY_EXPLANATION_TRANCHE.md`: PASS.
+    - `python3 -m py_compile interviews/tools/build_interview_curriculum.py`: PASS.
+    - root hub link/anchor check rerun after WORK update: PASS.
+    - scoped diff stat: 5 files changed, 389 insertions, 34 deletions before this verification note.
+
+## 15. Second Tranche Status
+
+- second tranche verdict: `TRANCHE_COMPLETE_FOR_THIS_LOOP`.
+- whole-request verdict: `PARTIAL / BLOCK_COMPLETE`.
+- remaining disclosure: content/support Markdown target count remains 50 after excluding `source/`, `audit/`, and project rule/fact docs. First tranche judged 7 Markdown files. Second tranche judged 3 Markdown files. Therefore 40 content/support Markdown files still need a tranche judgement before whole-request COMPLETE.
+- next immediate target: classify and improve the next highest-impact tranche. Candidate route is the database deep-dive suite unless a later refresh shows a more urgent root-hub or cross-topic blocker.

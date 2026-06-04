@@ -1,7 +1,56 @@
 # Interview Question And Source Index
 
-이 파일은 원문 chunk가 최종 curriculum의 어느 위치에 들어갔는지 빠르게 찾기 위한 색인입니다.
-이 색인은 학습 본문이 아니라 추적 표면입니다. 어떤 질문을 정식 답변 자산으로 승격할 때는 여기서 source span과 대주제를 찾고, 대상 문서에서는 `정리 -> 상태 흐름 -> 비교축 -> 검증 anchor`가 닫히는지 별도로 확인합니다.
+이 파일은 원문 조각(chunk)이 최종 대주제 문서의 어느 위치에 들어갔는지 빠르게 찾기 위한 색인입니다.
+이 색인은 학습 본문이 아니라 원문 위치를 확인하는 표입니다. 어떤 질문을 정식 답변 자산으로 승격할 때는 여기서 원문 위치 범위(source span)와 대주제를 찾고, 대상 문서에서는 `정리 -> 상태 흐름 -> 비교축 -> 확인 방법`이 닫히는지 별도로 확인합니다.
+
+이 표를 읽을 때는 "이 질문의 답이 여기 있다"가 아니라 "이 질문을 어떤 학습 문서로 승격해야 하는가"를 찾습니다.
+표의 한 행은 원문 질문 하나 또는 원문 묶음 하나의 위치를 가리킵니다.
+본문을 고치거나 새 심화 문서를 만들 때는 아래 순서로 사용합니다.
+
+1. `원문 제목`에서 질문의 표면 주제를 확인합니다.
+2. `대분류 / 중분류 / 소분류`에서 이 질문이 어떤 학습 축에 속하는지 봅니다.
+3. `Source`의 파일과 line span으로 원문을 다시 확인합니다.
+4. `Aliases`가 있으면 같은 원문이 다른 source 파일에도 들어 있었는지 확인합니다.
+5. 실제 학습 문서에서는 원문을 그대로 붙이는 대신 `문제 -> 숨은 상태 -> 실행 경로 -> 실패 신호 -> 확인 방법`으로 승격합니다.
+
+| 열 | 뜻 | 사용할 때의 주의점 |
+| --- | --- | --- |
+| 대분류 | 최종 대주제 문서에서 읽을 큰 주제입니다. | 같은 질문이 여러 주제와 이어져도, 표에서는 대표 학습 위치를 하나 잡습니다. |
+| 중분류 / 소분류 | 정식 문서로 승격할 때의 더 작은 질문 묶음입니다. | 제목만 보고 답을 쓰지 말고 source span을 먼저 확인합니다. |
+| 원문 제목 | 원문에 있던 질문 또는 자료 제목입니다. | 표현이 거칠거나 중복되어도 출처 추적을 위해 보존합니다. |
+| Source | 원문 파일과 line span입니다. | 이 위치가 학습 주장의 직접 근거입니다. |
+| Aliases | 같은 내용이 다른 원문 파일에 있던 위치입니다. | 중복 여부와 source drift를 확인할 때 씁니다. |
+
+대분류를 찾은 뒤에는 아래처럼 읽을 문서와 답변 골격을 연결합니다.
+
+| 대분류 | 먼저 읽을 문서 | 핵심 인터뷰 정리에서 이어 볼 축 | 심화 승격 후보 |
+| --- | --- | --- | --- |
+| 언어와 런타임 | [language-runtime.md](language-runtime.md) | 7번, 12번, 23번 | JVM, class loading, GC, runtime 비교 |
+| 동시성, 비동기, I/O | [concurrency-async-io.md](concurrency-async-io.md) | 5번, 6번, 19번 | [thread-scheduling-java-spring.md](thread-scheduling-java-spring.md), OS deep dive |
+| OS, 커널, 컴퓨터 구조 | [os-kernel-computer-architecture.md](os-kernel-computer-architecture.md) | 1번, 13번, 17번, 22번 | [OS Kernel And Distributed Systems Deep Dive](os-kernel-distributed-systems-deep-dive/README.md) |
+| 네트워크와 웹 프로토콜 | [network-web-protocols.md](network-web-protocols.md) | 1번, 10번, 17번 | [socket-programming.md](socket-programming.md), TLS/HTTP 상세 문서 |
+| 보안과 암호학 | [security-cryptography.md](security-cryptography.md) | 10번, 11번, 18번 | TLS, OAuth, key exchange 상세 문서 |
+| 데이터베이스, 저장소, 검색/NoSQL | [database-storage-search-nosql.md](database-storage-search-nosql.md) | 2번, 3번, 4번, 15번, 16번 | [Database Deep Dive](database-deep-dive/README.md) |
+| 메시징과 이벤트 기반 구조 | [messaging-event-driven.md](messaging-event-driven.md) | 8번, 9번, 20번 | Kafka/RabbitMQ/outbox 상세 문서 |
+| 분산 시스템과 아키텍처 | [distributed-systems-architecture.md](distributed-systems-architecture.md) | 8번, 9번, 20번 | quorum, replication, failover 상세 문서 |
+| Spring과 백엔드 프레임워크 | [spring-backend-frameworks.md](spring-backend-frameworks.md) | 1번, 7번, 19번, 21번 | Spring Boot, transaction, WebFlux 상세 문서 |
+| 문제 해결, 코드 품질, 운영 실천 | [problem-solving-code-quality.md](problem-solving-code-quality.md) | 13번, 14번, 복합 질문 | 테스트, 설계 원칙, 장애 분석 상세 문서 |
+
+WebFlux 질문을 예로 들면, 색인은 아래처럼 사용합니다.
+
+```text
+원문 제목: Spring WebFlux의 이벤트 루프(Event Loop)
+Source: source/interview_questions.md:10697-10731
+대분류: Spring과 백엔드 프레임워크
+중분류: Spring HTTP 클라이언트와 Reactive
+
+승격 경로:
+  1. source span에서 원문 질문과 주변 질문을 확인한다.
+  2. spring-backend-frameworks.md에서 Spring 문맥을 본다.
+  3. concurrency-async-io.md에서 event loop, non-blocking, epoll 원문 묶음과 연결한다.
+  4. core-interview-guide.md 6번에서 면접 답변 골격을 만든다.
+  5. 실제 답변에서는 "WebFlux 자체가 빠른가"가 아니라 "blocking call을 어디서 제거하고, event loop thread가 어디서 막히는가"로 설명한다.
+```
 
 | 대분류 | 중분류 | 소분류 | 원문 제목 | Source | Aliases |
 |---|---|---|---|---|---|
