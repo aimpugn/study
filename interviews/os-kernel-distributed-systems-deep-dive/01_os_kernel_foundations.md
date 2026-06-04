@@ -37,7 +37,7 @@
 - [6. Scheduler는 CPU 시간을 나누고 기다림을 만든다](#6-scheduler는-cpu-시간을-나누고-기다림을-만든다)
 - [7. Virtual Memory는 보호된 주소 공간을 만든다](#7-virtual-memory는-보호된-주소-공간을-만든다)
 - [8. File I/O와 Page Cache는 빠른 반환과 내구성 경계를 나눈다](#8-file-io와-page-cache는-빠른-반환과-내구성-경계를-나눈다)
-- [9. Network Stack과 Socket Buffer는 request의 첫 대기열이다](#9-network-stack과-socket-buffer는-request의-첫-대기열이다)
+- [9. Network Stack과 Socket Buffer는 request의 첫 대기 큐(queue)다](#9-network-stack과-socket-buffer는-request의-첫-대기-큐queue다)
 - [10. Lock, Queue, Observability는 증상을 kernel 질문으로 바꾼다](#10-lock-queue-observability는-증상을-kernel-질문으로-바꾼다)
 - [11. Kafka, Cassandra, Spark 증상을 OS 자원 이동으로 다시 읽기](#11-kafka-cassandra-spark-증상을-os-자원-이동으로-다시-읽기)
 - [면접에서 바로 꺼내는 짧은 답변](#면접에서-바로-꺼내는-짧은-답변)
@@ -93,7 +93,7 @@ hardware
 - 누가 CPU를 얼마나 오래 쓸 수 있는가
     - scheduler: 실행 가능한 thread 중 다음에 CPU를 받을 대상을 고릅니다.
     - timer interrupt: 현재 실행 중인 thread를 주기적으로 끊어 scheduler가 개입할 기회를 만듭니다.
-    - run queue: CPU를 받을 준비가 된 task들이 기다리는 대기열입니다.
+    - run queue: CPU를 받을 준비가 된 task들이 기다리는 큐(queue)입니다.
     - context switch: 현재 task의 실행 상태를 저장하고 다른 task의 실행 상태를 CPU에 올립니다.
 - 어느 프로세스가 어느 메모리를 볼 수 있는가
     - virtual memory: process마다 독립된 주소 공간을 가진 것처럼 보이게 합니다.
@@ -432,12 +432,12 @@ write tmp file
 그래서 운영 환경에서는 filesystem, mount option, storage, replication layer까지 확인해야 합니다.
 하지만 학습 단계에서는 우선 `write()` 성공, dirty page, writeback, `fsync(file_fd)`, `fsync(parent_dir_fd)`를 서로 다른 지점으로 분리하면 됩니다.
 
-## 9. Network Stack과 Socket Buffer는 request의 첫 대기열이다
+## 9. Network Stack과 Socket Buffer는 request의 첫 대기 큐(queue)다
 
 분산 시스템에서 request는 application method 안에 갑자기 생기지 않습니다.
 NIC가 frame을 받고, driver와 kernel network stack이 packet을 처리하고, TCP가 byte stream을 조립하고, socket receive buffer에 data를 넣고, application thread가 CPU를 받은 뒤 `read()`를 호출해야 합니다.
 
-**socket buffer는 kernel이 socket마다 들고 있는 송수신 byte 대기열**입니다.
+**socket buffer는 kernel이 socket마다 들고 있는 송수신 byte 큐(queue)**입니다.
 sender의 `send()`가 성공해도 byte가 상대 process의 변수에 들어갔다는 뜻은 아닙니다.
 receiver의 NIC가 packet을 받아도 application thread가 바로 request handler를 실행했다는 뜻도 아닙니다.
 

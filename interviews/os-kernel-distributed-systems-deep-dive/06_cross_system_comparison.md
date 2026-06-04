@@ -12,8 +12,6 @@
 - [현실 시나리오 1: 한 노드의 disk가 느려졌다](#현실-시나리오-1-한-노드의-disk가-느려졌다)
 - [현실 시나리오 2: retry가 장애를 회복하지 않고 증폭한다](#현실-시나리오-2-retry가-장애를-회복하지-않고-증폭한다)
 - [현실 시나리오 3: network timeout이 세 시스템에서 다르게 보인다](#현실-시나리오-3-network-timeout이-세-시스템에서-다르게-보인다)
-- [문서를 덮고 확인할 것](#문서를-덮고-확인할-것)
-- [근거와 더 읽을 자료](#근거와-더-읽을-자료)
 - [같은 단어, 다른 소유자](#같은-단어-다른-소유자)
 - [Durability boundary 비교](#durability-boundary-비교)
 - [Backpressure 비교](#backpressure-비교)
@@ -25,6 +23,8 @@
 - [State ownership 비교](#state-ownership-비교)
 - [Security와 isolation 비교](#security와-isolation-비교)
 - [한 문장 비교 훈련](#한-문장-비교-훈련)
+- [문서를 덮고 확인할 것](#문서를-덮고-확인할-것)
+- [근거와 더 읽을 자료](#근거와-더-읽을-자료)
 
 Kafka, Cassandra, Spark는 모두 partition, log, replication, recovery, backpressure 같은 단어를 씁니다. 하지만 같은 단어가 같은 약속을 뜻하지 않습니다. 이 문서의 목적은 세 시스템을 표로 외우는 것이 아니라, 같은 lower-layer 질문을 던졌을 때 각 시스템이 어디에서 다른 선택을 하는지 보는 것입니다.
 
@@ -183,21 +183,6 @@ common lower layer:
 
 Kafka에서는 producer request가 broker ack를 못 받았거나 consumer fetch가 늦은 상태일 수 있습니다. Cassandra에서는 coordinator가 CL을 만족할 replica 응답을 제때 받지 못한 상태일 수 있습니다. Spark에서는 reduce task가 shuffle block fetch를 기다리다 실패한 상태일 수 있습니다. 세 경우 모두 [01d_network_stack_and_io_multiplexing.md](01d_network_stack_and_io_multiplexing.md)의 network path를 통과하지만, 위쪽의 recovery 의미는 다릅니다. Kafka는 producer retry/idempotence/offset, Cassandra는 적용 여부 불명확성과 CL/repair, Spark는 task retry와 external side effect를 각각 봐야 합니다.
 
-## 문서를 덮고 확인할 것
-
-- Kafka log, Cassandra commit log, Spark lineage를 같은 점과 다른 점으로 설명해 보세요.
-- partition이 세 시스템에서 각각 어떤 약속의 경계인지 말해 보세요.
-- "replication이 있으니 안전하다"라는 말을 시스템별로 반박해 보세요.
-- disk saturation이 세 시스템에서 어떤 metric과 증상으로 다르게 나타나는지 설명해 보세요.
-- retry가 중복과 backpressure를 만들 수 있는 경로를 세 시스템에서 하나씩 들어 보세요.
-
-## 근거와 더 읽을 자료
-
-- Kafka design docs: log, partition, replication, consumer offset, filesystem/page cache.
-- Cassandra architecture/storage/guarantees docs: ring, RF/CL, commit log, SSTable, repair.
-- Spark cluster/RDD/tuning docs: driver/executor, partition, shuffle, lineage, memory.
-- Linux page cache, `write(2)`, `sendfile(2)`, networking docs for shared OS layer.
-
 ## 같은 단어, 다른 소유자
 
 Kafka, Cassandra, Spark를 비교할 때 가장 먼저 해야 할 일은 같은 단어가 가리키는 소유자를 나누는 것입니다. Partition이라는 단어는 세 시스템에 모두 나오지만 의미가 다릅니다. Kafka partition은 log ordering과 consumer group assignment의 단위입니다. Cassandra partition은 partition key로 결정되는 storage row group이며 token range와 replica ownership으로 이어집니다. Spark partition은 distributed dataset의 계산 단위이고 task scheduling과 shuffle의 단위입니다. 단어가 같다고 같은 보장을 뜻하지 않습니다.
@@ -306,11 +291,11 @@ OS 관점에서는 모두 process restart, file recovery, network reconnect, sch
 
 ## 같은 장애를 세 시스템에 투영하기
 
-Disk latency가 갑자기 증가했다고 합시다. Kafka에서는 produce append, flush, fetch from cold segment, replica catch-up이 느려질 수 있습니다. Cassandra에서는 commitlog sync, SSTable read, compaction, memtable flush가 느려질 수 있습니다. Spark에서는 shuffle spill/write/read, checkpoint, local cache read가 느려질 수 있습니다. 같은 lower-layer 사건이 서로 다른 product metric으로 올라옵니다.
+Disk latency가 갑자기 증가했다고 합시다. Kafka에서는 produce append, flush, fetch from cold segment, replica catch-up이 느려질 수 있습니다. Cassandra에서는 commitlog sync, SSTable read, compaction, memtable flush가 느려질 수 있습니다. Spark에서는 shuffle spill/write/read, checkpoint, local cache read가 느려질 수 있습니다. 같은 하위 계층 이벤트(event)가 서로 다른 product metric으로 올라옵니다.
 
 Network loss가 증가하면 Kafka producer/fetch timeout, replica lag, consumer lag가 나타날 수 있습니다. Cassandra에서는 coordinator timeout, gossip suspicion, repair/streaming slowdown이 나타납니다. Spark에서는 shuffle fetch failure, executor lost suspicion, task retry가 늘 수 있습니다. Memory pressure가 커지면 Kafka page cache miss와 GC, Cassandra GC/compaction/cache miss, Spark spill/GC/OOM으로 다르게 나타납니다.
 
-이 비교의 목적은 "세 시스템을 한 줄로 요약"하는 것이 아닙니다. 하나의 OS 사건이 각 제품의 어떤 queue, log, replica, task로 올라오는지 보는 능력을 만드는 것입니다.
+이 비교의 목적은 "세 시스템을 한 줄로 요약"하는 것이 아닙니다. 하나의 OS 이벤트(event)가 각 제품의 어떤 queue, log, replica, task로 올라오는지 보는 능력을 만드는 것입니다.
 
 ## Interview replay: 비교 답변의 구조
 
@@ -359,4 +344,19 @@ Spark answer expands toward:
   DAG, stage, task, shuffle, lineage, checkpoint, executor resource
 ```
 
-마지막 확인은 "같은 해결책을 세 시스템에 기계적으로 적용하지 않는가"입니다. Kafka lag에 consumer 수를 늘리는 감각을 Cassandra read timeout이나 Spark skew에 그대로 가져오면 틀릴 수 있습니다. Cassandra compaction 조절 감각을 Kafka log cleaner나 Spark shuffle cleanup에 그대로 옮겨도 안 됩니다. 비교 문서의 목적은 차이를 외우는 것이 아니라, 같은 lower-layer 사건이 각 시스템의 다른 의미 경계로 올라간다는 점을 몸에 익히는 것입니다.
+마지막 확인은 "같은 해결책을 세 시스템에 기계적으로 적용하지 않는가"입니다. Kafka lag에 consumer 수를 늘리는 감각을 Cassandra read timeout이나 Spark skew에 그대로 가져오면 틀릴 수 있습니다. Cassandra compaction 조절 감각을 Kafka log cleaner나 Spark shuffle cleanup에 그대로 옮겨도 안 됩니다. 비교 문서의 목적은 차이를 외우는 것이 아니라, 같은 하위 계층 이벤트(event)가 각 시스템의 다른 의미 경계로 올라간다는 점을 몸에 익히는 것입니다.
+
+## 문서를 덮고 확인할 것
+
+- Kafka log, Cassandra commit log, Spark lineage를 같은 점과 다른 점으로 설명해 보세요.
+- partition이 세 시스템에서 각각 어떤 약속의 경계인지 말해 보세요.
+- "replication이 있으니 안전하다"라는 말을 시스템별로 반박해 보세요.
+- disk saturation이 세 시스템에서 어떤 metric과 증상으로 다르게 나타나는지 설명해 보세요.
+- retry가 중복과 backpressure를 만들 수 있는 경로를 세 시스템에서 하나씩 들어 보세요.
+
+## 근거와 더 읽을 자료
+
+- Kafka design docs: log, partition, replication, consumer offset, filesystem/page cache.
+- Cassandra architecture/storage/guarantees docs: ring, RF/CL, commit log, SSTable, repair.
+- Spark cluster/RDD/tuning docs: driver/executor, partition, shuffle, lineage, memory.
+- Linux page cache, `write(2)`, `sendfile(2)`, networking docs for shared OS layer.

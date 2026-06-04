@@ -17,7 +17,7 @@
     - [CPU는 낮은데 latency가 높으면 어디를 보나요?](#cpu는-낮은데-latency가-높으면-어디를-보나요)
 - [나쁜 답변을 고치는 방법](#나쁜-답변을-고치는-방법)
 - [연습 문제](#연습-문제)
-- [면접 전 마지막 점검](#면접-전-마지막-점검)
+- [면접 답변 기본 점검](#면접-답변-기본-점검)
 - [답변을 시작하는 네 가지 안전한 문장](#답변을-시작하는-네-가지-안전한-문장)
 - [30초 답변과 2분 답변을 분리하는 법](#30초-답변과-2분-답변을-분리하는-법)
 - [반례를 말할 수 있어야 깊은 답변이다](#반례를-말할-수-있어야-깊은-답변이다)
@@ -171,7 +171,7 @@ NIC RX ring
   -> request object
 ```
 
-조심할 말: packet 도착과 handler 실행을 같은 사건으로 말하면 안 됩니다. socket이 readable이어도 thread scheduling, event loop, parser, downstream I/O가 남아 있습니다.
+조심할 말: packet 도착과 handler 실행을 같은 이벤트(event)로 말하면 안 됩니다. socket이 readable이어도 thread scheduling, event loop, parser, downstream I/O가 남아 있습니다.
 
 ### Kafka는 왜 빠른가요?
 
@@ -290,7 +290,7 @@ request arrives
 4. `write()`가 성공했는데 crash 후 데이터가 사라질 수 있다는 말을 Kafka/Cassandra/Spark에 각각 연결해 보세요.
 5. retry를 넣었더니 장애가 더 커진 사례를 세 시스템 중 하나로 설명해 보세요.
 
-## 면접 전 마지막 점검
+## 면접 답변 기본 점검
 
 좋은 답변은 항상 다음 네 문장을 포함할 수 있습니다.
 

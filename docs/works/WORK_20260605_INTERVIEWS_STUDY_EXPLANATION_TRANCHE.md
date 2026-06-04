@@ -7,7 +7,7 @@
 - 저장소: `/Users/rody/VscodeProjects/study`
 - 작업 유형: `refactor_docs | explain | audit | execute`
 - 작업 깊이: `full`
-- 현재 상태: `PARTIAL_FOR_WHOLE_REQUEST / THIRD_TRANCHE_VERIFIED`
+- 현재 상태: `PARTIAL_FOR_WHOLE_REQUEST / FOURTH_TRANCHE_VERIFIED`
 - 완료 게이트: `BLOCK_COMPLETE`
 - finish: `test+commit`
 
@@ -336,3 +336,130 @@
 - whole-request verdict: `PARTIAL / BLOCK_COMPLETE`.
 - remaining disclosure: content/support Markdown target count remains 50 after excluding `source/`, `audit/`, and project rule/fact docs. First tranche judged 7 Markdown files. Second tranche judged 3 Markdown files. Third tranche judged 16 database deep-dive Markdown files. Therefore 24 content/support Markdown files still need a tranche judgement before whole-request COMPLETE.
 - next immediate target: classify and improve the next highest-impact remaining tranche outside database deep-dive. Candidate route is the remaining OS/distributed-system non-DB docs or any root-adjacent generated curriculum docs not yet judged.
+
+## 22. Fourth Tranche: Remaining OS/Distributed Deep-Dive Docs
+
+- tranche id: `2026-06-05-os-distributed-deep-dive-remaining`
+- requested whole objective: same as section 1, `interviews/` organized prose rewrite excluding `source/`.
+- valid closure scope in this tranche:
+    - `interviews/os-kernel-distributed-systems-deep-dive/01_os_kernel_foundations.md`
+    - `interviews/os-kernel-distributed-systems-deep-dive/02_distributed_system_foundations.md`
+    - `interviews/os-kernel-distributed-systems-deep-dive/03_kafka_deep_dive.md`
+    - `interviews/os-kernel-distributed-systems-deep-dive/04_cassandra_deep_dive.md`
+    - `interviews/os-kernel-distributed-systems-deep-dive/05_spark_deep_dive.md`
+    - `interviews/os-kernel-distributed-systems-deep-dive/06_cross_system_comparison.md`
+    - `interviews/os-kernel-distributed-systems-deep-dive/07_interview_reasoning_playbook.md`
+    - `interviews/os-kernel-distributed-systems-deep-dive/08_experiments_and_observability.md`
+    - `interviews/os-kernel-distributed-systems-deep-dive/09_glossary.md`
+    - `interviews/os-kernel-distributed-systems-deep-dive/10_source_ledger.md`
+- non-goals:
+    - no broad root-topic rewrite in this tranche.
+    - no `source/` or `audit/` rewrite.
+    - no whole-request COMPLETE claim.
+- handling of prior commit `c23cd27`:
+    - `01_os_kernel_foundations.md` had already been changed before this WORK tranche series. This tranche explicitly re-judged it under the current whole-request math, applied only small terminology normalization, and counted it as a judged fourth-tranche target.
+
+## 23. Fourth Tranche Multi-Agent And Dialectic Findings
+
+- Protocol Sentinel / Halley:
+    - finding: whole COMPLETE and push remain blocked while 24 targets are unjudged. The live inventory formula is `64 Markdown - 9 source - 2 audit - 3 project rule/fact docs = 50 targets`, with `50 - 7 - 3 - 16 = 24` remaining before this tranche.
+    - repair: this section records all 10 OS/distributed remaining files as judged, lowering remaining required content/support targets to 14 rather than claiming whole COMPLETE.
+    - finding: `main` is ahead of `origin/main` by 4 commits, including `c23cd27`; `01_os_kernel_foundations.md` must not be omitted from the current judgement.
+    - repair: `01_os_kernel_foundations.md` is in this tranche scope and judgement table.
+- Beginner Reviewer / Dirac:
+    - finding: `02` through `06` closed learner replay and sources before substantial later mechanism sections, so the reader was asked to summarize before reading the deeper path.
+    - repair: `문서를 덮고 확인할 것` and `근거와 더 읽을 자료` were moved to the end of `02` through `06`, and the ToC order was regenerated to match the actual reading path.
+    - finding: `07` and `08` used `마지막` checkpoint wording before later core sections.
+    - repair: `07` now says `면접 답변 기본 점검`; `08` now says `실험 claim 점검표`.
+    - finding: `09_glossary.md` carried `사건` and `대기열` in the terminology surface that should stabilize Korean developer vocabulary.
+    - repair: OS/runtime/distributed theory rows now prefer `이벤트(event)` and `큐(queue)` where that is the established developer usage.
+- Dialectic synthesis:
+    - starting claim: "These docs are mostly strong, so non-edit judgement might be enough."
+    - attack: premature replay/source closure and glossary terminology are structural learner-flow defects, not cosmetic wording.
+    - response lane: `ACCEPT_REPAIR`.
+    - revised claim: "Keep the strong content, but repair section order and terminology surfaces so the documents match the study-explanation/humanize-korean contract."
+
+## 24. Fourth Tranche Edits
+
+- `01_os_kernel_foundations.md`:
+    - retained the existing strong first-brick and state-trace structure.
+    - normalized remaining `대기열` uses in OS queue explanations to `큐(queue)` / `대기 큐(queue)`.
+- `02_distributed_system_foundations.md`:
+    - moved replay and sources to the document end after membership, leader/epoch, quorum/consensus, recovery, idempotency/outbox, overload, Jepsen-style thinking, consistency model, and 2PC/saga/outbox sections.
+    - normalized distributed ordering prose from `사건` to `이벤트(event)` where it describes Lamport/happens-before style events.
+    - changed `대기열 관리` to queue-management wording and explained admission control as `진입 제어(admission control)`.
+- `03_kafka_deep_dive.md`:
+    - moved replay and sources to the document end after controller/metadata quorum and retention/compaction.
+    - normalized the page-cache/replication/high-watermark distinction from `사건` to `이벤트(event)`.
+- `04_cassandra_deep_dive.md`:
+    - moved replay and sources to the document end after tombstone, partition-key, multi-DC, and observation-map sections.
+    - normalized commitlog/storage/CL boundary wording from `사건` to `이벤트(event)`.
+    - changed `Container 환경` to Korean-first `컨테이너(container) 환경`.
+- `05_spark_deep_dive.md`:
+    - moved replay and sources to the document end after data locality, external sink side effect, and final OS bridge sections.
+    - changed `Container OOM kill` and `Container 안` to Korean-first container wording.
+- `06_cross_system_comparison.md`:
+    - moved replay and sources to the document end after state ownership, security/isolation, and one-sentence comparison training.
+    - normalized `OS 사건` / `lower-layer 사건` to `OS 이벤트(event)` / `하위 계층 이벤트(event)`.
+- `07_interview_reasoning_playbook.md`:
+    - changed premature `면접 전 마지막 점검` to `면접 답변 기본 점검`.
+    - normalized packet/handler wording to `이벤트(event)`.
+- `08_experiments_and_observability.md`:
+    - changed premature `마지막 점검표` to `실험 claim 점검표`.
+- `09_glossary.md`:
+    - normalized core rows for interrupt, trap, page fault, runnable queue, happens-before, and listen backlog.
+- `10_source_ledger.md`:
+    - changed support-ledger caveats from `control-plane` and English-first `Container cgroup` to plainer support/provenance wording.
+
+## 25. Fourth Tranche Per-File Judgement
+
+| File | Judgement | Reason |
+| --- | --- | --- |
+| `01_os_kernel_foundations.md` | 수정함 | Already strong after prior commit, but current whole-request math required explicit judgement and minor queue terminology repair. |
+| `02_distributed_system_foundations.md` | 수정함 | Premature replay/source closure and event/queue terminology were material learning-flow findings. |
+| `03_kafka_deep_dive.md` | 수정함 | Premature replay/source closure plus one event terminology repair. Content depth otherwise retained. |
+| `04_cassandra_deep_dive.md` | 수정함 | Premature replay/source closure plus event/container terminology repairs. Content depth otherwise retained. |
+| `05_spark_deep_dive.md` | 수정함 | Premature replay/source closure plus container terminology repairs. Content depth otherwise retained. |
+| `06_cross_system_comparison.md` | 수정함 | Premature replay/source closure plus OS event terminology repairs. Content depth otherwise retained. |
+| `07_interview_reasoning_playbook.md` | 수정함 | Premature `마지막` checkpoint wording and packet/handler event terminology needed repair. |
+| `08_experiments_and_observability.md` | 수정함 | Premature `마지막 점검표` wording needed repair while preserving experiment sequence. |
+| `09_glossary.md` | 수정함 | Terminology support surface needed `이벤트(event)` and `큐(queue)` normalization. |
+| `10_source_ledger.md` | 수정함 | Support ledger was already sufficient, but English-first caveat wording was normalized. |
+
+## 26. Fourth Tranche Verification Log
+
+- anti-regression scan over fourth-tranche docs for `사건`, `대기열`, `Container`, `control-plane`, `data-plane`, `면접 전 마지막 점검`, and `마지막 점검표`:
+    - result before WORK update: PASS, no matches.
+- `git diff --check -- interviews/os-kernel-distributed-systems-deep-dive/{01_os_kernel_foundations.md,02_distributed_system_foundations.md,03_kafka_deep_dive.md,04_cassandra_deep_dive.md,05_spark_deep_dive.md,06_cross_system_comparison.md,07_interview_reasoning_playbook.md,08_experiments_and_observability.md,09_glossary.md,10_source_ledger.md}`
+    - result before WORK update: PASS, no whitespace errors.
+- local Markdown link/anchor check over fourth-tranche docs:
+    - result before WORK update: PASS, all local file links and same-file anchors resolved.
+- scoped diff stat before WORK update:
+    - 10 files changed, 113 insertions, 113 deletions.
+- post-WORK final verification:
+    - anti-regression scan over fourth-tranche reader/support docs only: PASS, no matches for `사건`, `대기열`, `Container`, `control-plane`, `data-plane`, `면접 전 마지막 점검`, or `마지막 점검표`.
+    - same scan including this WORK produced matches only in historical finding/verification notes and this fourth-tranche repair ledger; these are audit records, not reader-doc regressions.
+    - `git diff --check -- docs/works/WORK_20260605_INTERVIEWS_STUDY_EXPLANATION_TRANCHE.md interviews/os-kernel-distributed-systems-deep-dive/{01_os_kernel_foundations.md,02_distributed_system_foundations.md,03_kafka_deep_dive.md,04_cassandra_deep_dive.md,05_spark_deep_dive.md,06_cross_system_comparison.md,07_interview_reasoning_playbook.md,08_experiments_and_observability.md,09_glossary.md,10_source_ledger.md}`: PASS.
+    - local Markdown link/anchor check over fourth-tranche docs: PASS.
+    - scoped final diff stat: 11 files changed, 235 insertions, 114 deletions.
+
+## 27. Fourth Tranche Status
+
+- fourth tranche verdict: `TRANCHE_COMPLETE_FOR_THIS_LOOP`.
+- whole-request verdict: `PARTIAL / BLOCK_COMPLETE`.
+- remaining disclosure: content/support Markdown target count remains 50 after excluding `source/`, `audit/`, and project rule/fact docs. First tranche judged 7 Markdown files. Second tranche judged 3 Markdown files. Third tranche judged 16 database deep-dive Markdown files. Fourth tranche judged 10 OS/distributed deep-dive Markdown files. Therefore 14 root topic Markdown files still need a tranche judgement before whole-request COMPLETE.
+- next immediate target: root topic docs:
+    - `concurrency-async-io.md`
+    - `database-storage-search-nosql.md`
+    - `distributed-systems-architecture.md`
+    - `language-runtime.md`
+    - `linux-kernel-hardware-practical-internals.md`
+    - `linux-network-backend-runtime.md`
+    - `messaging-event-driven.md`
+    - `network-web-protocols.md`
+    - `os-kernel-computer-architecture.md`
+    - `problem-solving-code-quality.md`
+    - `security-cryptography.md`
+    - `socket-programming.md`
+    - `spring-backend-frameworks.md`
+    - `thread-scheduling-java-spring.md`

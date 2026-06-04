@@ -22,7 +22,7 @@
 - [16. source ledger reachability는 사실성의 전부가 아니다](#16-source-ledger-reachability는-사실성의-전부가-아니다)
 - [17. 관측 장부를 쓰는 이유](#17-관측-장부를-쓰는-이유)
 - [18. 작은 실험을 제품 장애로 이어 붙이기](#18-작은-실험을-제품-장애로-이어-붙이기)
-- [19. 마지막 점검표](#19-마지막-점검표)
+- [19. 실험 claim 점검표](#19-실험-claim-점검표)
 - [20. Kafka 관측 rehearsal](#20-kafka-관측-rehearsal)
 - [21. Cassandra 관측 rehearsal](#21-cassandra-관측-rehearsal)
 - [22. Spark 관측 rehearsal](#22-spark-관측-rehearsal)
@@ -441,7 +441,7 @@ small experiment
 
 예를 들어 page cache 실험 뒤에는 Kafka segment read에서 page cache hit/miss를 어떻게 추론할지 묻습니다. Futex/lock 실험 뒤에는 JVM thread dump와 off-CPU profile을 어떻게 볼지 묻습니다. Socket queue 실험 뒤에는 Kafka fetch timeout이나 Cassandra read timeout에서 `ss`와 packet capture를 어떻게 함께 볼지 묻습니다. Spark local shuffle 실험 뒤에는 cluster에서 shuffle read blocked time과 disk spill을 어떻게 볼지 묻습니다.
 
-## 19. 마지막 점검표
+## 19. 실험 claim 점검표
 
 실험을 마친 뒤에는 세 가지를 꼭 확인합니다. 첫째, 내가 직접 관측한 것은 무엇인가. 둘째, 그 관측이 어느 계층의 claim만 지지하는가. 셋째, 제품이나 분산 환경으로 확대하려면 어떤 추가 증거가 필요한가. 이 세 가지가 없으면 실험은 배움을 주는 대신 과신을 만들 수 있습니다.
 

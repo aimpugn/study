@@ -20,15 +20,15 @@
 | dirty page | memory에는 최신 내용이 있지만 storage에 아직 반영되지 않았을 수 있는 file page | durable write | 01 | dirty page는 빠른 write를 가능하게 하지만 crash 시점의 내구성 질문을 남깁니다. |
 | fsync | file의 in-core data/metadata를 storage 쪽으로 동기화하려는 system call | write, sync | 01 | `fsync()`는 `write()`보다 강한 요청이지만 directory entry와 storage stack caveat를 함께 봐야 합니다. |
 | partial write | 요청한 byte 수보다 적게 받아들인 write 성공 | write failure | 01 | `write()` 반환값이 `len`보다 작으면 남은 byte를 다시 써야 합니다. |
-| interrupt | 외부 장치가 CPU 흐름을 끊고 커널 처리를 요청하는 사건 | trap, syscall | 01 | network packet 도착은 interrupt로 시작할 수 있지만 user thread가 즉시 실행된다는 뜻은 아닙니다. |
-| trap | 현재 instruction 실행 중 생기는 커널 진입 사건 | interrupt | 01 | page fault와 syscall은 원인이 다른 trap 계열 사건으로 설명할 수 있습니다. |
+| interrupt | 외부 장치가 CPU 흐름을 끊고 커널 처리를 요청하는 이벤트(event) | trap, syscall | 01 | network packet 도착은 interrupt로 시작할 수 있지만 user thread가 즉시 실행된다는 뜻은 아닙니다. |
+| trap | 현재 instruction 실행 중 생기는 커널 진입 이벤트(event) | interrupt | 01 | page fault와 syscall은 원인이 다른 trap 계열 이벤트로 설명할 수 있습니다. |
 | context switch | CPU가 실행하던 thread 상태를 저장하고 다른 thread 상태로 바꾸는 일 | thread 생성 | 01 | context switch가 많으면 CPU가 실제 업무보다 실행 흐름 교체에 시간을 쓸 수 있습니다. |
-| runnable queue | 실행 가능하지만 CPU를 아직 받지 못한 task들의 대기열 | request queue | 01 | CPU 사용률이 낮아도 runnable queue나 blocking wait 때문에 latency가 커질 수 있습니다. |
+| runnable queue | 실행 가능하지만 CPU를 아직 받지 못한 task들의 큐(queue) | request queue | 01 | CPU 사용률이 낮아도 runnable queue나 blocking wait 때문에 latency가 커질 수 있습니다. |
 | virtual memory | process가 독립된 주소 공간을 가진 것처럼 보이게 하는 메모리 모델 | physical memory | 01 | virtual address는 page table을 거쳐 physical frame으로 번역됩니다. |
-| page fault | 주소 번역이나 권한 확인이 실패해 커널이 개입하는 사건 | segmentation fault | 01 | page fault는 lazy allocation처럼 정상 흐름일 수도 있고 invalid access일 수도 있습니다. |
+| page fault | 주소 번역이나 권한 확인이 실패해 커널이 개입하는 이벤트(event) | segmentation fault | 01 | page fault는 lazy allocation처럼 정상 흐름일 수도 있고 invalid access일 수도 있습니다. |
 | socket buffer | kernel이 network send/receive byte를 임시로 담는 buffer | application queue | 01 | network backpressure는 application queue뿐 아니라 socket buffer에서도 나타납니다. |
 | partial failure | 분산 시스템 일부만 실패하거나 응답이 불명확한 상태 | 전체 장애 | 02 | timeout은 상대가 죽었다는 증명이 아니라 적용 여부 불명확 상태일 수 있습니다. |
-| happens-before | 어떤 사건이 다른 사건보다 먼저라고 말할 수 있는 논리적 관계 | wall-clock order | 02 | message send는 receive보다 먼저지만, 관계 없는 두 node의 timestamp만으로 전역 순서를 단정할 수 없습니다. |
+| happens-before | 어떤 이벤트(event)가 다른 이벤트보다 먼저라고 말할 수 있는 논리적 관계 | wall-clock order | 02 | message send는 receive보다 먼저지만, 관계 없는 두 node의 timestamp만으로 전역 순서를 단정할 수 없습니다. |
 | log | 상태 변화를 순서대로 남겨 replay나 복구를 가능하게 하는 기록 | 단순 로그 파일 | 02 | Kafka log, Cassandra commit log, Spark lineage는 모두 복구 기준점이지만 역할이 다릅니다. |
 | partition | data나 일을 나누는 단위 | replica | 02 | partition은 성능 단위이면서 ordering, ownership, task scheduling의 경계가 됩니다. |
 | replica | 같은 data나 log를 복사해 둔 사본 | partition | 02 | replica가 많아도 어떤 write가 몇 replica에 도달했는지 모르면 안전성을 말할 수 없습니다. |
@@ -82,7 +82,7 @@
 | DMA | 장치가 CPU 대신 memory에 직접 data를 읽고 쓰는 방식 | CPU copy | 01d | packet path trace | NIC packet 수신은 보통 DMA ring을 통해 memory에 들어온 뒤 kernel network stack으로 올라갑니다. |
 | NAPI | Linux network stack에서 interrupt와 polling을 섞어 packet을 처리하는 방식 | epoll | 01d | packet path trace | NAPI는 application event loop가 아니라 driver/kernel 쪽 packet 처리 방식입니다. |
 | softirq | interrupt 이후 미뤄 둔 kernel work를 처리하는 software interrupt context | user thread | 01d | NAPI trace | packet 처리는 hard interrupt에서 끝나지 않고 softirq/NAPI poll로 이어질 수 있습니다. |
-| listen backlog | 아직 application이 accept하지 않은 연결이 기다리는 kernel queue 크기와 관련된 설정 | application queue | 01d | accept queue trace | accept loop가 느리면 application handler 전에 kernel 연결 대기열이 먼저 병목이 될 수 있습니다. |
+| listen backlog | 아직 application이 accept하지 않은 연결이 기다리는 kernel queue 크기와 관련된 설정 | application queue | 01d | accept queue trace | accept loop가 느리면 application handler 전에 kernel 연결 큐(queue)가 먼저 병목이 될 수 있습니다. |
 | accept queue | handshake가 끝난 connection이 `accept()`를 기다리는 queue | socket receive buffer | 01d | accept queue trace | `accept()`가 늦으면 client는 서버 user code에 닿기 전부터 지연될 수 있습니다. |
 | readiness | fd에서 read/write를 시도할 수 있을 가능성이 있다는 알림 | completion | 01d | epoll 실험 | epoll readiness는 작업 완료가 아니며 application이 직접 read/write를 수행해야 합니다. |
 | qdisc | kernel에서 outgoing packet을 NIC queue로 보내기 전 queueing/shaping하는 계층 | TCP send buffer | 01d | response send trace | response write 이후에도 qdisc와 NIC transmit queue에서 지연될 수 있습니다. |
