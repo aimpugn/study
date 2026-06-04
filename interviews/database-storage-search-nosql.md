@@ -1,5 +1,7 @@
 # 데이터베이스, 저장소, 검색/NoSQL
 
+이 문서는 제품 이름을 모으는 파일이 아니라, `SELECT` 한 줄이나 `UPDATE` 한 줄이 parser, index, page/cache, lock/MVCC, WAL, replica, search shard를 지나 어떤 결과가 되는지 따라가는 문서입니다. 처음에는 SQL이나 검색 요청 하나를 작은 trace로 잡고, 그다음 MySQL, Elasticsearch, Couchbase, 대용량 테이블 운영 질문으로 내려가면 됩니다.
+
 - [데이터베이스, 저장소, 검색/NoSQL](#데이터베이스-저장소-검색nosql)
     - [먼저 기억할 정리](#먼저-기억할-정리)
     - [DB 접근과 저장소 운영](#db-접근과-저장소-운영)
@@ -86,25 +88,25 @@
 
 트랜잭션, 인덱스, 락, 복제, 파티셔닝, Elasticsearch, Couchbase처럼 데이터를 저장하고 찾는 전체 축을 함께 다룹니다.
 
-> 원문 배치본입니다. source chunk의 문장은 유지하고, 대분류/중분류/소분류 계층에 맞게 Markdown heading depth만 조정했습니다. 원본 span과 SHA-256은 manifest에서 검증할 수 있습니다.
+> 출처 보존 메모: 아래의 `원문:` 절과 `curriculum-chunk` 주석은 원문 위치를 추적하기 위한 장치입니다. 학습할 때는 먼저 이 정리와 trace를 읽고, 필요한 질문에서 원문 절로 내려가면 됩니다.
 
 ## 먼저 기억할 정리
 
-DB와 검색 문서는 SQL 문장이나 제품 이름보다 "row가 어떤 저장 상태와 실행 경로를 지나 결과가 되는가"를 먼저 잡아야 합니다.
+DB와 검색 문서는 SQL 문장이나 제품 이름보다 "row가 어떤 저장 상태와 실행 경로를 지나 결과가 되는가"를 먼저 잡아야 합니다. 예를 들어 `UPDATE accounts SET balance = balance - 100 WHERE id = 42`는 애플리케이션 코드에서 끝나는 계산이 아니라, row 찾기, lock 또는 version 확인, page 변경, WAL 기록, commit, replica 전파 가능성으로 이어집니다.
 
 ```text
-query / mutation
-  -> parser / planner
-  -> index or shard routing
-  -> buffer pool / page cache
-  -> lock or MVCC visibility check
-  -> WAL / transaction log / replication stream
-  -> result row, document, or ack
+UPDATE accounts ... WHERE id = 42
+  -> SQL parser / planner
+  -> index lookup or shard routing
+  -> buffer pool / page cache page
+  -> lock or MVCC version check
+  -> row change and WAL / transaction log
+  -> commit ack, replica lag, or search index refresh
 ```
 
 비교축은 저장, 조회, 동시성, 복구입니다. 인덱스는 단순히 빠른 자료구조가 아니라 읽어야 할 row stream을 줄이는 물리 구조이고, WAL/redo/undo는 장애 뒤에 어떤 변경을 다시 만들거나 되돌릴지 남기는 기록입니다. Elasticsearch나 Couchbase를 볼 때도 shard, replica, segment, heap, cache, query fan-out처럼 보이지 않는 상태가 어디에 있는지 확인해야 합니다.
 
-검증 anchor는 `EXPLAIN`, slow query log, lock wait/deadlock log, buffer pool 지표, WAL/replication lag, shard allocation, JVM heap/GC 지표입니다. "빠르다", "일관적이다", "고가용이다" 같은 말은 어떤 상태와 어떤 관측값으로 확인되는지까지 내려가야 면접 답변이 단단해집니다.
+확인 방법은 `EXPLAIN`, slow query log, lock wait/deadlock log, buffer pool 지표, WAL/replication lag, shard allocation, JVM heap/GC 지표입니다. "빠르다", "일관적이다", "고가용이다" 같은 말은 어떤 상태와 어떤 관측값으로 확인되는지까지 내려가야 면접 답변이 단단해집니다.
 
 ## DB 접근과 저장소 운영
 

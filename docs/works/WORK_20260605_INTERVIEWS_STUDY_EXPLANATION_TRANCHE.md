@@ -463,3 +463,189 @@
     - `socket-programming.md`
     - `spring-backend-frameworks.md`
     - `thread-scheduling-java-spring.md`
+
+## 28. Fifth Tranche Scope: Root Topic Docs
+
+- tranche id: `INTERVIEWS_STUDY_EXPLANATION_ROOT_TOPIC_FINAL_TRANCHE`.
+- requested scope: the remaining root-level interview study Markdown documents, excluding `source/`, `audit/`, and project rule/fact docs.
+- target count for this tranche: 14.
+- files:
+    - `interviews/concurrency-async-io.md`
+    - `interviews/database-storage-search-nosql.md`
+    - `interviews/distributed-systems-architecture.md`
+    - `interviews/language-runtime.md`
+    - `interviews/linux-kernel-hardware-practical-internals.md`
+    - `interviews/linux-network-backend-runtime.md`
+    - `interviews/messaging-event-driven.md`
+    - `interviews/network-web-protocols.md`
+    - `interviews/os-kernel-computer-architecture.md`
+    - `interviews/problem-solving-code-quality.md`
+    - `interviews/security-cryptography.md`
+    - `interviews/socket-programming.md`
+    - `interviews/spring-backend-frameworks.md`
+    - `interviews/thread-scheduling-java-spring.md`
+- non-goals:
+    - no rewrite of raw `interviews/source/**`.
+    - no rewrite of nested `audit/` files.
+    - no project-rule rewrite.
+    - no broad unrelated study repository cleanup.
+
+## 29. Fifth Tranche Multi-Agent And Dialectic Findings
+
+- Protocol Sentinel / Halley:
+    - finding: the whole request cannot be COMPLETE until the remaining 14 root docs are explicitly judged.
+    - repair: this tranche records per-file judgement for all 14 root docs and leaves no unjudged target in the 50-file corpus.
+- Korean Prose / Fermat:
+    - finding: several generated root docs exposed work/provenance wording before a beginner could form a first model.
+    - repair: added short first-scene introductions and changed provenance notes to reader-facing source-preservation notes.
+    - finding: `concurrency-async-io.md` carried a materially wrong Java NIO non-blocking read explanation.
+    - repair: corrected the read result distinction: no data in non-blocking mode can return `0`; `-1` means peer/end-of-stream.
+    - finding: `security-cryptography.md` had an empty HTTPS section that did not explain the TLS channel.
+    - repair: added the `server certificate -> key exchange -> session key -> encrypted HTTP records` trace.
+    - finding: `spring-backend-frameworks.md` had a broken mixed-script word and an empty annotation section.
+    - repair: fixed `프록시가 개입하여` and explained annotation as metadata that Spring reads to build bean/proxy/transaction behavior.
+    - finding: `os-kernel-computer-architecture.md` still had scaffold wording and source-provenance language before the beginner-facing model.
+    - repair: added the OS first-scene model and changed repeated scaffold rows from `정리 대상` to `이 절에서 다룰 핵심`.
+- Beginner Reviewer:
+    - finding: `socket-programming.md` and `thread-scheduling-java-spring.md` already had strong first answers, first artifacts, examples, failure modes, and verification sections.
+    - repair: no broad rewrite; only terminology normalization where it reduced drift.
+    - finding: `linux-network-backend-runtime.md` is long and repetitive, but it already opens with a request-path map and section-local replay prompts.
+    - repair: kept the structure, then fixed malformed backtick/prose contamination and terminology drift around container OOM and queue/event language.
+- Dialectic synthesis:
+    - starting claim: "Root docs can be closed with a judgement-only pass because most first summaries already exist."
+    - attack: some files had load-bearing correctness/prose defects that would confuse a beginner even if the overall structure looked complete.
+    - response lane: `ACCEPT_REPAIR`.
+    - revised claim: "Repair the explicit reader-flow, correctness, and terminology defects; judge the already-strong monographs without forcing churn."
+
+## 30. Fifth Tranche Edits
+
+- `concurrency-async-io.md`:
+    - added a first-scene introduction for request waiting, kernel socket buffer, event loop, worker queue, and coroutine flow.
+    - changed internal provenance language into a source-preservation note.
+    - changed `검증 anchor` to reader-facing `확인 방법`.
+    - corrected Java NIO non-blocking `SocketChannel.read()` behavior.
+    - normalized queue terminology to `대기 큐(queue)`.
+- `database-storage-search-nosql.md`:
+    - added a `SELECT`/`UPDATE` trace as the first mental model.
+    - changed provenance and verification wording to reader-facing language.
+- `distributed-systems-architecture.md`:
+    - added an order-request trace with request id, recorded state, retry, and observation boundaries.
+    - changed English-only outcome wording to Korean-first wording.
+- `language-runtime.md`:
+    - added a `java -jar app.jar` first scene.
+    - made class loading, stack frame, heap object, JIT, GC, runtime scheduler flow visible before topic details.
+- `linux-kernel-hardware-practical-internals.md`:
+    - normalized container wording and the root-doc drift rule.
+    - changed the short answer from `대기열` to `큐(queue)` so the queue/cache/buffer/wait model remains stable.
+- `linux-network-backend-runtime.md`:
+    - kept the existing strong request-path monograph.
+    - repaired `사건`/container-OOM phrasing into event-oriented technical wording.
+    - fixed malformed backtick text around Java `OutOfMemoryError`.
+- `messaging-event-driven.md`:
+    - added a producer/broker/consumer/ack/offset first scene.
+    - changed provenance and verification wording to reader-facing language.
+- `network-web-protocols.md`:
+    - added a concrete `https://example.com/orders` request trace through DNS, TCP, TLS, HTTP, socket buffer, proxy, and response path.
+    - changed provenance and verification wording to reader-facing language.
+- `os-kernel-computer-architecture.md`:
+    - added the program-to-kernel-object first model.
+    - changed provenance and verification wording to reader-facing language.
+    - normalized queue/container terminology and converted repeated scaffold labels to beginner-facing section promises.
+- `problem-solving-code-quality.md`:
+    - added a failed-test/mock/regression first scene.
+    - changed provenance and verification wording to reader-facing language.
+- `security-cryptography.md`:
+    - added a TLS/HTTPS first scene and concrete handshake trace.
+    - replaced the empty HTTPS encryption stub with a beginner-readable channel setup model.
+- `socket-programming.md`:
+    - retained the already-strong monograph.
+    - normalized TCP event wording in the failure-mode section.
+- `spring-backend-frameworks.md`:
+    - added an HTTP request to Spring runtime trace.
+    - changed provenance and verification wording to reader-facing language.
+    - filled the annotation section and repaired the mixed-script typo.
+- `thread-scheduling-java-spring.md`:
+    - retained the already-strong monograph.
+    - normalized the runnable waiting term to `실행 대기 큐(queue)`.
+
+## 31. Fifth Tranche Per-File Judgement
+
+| File | Judgement | Reason |
+| --- | --- | --- |
+| `concurrency-async-io.md` | 수정함 | Beginner first model, source note, verification wording, queue terminology, and Java NIO correctness required repair. |
+| `database-storage-search-nosql.md` | 수정함 | Needed a concrete row/update trace before DB engine abstractions. |
+| `distributed-systems-architecture.md` | 수정함 | Needed a request/state/retry/observation trace and Korean-first outcome wording. |
+| `language-runtime.md` | 수정함 | Needed a `java -jar` first scene before runtime vocabulary. |
+| `linux-kernel-hardware-practical-internals.md` | 수정함 | Strong monograph, but queue/container/root-doc terminology needed drift repair. |
+| `linux-network-backend-runtime.md` | 수정함 | Strong monograph, but malformed generated text and event/container terminology needed repair. |
+| `messaging-event-driven.md` | 수정함 | Needed producer/broker/consumer first scene and reader-facing source note. |
+| `network-web-protocols.md` | 수정함 | Needed a concrete HTTPS request path before protocol details. |
+| `os-kernel-computer-architecture.md` | 수정함 | Needed first model, source note repair, scaffold conversion, and queue/container terminology repair. |
+| `problem-solving-code-quality.md` | 수정함 | Needed failed-test/mock/regression first scene and reader-facing source note. |
+| `security-cryptography.md` | 수정함 | HTTPS stub was incomplete; TLS channel setup trace required. |
+| `socket-programming.md` | 소규모 수정 | Existing structure was strong; only TCP event terminology was normalized. |
+| `spring-backend-frameworks.md` | 수정함 | Needed Spring request trace, annotation explanation, and typo repair. |
+| `thread-scheduling-java-spring.md` | 소규모 수정 | Existing structure was strong; only queue terminology was normalized. |
+
+## 32. Fifth Tranche Verification Plan
+
+- reader-doc anti-regression scan:
+    - search for internal/provenance wording, malformed code span, known wrong Java NIO read explanation, empty HTTPS stub, and terminology drift in the 14 root docs.
+    - PASS if no material matches remain, allowing legitimate Spring/Tomcat container class names outside the scoped Linux/OS terminology scan.
+- whitespace/diff check:
+    - `git diff --check` over the WORK file and all 14 root docs.
+    - PASS if no whitespace errors.
+- Markdown link/anchor check:
+    - check local file links and same-file heading anchors for all 50 target docs after final edits.
+    - PASS if every local file link exists and every same-file anchor resolves.
+- whole-corpus inventory check:
+    - recompute target Markdown set excluding `source/`, `audit/`, and project rule/fact docs.
+    - PASS if target count remains 50 and tranche counts close `7 + 3 + 16 + 10 + 14 = 50`.
+
+## 33. Fifth Tranche Status Before Final Audit
+
+- fifth tranche verdict: `TRANCHE_EDITED_PENDING_FINAL_VERIFICATION`.
+- whole-request verdict: `WHOLE_COMPLETE_CANDIDATE_PENDING_FINAL_AUDIT`.
+- remaining disclosure before verification: target count is 50. First tranche judged 7. Second tranche judged 3. Third tranche judged 16. Fourth tranche judged 10. Fifth tranche judged 14. Remaining unjudged target count is 0, subject to final audit and verification.
+
+## 34. Fifth Tranche Verification Log
+
+- reader-doc anti-regression scan over the 14 root-topic docs:
+    - command shape: search for internal/provenance wording, malformed code span, known wrong Java NIO read explanation, empty HTTPS stub, and terminology drift.
+    - result: PASS, no material matches.
+    - note: legitimate Spring/Tomcat container class names were scoped out of Linux/OS terminology checks.
+- scoped Linux/OS container terminology scan:
+    - result: PASS, no uppercase `Container` drift remained in `linux-kernel-hardware-practical-internals.md`, `linux-network-backend-runtime.md`, or `os-kernel-computer-architecture.md`.
+- `git diff --check -- docs/works/WORK_20260605_INTERVIEWS_STUDY_EXPLANATION_TRANCHE.md` plus the 14 root-topic docs:
+    - result: PASS, no whitespace errors.
+- inventory check:
+    - result: PASS, target count is 50.
+    - formula: all `interviews/**/*.md` minus `source/`, `audit/`, and project rule/fact docs.
+- local link and same-file heading check over all 50 target docs:
+    - result: PASS, 50 files checked, 0 issues.
+    - method note: local file targets were checked exactly; same-file anchors were checked with a renderer-tolerant heading match because punctuation-to-anchor rules differ across Markdown renderers.
+- scoped root-topic diff stat before final WORK close:
+    - 14 reader files changed, 214 insertions, 169 deletions.
+
+## 35. Whole-Request Final Audit
+
+- requested closure scope:
+    - improve all existing organized Markdown documents under `interviews/`, excluding raw `source/`, nested `audit/`, and project rule/fact docs.
+    - use study-explanation, multi-agent, dialectic, review, and humanize-korean style so beginner developers can build a mental model without losing correctness.
+- achieved closure scope:
+    - all 50 target Markdown files have now been judged across five tranches.
+    - tranche counts: `7 + 3 + 16 + 10 + 14 = 50`.
+    - raw `source/`, nested `audit/`, project rule/fact docs, and unrelated dirty study files were not rewritten.
+- objective final reviewer check:
+    - no unjudged target file remains in the fixed target corpus.
+    - reader-facing root docs no longer expose the key internal/provenance phrases found in the final critic pass.
+    - the Java NIO non-blocking read correctness issue is repaired.
+    - the HTTPS stub is replaced with a concrete TLS channel setup trace.
+    - strong existing monographs were not churned merely for uniformity; only material terminology/prose defects were repaired.
+- remaining open disclosure:
+    - no open tranche remains for the requested `interviews/` target corpus.
+    - unrelated dirty or untracked files outside this workstream remain intentionally untouched.
+    - `interviews/.markdownlint.json` remains untracked and was not included in this work.
+- whole-request completion verdict: `WHOLE_COMPLETE`.
+- commit/push readiness:
+    - allowed after one final status/diff check and scoped staging of this workstream only.

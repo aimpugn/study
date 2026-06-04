@@ -1,5 +1,7 @@
 # 보안과 암호학
 
+이 문서는 암호 알고리즘 이름을 나열하기보다, 브라우저가 서버 인증서를 확인하고 임시 키 교환으로 세션 키를 만들며 이후 HTTP record를 암호화하는 흐름을 설명합니다. 먼저 TLS handshake 한 번을 잡고, 그다음 HTTPS, Diffie-Hellman/ECDHE, 전방 비밀성, token 저장과 회전 질문으로 내려가면 됩니다.
+
 - [보안과 암호학](#보안과-암호학)
     - [먼저 기억할 정리](#먼저-기억할-정리)
     - [TLS/HTTPS 핸드셰이크](#tlshttps-핸드셰이크)
@@ -24,7 +26,7 @@
 
 TLS, HTTPS, Diffie-Hellman, OAuth, token, privacy처럼 통신과 인증을 안전하게 만드는 기술 단위를 다룹니다.
 
-> 원문 배치본입니다. source chunk의 문장은 유지하고, 대분류/중분류/소분류 계층에 맞게 Markdown heading depth만 조정했습니다. 원본 span과 SHA-256은 manifest에서 검증할 수 있습니다.
+> 출처 보존 메모: 아래의 `원문:` 절과 `curriculum-chunk` 주석은 원문 위치를 추적하기 위한 장치입니다. 학습할 때는 먼저 이 정리와 trace를 읽고, 필요한 질문에서 원문 절로 내려가면 됩니다.
 
 ## 먼저 기억할 정리
 
@@ -40,7 +42,7 @@ client hello
 
 비교축은 인증, 기밀성, 무결성, 키 교환입니다. 인증서는 "이 서버가 맞는가"를 다루고, Diffie-Hellman/ECDHE는 "세션마다 새 비밀을 어떻게 합의하는가"를 다루며, 전방 비밀성은 장기 개인키가 나중에 유출되어도 과거 세션이 같이 열리지 않게 하는 성질입니다. OAuth나 token 질문으로 넘어가면 암호화 자체보다 "누가 어떤 권한을 위임받았는가"와 "토큰이 어디에 저장되고 언제 폐기되는가"가 핵심 상태가 됩니다.
 
-검증 anchor는 인증서 체인, TLS 버전과 cipher suite, handshake capture, token 저장 위치, 만료/회전 로그입니다. 보안 문서는 확정적으로 말하기 전에 프로토콜 버전과 설정 경계를 함께 확인해야 합니다.
+확인 방법은 인증서 체인, TLS 버전과 cipher suite, handshake capture, token 저장 위치, 만료/회전 로그입니다. 보안 문서는 확정적으로 말하기 전에 프로토콜 버전과 설정 경계를 함께 확인해야 합니다.
 
 ## TLS/HTTPS 핸드셰이크
 
@@ -56,7 +58,17 @@ client hello
 
 ##### HTTPS 통신 과정
 
-특히 암호화 과정
+HTTPS는 HTTP 메시지를 TLS가 만든 안전한 통신 채널 안에 실어 보내는 방식입니다. 중요한 흐름은 `서버 인증 -> 키 교환 -> 세션 키 생성 -> 암호화된 HTTP 전송`입니다. 브라우저는 서버 인증서가 신뢰할 수 있는 CA 체인에 연결되는지 확인하고, TLS 버전과 cipher suite를 협상한 뒤, 보통 ECDHE 같은 임시 키 교환으로 세션 키 재료를 만듭니다. 이후 HTTP 요청과 응답은 그 세션 키로 암호화된 TLS record 안에서 오갑니다.
+
+```text
+browser
+  -> ClientHello
+  -> ServerHello + certificate
+  -> certificate chain verification
+  -> ECDHE key exchange
+  -> session keys
+  -> encrypted HTTP request / response
+```
 
 <!-- /curriculum-chunk -->
 

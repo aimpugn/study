@@ -450,7 +450,7 @@ Cassandra 장애는 JVM GC, heap/off-heap, compaction backlog, pending task, dis
 
 ### Spark
 
-Spark executor도 JVM process다. Task는 CPU를 쓰고, shuffle은 disk와 network를 크게 쓴다. Executor memory는 heap, off-heap, storage memory, execution memory, Python worker memory까지 나뉠 수 있다. Shuffle spill이 늘면 local disk I/O가 증가하고, remote fetch가 늘면 network와 TCP retransmit이 중요해진다. Container memory overhead를 작게 잡으면 JVM heap은 남아도 native/off-heap 때문에 pod가 죽을 수 있다.
+Spark executor도 JVM process다. Task는 CPU를 쓰고, shuffle은 disk와 network를 크게 쓴다. Executor memory는 heap, off-heap, storage memory, execution memory, Python worker memory까지 나뉠 수 있다. Shuffle spill이 늘면 local disk I/O가 증가하고, remote fetch가 늘면 network와 TCP retransmit이 중요해진다. 컨테이너(container) memory overhead를 작게 잡으면 JVM heap은 남아도 native/off-heap 때문에 pod가 죽을 수 있다.
 
 ## 장애 대응 학습 구조
 
@@ -504,7 +504,7 @@ ip -s link
 dmesg -T | tail -120
 ```
 
-Container나 Kubernetes 환경이면 cgroup도 같이 본다. 경로는 cgroup v1/v2와 runtime에 따라 다르다.
+컨테이너(container)나 Kubernetes 환경이면 cgroup도 같이 본다. 경로는 cgroup v1/v2와 runtime에 따라 다르다.
 
 ```sh
 cat /sys/fs/cgroup/cpu.stat 2>/dev/null
@@ -589,13 +589,13 @@ DB별로는 lock wait, active query, checkpoint/WAL, replication lag, buffer/cac
 
 ### 30초 답변
 
-장애 상황에서 Linux 서버를 본다면 먼저 요청이 어느 대기열에서 밀리는지 좁힙니다. CPU run queue인지, memory reclaim/swap인지, block I/O queue와 fsync인지, TCP socket buffer와 retransmit인지, DB lock/WAL/checkpoint인지 분리합니다. 그래서 `vmstat`, `iostat`, `pidstat`, `ss`, `dmesg`, cgroup 파일, DB/JVM 내부 지표를 같이 봅니다. 중요한 것은 명령어를 많이 치는 것이 아니라, 각 지표가 어떤 커널 객체와 wait state를 반영하는지 연결해서 원인을 줄이는 것입니다.
+장애 상황에서 Linux 서버를 본다면 먼저 요청이 어느 큐(queue)에서 밀리는지 좁힙니다. CPU run queue인지, memory reclaim/swap인지, block I/O queue와 fsync인지, TCP socket buffer와 retransmit인지, DB lock/WAL/checkpoint인지 분리합니다. 그래서 `vmstat`, `iostat`, `pidstat`, `ss`, `dmesg`, cgroup 파일, DB/JVM 내부 지표를 같이 봅니다. 중요한 것은 명령어를 많이 치는 것이 아니라, 각 지표가 어떤 커널 객체와 wait state를 반영하는지 연결해서 원인을 줄이는 것입니다.
 
 ### 2분 꼬리 답변
 
 예를 들어 API p99가 갑자기 늘었는데 CPU 사용률이 낮다고 해서 서버가 여유롭다고 말하지 않습니다. `vmstat r`이 낮고 `b`가 높으면 CPU가 아니라 uninterruptible sleep, 주로 I/O wait 쪽을 봅니다. `iostat -xz`에서 `await`와 `aqu-sz`가 같이 오르면 block device queue가 밀릴 수 있고, DB commit latency가 같이 오르면 WAL `fsync`나 checkpoint 영향을 의심합니다. 반대로 `ss -tin`에서 retransmit과 send queue가 늘면 TCP ACK나 상대 receive 문제일 수 있습니다. JVM thread dump에서 많은 thread가 DB socket read에 있다면 DB lock이나 slow query, storage fsync까지 내려가 봅니다.
 
-메모리는 `free`가 작다는 이유만으로 장애라고 하지 않습니다. Linux는 page cache를 쓰기 때문에 `MemAvailable`, dirty/writeback, swap in/out, reclaim counter, cgroup memory event를 봅니다. Container에서는 host memory가 남아도 cgroup OOM이 날 수 있습니다. DB는 OS 위의 process지만 buffer pool, WAL, MVCC, lock, checkpoint 같은 내부 구조 때문에 OS page cache, block I/O, CPU, network를 강하게 사용합니다. 그래서 애플리케이션, DB, OS, 하드웨어 지표를 같은 시간축으로 맞춰 원인을 좁힙니다.
+메모리는 `free`가 작다는 이유만으로 장애라고 하지 않습니다. Linux는 page cache를 쓰기 때문에 `MemAvailable`, dirty/writeback, swap in/out, reclaim counter, cgroup memory event를 봅니다. 컨테이너(container)에서는 host memory가 남아도 cgroup OOM이 날 수 있습니다. DB는 OS 위의 process지만 buffer pool, WAL, MVCC, lock, checkpoint 같은 내부 구조 때문에 OS page cache, block I/O, CPU, network를 강하게 사용합니다. 그래서 애플리케이션, DB, OS, 하드웨어 지표를 같은 시간축으로 맞춰 원인을 좁힙니다.
 
 ### 명령/관측으로 검증하는 답변
 
@@ -650,7 +650,7 @@ Spark는 CPU 계산만 하는 시스템이 아니다. Shuffle spill이 늘면 lo
 
 | 주제 | 이 파일의 역할 | 본진 owner | 중복 허용 범위 | drift 방지 규칙 |
 | --- | --- | --- | --- | --- |
-| OS/컴퓨터 구조 전체 map | 하드웨어 -> 커널 -> 애플리케이션 연결을 한 번에 설명 | `os-kernel-computer-architecture.md` | 핵심 mental model과 면접 답변은 중복 허용 | root curriculum이 바뀌면 이 파일의 짧은 직답과 사고 지도를 맞춘다. |
+| OS/컴퓨터 구조 전체 map | 하드웨어 -> 커널 -> 애플리케이션 연결을 한 번에 설명 | `os-kernel-computer-architecture.md` | 핵심 mental model과 면접 답변은 중복 허용 | 대주제 문서가 바뀌면 이 파일의 짧은 직답과 사고 지도를 맞춘다. |
 | scheduler/process/thread | 장애 분기와 커널 wait 관점으로 요약 | `os-kernel-distributed-systems-deep-dive/01a_process_scheduling.md` | run queue, process state, Java thread caveat는 중복 허용 | 세부 CFS, priority, scheduling class 설명은 본진에서 보강한다. |
 | page cache/filesystem/block I/O | DB WAL/fsync와 장애 지표까지 연결 | `os-kernel-distributed-systems-deep-dive/01c_filesystem_page_cache_block_io.md` | page cache, dirty/writeback, fsync, `iostat` 해석은 중복 허용 | filesystem별 세부와 kernel version 차이는 본진과 source ledger를 따른다. |
 | cgroup/observability/eBPF | cgroup throttle/OOM과 read-only command 중심 | `os-kernel-distributed-systems-deep-dive/01e_concurrency_isolation_observability.md` | cgroup CPU/memory event는 중복 허용 | 이 파일은 관측 철학이 아니라 내부 구조와 사고 분기를 중심으로 유지한다. |
@@ -682,6 +682,6 @@ Spark는 CPU 계산만 하는 시스템이 아니다. Shuffle spill이 늘면 lo
 - `free`가 낮고 `available`이 충분한 서버와, `available`이 낮고 swap in/out이 있는 서버의 차이는 무엇인가?
 - TCP retransmit이 늘 때 애플리케이션, 커널, 네트워크 장비 중 어디를 어떤 evidence로 나눌 수 있는가?
 - Kafka consumer lag를 생산 증가, 소비 감소, broker/storage/network 문제로 어떻게 분리할 것인가?
-- Container에서 host CPU와 memory가 남아 있는데도 애플리케이션이 느리거나 죽을 수 있는 이유는 무엇인가?
+- 컨테이너(container)에서 host CPU와 memory가 남아 있는데도 애플리케이션이 느리거나 죽을 수 있는 이유는 무엇인가?
 
 이 질문에 답할 때는 항상 `증상 -> queue/cache/buffer/wait -> 커널 객체/카운터 -> 명령/지표 -> 애플리케이션 또는 DB 내부 상태 -> 완화/확인` 순서로 말한다. 이 순서가 몸에 들어오면, 면접 답변과 장애 대응이 같은 사고에서 나온다.

@@ -1,5 +1,7 @@
 # Spring과 백엔드 프레임워크
 
+이 문서는 Spring 어노테이션 이름을 외우는 파일이 아니라, HTTP 요청 하나가 Tomcat/Netty, controller, service, proxy/interceptor, transaction manager, repository, connection pool을 지나며 어떤 객체와 상태를 Spring이 대신 관리하는지 설명합니다. 먼저 요청 경계와 프록시 경계를 잡고, 그다음 Bean, IoC/DI, Servlet/Tomcat, WebFlux, transaction 질문으로 내려가면 됩니다.
+
 - [Spring과 백엔드 프레임워크](#spring과-백엔드-프레임워크)
     - [먼저 기억할 정리](#먼저-기억할-정리)
     - [AOP와 어노테이션 처리](#aop와-어노테이션-처리)
@@ -99,13 +101,21 @@
 
 Spring Boot, IoC, Bean, Transaction, Servlet/Tomcat, WebClient/WebFlux처럼 백엔드 프레임워크가 런타임 위에 올리는 실행 모델을 다룹니다.
 
-> 원문 배치본입니다. source chunk의 문장은 유지하고, 대분류/중분류/소분류 계층에 맞게 Markdown heading depth만 조정했습니다. 원본 span과 SHA-256은 manifest에서 검증할 수 있습니다.
+> 출처 보존 메모: 아래의 `원문:` 절과 `curriculum-chunk` 주석은 원문 위치를 추적하기 위한 장치입니다. 학습할 때는 먼저 이 정리와 trace를 읽고, 필요한 질문에서 원문 절로 내려가면 됩니다.
 
 ## 먼저 기억할 정리
 
-Spring 문서는 어노테이션 이름을 외우는 문서가 아니라 "프레임워크가 객체 생성, 호출 경계, 요청 처리, transaction 상태를 어디에서 대신 관리하는가"를 보는 문서입니다.
+Spring 문서는 어노테이션 이름을 외우는 문서가 아니라 "프레임워크가 객체 생성, 호출 경계, 요청 처리, transaction 상태를 어디에서 대신 관리하는가"를 보는 문서입니다. 예를 들어 `POST /orders` 요청 하나는 controller method로 바로 순간 이동하지 않고, servlet container나 event loop, handler mapping, proxy, transaction manager, repository, connection pool을 차례로 지납니다.
 
 ```text
+POST /orders
+  -> Tomcat worker or Netty event loop
+  -> Spring handler mapping
+  -> controller / service method
+  -> proxy / interceptor / transaction manager
+  -> repository
+  -> connection pool / DB session
+
 java -jar
   -> JVM class loading
   -> SpringApplication / ApplicationContext
@@ -118,7 +128,7 @@ java -jar
 
 비교축은 객체 소유권과 호출 경계입니다. `@Component`와 `@Bean`은 객체를 누가 등록하고 조립하는지의 문제이고, AOP proxy는 메서드 호출이 proxy 경계를 지나야 advice나 transaction이 적용된다는 문제입니다. Servlet MVC와 WebFlux는 HTTP 요청을 어떤 thread/event loop 흐름으로 이어 가는지가 다릅니다. `@Transactional`도 annotation 자체가 아니라 transaction manager, connection binding, commit/rollback 경계가 함께 움직여야 의미가 있습니다.
 
-검증 anchor는 startup log, bean definition, proxy class, actuator metrics, thread dump, connection pool metric, transaction log입니다. "Spring이 해 준다"는 말을 만나면 어떤 객체와 상태를 Spring이 소유하는지 바로 풀어야 합니다.
+확인 방법은 startup log, bean definition, proxy class, actuator metrics, thread dump, connection pool metric, transaction log입니다. "Spring이 해 준다"는 말을 만나면 어떤 객체와 상태를 Spring이 소유하는지 바로 풀어야 합니다.
 
 ## AOP와 어노테이션 처리
 
@@ -133,6 +143,8 @@ java -jar
 > Duplicate source aliases: `source/interview_questions.md:3733-3734, source/interviews.md:3733-3734`
 
 ##### jvm 계열 언어에서 어노테이션 선언 방법 및 spring 어노테이션 동작 원리
+
+어노테이션은 코드에 붙는 메타데이터이고, Spring은 이 메타데이터를 읽어 Bean 등록, AOP 적용, transaction 경계 같은 런타임 동작을 구성합니다. 핵심은 `@Transactional` 같은 표식 자체가 일을 하는 것이 아니라, Spring이 그 표식을 읽고 프록시나 후처리기를 만들어 호출 경계에 끼워 넣는다는 점입니다.
 
 <!-- /curriculum-chunk -->
 
@@ -1676,7 +1688,7 @@ Spring Boot와 결합하여 내장형 웹 서버로 활용할 수도 있고, 독
 
 ###### **답변**
 
-1. @Transactional은 Spring AOP의 한 사례로 볼 수 있습니다. 스프링은 @Transactional이 붙은 Bean 메서드를 호출할 때, **프록시**가介入하여 트랜잭션 매니저(PlatformTransactionManager)를 통해 DB 커넥션을 시작(또는 기존 트랜잭션에 참여)합니다.
+1. @Transactional은 Spring AOP의 한 사례로 볼 수 있습니다. 스프링은 @Transactional이 붙은 Bean 메서드를 호출할 때, **프록시**가 개입하여 트랜잭션 매니저(PlatformTransactionManager)를 통해 DB 커넥션을 시작(또는 기존 트랜잭션에 참여)합니다.
 2. 메서드가 정상적으로 종료되면, 프록시는 커밋을 호출하고, 예외가 발생하면 롤백을 호출합니다. 이렇게 DB 트랜잭션 범위를 자동으로 관리하므로, 개발자는 로직에 집중할 수 있습니다.
 3. 다만, 자기 자신 메서드끼리 호출(예: this.internalCall()) 시에는 프록시가 관여하지 못하므로 트랜잭션이 적용되지 않을 수 있습니다. 이를 방지하기 위해서는 자기 자신이 아닌 다른 Bean이 호출하도록 구조를 설계하거나, AspectJ를 사용하는 방법 등이 있습니다.
 

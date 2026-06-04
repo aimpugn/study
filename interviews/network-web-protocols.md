@@ -1,5 +1,7 @@
 # 네트워크와 웹 프로토콜
 
+이 문서는 HTTP 문법보다 `https://example.com/orders` 요청 하나가 DNS, TCP, TLS, HTTP, proxy, server socket, response path를 지나며 어떤 상태로 바뀌는지 설명합니다. 먼저 요청 한 번의 흐름을 잡고, 그다음 keep-alive, streaming, proxy, NAT, congestion control, socket 통신 질문으로 내려가면 됩니다.
+
 - [네트워크와 웹 프로토콜](#네트워크와-웹-프로토콜)
     - [먼저 기억할 정리](#먼저-기억할-정리)
     - [HTTP/gRPC와 스트리밍](#httpgrpc와-스트리밍)
@@ -35,14 +37,18 @@
 
 TCP/IP, HTTP, keep-alive, gRPC, proxy, Nginx처럼 프로세스 밖으로 나간 요청이 흐르는 경로를 다룹니다.
 
-> 원문 배치본입니다. source chunk의 문장은 유지하고, 대분류/중분류/소분류 계층에 맞게 Markdown heading depth만 조정했습니다. 원본 span과 SHA-256은 manifest에서 검증할 수 있습니다.
+> 출처 보존 메모: 아래의 `원문:` 절과 `curriculum-chunk` 주석은 원문 위치를 추적하기 위한 장치입니다. 학습할 때는 먼저 이 정리와 trace를 읽고, 필요한 질문에서 원문 절로 내려가면 됩니다.
 
 ## 먼저 기억할 정리
 
-네트워크 문서는 HTTP 문장만 보면 안 됩니다. 요청 하나는 애플리케이션 메시지, TCP 연결, kernel socket buffer, proxy hop, TLS session, 상대 서버의 처리 상태가 함께 움직이는 흐름입니다.
+네트워크 문서는 HTTP 문장만 보면 안 됩니다. `https://example.com/orders` 요청 하나는 애플리케이션 메시지, TCP 연결, kernel socket buffer, proxy hop, TLS session, 상대 서버의 처리 상태가 함께 움직이는 흐름입니다.
 
 ```text
-HTTP request
+https://example.com/orders
+  -> DNS answer
+  -> TCP connect
+  -> TLS handshake and session keys
+  -> HTTP request bytes
   -> client socket send buffer
   -> TCP segment / congestion window
   -> network path / NAT / firewall
@@ -53,7 +59,7 @@ HTTP request
 
 비교축은 "연결을 새로 만드는 비용", "연결 안에서 메시지를 재사용하는 방식", "느린 수신자가 어디에 압력을 남기는가"입니다. Keep-Alive는 HTTP 요청마다 TCP handshake를 새로 하지 않게 하지만, idle timeout, half-open 상태, proxy buffering, socket buffer 압력 같은 운영 상태를 함께 만들어 냅니다. Streaming도 "한 번에 다 만들지 않는다"에서 끝나지 않고, file read, page cache, TCP window, proxy buffer, client receive speed가 맞물립니다.
 
-검증 anchor는 `ss`, packet capture, proxy access/error log, TCP state, TLS handshake log, response header, client-side timeout입니다. connection refused와 timeout은 같은 실패가 아니며, 어느 층에서 거절됐는지 또는 어디서 기다리다 끝났는지를 분리해야 합니다.
+확인 방법은 `ss`, packet capture, proxy access/error log, TCP state, TLS handshake log, response header, client-side timeout입니다. connection refused와 timeout은 같은 실패가 아니며, 어느 층에서 거절됐는지 또는 어디서 기다리다 끝났는지를 분리해야 합니다.
 
 ## HTTP/gRPC와 스트리밍
 

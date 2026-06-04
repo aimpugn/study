@@ -1,5 +1,7 @@
 # 언어와 런타임
 
+이 문서는 문법 목록이 아니라 `java -jar app.jar`처럼 실행을 시작한 코드가 class metadata, stack frame, heap object, JIT compiled code, GC, runtime scheduler 상태로 바뀌는 과정을 설명합니다. 먼저 실행 상태가 어디에 만들어지는지 잡고, 그다음 JVM, Kotlin, PHP-FPM, Go runtime 질문으로 내려가면 됩니다.
+
 - [언어와 런타임](#언어와-런타임)
     - [먼저 기억할 정리](#먼저-기억할-정리)
     - [Class loading과 실행 준비](#class-loading과-실행-준비)
@@ -63,23 +65,24 @@
 
 언어 문법이 아니라 코드가 실행 단위가 되어 메모리, GC, 클래스 로딩, 런타임 스케줄러를 만나는 지점을 다룹니다.
 
-> 원문 배치본입니다. source chunk의 문장은 유지하고, 대분류/중분류/소분류 계층에 맞게 Markdown heading depth만 조정했습니다. 원본 span과 SHA-256은 manifest에서 검증할 수 있습니다.
+> 출처 보존 메모: 아래의 `원문:` 절과 `curriculum-chunk` 주석은 원문 위치를 추적하기 위한 장치입니다. 학습할 때는 먼저 이 정리와 trace를 읽고, 필요한 질문에서 원문 절로 내려가면 됩니다.
 
 ## 먼저 기억할 정리
 
-언어 런타임 질문은 문법 이름을 묻는 것처럼 보여도 실제로는 "소스 코드가 어떤 실행 상태로 바뀌는가"를 묻는 경우가 많습니다. `class loading`, `heap`, `stack`, `GC`, `JIT`, `scheduler` 같은 말은 각각 아래 흐름의 한 지점을 맡습니다.
+언어 런타임 질문은 문법 이름을 묻는 것처럼 보여도 실제로는 "소스 코드가 어떤 실행 상태로 바뀌는가"를 묻는 경우가 많습니다. 먼저 `java -jar app.jar`가 실행된 장면을 잡으면 `class loading`, `heap`, `stack`, `GC`, `JIT`, `scheduler`가 각각 왜 필요한지 보입니다.
 
 ```text
-source / bytecode
-  -> loader가 class metadata를 준비
-  -> runtime이 stack frame, heap object, thread state를 만듦
-  -> interpreter / JIT가 machine instruction 실행 경로를 고름
-  -> GC와 scheduler가 heap과 thread 진행 상태를 조정
+java -jar app.jar
+  -> class loader가 필요한 class metadata를 찾고 연결
+  -> main thread가 stack frame을 만들고 heap object를 생성
+  -> interpreter / JIT가 실행 경로를 고름
+  -> GC가 unreachable object를 회수
+  -> runtime scheduler와 OS scheduler가 thread 진행을 조정
 ```
 
 이 문서를 읽을 때는 새 개념을 기능 목록으로 외우지 말고, 어느 상태를 누가 소유하고 언제 바꾸는지로 연결합니다. Kotlin `inline`은 호출 경계와 bytecode 모양을 바꾸는 문제이고, GC는 객체 생명주기와 heap 압력을 조정하는 문제이며, PHP-FPM과 Go runtime 비교는 요청 하나가 프로세스, 스레드, goroutine, worker pool 중 어디에 머무는지의 차이입니다.
 
-검증 anchor는 코드와 런타임 관측입니다. JVM 주제는 class loading 로그, heap dump, thread dump, GC log, bytecode disassembly를 보면 설명을 다시 확인할 수 있고, Go/PHP runtime 비교는 프로세스 수, worker 수, goroutine/thread 상태, request latency를 함께 봐야 합니다.
+확인 방법은 코드와 런타임 관측입니다. JVM 주제는 class loading 로그, heap dump, thread dump, GC log, bytecode disassembly를 보면 설명을 다시 확인할 수 있고, Go/PHP runtime 비교는 프로세스 수, worker 수, goroutine/thread 상태, request latency를 함께 봐야 합니다.
 
 ## Class loading과 실행 준비
 

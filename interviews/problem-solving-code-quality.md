@@ -1,5 +1,7 @@
 # 문제 해결, 코드 품질, 운영 실천
 
+이 문서는 "코드를 잘 짠다"는 말을 구체적인 검증 경계로 바꾸는 문서입니다. 작은 테스트 하나가 실패했을 때 입력, 기대 결과, 실제 결과, mock이 대신한 외부 의존, 로그와 배포 health check가 어떻게 이어지는지 먼저 잡고, 그다음 패턴, 알고리즘, Docker, 테스트 더블 질문으로 내려가면 됩니다.
+
 - [문제 해결, 코드 품질, 운영 실천](#문제-해결-코드-품질-운영-실천)
     - [먼저 기억할 정리](#먼저-기억할-정리)
     - [설계 원칙과 패턴](#설계-원칙과-패턴)
@@ -25,7 +27,7 @@
 
 알고리즘, 복잡도, 테스트, mock, 패턴, Docker/배포처럼 문제를 풀고 코드를 신뢰 가능하게 만드는 실천 축을 다룹니다.
 
-> 원문 배치본입니다. source chunk의 문장은 유지하고, 대분류/중분류/소분류 계층에 맞게 Markdown heading depth만 조정했습니다. 원본 span과 SHA-256은 manifest에서 검증할 수 있습니다.
+> 출처 보존 메모: 아래의 `원문:` 절과 `curriculum-chunk` 주석은 원문 위치를 추적하기 위한 장치입니다. 학습할 때는 먼저 이 정리와 trace를 읽고, 필요한 질문에서 원문 절로 내려가면 됩니다.
 
 ## 먼저 기억할 정리
 
@@ -42,7 +44,7 @@ problem input
 
 비교축은 실제 객체와 대역 객체, 설계 패턴과 런타임 proxy, 개발 환경과 운영 환경입니다. Mock은 "가짜 객체"라는 말보다 어떤 호출을 기록하고 어떤 side effect를 막는지가 중요하고, proxy pattern은 중간 객체가 접근, lazy loading, logging, transaction 같은 정책을 어디서 가로채는지로 설명해야 합니다.
 
-검증 anchor는 unit/integration test, mock interaction verification, benchmark, container inspect/log, deployment health check입니다. 코드 품질 답변은 추상 원칙만 말하지 말고 어떤 실패를 더 빨리 발견하거나 어떤 변경을 더 안전하게 만들었는지로 닫아야 합니다.
+확인 방법은 unit/integration test, mock interaction verification, benchmark, container inspect/log, deployment health check입니다. 코드 품질 답변은 추상 원칙만 말하지 말고 어떤 실패를 더 빨리 발견하거나 어떤 변경을 더 안전하게 만들었는지로 닫아야 합니다.
 
 ## 설계 원칙과 패턴
 
