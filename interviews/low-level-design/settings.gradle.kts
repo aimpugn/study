@@ -1,0 +1,1 @@
+rootProject.name = "low-level-design"
