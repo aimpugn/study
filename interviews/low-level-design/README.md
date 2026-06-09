@@ -17,16 +17,25 @@ gradle test --tests '*MyLruCacheTest'
 
 ## 문제 목록 (우선순위 티어)
 
-| 티어 | 문제 | 핵심으로 박을 것 | 상태 |
-|---|---|---|---|
-| 자료구조 | LRU 캐시 | HashMap+이중연결로 모든 연산 O(1) | ✅ 정답지 |
-| 자료구조 | LFU 캐시 / Rate limiter | 빈도 버킷 / 토큰 버킷·슬라이딩 윈도우 | ⬜ |
-| 동시성 | 스레드 풀 | 큐+워커, 거부 정책(전략 패턴), shutdown 의미 | ⬜ |
-| 동시성 | 생산자-소비자(BlockingQueue) | 조건 변수·wait/notify, 경계 처리 | ⬜ |
-| 모델링 | 주차장 / 엘리베이터 | 추상 타입+합성, OCP로 확장 | ⬜ |
-| 패턴 | 로깅 · 알림 | Strategy / Observer / Chain | ⬜ |
+| 티어 | 문제 | 패키지 | 핵심으로 박을 것 | 상태 |
+|---|---|---|---|---|
+| 자료구조 | LRU 캐시 | `lld.lrucache` | HashMap+이중연결로 모든 연산 O(1) | ✅ 정답지+테스트 |
+| 자료구조 | LFU 캐시 | `lld.lfucache` | 빈도 버킷+minFreq, 동률은 LRU로 | ✅ 정답지+테스트 |
+| 자료구조 | Rate limiter | `lld.ratelimiter` | 토큰 버킷 lazy refill, 시계 주입 | ✅ 정답지+테스트 |
+| 동시성 | 스레드 풀 | `lld.threadpool` | 큐+워커, 거부 정책(전략), poison pill 종료 | ✅ 정답지+테스트 |
+| 동시성 | 생산자-소비자 | `lld.producerconsumer` | 락+두 Condition, while로 조건 재확인 | ✅ 정답지+테스트 |
+| 모델링 | 주차장 | `lld.parkinglot` | 추상 크기+best-fit, OCP로 확장 | ✅ 정답지+테스트 |
+| 패턴 | 로깅 라이브러리 | `lld.logging` | Formatter/Appender 전략 분리 | ✅ 정답지+테스트 |
 
 > JVM·백엔드면 **자료구조·동시성** 티어가 면접에서 더 자주, 더 깊게 들어온다. 거기부터.
+
+### 직접 변형해 볼 숙제 (정답지 없음)
+
+같은 패턴 축이라 정답지를 따로 두지 않았다. 위 문제로 감을 잡은 뒤 직접 변형하면 가장 많이 남는다.
+
+- **엘리베이터** — 주차장과 같은 모델링 축(상태 기계 + 스케줄링 전략 추가).
+- **알림 시스템** — 로깅과 같은 전략/옵저버 축(채널별 Sender 전략 + 구독자 Observer).
+- **Sliding window rate limiter** — `lld.ratelimiter`의 토큰 버킷을 슬라이딩 윈도우 카운터로.
 
 ## 공통 체크리스트 (어느 문제든)
 
