@@ -44,3 +44,78 @@ gradle test --tests '*MyLruCacheTest'
 - 상속 대신 합성을 쓴 자리와 그 이유
 - 동시성에서 깨지는 지점과 막는 법
 - 실무 대안(표준 라이브러리·검증된 구현)을 한 문장으로
+
+## 바닥부터 다시 만들기 (live coding·과제 대비)
+
+라이브 코딩이나 과제에서 "구현해 보세요"를 받으면 빈 디렉터리에서 시작할 수 있다.
+알고리즘만이 아니라 **테스트가 도는 프로젝트를 빠르게 세우는 것**도 연습 대상이라, 이 스캐폴드를 맨바닥에서 재현하는 법을 적어 둔다.
+
+**어떻게 만들어졌나**: LRU 하나를 `인터페이스(카드) + 정답지 + 내 구현 + 계약 테스트`의 여섯 파일로 먼저 완성하고, 같은 여섯 파일 구조를 문제마다 복제했다. 그래서 외울 것은 "문제 하나 = 여섯 파일 + 계약 테스트 패턴" 하나뿐이다.
+
+### 1. 스택 결정 (30초)
+
+Java 21 + JUnit 5 + Gradle(Kotlin DSL). 이유는 표준 빌드·테스트라 IDE·CI 어디서나 `gradle test` 한 줄로 끝나고, 테스트 의존성도 한 묶음이면 충분하기 때문이다.
+
+### 2. 최소 파일 (이 둘만 외우면 프로젝트가 산다)
+
+`settings.gradle.kts`:
+
+```kotlin
+rootProject.name = "low-level-design"
+```
+
+`build.gradle.kts`:
+
+```kotlin
+plugins { java }
+repositories { mavenCentral() }
+dependencies {
+    testImplementation(platform("org.junit:junit-bom:5.11.0"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
+tasks.test { useJUnitPlatform() }
+```
+
+디렉터리는 `src/main/java/<패키지>/`(구현)와 `src/test/java/<패키지>/`(테스트), 그리고 `gradle test`.
+
+> 더 빠르게: `gradle init`(대화형)이 위 파일과 wrapper를 만들어 준다. 위 build 파일은 그게 무엇을 만드는지 알고 직접 쓰는 버전이다.
+
+### 3. 핵심 재사용 트릭 — 계약 테스트 패턴
+
+정답지와 내 구현을 **같은 테스트로** 검증하는 비결은 추상 테스트 + 팩토리 구멍 하나다.
+
+```java
+abstract class XContractTest {
+    protected abstract X newX(int arg);          // 구현체가 바꿔 끼우는 구멍
+    @Test void 동작() { X x = newX(2); /* ...단언... */ }
+}
+class ReferenceXTest extends XContractTest {      // 정답지 연결, 항상 초록
+    protected X newX(int a) { return new ReferenceX(a); }
+}
+@Disabled("구현 시작하면 이 줄 삭제")
+class MyXTest extends XContractTest {              // 내 구현 연결
+    protected X newX(int a) { return new MyX(a); }
+}
+```
+
+테스트 케이스는 한 번만 쓰고, 정답지와 내 구현이 그대로 같은 통과 대상이 된다.
+
+### 4. 의존성이 없을 때 (화이트보드·제한된 환경)
+
+JUnit·Gradle을 못 쓰는 자리면, 구현 클래스 옆에 `main` 하나로 즉시 검증한다.
+
+```java
+static void check(boolean ok, String name) {
+    if (!ok) throw new AssertionError("FAIL: " + name);
+    System.out.println("ok: " + name);
+}
+// main 안에서:
+var c = new ReferenceLruCache<Integer, String>(2);
+c.put(1, "a"); c.put(2, "b"); c.put(3, "c");
+check(c.get(1) == null, "LRU 제거");
+check("b".equals(c.get(2)), "값 유지");
+```
+
+`javac *.java && java <메인클래스>`. 프레임워크 0개로 "돌아간다"를 보인다.
