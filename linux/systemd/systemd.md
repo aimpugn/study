@@ -1,990 +1,618 @@
-# systemd
+# systemd — PID 1은 어떻게 서비스의 생애 주기 전체를 관리하는가
 
-- [systemd](#systemd)
-    - [예제](#예제)
-        - [Spring application](#spring-application)
-- [Systemd Unit Syntax](#systemd-unit-syntax)
-    - [Basic Structure of a Systemd Unit File](#basic-structure-of-a-systemd-unit-file)
-    - [Example 1: Basic Service Unit](#example-1-basic-service-unit)
-        - [Explanation](#explanation)
-    - [Example 2: Web Server with Dependencies](#example-2-web-server-with-dependencies)
-- [Security settings](#security-settings)
-        - [Explanation](#explanation-1)
-    - [Example 3: Timer Unit (Scheduled Task)](#example-3-timer-unit-scheduled-task)
-- [my-backup.timer](#my-backuptimer)
-- [my-backup.service](#my-backupservice)
-        - [Explanation](#explanation-2)
-    - [Example 4: Mount Unit](#example-4-mount-unit)
-        - [Explanation](#explanation-3)
-    - [Example 5: Socket-Activated Service](#example-5-socket-activated-service)
-- [myapp.socket](#myappsocket)
-- [myapp.service](#myappservice)
-        - [Explanation](#explanation-4)
-    - [Common Directives](#common-directives)
-        - [\[Unit\] Section](#unit-section)
-        - [\[Service\] Section](#service-section)
-        - [\[Install\] Section](#install-section)
-    - [Managing Systemd Units](#managing-systemd-units)
-- [As the 'web' user](#as-the-web-user)
-- [As another user (e.g., during deployment)](#as-another-user-eg-during-deployment)
-- [As root](#as-root)
-- [`systemd`가 컨테이너에서 PID 1 프로세스로 동작 중이라면, 컨테이너 종료시 올바른 종료 신호가 필요합니다. 그런데 `systemd`는 `SIGTERM`이나 `SIGKILL`로 제대로 종료되지 않을 수 있습니다](#systemd가-컨테이너에서-pid-1-프로세스로-동작-중이라면-컨테이너-종료시-올바른-종료-신호가-필요합니다-그런데-systemd는-sigterm이나-sigkill로-제대로-종료되지-않을-수-있습니다)
-- [- Systemd does not exit on sigterm.  Systemd defines that shutdown signal as `SIGRTMIN+3`, docker upstream should send this signal when user does a docker stop](#--systemd-does-not-exit-on-sigterm--systemd-defines-that-shutdown-signal-as-sigrtmin3-docker-upstream-should-send-this-signal-when-user-does-a-docker-stop)
-- [- `SIGKILL`(`kill -9`): `systemd`는 즉시 종료되지만, 모든 하위 서비스는 제대로 정리되지 않고 그대로 남아 있을 수 있습니다](#--sigkillkill--9-systemd는-즉시-종료되지만-모든-하위-서비스는-제대로-정리되지-않고-그대로-남아-있을-수-있습니다)
-- [](#)
-- [`SIGRTMIN+3`신호를 받으면 `systemd`는 내부적으로 `systemctl stop`과 유사한 과정을 거쳐 모든 데몬 및 서비스를 순차적으로 종료함으로써 데이터 손실이나 불안정성을 최소화할 수 있습니다](#sigrtmin3신호를-받으면-systemd는-내부적으로-systemctl-stop과-유사한-과정을-거쳐-모든-데몬-및-서비스를-순차적으로-종료함으로써-데이터-손실이나-불안정성을-최소화할-수-있습니다)
-- [](#-1)
-- [References](#references)
-- [- https://developers.redhat.com/blog/2016/09/13/running-systemd-in-a-non-privileged-container#](#--httpsdevelopersredhatcomblog20160913running-systemd-in-a-non-privileged-container)
-- [- https://raby.sh/sigterm-and-pid-1-why-does-a-container-linger-after-receiving-a-sigterm.html](#--httpsrabyshsigterm-and-pid-1-why-does-a-container-linger-after-receiving-a-sigtermhtml)
-- [컨테이너가 시작될 때 항상 실행되어야 하는 명령을 정의합니다](#컨테이너가-시작될-때-항상-실행되어야-하는-명령을-정의합니다)
-- [systemd를 PID 1로 실행합니다](#systemd를-pid-1로-실행합니다)
-- [init 시스템이 PID 1로 실행되지 않는 경우 다음과 같은 문제들이 있을 수 있습니다](#init-시스템이-pid-1로-실행되지-않는-경우-다음과-같은-문제들이-있을-수-있습니다)
-- [- 1번 프로세스가 `SIGCHLD`를 몰라서 컨테이너 내에 무수히 많은 좀비 프로세스가 생성될 수 있고](#--1번-프로세스가-sigchld를-몰라서-컨테이너-내에-무수히-많은-좀비-프로세스가-생성될-수-있고)
-- [- 보통 `/dev/syslog`를 리스닝하는 프로세스가 존재하지 않아서 어떤 프로세스가 `syslog`에 로그를 남길 경우 해당 로그들은 사라지고](#--보통-devsyslog를-리스닝하는-프로세스가-존재하지-않아서-어떤-프로세스가-syslog에-로그를-남길-경우-해당-로그들은-사라지고)
-- [- 자체적인 Init 커맨드를 빌드해야 합니다](#--자체적인-init-커맨드를-빌드해야-합니다)
-- [`systemd`를 사용하면 서비스 실행 위한 표준 리눅스 API를 제공합니다](#systemd를-사용하면-서비스-실행-위한-표준-리눅스-api를-제공합니다)
-        - [1부 ― systemd가 탄생한 배경과 근본 개념 (Why \& How)](#1부--systemd가-탄생한-배경과-근본-개념-why--how)
-        - [2부 ― 동작 메커니즘의 큰 그림 (전체 흐름)](#2부--동작-메커니즘의-큰-그림-전체-흐름)
-        - [3부 ― 실무에서 꼭 알아야 할 Unit 문법](#3부--실무에서-꼭-알아야-할-unit-문법)
-        - [4부 ― 추가로 마스터하면 좋은 고급 주제](#4부--추가로-마스터하면-좋은-고급-주제)
-        - [5부 ― 학습 로드맵과 권장 자료](#5부--학습-로드맵과-권장-자료)
-    - [정리](#정리)
-    - [2 부 ― 잡 스케줄러·상태 추적자의 실제 흐름](#2-부--잡-스케줄러상태-추적자의-실제-흐름)
-        - [1. 부팅 임계 경로와 잡(job) 오케스트레이션](#1-부팅-임계-경로와-잡job-오케스트레이션)
-        - [2. 런타임 중 재시작·리소스 제어·신호 전파](#2-런타임-중-재시작리소스-제어신호-전파)
-        - [3. 타겟 전환, 고립(isolate), 종료 시퀀스](#3-타겟-전환-고립isolate-종료-시퀀스)
-    - [3 부 ― 유닛 파일 문법의 실전 설계 패턴](#3-부--유닛-파일-문법의-실전-설계-패턴)
-        - [A. 포크형 데몬: PostgreSQL을 systemd 친화적으로](#a-포크형-데몬-postgresql을-systemd-친화적으로)
-        - [B. notify 서비스: 고가용성 웹 서버와 소켓 활성화](#b-notify-서비스-고가용성-웹-서버와-소켓-활성화)
-        - [C. oneshot+timer: 시스템 백업과 전원 오프 구간 대비](#c-oneshottimer-시스템-백업과-전원-오프-구간-대비)
-        - [D. 템플릿 유닛과 인스턴스: 다중 SSH 포트](#d-템플릿-유닛과-인스턴스-다중-ssh-포트)
-        - [E. 드롭인(override) 전략: 패키지 업그레이드와 로컬 정책 공존](#e-드롭인override-전략-패키지-업그레이드와-로컬-정책-공존)
-        - [F. slice·scope: 다계층 리소스 계약](#f-slicescope-다계층-리소스-계약)
-        - [맺음말](#맺음말)
-    - [기타](#기타)
+이 문서의 출발 질문은 네 개가 연쇄된 것입니다.
 
-## 예제
+1. **systemd는 어떤 문제를 풀려고 등장했고, SysV init과 근본적으로 무엇이 다른가?**
+2. **유닛 파일 문법(`Type=`, `Restart=`, 리소스·보안 지시어)은 각각 어떤 운영 요구에서 나왔나?**
+3. **일반(서비스) 계정으로 데몬을 돌리려면 어떻게 하나 — 그리고 왜 `su`로 들어간 계정에서는 `systemctl`이 안 되나?**
+4. **컨테이너에서 systemd를 PID 1로 쓸 때 왜 `SIGTERM`이 아니라 `SIGRTMIN+3`을 보내야 하나?**
 
-### Spring application
+네 질문을 관통하는 한 가지 사실이 있습니다. **systemd는 "부팅 스크립트를 순서대로 돌리는 도구"가 아니라, 서비스가 시스템 전체와 맺는 관계(의존·순서·자원·수명·권한)를 선언으로 받아 커널 프리미티브(cgroup, 소켓, 신호, 네임스페이스)에 직결시키는 런타임**이라는 점입니다. su 문제도, SIGRTMIN+3도 이 모델의 귀결입니다.
 
-- [systemd 서비스로 관리](https://docs.spring.io/spring-boot/how-to/deployment/installing.html)
+> 이 문서의 관측값은 WSL2 위 Ubuntu 26.04 LTS(systemd 259.5, 커널 6.6.114.1-microsoft-standard-WSL2, PID 1 = systemd, `systemctl is-system-running` = `running`)에서 2026-06-10에 직접 실행해 얻은 것입니다. 정리 전 원자료는 [systemd_raw.md](systemd_raw.md)에 보존되어 있습니다.
+
+## 목차
+
+- [한 줄 답](#한-줄-답)
+- [왜 생겼나 — SysV init의 한계와 2010년의 재설계](#왜-생겼나--sysv-init의-한계와-2010년의-재설계)
+- [핵심 모델 — 유닛 · 의존성 그래프 · 잡 · cgroup](#핵심-모델--유닛--의존성-그래프--잡--cgroup)
+- [유닛 파일 문법 — 지시어가 답하는 운영 질문](#유닛-파일-문법--지시어가-답하는-운영-질문)
+- [실전 패턴 — 최소에서 변형까지](#실전-패턴--최소에서-변형까지)
+- [사용자 인스턴스 — su로 들어간 계정은 왜 systemctl이 안 되나](#사용자-인스턴스--su로-들어간-계정은-왜-systemctl이-안-되나)
+- [컨테이너의 PID 1 — 왜 SIGRTMIN+3인가](#컨테이너의-pid-1--왜-sigrtmin3인가)
+- [직접 확인해 보기](#직접-확인해-보기)
+- [출처](#출처)
+- [저장소 안 관련 문서](#저장소-안-관련-문서)
+
+## 한 줄 답
+
+1. systemd는 SysV init의 순차 부팅·상태 추적 부재를 풀기 위해, **모든 관리 대상을 유닛(unit)이라는 단일 추상으로 통일하고 의존성 그래프를 위상 정렬해 병렬 실행하며, cgroup으로 각 유닛의 모든 프로세스를 추적하는 PID 1**로 2010년에 등장했습니다.
+2. 유닛 문법의 각 지시어는 운영 질문 하나씩에 대응합니다 — `Type=`은 "준비 완료를 누가 알리는가", `Restart=`는 "죽으면 어떻게 하는가", `MemoryMax=`는 "자원을 얼마나 쓰게 둘 것인가".
+3. 일반 계정의 데몬은 **user 유닛 + `loginctl enable-linger`** 가 정석입니다. `su`로 들어간 계정에서 `systemctl`이 안 되는 이유는 권한이 아니라 **logind 세션 부재**입니다 — su는 호출자가 이미 세션 안이면 새 세션을 만들지 않고, 세션이 없으면 user 매니저도 `/run/user/<uid>`도 없습니다.
+4. PID 1인 systemd에게 `SIGTERM`은 종료가 아니라 **자기 재실행(reexec)** 신호입니다. 질서 있는 전체 종료를 트리거하는 신호는 `SIGRTMIN+3`(= `halt.target` 시작)으로 따로 예약되어 있습니다.
+
+## 왜 생겼나 — SysV init의 한계와 2010년의 재설계
+
+### SysV init이 안고 있던 네 가지 문제
+
+1980년대 AT&T System V에서 온 init은 "런레벨 디렉토리의 스크립트를 파일명 순서(`S20network` → `S80nginx`)로 실행"하는 모델이었습니다. 1990년대 중반부터 리눅스 배포판의 표준이었지만, 서버 환경이 커지면서 네 가지 구조적 한계가 드러났습니다.
+
+1. **순차 부팅** — 스크립트가 하나씩 실행되어, SSD·멀티코어 시대에도 부팅이 수십 초씩 걸렸습니다.
+2. **상태 추적 부재** — `/etc/init.d/foo start`가 성공했는지, 프로세스가 언제 죽었는지 init 자신이 알 방법이 없었습니다. 데몬이 double-fork로 스스로 백그라운드화하면 부모-자식 관계가 끊겨 추적이 불가능해집니다.
+3. **동적 하드웨어 대응 불가** — USB 랜카드처럼 "나중에 등장"하는 디바이스에 맞춰 서비스 기동 시점을 바꿀 수단이 스크립트 체계에는 없었습니다.
+4. **커널 신기능과의 단절** — cgroup·네임스페이스 같은 자원 제어 프리미티브를 init 수준에서 통합하지 못했습니다.
+
+### 설계자가 버린 가정들
+
+2010년 4월 30일 Lennart Poettering이 "Rethinking PID 1"을 발표하며 (Kay Sievers와 함께 개발한) systemd를 공개했습니다. 이 설계는 기존 init의 가정 세 개를 명시적으로 버렸습니다.
+
+- **"부팅은 스크립트의 순차 실행이다"** → 부팅은 의존성 그래프(DAG)의 위상 정렬이며, 의존이 풀린 노드는 동시에 실행합니다. 직접 영감은 2005년 Apple launchd의 소켓 활성화입니다 — 소켓을 먼저 열어 두면 "A가 B보다 먼저 떠야 한다"는 순서 제약의 상당수가 사라지고, 부팅이 병렬화됩니다.
+- **"데몬은 double-fork로 스스로를 관리한다"** → 데몬화는 매니저의 일입니다. 프로세스는 포그라운드로 실행되고, PID 1이 cgroup으로 그 프로세스와 모든 자손을 단일 객체로 추적합니다. 이 결정 덕분에 `Restart=`, `MemoryMax=` 같은 선언형 정책이 가능해졌습니다.
+- **"started를 출력하면 준비된 것이다"** → 준비 완료는 프로토콜(`sd_notify(READY=1)`, 소켓 활성화)로 알립니다.
+
+당시 대안으로 이미 Canonical의 Upstart(2006, Scott James Remnant)가 있었습니다. Upstart는 "이벤트 기반"(X가 일어나면 Y를 시작)이었는데, systemd는 이를 뒤집어 "목표 상태 기반"(Y가 필요하니 의존부터 거꾸로 해결)을 택했습니다. 예측된 부작용 — "PID 1이 너무 많은 일을 한다"는 비대화 비판 — 은 실제로 이후 10년간 init 전쟁의 핵심 논쟁이 됐습니다.
+
+### 타임라인
+
+| 연도 | 사건 | 의미 |
+|---|---|---|
+| 1983 | AT&T UNIX System V 출시 — 런레벨 기반 SysV init | 이후 20여 년 리눅스 배포판의 표준 |
+| 2005 | Apple launchd (Mac OS X 10.4 Tiger) | 소켓 활성화로 부팅 병렬화 — systemd의 직접 영감 |
+| 2006 | Canonical Upstart 공개, Ubuntu 6.10 채택 | 이벤트 기반 init 시도 |
+| 2010.04 | Poettering "Rethinking PID 1" 발표 | 의존성 그래프 + cgroup 상태 추적 모델 제시 |
+| 2011.05 | Fedora 15 — 첫 메이저 배포판 기본 채택 | |
+| 2012.10 | Arch Linux 기본 전환 | |
+| 2014.02 | Debian 기술위원회 표결(캐스팅보트)로 채택 결정, Ubuntu도 Upstart 포기 선언 | "init 전쟁"의 정점 |
+| 2014.06 | RHEL 7 채택 | 엔터프라이즈 표준화 |
+| 2014.11 | Devuan 포크 선언 | 반발 진영의 분리 |
+| 2015.04 | Debian 8, Ubuntu 15.04 기본 탑재 | 주요 배포판 전환 완료 |
+| 2015 | machinectl shell 추가(v225) | su의 세션 한계에 대한 공식 대안 |
+| 2016.05 | systemd 230 — `KillUserProcesses=yes` 기본값 전환 시도 | nohup·tmux가 죽는다는 반발로 대부분의 배포판이 no 유지 |
+| 2019 | Fedora 31 — cgroup v2 기본 전환 | 단일 계층 자원 모델로 이행 시작 |
+| 2022.09 | WSL2 systemd 지원 | 이 문서의 관측 환경 |
+
+## 핵심 모델 — 유닛 · 의존성 그래프 · 잡 · cgroup
+
+### 모든 것이 유닛이다
+
+systemd가 관리하는 대상은 전부 유닛이라는 같은 추상으로 표현되고, 같은 의존성 문법과 같은 도구(`systemctl`, `journalctl`)로 다뤄집니다.
+
+| 유닛 타입 | 관리 대상 | 대표 용도 |
+|---|---|---|
+| `.service` | 프로세스(데몬·일회성 작업) | 거의 모든 서비스 |
+| `.socket` | 소켓(TCP/UDP/UNIX/FIFO) | 소켓 활성화, lazy 기동 |
+| `.timer` | 시간 이벤트 | cron 대체 |
+| `.target` | 유닛 묶음(동기화 지점) | `multi-user.target` 같은 부팅 단계 |
+| `.mount` / `.automount` | 마운트 포인트 | fstab 통합, 지연 마운트 |
+| `.slice` | cgroup 계층의 가지 | 워크로드 그룹별 자원 한도 |
+| `.scope` | 외부에서 시작된 기존 프로세스 묶음 | 로그인 세션, `systemd-run --scope` |
+| `.path` / `.device` | 파일 경로 / udev 디바이스 | 경로·장치 이벤트로 서비스 기동 |
+
+`.slice`와 `.scope`의 구분이 자주 헷갈립니다 — slice는 "자원 계약의 계층 구조"(영구 정의), scope는 "systemd가 fork하지 않은, 이미 떠 있는 프로세스들을 사후에 편입하는 그릇"(런타임 생성)입니다. 로그인 세션(`session-N.scope`)이 scope인 이유가 이것입니다. 세션의 프로세스들은 systemd가 아니라 sshd 등이 fork했기 때문입니다.
+
+### 유닛 파일은 어디서 로드되나
+
+시스템 매니저 기준으로 세 경로를 읽으며, 위가 아래를 덮어씁니다.
+
+| 우선순위 | 경로 | 주체 |
+|---|---|---|
+| 1 (높음) | `/etc/systemd/system/` | 관리자 |
+| 2 | `/run/systemd/system/` | 런타임(generator 등) |
+| 3 (낮음) | `/usr/lib/systemd/system/` | 패키지 |
+
+사용자 매니저는 `~/.config/systemd/user/` > `/etc/systemd/user/` > `/usr/lib/systemd/user/` 순으로 같은 구조를 반복합니다.
+
+패키지가 제공한 유닛을 고치고 싶을 때 파일을 직접 수정하면 다음 업그레이드 때 충돌합니다. 대신 `foo.service.d/override.conf` 드롭인에 변경분만 넣습니다(상세는 [실전 패턴](#실전-패턴--최소에서-변형까지)의 변형 3). fstab처럼 유닛이 아닌 설정을 부팅 시점에 유닛으로 변환해 주는 generator 메커니즘은 [commands/systemd.md](../commands/systemd.md)에 따로 정리되어 있습니다.
+
+수정 후에는 `systemctl daemon-reload`로 매니저가 유닛 파일을 다시 읽고 의존성 그래프를 재구성하게 합니다. 서비스 자체 설정 파일을 다시 읽게 하는 `systemctl reload`와는 다른 명령입니다 — 이 혼동쌍은 [commands/systemctl.md](../commands/systemctl.md)에 정리했습니다.
+
+### 의존성과 순서는 다른 축이다 — Requires/Wants vs After/Before
+
+유닛 사이의 관계 지시어에서 가장 흔한 오해는 "Requires를 걸면 순서도 보장된다"입니다. 두 축은 독립입니다.
+
+| 지시어 | 축 | 의미 | 상대가 실패하면 |
+|---|---|---|---|
+| `Requires=` | 의존 | 함께 활성화되어야 함 (강한 의존) | 이 유닛의 잡도 취소됨 (dependency failed) |
+| `Wants=` | 의존 | 함께 활성화를 시도함 (약한 의존) | 이 유닛은 그대로 진행 |
+| `After=` | 순서 | 상대가 먼저 "준비 완료"된 뒤에 시작 | (의존 아님 — 상대를 띄우지 않음) |
+| `Before=` | 순서 | 상대보다 먼저 시작 | 〃 |
+| `Conflicts=` | 배제 | 동시에 활성화될 수 없음 | — |
+
+`Requires=postgresql.service`만 적고 `After=`를 빼면, 두 유닛은 **동시에** 시작됩니다 — postgres가 떠야 한다는 보장은 있지만 먼저 떠 있다는 보장은 없습니다. 그래서 실무 유닛에는 거의 항상 `Requires=`(또는 `Wants=`)와 `After=`가 쌍으로 들어갑니다.
+
+실패가 어떻게 전파되는지는 잡(job) 모델로 설명됩니다. 부팅 시 systemd는 `default.target`을 루트로 그래프를 만들고 위상 정렬 결과를 잡 큐에 넣습니다. 각 잡은 `queued → starting → running → done/failed`로 전이합니다. 예를 들어 `postgresql.service`가 `TimeoutStartSec=30`을 초과해 failed가 되면, 이를 `Requires=`로 의존하는 `myapp.service`의 잡은 실행되지 못한 채 "dependency failed"로 취소되고, `systemctl list-jobs`와 `systemctl status` 양쪽에서 그 인과가 그대로 읽힙니다. 부팅이 느릴 때 가장 늦게 준비된 경로를 역추적하는 도구가 `systemd-analyze critical-chain`입니다. 관측 환경에서의 실제 출력입니다.
+
+```text
+graphical.target @2.953s
+└─multi-user.target @2.953s
+  └─snapd.seeded.service @1.306s +1.190s   # @ = 활성화된 시각, + = 그 유닛이 걸린 시간
+    └─basic.target @1.243s                 # 이 체인에서는 snapd.seeded가 1.19s로 최대 지연원
+      └─sockets.target @1.242s
+        └─snapd.socket @1.212s +27ms
+          └─sysinit.target @1.167s
+```
+
+전형적인 진단 사례: NVMe로 바꿨는데도 부팅이 40초 걸린다면, 이 체인에 `network-online.target`(DHCP 대기)이 끼어 있고 많은 서비스가 그 뒤에 `After=`로 묶여 있는 경우가 많습니다.
+
+### 상태 추적의 단위는 PID가 아니라 cgroup이다
+
+systemd는 유닛마다 cgroup 디렉토리 하나를 만들고, 그 유닛이 낳는 모든 프로세스·스레드를 그 안에 가둡니다. 관측 환경에서 user 유닛으로 띄운 `sleep` 프로세스의 cgroup 실값입니다.
+
+```text
+$ cat /proc/<sleep의 PID>/cgroup
+0::/user.slice/user-1001.slice/user@1001.service/app.slice/sleeper.service
+#   └ uid 1001의 자원 가지  └ user 매니저      └ 유닛 이름이 곧 cgroup 경로
+```
+
+이 한 가지 설계에서 세 가지 운영 기능이 한꺼번에 나옵니다.
+
+1. **죽음의 감지와 재시작** — 메인 PID가 사라지면 cgroup 상태와 유닛 상태의 불일치를 즉시 인지하고 `Restart=` 정책(on-failure는 "0이 아닌 exit, 신호 사망, core dump"를 모두 트리거로 해석)으로 재시작 잡을 만듭니다. `StartLimitIntervalSec=` / `StartLimitBurst=`가 무한 재시작 루프를 막습니다.
+2. **신호의 전파** — `systemctl kill --kill-who=all foo.service`는 cgroup 안 모든 프로세스에게 신호를 보냅니다. double-fork로 숨은 손자 프로세스도 빠져나갈 수 없습니다.
+3. **자원 한도** — `MemoryMax=500M`을 선언하면 커널이 cgroup 한도에서 메모리를 강제합니다. 한도 초과 시 커널의 cgroup OOM kill이 일어나고, systemd는 그 결과를 유닛 상태(`Result=oom-kill`)로 기록한 뒤 `Restart=` 정책을 적용합니다. (원자료에는 "커널 OOM killer 대신 systemd가 먼저 동작"이라고 적혀 있었는데, 죽이는 주체는 커널이고 systemd는 그 결과를 유닛 모델에 반영하는 쪽이 정확합니다.)
+
+## 유닛 파일 문법 — 지시어가 답하는 운영 질문
+
+### 세 섹션의 역할
+
+| 섹션 | 답하는 질문 | 대표 지시어 |
+|---|---|---|
+| `[Unit]` | 그래프에서 이 노드는 누구와 어떻게 연결되나 | `Description=`, `Documentation=`, `After=`, `Requires=`, `Wants=`, `Conflicts=`, `ConditionPathExists=` |
+| `[Service]` | 프로세스를 어떻게 띄우고, 죽으면 어떻게 하고, 무엇까지 허용하나 | `Type=`, `ExecStart=`, `ExecStartPre=`, `ExecReload=`, `Restart=`, `User=`, `Environment=`, `MemoryMax=`, `PrivateTmp=` |
+| `[Install]` | `systemctl enable` 때 어느 타겟에 심볼릭 링크를 걸 것인가 | `WantedBy=`, `RequiredBy=`, `Alias=`, `Also=` |
+
+`enable`의 실체는 심볼릭 링크입니다. `WantedBy=multi-user.target`인 유닛을 enable하면 `/etc/systemd/system/multi-user.target.wants/foo.service` 링크가 생기고, 부팅 시 그 타겟이 활성화될 때 함께 끌려 올라옵니다. 관측 환경에서 user 유닛을 enable했을 때의 실제 출력이 이 구조를 그대로 보여 줍니다.
+
+```text
+Created symlink '/home/sdtest/.config/systemd/user/default.target.wants/sleeper.service'
+  → '/home/sdtest/.config/systemd/user/sleeper.service'
+# user 매니저의 부팅 타겟은 multi-user.target이 아니라 default.target
+```
+
+### Type= — "준비 완료"를 누가 어떻게 알리는가
+
+`Type=`은 단순한 분류가 아니라 **"After=로 이 유닛을 기다리는 다른 유닛을 언제 풀어 줄 것인가"의 판정 방법**입니다.
+
+| Type | 준비 판정 시점 | 필요한 협력 | 어울리는 경우 |
+|---|---|---|---|
+| `simple` | `fork()` 직후 즉시 | 없음 | 준비 시점이 중요하지 않은 포그라운드 데몬 |
+| `exec` (v240+) | `execve()` 성공 시 | 없음 | simple과 같되 바이너리 실행 실패를 잡고 싶을 때 |
+| `forking` | 부모 프로세스가 종료할 때 | `PIDFile=` | double-fork하는 전통 데몬 |
+| `oneshot` | 프로세스가 종료할 때 | (`RemainAfterExit=`) | 스크립트·일회성 작업, 타이머와 결합 |
+| `notify` | `sd_notify(READY=1)` 수신 시 | 데몬의 코드 협력 | 준비 시점이 중요한 현대 데몬 |
+| `dbus` | D-Bus 이름 획득 시 | `BusName=` | D-Bus 서비스 |
+| `idle` | 다른 잡이 끝난 뒤 | 없음 | 콘솔 출력 섞임 방지 정도 |
+
+`forking`과 `PIDFile=`이 필연적 쌍인 이유: 부모가 즉시 종료하는 모델에서는 PID 1이 "진짜 메인 프로세스"를 알 방법이 없으므로, 데몬이 써 주는 PID 파일을 읽어 cgroup 안에서 그 PID를 메인으로 지정해야 재시작 정책이 올바른 대상을 기준으로 동작합니다.
+
+### 안전장치 지시어 — 재시작 루프 · 자원 · 샌드박스
 
 ```ini
+[Service]
+Restart=on-failure            # 비정상 종료(exit!=0, 신호, core dump)에만 재시작
+RestartSec=2s                 # 재시작 전 대기 — crash 직후 즉시 루프 방지
+StartLimitIntervalSec=30      # 이 창(30초) 안에서
+StartLimitBurst=3             # 3회를 넘게 죽으면 더 이상 기동하지 않음 (hard fail)
+MemoryMax=500M                # cgroup v2 메모리 상한 — 초과 시 커널 OOM kill + Result=oom-kill
+TasksMax=512                  # fork 폭탄 방지 (프로세스+스레드 수 상한)
+LimitNOFILE=65536             # FD 한도 (ulimit -n 대응)
+PrivateTmp=true               # 이 유닛 전용 /tmp — 마운트 네임스페이스로 격리
+ProtectSystem=full            # /usr, /boot, /etc 읽기 전용 마운트
+NoNewPrivileges=true          # setuid 바이너리로도 권한 상승 불가
+AmbientCapabilities=CAP_NET_BIND_SERVICE  # 루트 없이 1024 미만 포트 바인딩
+                              # 주의: 시스템 유닛 전용 — user 매니저는 비특권이라 capability를 줄 수 없음
+```
+
+마지막 줄의 주의가 중요합니다. 원자료에는 `AmbientCapabilities=`가 user 유닛 예제에 들어 있었는데, 이는 동작하지 않습니다 — capability를 부여하는 주체가 특권을 가져야 하는데 user 매니저는 해당 사용자 권한으로 돕니다. user 유닛으로 80 포트를 직접 열 수 없는 이유이며, [사용자 인스턴스](#사용자-인스턴스--su로-들어간-계정은-왜-systemctl이-안-되나) 절의 선택 기준으로 이어집니다.
+
+## 실전 패턴 — 최소에서 변형까지
+
+같은 문법이 운영 시나리오마다 어떻게 조합되는지를, 가장 작은 예제에서 시작해 점층적으로 봅니다.
+
+### 최소 — Spring Boot 서비스 한 장
+
+"jar를 nohup으로 띄우고 로그아웃하면 죽는" 문제의 표준 해법입니다(Spring 공식 문서의 배포 방식).
+
+```ini
+# /etc/systemd/system/myapp.service
 [Unit]
 Description=myapp
-After=syslog.target network.target
+After=network.target            # 네트워크 설정 이후 시작 (단, "온라인 보장"은 network-online.target)
 
 [Service]
-User=myapp
+User=myapp                      # 전용 계정으로 — 최소 권한
 Group=myapp
-
 Environment="JAVA_HOME=/path/to/java/home"
-
 ExecStart=${JAVA_HOME}/bin/java -jar /var/myapp/myapp.jar
-ExecStop=/bin/kill -15 $MAINPID
-SuccessExitStatus=143
+                                # Environment=로 정의한 변수는 ExecStart에서 ${} 확장 가능
+SuccessExitStatus=143           # JVM은 SIGTERM(15)을 받으면 128+15=143으로 종료
+                                # 이 줄이 없으면 정상 stop이 매번 failed로 기록됨
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-다음과 같이 실행합니다.
+`sudo systemctl enable --now myapp.service`로 등록과 기동을 한 번에 합니다. 이 한 장으로 부팅 자동 기동, crash 시 상태 기록, `journalctl -u myapp` 로그 수집이 전부 따라옵니다.
 
-```sh
-#!/bin/bash
-sudo systemctl start myapp.service
+### 표준 — 소켓 활성화 + Type=notify
+
+드물게 호출되는 도구를 평소에 메모리에 올려 두지 않거나, 재배포 중에도 클라이언트 연결을 유실하지 않으려는 요구의 해법입니다. systemd가 소켓을 먼저 열어 두고, 첫 연결이 오면 그제야 서비스를 fork해 **이미 열린 소켓 FD를 3번부터 넘겨줍니다**(0/1/2 = stdin/stdout/stderr 다음).
+
+```go
+// main.go — systemd가 넘겨준 FD 3을 리스너로 쓰는 Go 서버
+l, err := net.FileListener(os.NewFile(3, "listener")) // FD 3 = SD_LISTEN_FDS_START
+if err != nil { log.Fatal(err) }
+
+mux := http.NewServeMux()
+mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
+
+daemon.SdNotify(false, "READY=1") // 이 시점에야 After=이 풀림 — 포트 바인딩·초기화 완료 보장
+log.Fatal(http.Serve(l, mux))
 ```
 
----
-
-# Systemd Unit Syntax
-
-Systemd is a system and service manager for Linux operating systems. It uses "units" to manage services, mounts, timers, and other
-system components. Let me explain the systemd unit syntax with detailed examples.
-
-## Basic Structure of a Systemd Unit File
-
-Systemd unit files are typically stored in /etc/systemd/system/ (for system-wide units) or /usr/lib/systemd/system/ (for units
-provided by installed packages). They use an INI-style syntax with sections and key-value pairs.
-
-## Example 1: Basic Service Unit
-
-ini
-[Unit]
-Description=My Example Service
-After=network.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=myuser
-ExecStart=/usr/bin/myapp --option=value
-Restart=on-failure
-RestartSec=5s
-
-[Install]
-WantedBy=multi-user.target
-
-### Explanation
-
-• **[Unit]** section: Contains metadata and dependencies
-  • Description: Human-readable description of the service
-  • After: Ensures this service starts after the network is up
-  • Wants: Expresses a weaker dependency than "Requires"
-
-• **[Service]** section: Defines how the service behaves
-  • Type=simple: Process started with ExecStart is the main process
-  • User: The user account to run the service
-  • ExecStart: The command to start the service
-  • Restart: When to restart the service (on-failure, always, on-abnormal, etc.)
-  • RestartSec: How long to wait before restarting
-
-• **[Install]** section: Defines how the unit is enabled
-  • WantedBy: Which target should include this service when enabled
-
-## Example 2: Web Server with Dependencies
-
-ini
-[Unit]
-Description=Web Application Server
-Documentation=<https://example.com/docs>
-After=network.target postgresql.service redis.service
-Requires=postgresql.service
-Wants=redis.service
-
-[Service]
-Type=notify
-User=webuser
-Group=webgroup
-WorkingDirectory=/var/www/myapp
-ExecStartPre=/usr/bin/mkdir -p /var/run/myapp
-ExecStart=/usr/bin/myapp serve --port=8080
-ExecReload=/bin/kill -HUP $MAINPID
-Restart=always
-RestartSec=10
-TimeoutStartSec=30
-EnvironmentFile=/etc/myapp/env.conf
-LimitNOFILE=65536
-
-# Security settings
-
-PrivateTmp=true
-ProtectSystem=full
-NoNewPrivileges=true
-
-[Install]
-WantedBy=multi-user.target
-
-### Explanation
-
-• Documentation: URL to documentation
-• Requires: Hard dependency (if PostgreSQL fails, this service stops)
-• Wants: Soft dependency (Redis is wanted but not required)
-• Type=notify: Service will notify systemd when it's ready
-• WorkingDirectory: Sets the working directory for the process
-• ExecStartPre: Command to run before starting the service
-• ExecReload: Command to reload the service
-• TimeoutStartSec: Maximum time to wait for service to start
-• EnvironmentFile: File containing environment variables
-• LimitNOFILE: Sets file descriptor limits
-• Security settings like PrivateTmp and ProtectSystem enhance security
-
-## Example 3: Timer Unit (Scheduled Task)
-
-ini
-
-# my-backup.timer
-
-[Unit]
-Description=Run backup daily at 2am
-Documentation=man:systemd.timer(5)
-
-[Timer]
-OnCalendar=*-*-* 02:00:00
-Persistent=true
-AccuracySec=1h
-RandomizedDelaySec=30min
-
-[Install]
-WantedBy=timers.target
-
-ini
-
-# my-backup.service
-
-[Unit]
-Description=Daily Backup Service
-After=network.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/backup-script.sh
-User=backup
-IOSchedulingClass=idle
-CPUSchedulingPolicy=idle
-Nice=19
-
-[Install]
-WantedBy=multi-user.target
-
-### Explanation
-
-• Timer unit triggers the service at specified times
-• OnCalendar: Cron-like time specification (daily at 2am)
-• Persistent=true: Run immediately if the system was off at scheduled time
-• AccuracySec: Accuracy window for timer (can help reduce system load)
-• RandomizedDelaySec: Random delay to avoid many timers starting at once
-• Type=oneshot: Service runs once and exits
-• IOSchedulingClass=idle: Low I/O priority
-• Nice=19: Lowest CPU priority
-
-## Example 4: Mount Unit
-
-ini
-[Unit]
-Description=Mount NFS Share
-After=network-online.target
-Wants=network-online.target
-
-[Mount]
-What=192.168.1.100:/shared
-Where=/mnt/nfs-share
-Type=nfs
-Options=rw,hard,intr,noatime
-
-[Install]
-WantedBy=multi-user.target
-
-### Explanation
-
-• [Mount] section: Specific to mount units
-• What: The device/share to mount
-• Where: The mount point
-• Type: Filesystem type
-• Options: Mount options
-
-## Example 5: Socket-Activated Service
-
-ini
-
-# myapp.socket
-
-[Unit]
-Description=Socket for MyApp Service
-Documentation=<https://example.com/docs>
-
+```ini
+# webapp.socket — 커널이 먼저 리슨 상태로 들고 있는 쪽
 [Socket]
-ListenStream=127.0.0.1:8080
-Accept=no
-
-[Install]
-WantedBy=sockets.target
-
-ini
-
-# myapp.service
-
-[Unit]
-Description=MyApp Service
-Requires=myapp.socket
-After=myapp.socket
-
-[Service]
-Type=notify
-ExecStart=/usr/bin/myapp --socket-mode
-User=myapp
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-
-### Explanation
-
-• Socket activation allows systemd to create the socket and pass it to the service
-• ListenStream: Defines TCP socket address and port
-• Accept=no: Service handles all connections on the socket
-• Service is started only when a connection is made to the socket
-
-## Common Directives
-
-### [Unit] Section
-
-• Description: Human-readable description
-• Documentation: URLs or man pages
-• After/Before: Ordering dependencies
-• Requires: Hard dependencies
-• Wants: Soft dependencies
-• Conflicts: Units that cannot run simultaneously
-• ConditionPathExists, ConditionPathIsDirectory: Conditional activation
-
-### [Service] Section
-
-• Type: simple, forking, oneshot, notify, dbus, idle
-• ExecStart, ExecStartPre, ExecStartPost: Commands to run
-• ExecStop, ExecReload: Commands for stopping/reloading
-• Restart: on-success, on-failure, on-abnormal, on-watchdog, on-abort, always
-• RestartSec: Time to wait before restart
-• TimeoutStartSec, TimeoutStopSec: Timeouts
-• User, Group: User/group to run as
-• WorkingDirectory: Working directory
-• Environment, EnvironmentFile: Environment variables
-• KillMode: control, process, mixed, none
-• PrivateTmp, ProtectSystem, ReadOnlyDirectories: Security settings
-
-### [Install] Section
-
-• WantedBy, RequiredBy: Target units that want/require this unit
-• Alias: Alternative names for the unit
-• Also: Other units to enable/disable together with this one
-
-## Managing Systemd Units
-
-After creating a unit file, you need to:
-
-1. Place it in /etc/systemd/system/
-2. Reload systemd: sudo systemctl daemon-reload
-3. Enable the service: sudo systemctl enable myservice.service
-4. Start the service: sudo systemctl start myservice.service
-5. Check status: sudo systemctl status myservice.service
-
-Would you like me to provide more specific examples for any particular type of service?
-
-> The service I want to create is run by 'web' user. And I want to make my app service managed by the 'web'. In this case, I think the service unit file is not placed at /etc/systemd/system. Isn't it? If so, where should I place and manage the file? The server is on-premise linux server. So currently I think do version control the service file at gitlab, and modify the file and review, and deploy by git and some shell script, and reload by `systemctl reload my-app.service`. How about this kind of usage?
-You're right about user-specific systemd units. When you want a service to be managed by a non-root user like 'web', you should use
-the user-specific systemd instance rather than the system-wide one.
-
-For user-specific services, the unit files are placed in different locations:
-
-1. ~/.config/systemd/user/ - For user-created units
-2. /usr/lib/systemd/user/ - For distribution-provided user units
-
-In your case, for the 'web' user, the path would be:
-/home/web/.config/systemd/user/my-app.service
-
-Your approach for managing this with version control is excellent. Here's how the workflow would look:
-
-1. Store the service unit file in GitLab
-2. Review and modify through merge requests
-3. Deploy using git and shell scripts to the correct location
-4. Reload the service using the user instance of systemd
-
-For user services, you'd use commands like:
-bash
-
-# As the 'web' user
-
-systemctl --user daemon-reload
-systemctl --user enable my-app.service
-systemctl --user start my-app.service
-systemctl --user status my-app.service
-
-If you need to run these commands from another user (like during deployment):
-bash
-
-# As another user (e.g., during deployment)
-
-sudo -u web XDG_RUNTIME_DIR=/run/user/$(id -u web) systemctl --user daemon-reload
-sudo -u web XDG_RUNTIME_DIR=/run/user/$(id -u web) systemctl --user restart my-app.service
-
-For the service to persist after the user logs out, you'll need to enable lingering:
-bash
-
-# As root
-
-loginctl enable-linger web
-
-This approach gives you:
-1. Version control for your service definitions
-2. Proper review process through GitLab
-3. Automated deployment
-4. Service management without requiring root privileges
-5. Separation of concerns (the 'web' user manages its own services)
-
-# `systemd`가 컨테이너에서 PID 1 프로세스로 동작 중이라면, 컨테이너 종료시 올바른 종료 신호가 필요합니다. 그런데 `systemd`는 `SIGTERM`이나 `SIGKILL`로 제대로 종료되지 않을 수 있습니다
-
-# - Systemd does not exit on sigterm.  Systemd defines that shutdown signal as `SIGRTMIN+3`, docker upstream should send this signal when user does a docker stop
-
-# - `SIGKILL`(`kill -9`): `systemd`는 즉시 종료되지만, 모든 하위 서비스는 제대로 정리되지 않고 그대로 남아 있을 수 있습니다
-
-#
-
-# `SIGRTMIN+3`신호를 받으면 `systemd`는 내부적으로 `systemctl stop`과 유사한 과정을 거쳐 모든 데몬 및 서비스를 순차적으로 종료함으로써 데이터 손실이나 불안정성을 최소화할 수 있습니다
-
-#
-
-# References
-
-# - <https://developers.redhat.com/blog/2016/09/13/running-systemd-in-a-non-privileged-container#>
-
-# - <https://raby.sh/sigterm-and-pid-1-why-does-a-container-linger-after-receiving-a-sigterm.html>
-
-STOPSIGNAL SIGRTMIN+3
-
-COPY docker-entrypoint.sh /usr/local/bin/
-
-# 컨테이너가 시작될 때 항상 실행되어야 하는 명령을 정의합니다
-
-ENTRYPOINT [ "docker-entrypoint.sh" ]
-
-# systemd를 PID 1로 실행합니다
-
-# init 시스템이 PID 1로 실행되지 않는 경우 다음과 같은 문제들이 있을 수 있습니다
-
-# - 1번 프로세스가 `SIGCHLD`를 몰라서 컨테이너 내에 무수히 많은 좀비 프로세스가 생성될 수 있고
-
-# - 보통 `/dev/syslog`를 리스닝하는 프로세스가 존재하지 않아서 어떤 프로세스가 `syslog`에 로그를 남길 경우 해당 로그들은 사라지고
-
-# - 자체적인 Init 커맨드를 빌드해야 합니다
-
-# `systemd`를 사용하면 서비스 실행 위한 표준 리눅스 API를 제공합니다
-
-CMD ["/lib/systemd/systemd"]
-
----
-
-### 1부 ― systemd가 탄생한 배경과 근본 개념 (Why & How)
-
-리눅스에서 **init** 시스템은 커널이 PID 1로 넘겨주는 첫 프로세스로서 부팅-종료 전 과정을 지휘합니다. 1990 년대 중반부터 대부분의 배포판은 **SysV init** 스크립트 체계를 사용했습니다. 그러나 대규모 서비스가 늘어나면서 “스크립트-기반 부트 시퀀스”는 아래와 같은 구조적 한계가 점점 두드러졌습니다.
-
-- **병렬 부팅 부재** ― Run-level 스크립트가 순차적으로 실행돼 SSD 시대에도 수십 초 이상이 소요됐습니다.
-- **의존성/상태 추적의 부재** ― `/etc/init.d/foo start` 가 성공했는지, 프로세스가 언제 죽었는지 init 자체가 모니터링하지 못했습니다.
-- **동적 하드웨어·버스 인식 부족** ― USB 랜카드·Bluetooth 등 “나중에 등장”하는 디바이스가 서비스 기동 시점을 바꿔야 하는데, 스크립트 체계는 ‘언제’라는 시간을 표현하기 힘들었습니다.
-- **cgroups/네임스페이스 등 커널 신기능과의 결합 부족** ― 자원 제한·경량 컨테이너 운용을 init 수준에서 통합할 수 없었습니다.
-
-2010 년 **Lennart Poettering** 가 주도해 발표한 **systemd**는 “서비스의 *수명 주기*와 *자원 제어*를 커널 프리미티브(cgroups, inotify, netlink, timerfd…)로 통합 관리하는 표준 PID 1”을 목표로 등장했습니다. 크게 두 가지 철학을 제시합니다.
-
-1. **Everything-is-a-dependency graph.**
-   서비스·소켓·타이머·마운트·스왑·디바이스·스냅샷까지 모든 객체를 **Unit** 이라는 추상으로 통일하고, 명시적 의존성을 그래프(Directed Acyclic Graph)로 모델링합니다. 그래프가 준비되는 즉시 병렬 실행하므로 *부팅이 짧아지고* 동적 장치 추가에도 재정렬이 자동입니다.
-
-2. **State tracking by the manager itself.**
-   스크립트가 “started”라고만 말하던 과거와 달리, systemd는 `ExecStart=` 로 실행한 메인 PID를 직접 추적하고, cgroup 전체를 *단일 컨트롤러 객체*로 묶어 OOM Kill·리소스 사용량·비정상 종료를 실시간 반영합니다. 그러므로 *재시작 정책* `Restart=`·*리소스 제한* `MemoryMax=` 같은 선언적 옵션이 가능해졌습니다.
-
----
-
-### 2부 ― 동작 메커니즘의 큰 그림 (전체 흐름)
-
-1. **PID 1 초기화** : 커널이 루트 fs를 마운트한 직후 `/usr/lib/systemd/systemd` 를 실행합니다. PID 1은
-
-   - `system.slice` 라는 최상위 cgroup 을 생성해 *모든* 유닛을 여기에 귀속시키고
-   - `/etc/systemd/system/*.wants/` 심볼릭 링크를 따라 기본 타겟(`default.target` → 보통 `graphical.target`)을 활성화합니다.
-
-2. **Unit 로드** :
-   A. `/etc/systemd/system` (관리자 override) → B. `/run/systemd/system` (런타임) → C. `/usr/lib/systemd/system` (패키지 제공) 순으로 `.service`, `.socket`, `.timer`… 파일을 읽어 **유효성 검사 후 in-memory graph**에 삽입합니다.
-   이 단계에서 `Wants=`·`Requires=`·`After=`·`Before=` 관계가 해석됩니다.
-
-3. **잡(Job) 스케줄링** : 그래프 위상 정렬 결과를 토대로 준비된 유닛을 동시에 `fork()` 하여 실행합니다. 각 잡은 `JOB_STARTING→RUNNING→DONE/FAILED` 로 전이하며, 실패 전이는 `Restart=`, `StartLimitInterval=` 정책이 가로챕니다.
-
-4. **런타임 관리** :
-
-   - cgroup 통계 + inotify + signalfd를 통해 메인 PID나 하위 스레드의 죽음/메모리 쓸림/FD 누수를 감시합니다.
-   - `systemctl kill` 은 `SIGTERM→SIGKILL` 을 *cgroup 트리 하위 전파* 방식으로 보냅니다.
-   - `journalctl` 이 `sd_journal_stream_fd` 를 통해 유닛별 stdout/stderr 및 커널 메시지를 캡처합니다.
-
-5. **타겟(Target) 전환과 종료** : 사용자 `systemctl isolate rescue.target` 같이 타겟을 바꾸면 graph 전체를 *새 루트 노드*로 재계산 후 필요 없는 유닛을 정리(`stop job`)합니다. `systemd-shutdown` 프로세스가 `/proc/1/exe` 재실행으로 전환돼 clean shutdown을 수행합니다.
-
----
-
-### 3부 ― 실무에서 꼭 알아야 할 Unit 문법
-
-| 섹션             | 대표 Directive                                                                                              | *왜*/ *어떻게*                                                                |
-| -------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| **\[Unit]**    | `Description=`, `Documentation=`, `After=`, `Requires=`                                                   | 의존성 그래프의 *노드 메타데이터* 를 서술합니다.                                              |
-| **\[Service]** | `Type=simple/forking/notify/oneshot`                                                                      | 프로세스 모델 제어. `notify` 는 `sd_notify()`로 readiness 시점을 알려 *소켓 활성화* 지연을 줄입니다. |
-|                | `ExecStartPre=/bin/mkdir -p /run/foo`<br>`ExecStart=/usr/bin/foo`<br>`ExecReload=/bin/kill -HUP $MAINPID` | *선/후행 단계*를 명확히 분리해 idempotent 한 배포를 도와줍니다.                                |
-|                | `Restart=on-failure`, `RestartSec=3s`                                                                     | crash loop 방지 + **self-healing** 사용자 경험을 제공합니다.                           |
-|                | `User=web`, `Group=web`, `AmbientCapabilities=CAP_NET_BIND_SERVICE`                                       | 루트 권한 없이 80 포트 바인딩 등 최소 권한 원칙.                                            |
-|                | `MemoryMax=500M`, `TasksMax=512`                                                                          | cgroup v2 자원 제한을 한 줄로 기술.                                                 |
-|                | `ProtectSystem=full`, `PrivateTmp=yes`, `NoNewPrivileges`                                                 | **seccomp, mount namespaces**를 조합해 경량 샌드박스 생성.                            |
-| **\[Install]** | `WantedBy=multi-user.target`, `Alias=httpd.service`                                                       | `systemctl enable` 시 `*.wants/` 심볼릭 링크를 생성하여 *부팅 영속성*을 부여합니다.             |
-
-특히 컨테이너·CI 환경에서는 **drop-in override** 기법이 중요합니다. `/etc/systemd/system/foo.service.d/override.conf` 에 *변경분만* 넣으면 패키지 업그레이드 시 충돌 없이 커스텀 설정을 유지할 수 있습니다.
-
----
-
-### 4부 ― 추가로 마스터하면 좋은 고급 주제
-
-1. **Socket & Bus Activation** : 데몬을 *lazy-loading* 패턴으로 바꾸어 메모리 푸트를 줄이고, 실패 시 graceful degradation 을 구현합니다. `ListenStream=`, `Accept=` 조합, 그리고 DBus 유닛(.service + .busname) 설계 방식을 실험해 보세요.
-
-2. **Timer Unit** : `OnCalendar=` 문법은 system cron 을 대체하며, `Persistent=true` 가 재부팅 이후 누락된 작업을 보전합니다. DevOps 파이프라인의 백업·로그 로테이션에 특히 유용합니다.
-
-3. **Portable Services / systemd-nspawn** : OCI 컨테이너보다 가벼운 “단일 cgroup + namespaces” 샌드박스를 통해 테스트 환경을 구성할 수 있습니다.
-
-4. **journalctl + Structured Logging** : `systemd-cat --level=warning` 이나 `sd_journal_print()` API로 key-value 형식 로그를 써 두면, `journalctl -u foo.service -o json-pretty` 쿼리를 통해 ELK 스택 없이도 구조화된 분석이 가능합니다.
-
-5. **Resource-Control Interfaces** : `systemctl set-property foo.service CPUQuota=40%` 같이 *런타임 조정*이 가능합니다. 오토스케일링 스크립트에서 유닛별 리소스를 실시간으로 리밸런싱하는 패턴이 자주 쓰입니다.
-
-6. **User Instance & Lingering** : 질문하신 “`systemctl --user` 배포” 흐름은 개발자 머신·VSCode 원격용 백그라운드 데몬, 그리고 멀티테넌트 CGI 서비스에서 유용합니다. `loginctl enable-linger web` 을 통해 로그인 세션 종료 후에도 `PID 1/user@UID.service` 가 유지됩니다.
-
----
-
-### 5부 ― 학습 로드맵과 권장 자료
-
-1. **man pages** : `man systemd.unit`, `man systemd.exec`, `man systemd.service` 를 ‘소설 읽듯’ 정독하세요. 모든 문법은 결국 이 3개 페이지를 중심으로 확장됩니다.
-2. **Freedesktop.org 사양서** : [https://systemd.io](https://systemd.io) 는 설계 배경과 커널 인터페이스 논의를 담은 *화이트페이퍼 모음*입니다. 특히 `CGROUPS` , `BOOTCHART` 문서를 권장합니다.
-3. **Red Hat Enterprise Linux Systemd Guide** : 기업 운영 환경에서 추천하는 보안·모니터링 인프라 통합 패턴을 상세히 다룹니다.
-4. **“The systemd for Administrators” 시리즈** (Lennart Poettering, 2010–2013) 는 각 서브시스템의 철학적 디자인 결정을 직접 설명합니다.
-5. **서킷 브레이크 실습** : 의도적으로 `ExecStart=/bin/false` 유닛을 작성해 `Restart=on-failure` 로 루프를 만든 뒤 `StartLimitBurst`, `StartLimitIntervalSec` 작동을 관찰해 보십시오.
-
----
-
-## 정리
-
-systemd는 “부팅 스크립트를 돌리는 도구”가 아니라 **리눅스 사용자 공간 전체를 그래프·cgroup·네임스페이스·커널 fd 프리미티브로 모델링하는 런타임**입니다. 따라서 *정확한 의존성 선언* + *상태 추적* + *자원 통제* + *보안 샌드박스* 를 **선언형**으로 표현할 수 있고, 이는 유지보수·관측 가능성·보안 측면에서 기존 SysV 시대를 압도합니다.
-
-이번 1차 답변에서는 역사·동작 원리·필수 문법을 ‘왜/어떻게’ 관점으로 묶어 보았습니다.
-다음 단계로 **유닛 디버깅(journalctl, systemd-analyze, coredumpctl)** 과 **컨테이너 내부의 PID 1로 systemd를 쓰는 베스트 프랙티스** 등을 더 깊이 보고 싶으시면 알려 주세요.
-
-systemd가 ‘모든 유닛이 하나의 의존성 그래프를 이루는 런타임’이라는 접근법이 실제로 어떻게 움직이는지, 그리고 그 그래프를 기술할 때 어떤 구문이 어떤 맥락에서 필요해지는지를 세밀한 시나리오를 통해 살펴보면 전체 동작이 훨씬 또렷해진다. 이번 2부에서는 PID 1 내부의 잡 스케줄러와 상태 추적자가 부팅·런타임·종료 국면에서 수행하는 과정을 단계별 사례로 해부하고, 3부에서는 그 과정을 기술하는 단위 언어(unit file 문법)를 실전 예제로 연결해 본다.
-
----
-
-## 2 부 ― 잡 스케줄러·상태 추적자의 실제 흐름
-
-### 1. 부팅 임계 경로와 잡(job) 오케스트레이션
-
-커널이 `/usr/lib/systemd/systemd`를 올리면 PID 1은 먼저 `/usr/lib/systemd/system/default.target`과 그것이 가리키는 `graphical.target`을 루트 노드로 그래프를 구축한다. 각 유닛 노드는 “트리”가 아니라 “유향 비순환 그래프”다. 서로 다른 서비스가 같은 소켓 유닛을 공유하거나, 하나의 타이머가 둘 이상의 oneshot 유닛을 기동할 수 있기 때문이다. 그래프가 완성되면 systemd는 위상 정렬 결과를 잡 큐에 넣는다. 잡은 `queued → starting → running → done/failed` 상태를 거치며, 어떤 노드가 실패하면 그 노드를 `Requires=`로 의존하던 모든 잡이 연쇄적으로 취소된다. DB 서버가 부팅 중 30 초 안에 리스너를 열지 못했다는 시나리오를 생각해 보자. `postgresql.service`가 `TimeoutStartSec=30`을 초과해 실패하면, 이를 `Requires=`로 선언한 `myapp.service`의 잡 객체는 즉시 “dependency failed”로 표기되고 실행 자체가 되지 않는다. `systemctl list-jobs`로 보면 두 유닛이 나란히 “failed”와 “dead”로 남아 있는 것을 확인할 수 있다. 이 메커니즘은 job 객체가 단 하나만 unit에 매핑된다는 D-Bus 인터페이스 설계로 표준화되어 있어, 관리자 GUI나 ansible 모듈이 동일한 상태 전이를 읽을 수 있다. ([freedesktop.org][1])
-
-이때 부팅 시간이 길어지는 지점을 잡으려면 `systemd-analyze critical-chain`이 의존 그래프를 역추적해 “현재 부팅에서 가장 늦게 준비된 경로”를 출력한다. 실제 현장에서 SSD를 NVMe로 교체했는데도 부팅이 40 초 이상 걸리는 사례를 분석해 보면, 종종 네트워크가 DHCP를 기다리는 동안 `network-online.target`을 `After=`로 둔 모든 서비스가 큐에 묶여 있음을 알 수 있다. 그래프의 임계 경로를 한눈에 표시해 주는 이 도구는 잡 스케줄러의 히스토리를 그대로 재생산하여 보여 준다.
-
-### 2. 런타임 중 재시작·리소스 제어·신호 전파
-
-부팅이 끝나면 PID 1은 각 유닛을 별도 cgroup(v2) 폴더에 격리해 놓고, 메인 PID뿐 아니라 그가 낳은 모든 쓰레드·grand-child까지 포함한 자식 집합을 inotify 없이 커널 내부 계층에서 관찰한다. 프로세스가 크래시로 사라지면 systemd는 ‘unit 상태’와 ‘cgroup 상태’가 달라진 것을 즉시 인지해 `Restart=` 정책을 적용한다. `Restart=on-failure`를 둔 웹 애플리케이션을 예로 들면, segfault가 발생했을 때 잡 스케줄러가 새로운 “restart job”을 만들고, `StartLimitIntervalSec`와 `StartLimitBurst` 창구에서 루프 보호기를 돌린다. Red Hat 가이드가 “자체 헬스 체크 스크립트를 실행해 로그와 메모리를 덤프한 뒤 다시 올려라”는 패턴을 소개하는 이유도 여기에 있다.
-
-신호 처리는 *cgroup 전파*라는 특성을 가진다. 관리자가 `systemctl kill --kill-who=all myapp.service`를 실행하면, PID 1은 `SIGTERM`을 잔여 모든 쓰레드·하위 프로세스에게 동시에 전달한다. docker 컨테이너처럼 ‘PID 1이 시그널을 무시하는 환경’에서는 이 전파가 일어나지 않으므로, systemd를 PID 1로 두면 “좀비가 쌓이지 않는다”라는 이점이 바로 여기서 나온다.
-
-### 3. 타겟 전환, 고립(isolate), 종료 시퀀스
-
-서비스 장애로 긴급 모드로 전환해야 할 때 관리자는 `systemctl isolate rescue.target`을 호출한다. isolate는 “새 루트 노드”를 재정의해 현재 그래프와 목표 그래프의 차집합을 계산한 뒤 필요 없는 모든 유닛에 stop 잡을 발급한다. 이 과정은 부팅 때와 동일한 잡 스케줄러를 역방향으로 이용하며, 따라서 부트와 같은 통일된 정책으로 의존성을 지킨다. 종료 시점에는 PID 1이 `/proc/1/exe`를 재실행해 `systemd-shutdown` 모드로 들어가고, 각 파일 시스템을 `umount -r` 하다가 busy 상태를 감지하면 해당 cgroup을 다시 신호해 가며 순서를 보장한다. 컨테이너에서 `STOPSIGNAL SIGRTMIN+3`이 필요한 것도, systemd가 “정식” 종료 경로를 허용하는 유일한 시그널을 실시간 영역에 배정했기 때문이다.
-
----
-
-## 3 부 ― 유닛 파일 문법의 실전 설계 패턴
-
-### A. 포크형 데몬: PostgreSQL을 systemd 친화적으로
-
-```ini
-# /etc/systemd/system/postgresql.service
-[Unit]
-Description=PostgreSQL database server
-After=network.target
-Documentation=https://www.postgresql.org/docs/
-
-[Service]
-Type=forking                # postmaster가 부모를 종료하고 새 PID로 전환
-User=postgres
-Group=postgres
-# PIDFile이 없으면 Type=forking은 ready 시점을 알 수 없다
-PIDFile=/run/postgresql/14-main.pid
-ExecStart=/usr/pgsql-14/bin/pg_ctl start -D /var/lib/pgsql/14/data -s -o "-c config_file=/etc/postgresql/14/main/postgresql.conf"
-ExecReload=/usr/pgsql-14/bin/pg_ctl reload -D /var/lib/pgsql/14/data -s
-# LSN flush가 끝나지 않았을 때 90 초 이상 기다려야 할 수 있다
-TimeoutStopSec=90
-Restart=on-failure
-# crash loop 방지
-StartLimitIntervalSec=300
-StartLimitBurst=3
-
-[Install]
-WantedBy=multi-user.target
-```
-
-위 예제에서 `Type=forking`과 `PIDFile=`은 필연적으로 쌍을 이룬다. 포크형 데몬 모델은 부모 프로세스가 즉시 종료되므로 PID 1이 “준비 완료”를 판단할 근거가 없기 때문이다. `pg_ctl`이 PID 파일을 쓰면, systemd는 그 파일을 열어 메인 PID를 읽고 cgroup에 편입시킨다. 재시작 정책이 메인 PID를 기준으로 동작하기 때문에, 데이터베이스가 core dump 로 죽어도 “유닛 상태”는 정확히 fail 로 표시된다. 문법적으로는 `RestartSec=`만 적으면 시스템 전체의 부트·런타임 경험을 동일한 로직으로 통제할 수 있다.
-
-### B. notify 서비스: 고가용성 웹 서버와 소켓 활성화
-
-웹 애플리케이션을 고속 롤링 배포하려면 “리스너 포트가 열리기 전에 *ready* 신호를 보내지 않는” 보장성이 필수다. 이때 `Type=notify`와 `sd_notify(READY=1)`의 조합이 자연스럽다.
-
-```ini
-# webapp.service (user 단 또는 system 단 모두 가능)
-[Unit]
-Description=My Go Web Server
-After=network.target
-Requires=webapp.socket   # 소켓 활성화와 짝을 이룸
-
-[Service]
-Type=notify
-User=web
-# Podman 컨테이너를 직접 실행해도 됩니다
-ExecStart=/usr/local/bin/webapp --listen-fd=3
-# conmon이 --sdnotify=conmon 방식으로 READY=1을 보내도록 설정
-NotifyAccess=all
-Restart=always
-Environment=GODEBUG=madvdontneed=1      # 예: 메모리 단편화 완화
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```ini
-# webapp.socket
-[Unit]
-Description=WebApp socket
-
-[Socket]
-ListenStream=0.0.0.0:8080
-Accept=no          # 단일 워커 모델, 리버스프록시 앞단
+ListenStream=127.0.0.1:9000
+Accept=no                       # 연결마다 새 프로세스가 아니라, 리스너 자체를 단일 데몬에 인계
 
 [Install]
 WantedBy=sockets.target
 ```
 
-이 구성에서는 커널이 TCP 8080을 이미 리슨 상태로 열어 둔 채로 첫 번째 SYN 패킷을 systemd가 잡아 두고, webapp 프로세스가 `sd_notify()`로 READY를 보낸 뒤에야 연결을 전달한다. 빠르게 재배포하더라도 커넥션 큐에 쌓인 SYN 패킷은 유실되지 않는다. webapp이 panic으로 종료되면 `Restart=` 정책이 새 프로세스를 띄우고, 이미 열려 있는 소켓 FD를 그대로 상속하므로 클라이언트 관점에서는 오류가 거의 보이지 않는다.
+```ini
+# webapp.service — 첫 SYN이 올 때만 fork되는 쪽
+[Unit]
+Requires=webapp.socket          # 소켓과 생사를 같이함
+After=webapp.socket
 
-### C. oneshot+timer: 시스템 백업과 전원 오프 구간 대비
+[Service]
+Type=notify                     # READY=1 수신 전에는 "준비"로 치지 않음
+ExecStart=/usr/local/bin/webapp
+Restart=always                  # panic으로 죽어도 소켓 FD는 systemd가 들고 있으므로
+                                # 재기동 사이에 도착한 SYN은 커널 큐에 보존됨 — 무중단처럼 보임
+```
 
-`cron`보다 신뢰도가 높은 타이머 예시는 아래와 같다. `Persistent=true`가 핵심인데, 전원이 꺼진 채 정각을 지나도 부팅 직후 backlog가 실행된다.
+서비스가 죽었다 살아나는 동안에도 소켓은 systemd 소유로 계속 열려 있다는 점이 고가용성의 핵심입니다. 두 번째 접속자는 실패를 느끼지 못합니다.
+
+### 변형 1 — oneshot + timer: cron을 대체할 때
+
+cron 대비 차별점은 두 가지입니다. 전원이 꺼져 정각을 놓쳐도 부팅 직후 보정 실행되는 `Persistent=true`(마지막 트리거 시각을 `/var/lib/systemd/timers/`의 stamp 파일에 기록해 두고 비교 — 관측 환경에서 `stamp-apt-daily.timer` 등 실재 확인. 원자료의 "journald 데이터베이스에 저장" 서술은 부정확), 그리고 여러 서버가 동시에 I/O를 몰아치는 것을 막는 `RandomizedDelaySec=`입니다.
 
 ```ini
-# backup.timer
-[Unit]
-Description=Run nightly backup
-
+# nightly-backup.timer
 [Timer]
-OnCalendar=*-*-* 02:00:00
-Persistent=true
-RandomizedDelaySec=15m
+OnCalendar=*-*-* 02:00:00       # ISO 8601 유사 문법 — "매월 셋째 수요일 22:30"도 선언 가능
+Persistent=true                 # 꺼져 있던 시간대의 미실행분을 부팅 직후 보정
+RandomizedDelaySec=15m          # 서버 군집의 동시 실행 분산
 
 [Install]
 WantedBy=timers.target
 ```
 
 ```ini
-# backup.service
-[Unit]
-Description=Nightly backup to object storage
-After=network-online.target
-
+# nightly-backup.service — 타이머가 당기는 쪽
 [Service]
 Type=oneshot
 User=backup
-EnvironmentFile=/etc/backup/vars
-# 느린 외부 저장소를 감안해 I/O 우선순위 조정
-IOSchedulingClass=idle
+IOSchedulingClass=idle          # 본 서비스 I/O에 양보
 Nice=19
-ExecStart=/usr/local/bin/backup.sh  # 스크립트 내부에 rsync, rclone 등
+ExecStart=/usr/local/bin/backup.sh
 ```
 
-타이머는 `systemctl list-timers`로 스케줄을 점검할 수 있고, 관리자 입장에서는 `OnCalendar=`에 ISO8601 규칙을 그대로 넣기 때문에 “매월 셋째 주 수요일 22:30” 같은 복잡한 일정도 선언형으로 남긴다.
+스케줄 확인은 `systemctl list-timers`(다음 실행·마지막 실행이 한 화면에), 실행 이력은 `journalctl -u nightly-backup.service`입니다.
 
-### D. 템플릿 유닛과 인스턴스: 다중 SSH 포트
-
-SSH를 2222, 2223 두 포트에서 별도 키·설정을 사용해 돌려야 한다면, 템플릿 유닛을 하나만 배포하면 된다.
+### 변형 2 — 템플릿 유닛: 같은 데몬을 N개 띄울 때
 
 ```ini
-# sshd@.service
-[Unit]
-Description=OpenSSH server per instance
-
+# sshd@.service — 파일명의 @가 템플릿 표식
 [Service]
 Type=notify
 ExecStart=/usr/sbin/sshd -D -f /etc/ssh/sshd_config.d/%i.conf
+# %i = 인스턴스 이름. enable sshd@2222.service 하면 %i가 2222로 치환
 ```
 
-`systemctl enable sshd@2222.service`와 같이 인스턴스를 만들면 `%i`가 2222로 치환된다. 템플릿 메커니즘은 실질적으로 “변수 기반 매크로”를 제공하기 때문에, 데이터베이스 샤딩, 다중 VPN 포트, 수십 개의 리버스 프록시 워커처럼 반복적인 설정을 단일 파일로 유지할 수 있다.
+`systemctl enable --now sshd@2222.service sshd@2223.service`처럼 단일 파일로 다중 포트 SSH, DB 샤드, 프록시 워커 군을 관리합니다.
 
-### E. 드롭인(override) 전략: 패키지 업그레이드와 로컬 정책 공존
-
-패키지 관리자가 제공한 `.service`를 그대로 수정하면 다음 업데이트 때 충돌이 난다. 이를 피하려면 `/etc/systemd/system/nginx.service.d/override.conf` 같이 별도 파일을 두고 달라지는 행만 적는다.
+### 변형 3 — drop-in: 패키지 유닛을 안전하게 덮어쓸 때
 
 ```ini
-# override.conf
+# /etc/systemd/system/nginx.service.d/override.conf — 달라지는 행만 적는다
 [Service]
-# 배포 환경별 메모리 한도
 MemoryMax=1G
 ProtectSystem=strict
 ```
 
-`systemctl daemon-reload`는 각 유닛의 모든 드롭인을 묶어 최종 effective unit을 다시 계산한다. 큰 규모 시스템에서는 reload 시간이 길어질 수 있으므로(유닛 수가 수천 개일 때 몇 초 이상) Red Hat 문서에서도 변경 후 즉시 reload를 강조한다. ([docs.redhat.com][6])
+`systemctl edit nginx`가 이 구조를 만들어 주며, `daemon-reload` 시 모든 드롭인을 합성해 최종 유닛을 재계산합니다. 패키지 업그레이드가 원본 유닛을 갈아치워도 로컬 정책이 살아남습니다. 합성 결과 확인은 `systemctl cat nginx`.
 
-### F. slice·scope: 다계층 리소스 계약
-
-web 애플리케이션과 백업 작업이 한 서버에서 경쟁할 때, 백업은 CPU 40 % 이내로, 웹은 메모리 4 GB 이내로 묶어야 한다는 식의 정책은 slice와 scope로 집행된다.
+### 변형 4 — slice·scope: 이미 떠 있는 프로세스까지 자원 계약에 넣기
 
 ```bash
-# 웹 계층을 별도 slice로
-systemctl set-property --runtime web.slice CPUQuota=60% MemoryMax=4G
+# 웹 계층 전체에 자원 상한 — slice는 영구 계층 정의
+systemctl set-property web.slice CPUQuota=60% MemoryMax=4G
 
-# ad-hoc 백업 스크립트를 scope로 묶어 제어
-systemd-run --scope -p CPUQuota=30% -p IOWeight=10 bash backup.sh
+# 한두 시간 돌릴 분석 스크립트를 scope로 격리 — 일회성 작업의 사후 편입
+systemd-run --scope -p CPUQuota=30% -p IOWeight=10 bash analyze.sh
+# 반환된 run-rXXXX.scope 이름으로 journalctl -u 추적 가능
 ```
 
-slice는 영구 유닛 파일로 남아 구조를 정의하고, scope는 ‘이미 실행 중인 PID 집합’을 임시로 systemd 관리 하에 편입할 때 쓰인다. 동일한 커널 cgroup 인터페이스를 이용하므로, 향후 eBPF 계측이나 머신 러닝 기반 오토스케일링과도 쉽게 연동된다.
+서비스 유닛과 임시 작업이 같은 cgroup 프레임워크에 들어가므로, "분석 작업이 웹 서비스와 CPU를 어떻게 다퉜는가"가 같은 도구(`systemd-cgtop`, `systemd-cgls`)로 관측됩니다.
 
----
+## 사용자 인스턴스 — su로 들어간 계정은 왜 systemctl이 안 되나
 
-### 맺음말
+### 매니저는 둘이다
 
-잡 스케줄러는 “의존성 그래프를 구성해 목표 상태를 향해 작업 큐를 자동 정렬”하는 엔진이며, 유닛 파일 문법은 그 그래프의 노드·엣지를 **선언형 언어**로 기술하는 수단이다. 포크·notify·oneshot·template·override·slice 같은 문법 기능은 각각 특정 운영 시나리오에서 필요한 보장 조건(준비 시점의 명확성, 반복 인스턴스 관리, 패키지-로컬 정책 분리, 리소스 계약)을 충족시키기 위해 등장했다. 이러한 맥락을 이해하고 나면 systemd 설정은 더 이상 ‘암기 과목’이 아니라, 리눅스 커널의 cgroup·네임스페이스·fd 프리미티브에 대한 *설계도*를 작성하는 작업이 된다. 실무에서는 journal 구조화 로깅, systemd-analyze critical-chain, 그리고 `systemctl show -p`를 함께 사용해 지금 설명한 메커니즘이 실제로 어떻게 작동하는지 확인해 보는 것이 학습에 큰 도움이 된다.
+systemd 매니저는 시스템에 하나(PID 1)만 있는 것이 아닙니다. 사용자마다 전용 매니저 `user@<uid>.service`(프로세스로는 `systemd --user`)가 뜰 수 있고, `systemctl --user`는 PID 1이 아니라 **이 user 매니저에게** D-Bus(`$XDG_RUNTIME_DIR/bus`)로 말을 겁니다. user 유닛은 `~/.config/systemd/user/`에 두고, 루트 권한도 polkit 인가도 없이 그 계정 스스로 관리합니다 — 애초에 "권한 부여"가 필요 없는 영역입니다.
 
----
-
-부팅이 끝난 뒤에도 서버가 한동안 멀쩡해 보이다가, 월요일 아침 첫 트래픽이 몰리는 순간에만 웹 애플리케이션이 쿼리 오류를 뿜고 중단되는 상황을 자주 겪던 팀이 있었다. 로그를 자세히 뒤져 보니 root 계정이 작성해 둔 두 개의 셸 스크립트가 문제의 핵심이었다. 하나는 데이터베이스를 시작하고 포그라운드를 떠난 뒤 즉시 0 을 반환했고, 다른 하나는 곧바로 그 다음 줄에서 웹 서버를 띄웠다. 데이터베이스 내부 캐시를 채우는 데 평소보다 오래 걸리면 웹 서버는 아직 열리지 않은 TCP 포트에 접속하려고 하다가 예외를 내고 죽었다. 이때 systemd 로 마이그레이션하면서 처음 한 일은 두 파일을 각각 postgresql.service 와 web.service 라는 두 노드로 옮기고, graph 의 간선을 “ web → postgres ”로 묘사하는 `Requires=` 와 `After=` 키로 표현한 것이다. 이제 PID 1 은 그래프를 따라 topological sort 를 돌린 뒤 데이터베이스 프로세스가 실제로 `READY=1` 신호를 보낼 때까지 큐에서 웹 서버 잡을 꺼내지 않는다. 불시에 부팅 시간이 늘어나도 순서는 절대 뒤집히지 않는다. systemd 가 “서비스를 등록하라”는 요구는 사실상 *의존성 규칙을 커널 타이밍과 독립적인 형태로 선언* 하라는 뜻이다. 수년에 걸친 운영 경험은 이 규칙 선언이 없을 때 매번 사람이 장애를 해석해 가며 재현 불가능한 스크립트를 수정해야 한다는 교훈을 남겼다.
-
-며칠 뒤, 같은 서버에서 새 로깅 기능이 추가된 웹 애플리케이션이 매우 불안정해졌다. 오전 내내 segfault 로 쓰러졌다가 cron 이 도는 새벽 두 시에야 겨우 재부팅되곤 했다. systemd 에서는 `Restart=on-failure`를 한 줄 넣어 두면 메인 PID 가 커널에서 비정상 종료로 보고된 즉시 새로운 start job 이 발행된다. 잡 스케줄러는 루프 폭주를 막기 위해 최근 n 초 안에 몇 번 재시도했는지도 기억한다. Red Hat 운영 가이드는 “재시도 간격과 횟수를 정책적으로 제어하라”며 `StartLimitIntervalSec` 과 `StartLimitBurst` 를 권장한다. 이런 정책이 서비스 파일에 들어 있으면 장애가 일어난 다음 날 회의에서 “어제 08:42 에 네 번 재시작했고 오점검은 08:45 에 끝났다”처럼 상태 이력을 그대로 재현할 수 있다. 등록이 곧 *장애 대응 시나리오를 코드화* 하는 과정이라는 사실이 여기서 분명해진다.
-
-운영자는 또 다른 난제를 안고 있었다. 개발 팀이 남긴 임시 파서 프로세스가 메모리를 계속 차지해 서버 전체가 느려지는 일이 반복됐기 때문이다. systemd 는 모든 서비스를 cgroup v2 트리의 한 가지점 아래로 배치해, 프로세스가 자식이나 스레드를 몇 개를 낳더라도 전체를 하나의 리소스 엔티티로 본다. `MemoryMax=500M` 를 넣은 뒤에는 RSS 가 그 한계를 넘자마자 kernel OOM killer 대신 systemd 자체가 `service state: failed (memory)` 로 바꾸고 즉시 재시작을 시도한다. cgroup 을 직접 쓰면 가능하긴 하지만, Red Hat 문서는 “특별히 구버전 컨트롤러가 필요한 경우가 아니라면 systemd 에게 맡겨라”라고 단언한다. 왜냐하면 리소스 한도와 재시작 정책, 의존성 그래프가 동일한 객체 모델 안에 들어 있어야 장애를 설명할 때 “A 서비스가 메모리를 초과해 재시작하면서 B → C 순서로 영향” 같은 인과를 한눈에 추적할 수 있기 때문이다.
-
-백업 팀은 또 다른 고민이 있었다. 전원 점검 때문에 밤새 서버가 꺼져 있으면 cron 의 02 시 작업이 사라지는 바람에 증분 백업 간격이 깨졌다. systemd 의 타이머는 `OnCalendar=*-*-* 02:00:00` 이라는 문법에 `Persistent=true`를 붙이면 “지난번 스케줄이 부팅 중에 놓쳤다면 부팅 직후 즉시 실행”이라는 규칙을 내장한다. 또한 `RandomizedDelaySec=15m`를 더해 열 대의 서버가 동시에 I/O 를 몰아가는 ‘백업 쓰로틀 역설’을 피할 수 있다. 타이머 역시 유닛이므로 실패 로그는 `journalctl -u backup.service`에서 찾으면 되고, 다음 예약 시각은 `systemctl list-timers` 가 알려 준다. 이렇게 스케줄러 교체 없이도 “작업 언제 돌았나” 기록과 “다음 실행은 언제” 예측이 같은 프레임워크에 담긴다.
-
-팀에선 또 한 명의 개발자가 MinIO 같은 개별 객체 저장소를 자기 계정 아래 돌려야 했다. 기존 방식대로 `nohup … &` 를 쓰면 로그아웃 순간 부모 세션이 사라지면서 프로세스가 시그널을 받아 죽는다. systemd-user 인스턴스에 `~/.config/systemd/user/minio.service` 를 놓고 `loginctl enable-linger $USER` 하면, root PID 1 이 그 사용자의 매니저를 부팅 시점부터 살려 둔다 ([freedesktop.org][4], [serverfault.com][5]). 이제 더는 `nohup` 파일을 찾을 필요도, 재부팅 후 수동으로 스크립트를 돌릴 필요도 없다. *서비스로 등록* 했기 때문에 “사용자가 로그인 중인가”라는 조건과 무관하게 정책이 지켜진다. 남아 있는 질문 하나, “왜 일반 사용자에게도 똑같은 문법을 쓰느냐”는 앞에서 본 연속성 때문이다. syslog, 재시작, 의존성 그래프 해석을 root PID 1 과 동일한 로직으로 재활용할 수 있게 된다.
-
-稀하게 호출되는 관리용 REST 툴을 위해서는 *소켓 활성화*가 빛을 발한다. `mytool.socket` 유닛이 포트 9090 을 먼저 열어 두고 대기하면, 애플리케이션 바이너리는 디스크에서 로드되지 않은 채 메모리도 쓰지 않는다. 첫 TCP SYN 패킷이 들어올 때 systemd 가 바이너리를 fork 해 주고, 서비스가 패닉으로 죽더라도 이미 열린 소켓은 그대로 남아 있어 두 번째 접속자는 실패를 못 느낀다. 소켓 FD 가 3 번부터 넘어온다는 규칙은 `LISTEN_FDS` 환경 변수를 통해 표준화됐는데, 이처럼 *언제 기동할지*라는 문제가 문법 조각 하나(소켓 유닛)와 시스템 호출 몇 줄로 해결되는 것이 ‘서비스로 등록’이 주는 또 다른 큰 이유다.
-
-마지막으로 리소스를 많이 잡아먹는 데이터 분석 스크립트를 한두 시간 돌릴 때, 운영자는 `systemd-run --scope -p CPUQuota=30% bash analyze.sh` 처럼 *scope* 단위를 만들어 준다. 그러면 analyze.sh 와 그 자식 PID 들은 모두 별도 cgroup 하에 묶여, 웹 서비스와 싸우지 않고 사용할 CPU 를 스스로 양보한다. slice-scope 모델은 “서버 하나에 여러 워크로드가 얽힐 때 운영 정책을 계층 구조로 기술”하도록 의도됐다. 스크립트 한 줄로 일회성 작업도 동일한 프레임워크에 편입되기 때문에, 장애 보고서에는 서비스 유닛과 분석 작업이 어떤 순서로 자원을 다퉜는지 같은 문장으로 기록된다.
-
-이렇게 사례를 따라가 보면 “왜 systemd 유닛으로 등록해야 하나”라는 질문은 곧 “서비스의 생애 주기를 *정책 객체*로 올려 놓아야만 실제 운영 시나리오를 재현 및 설명하고, 커널 자원을 믿을 만한 방식으로 배분할 수 있다”는 답으로 귀착된다. 의존성 지시어·재시작 규칙·리소스 한도·ready 시그널·타이머·소켓·linger 같은 문법 조각은 각각이 어떤 현실적 장애나 운영 요구에서 나왔는지를 본다면 암기 대상이 아니라 문제-해결 매핑으로 읽힌다. 결국 systemd 를 통해 서비스를 관리한다는 것은 “프로그램을 실행한다”기보다 “프로그램이 시스템 전체와 맺는 관계를 선언하고, 그 선언을 커널 기능에 직결시킨다”는 의미다.
-
----
-
-개발자가 직접 유닛 파일을 만들어 배포할 때 가장 먼저 체감하는 지점은 “ini 한 장”이 곧바로 커널 자원과 서비스 생애 주기를 묶어 주는 관문이라는 사실이다. 예 - 들어 당신이 **web** 계정으로 Go 애플리케이션을 운영한다고 가정해 보자. 소스 코드 안에는 아래와 같이 `systemd`가 넘겨 줄 파일 디스크립터 3번을 받아 리스너를 꾸리는 한 줄이 들어 있다.
-
-```go
-// main.go
-package main
-
-import (
-    "log"
-    "net"
-    "net/http"
-    "os"
-
-    "github.com/coreos/go-systemd/daemon" // sd_notify 래퍼
-)
-
-func main() {
-    // systemd-socket-activate로 전달 받은 3번 FD를 net.Listener로 변환
-    l, err := net.FileListener(os.NewFile(3, "listener"))
-    if err != nil { log.Fatal(err) }
-
-    // 웹 핸들러 준비
-    mux := http.NewServeMux()
-    mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
-
-    // 준비가 끝났음을 PID 1에게 알림
-    daemon.SdNotify(false, "READY=1")
-
-    // 서비스 루프 진입
-    if err := http.Serve(l, mux); err != nil { log.Fatal(err) }
-}
+```text
+PID 1 (시스템 매니저)
+└─ user.slice
+   └─ user-1001.slice                  # uid 1001의 자원 가지
+      ├─ session-c5.scope             # 로그인 세션 (sshd 등이 fork한 프로세스들)
+      └─ user@1001.service            # user 매니저 — systemctl --user의 실제 상대방
+         └─ app.slice/sleeper.service # user 유닛은 세션이 아니라 여기 소속 (관측값)
 ```
 
-이 코드를 빌드한 뒤, **web** 사용자의 홈 디렉터리에 다음과 같은 두 유닛을 배치한다.
+이 그림에서 핵심은 user 유닛이 **세션 scope 바깥**, user 매니저 아래에 산다는 점입니다. 로그아웃으로 세션이 사라져도 user 유닛은 영향받지 않습니다 — 단, user 매니저 자체가 살아 있어야 하고, 그 수명이 바로 문제의 전부입니다.
 
-```ini
-# ~/.config/systemd/user/web.socket
-[Unit]
-Description=Example Go HTTP socket, user instance
+### 로그인 한 번이 만드는 세 가지
 
-[Socket]
-ListenStream=127.0.0.1:9000
-Accept=no
+SSH·콘솔 로그인의 PAM 스택에는 `pam_systemd`가 들어 있고, pam_systemd(8) man page가 명시하는 대로 세션을 systemd-logind에 등록합니다 ("pam_systemd registers user sessions with the systemd login manager"). 그 등록의 부수 효과로 세 가지가 생깁니다.
 
-[Install]
-WantedBy=sockets.target
+1. **`session-N.scope`** — 이 세션의 모든 프로세스를 담는 cgroup.
+2. **`/run/user/<uid>`** — `XDG_RUNTIME_DIR`. man page 원문: "created or mounted as new 'tmpfs' file system with quota applied". user bus 소켓이 이 안에 있습니다. 사용자의 마지막 세션이 닫히면 삭제됩니다.
+3. **`user@<uid>.service` 기동** — man page 원문: "An instance of the system service user@.service, which runs the systemd user manager instance, is started."
+
+### su의 정확한 규칙 — 두 관측의 대비
+
+흔한 요약은 "su는 세션을 안 만든다"인데, 관측 결과 더 정확한 규칙은 **"호출자가 이미 logind 세션 안이면 새 세션을 만들지 않는다"**입니다. su의 PAM 스택에도 pam_systemd는 들어 있습니다(Debian 계열은 common-session 경유). 같은 머신에서 호출자의 상태만 바꿔 두 번 관측했습니다.
+
+**케이스 A — 호출자가 세션 밖일 때 (wsl.exe가 띄운 셸, cgroup `/init.scope`):**
+
+```text
+# su -s /bin/bash - sdtest 직후
+XDG_RUNTIME_DIR=[/run/user/1001]                          # 생겼다
+cgroup: 0::/user.slice/user-1001.slice/session-c5.scope   # 새 세션 scope가 생겼다
+systemctl --user status                                   # user 매니저에 접속됨
 ```
 
-```ini
-# ~/.config/systemd/user/web.service
-[Unit]
-Description=Example Go HTTP server, user instance
-After=network.target
-Requires=web.socket
+**케이스 B — 호출자가 세션 안일 때 (root가 세션 `session-c3.scope` 안에서 su):**
 
-[Service]
-Type=notify                      # READY=1 신호를 기다림
-ExecStart=/home/web/bin/web-demo # 앞서 빌드한 바이너리
-Restart=on-failure               # 예외·SIGSEGV 등 비정상 종료 시 재기동
-RestartSec=2s                    # 2초 뒤 재시작
-StartLimitIntervalSec=30         # 30초 안에
-StartLimitBurst=3                # 3회 넘게 죽으면 hard fail
-MemoryMax=500M                   # cgroup v2 메모리 상한
-AmbientCapabilities=CAP_NET_BIND_SERVICE
-User=web
-Group=web
-
-[Install]
-WantedBy=default.target
+```text
+# su -s /bin/bash - sdtest2 직후
+XDG_RUNTIME_DIR=[]                                        # 비어 있다
+cgroup: 0::/user.slice/user-0.slice/session-c3.scope      # 여전히 "root의" 세션 안!
+systemctl --user status
+Failed to connect to user scope bus via local transport:
+$DBUS_SESSION_BUS_ADDRESS and $XDG_RUNTIME_DIR not defined
+(consider using --machine=<user>@.host --user to connect to bus of other user)
 ```
 
-`systemctl --user daemon-reload` → `systemctl --user enable --now web.socket` 만 실행해 두면, 부팅 시점에는 **소켓만** 열려 있고 애플리케이션 프로세스는 존재하지 않는다. 첫 HTTP SYN 패킷이 도착하는 순간 PID 1이 `fork()` 한 뒤 FD 3번을 건네준다. 준비 완료 시점은 `daemon.SdNotify`가 내보낸 `READY=1` 패킷으로 결정된다. 이 과정에서 서비스는 **소켓 열기·포트 바인딩·re-fork** 등을 직접 구현할 필요 없이 오로지 비즈니스 로직에 집중한다.
+케이스 B가 서버 현장의 전형입니다 — SSH로 로그인한 관리자가 `sudo su - 서비스계정`을 하는 순간이 정확히 "세션 안에서의 su"이기 때문입니다. uid는 바뀌었지만 cgroup상으로는 **남(호출자)의 세션 scope 안**에 있고, 자기 세션·runtime dir·user 매니저는 어디에도 없습니다. root의 세션에 "붙는" 것도 아닙니다 — root는 보통 자기 세션이 없고, 케이스 B에서 보이는 `session-c3.scope`는 su를 호출한 쪽의 세션입니다. (구버전 systemd에서는 같은 상황의 에러가 `Failed to connect to bus: No such file or directory`로 표시됩니다.)
 
-`Type=notify`라는 한 줄이 중요한 까닭은 PID 1이 “메인 루프 진입”이라는 시점을 정확히 잡아야 **After=web.service** 같은 의존 노드가 안전하게 뒤이어 올라올 수 있기 때문이다. 이 메커니즘은 `sd_notify(3)` 시스템 호출 표준에 정의돼 있어 C·Go·Rust 어느 언어에서든 동일하게 사용할 수 있다 ([freedesktop.org][1]).
+### 증상 세 가지
 
-서비스가 예기치 않게 패닉으로 죽으면 cgroup 안의 **main PID**가 사라졌다는 사실을 systemd가 즉시 감지한다. `Restart=on-failure`는 “0이 아닌 exit, 시그널, core dump” 모두를 재시작 트리거로 해석하는 정책이며 ([freedesktop.org][2]), 동시에 두 개의 레이트-리미트 옵션이 “30초 동안 세 번 이상 실패하면 더 이상 기동하지 말라”는 상위 정책을 말해 준다 ([redhat.com][3], [serverfault.com][4]). 운영자는 `systemctl --user status web.service`로 실패 카운트를 읽거나 `journalctl --user -u web.service`로 패닉 스택트레이스를 확인할 수 있다.
+세션 부재 하나에서 서로 다른 증상 세 개가 갈라져 나옵니다.
 
-리소스 상한선 역시 유닛 내부에서 선언된다. `MemoryMax=500M`이 있으면 커널 OOM killer 대신 systemd가 먼저 동작해 전체 프로세스 트리를 종료하고 “memory-max” 사유를 로그에 남긴다. `/proc/$PID/cgroup`을 보면 `/user.slice/user-$(id -u).slice/user@$(id -u).service/web.service` 같은 경로가 보이는데, 바로 이 cgroup 디렉터리가 메모리·CPU·IO·PIDs 제한값을 실제로 적용하는 장소다.
+1. **`systemctl --user` 실패** — user bus(`$XDG_RUNTIME_DIR/bus`)도 user 매니저도 없으므로 위 관측처럼 접속 자체가 안 됩니다.
+2. **비root 계정의 시스템 `systemctl`·`service`도 거부** — 시스템 유닛 제어는 root가 아니면 polkit 인가를 거치는데, polkit은 활성 세션 여부를 판단 기준으로 씁니다. su로 갈아탄 계정은 자기 세션이 없으니 인가받을 길이 없습니다. 관측값(su된 비root가 `systemctl stop systemd-timesyncd` 시도): `Failed to stop systemd-timesyncd.service: Access denied as the requested operation requires interactive authentication. However, interactive authentication has not been enabled by the calling program.` (polkitd가 떠 있는 일반 서버에서는 `Interactive authentication required.`로 표시되는 경우가 많습니다.) `service` 명령은 systemd 시스템에서 systemctl로 넘기는 래퍼라 함께 막힙니다. root로 su 했다면 시스템 systemctl은 정상 동작합니다 — root는 polkit을 타지 않습니다.
+3. **"백그라운드 상시 실행"이 보장되지 않음** — su 셸에서 `nohup foo &`로 띄운 프로세스는 cgroup상 호출자의 세션 scope 소속입니다. 그 세션이 끝나면 `logind.conf`의 `KillUserProcesses=`에 따라 함께 종료될 수 있고(관측 환경 기본값: `false` — systemd 230이 yes로 바꾸려다 반발로 대부분의 배포판이 no 유지), 죽지 않더라도 남의 세션에 귀속된 채 떠도는 프로세스가 됩니다. user 매니저 역시 마지막 세션이 닫히면 내려갑니다 — 관측 환경에서도 su 세션 종료 후 별도 호출로 확인하니 `user@1001.service`는 `inactive`, `/run/user/1001`은 삭제되어 있었습니다(다만 이 확인은 호출 사이 WSL VM 재시작 가능성을 배제하지 못하므로, "linger 없이는 상시 유지되지 않는다"의 관측으로 한정합니다). 이 갈래 — "`&`로 띄우면 왜 죽고, 살아남으면 어떤 상태가 되나" — 는 바로 아래 절에서 층별로 해부합니다.
 
-동일한 시스템, 동일한 문법으로 백업 스크립트도 제어할 수 있다. 다음은 전원이 꺼졌던 날에도 반드시 한 번은 실행되도록 보장하는 타이머-서비스 쌍이다.
+### `&`·nohup으로 띄운 프로세스의 수명 — 세 층이 차례로 결정한다
 
-```ini
-# /etc/systemd/system/nightly-backup.service
-[Unit]
-Description=Nightly incremental backup to S3
-After=network-online.target
+"백그라운드로 띄워도 세션이 끊기면 죽는다"는 기억이 들쭉날쭉한 이유는, 실제로는 **죽이는 주체가 서로 다른 세 층**이 겹쳐 있기 때문입니다. 층마다 살해 조건도 방어 수단도 다릅니다.
 
-[Service]
-Type=oneshot
-User=backup
-IOSchedulingClass=idle
-Nice=19
-ExecStart=/usr/local/bin/backup.sh
+**층 1 — 셸·터미널 층 (`SIGHUP`, systemd 이전부터 있던 규칙).** 터미널이 끊기면(네트워크 단절, 창 닫기) 커널은 세션 리더(셸)와 포그라운드 프로세스 그룹에 SIGHUP을 보냅니다. 백그라운드 잡은 커널의 직접 대상이 아니지만, **대화형 bash가 자기가 받은 SIGHUP을 모든 잡(실행 중·정지 중 포함)에 재전파**하므로 `&` 잡이 여기서 죽습니다. 반면 깨끗하게 `exit`로 나가는 경우 bash는 기본값에서 잡에 SIGHUP을 보내지 않습니다(`huponexit` 옵션이 꺼져 있을 때 — 관측: `shopt -p huponexit` → `shopt -u huponexit`). "어떨 땐 죽고 어떨 땐 살아남던" 경험은 이 차이입니다. `nohup`은 SIGHUP 무시 + I/O 재배선으로 이 층만 방어하고, `setsid`는 커널 세션에서 아예 이탈합니다 — 세션·CTTY·PGID 수준의 상세는 [commands/nohup.md](../commands/nohup.md)에 있습니다.
 
-# /etc/systemd/system/nightly-backup.timer
-[Unit]
-Description=Run nightly backup at 03:00, even if powered off
+**층 2 — logind 층 (cgroup 단위 살해).** `KillUserProcesses=yes`면 logind 세션이 끝날 때 그 세션 scope cgroup 안의 **모든** 프로세스에 SIGTERM→SIGKILL이 갑니다. 이 층에서는 nohup도 setsid도 tmux도 소용없습니다 — `setsid`가 바꾸는 것은 **커널 세션(SID)** 이고 logind가 살해 기준으로 삼는 것은 **cgroup(logind 세션)** 인데, setsid는 cgroup을 옮기지 않기 때문입니다. 같은 "세션"이라는 단어가 두 층에서 다른 것을 가리키는 혼동쌍입니다. systemd 230(2016)이 이 값을 yes 기본으로 바꾸려다 "tmux가 죽는다"는 반발을 부른 것이 정확히 이 메커니즘입니다. 관측 환경 기본값은 `false`이므로, 아래 표의 yes 칸은 직접 관측이 아니라 logind.conf(5)의 동작 정의에 따른 것입니다.
 
-[Timer]
-OnCalendar=*-*-* 03:00:00
-Persistent=true                # 전원 꺼져 있던 시간대도 보정
-RandomizedDelaySec=10m         # 여러 대 분산
+**층 3 — systemd 관리 층 (살아남아도 "관리 밖").** 층 1·2를 통과해 살아남은 프로세스가 어떤 상태가 되는지를 관측했습니다. su 세션 안에서 `nohup sleep 300 &`을 띄우고 세션을 닫은 뒤의 실측값입니다.
 
-[Install]
-WantedBy=timers.target
+```text
+# 세션이 살아 있을 때의 cgroup
+0::/user.slice/user-0.slice/session-c3.scope
+
+# 세션 종료 후 — 프로세스는 생존 (KillUserProcesses=false)
+  441 sleep
+# cgroup은 그대로 — 이미 닫힌 세션의 scope에 잔류
+0::/user.slice/user-0.slice/session-c3.scope
+
+$ systemctl status session-c3.scope
+● session-c3.scope - Session c3 of User root
+     Active: active (abandoned) since Wed 2026-06-10 16:46:54 KST
+#                   ^^^^^^^^^^^ systemd의 공식 어휘 — "버려진" scope
 ```
 
-`systemctl enable --now nightly-backup.timer` 이후 `systemctl list-timers`를 확인하면 마지막 실행 시각과 다음 예약 시각이 함께 표시된다. 만약 서버가 정전으로 새벽 세 시를 놓쳤다면 부팅 직후 backlog가 곧바로 처리되는데, 이 신뢰성은 `Persistent=true` 옵션에 근거해 systemd 가 *마지막 성공 시각*과 *예정 시각*을 journald 데이터베이스에 저장해 두기 때문에 가능하다.
+`abandoned`가 "systemd에 의해 관리가 안 된다"의 실체입니다. 이 프로세스는 유닛이 아니므로 `Restart=`도 `MemoryMax=`도 없고, `journalctl -u`로 로그를 모으지 못하며, `systemctl list-units`에 보이지 않고, 죽어도 아무도 다시 띄우지 않습니다. 회계상으로만 죽은 세션의 scope에 매달려 있을 뿐입니다.
 
-별도의 데몬 없이 잠깐 돌리고 끝낼 데이터 분석도 스코프 유닛으로 격리할 수 있다.
+세 층을 모두 통과하는 정공법은 하나 — **유닛으로 등록하는 것**입니다(시스템 유닛, 또는 user 유닛 + linger).
+
+| 방식 | 터미널 hangup 생존 | 셸 clean exit 생존 | KillUserProcesses=yes 생존 | 재부팅 후 자동 기동 | crash 재시작·자원 한도·유닛 로그 |
+|---|---|---|---|---|---|
+| `cmd &` | ✗ (bash가 SIGHUP 재전파) | △ (huponexit off면 생존) | ✗ | ✗ | ✗ |
+| `nohup cmd &` | ○ (SIGHUP 무시) | ○ | ✗ | ✗ | ✗ |
+| `setsid cmd` | ○ (커널 세션 이탈) | ○ | ✗ (cgroup은 그대로) | ✗ | ✗ |
+| `tmux` / `screen` | ○ | ○ | ✗ (230 논쟁의 그 사례) | ✗ | ✗ |
+| user 유닛 + linger | ○ | ○ | ○ (세션 scope 밖 — 관측값 참조) | ○ | ○ |
+| 시스템 유닛 | ○ | ○ | ○ | ○ | ○ |
+
+### 신호 권한과 세션 권한은 다른 층이다
+
+su 문제와 자주 섞이는 오해가 "su로 전환한 유저는 SIGRTMIN+3 같은 것도 못 보낸다"입니다. 두 메커니즘은 층이 다릅니다.
+
+- **세션 권한 (logind/polkit/user bus)** — `systemctl --user`와 비root의 시스템 유닛 제어를 막는 것. 위 증상 1·2의 원인.
+- **신호 권한 (커널 kill(2))** — 같은 uid이거나 `CAP_KILL`(즉 root)이면 보낼 수 있음. 세션과 무관.
+
+따라서 `sudo su -`로 root가 됐다면 세션이 없어도 `kill -s SIGRTMIN+3 1`은 **가능**하고, 비root 서비스 계정이라면 su 여부와 무관하게 PID 1에 신호 자체를 못 보냅니다(EPERM). "su 유저는 못 한다"는 기억은 비root 기준으로 결과만 맞고, 막는 메커니즘은 systemctl 계열 = 세션 부재, SIGRTMIN+3 = 신호 권한으로 서로 다릅니다.
+
+### 서비스 계정 셋업 레시피
+
+서비스 계정(예: `prxsvc`)이 자기 데몬을 스스로 배포·관리하는 구성의 전 과정입니다. 모든 단계의 출력은 관측 환경에서 실제로 실행해 확인한 값입니다.
 
 ```bash
-systemd-run --scope -p CPUQuota=20% -p IOWeight=50 bash analyze.sh
+# 1) root에서 한 번 — 세션 없이도 user 매니저를 상시 기동
+loginctl enable-linger prxsvc
+ls /var/lib/systemd/linger          # 관측: prxsvc 파일 생성됨 (linger의 영속 표식)
+systemctl is-active user@$(id -u prxsvc).service
+                                    # 관측: active — enable-linger가 즉시 기동까지 함
+ls /run/user/                       # 관측: <uid> 디렉토리 생성됨
 ```
 
-명령어가 반환하는 스코프 이름(예: “run-r13f8b43cdbd14.scope”)은 `journalctl -u`로 그대로 추적할 수 있으며, 분석 작업이 CPU 20 % 이상을 점유하려 하면 커널 스케줄러가 알아서 가중치를 조정한다. 동일한 압력 정책을 적용하므로 장기 서비스가 일시적 배치 작업 때문에 OOM 되는 상황을 자연스럽게 막는다.
+```ini
+# 2) ~prxsvc/.config/systemd/user/my-app.service
+[Unit]
+Description=my app
 
-마지막으로, **컨테이너** 안에서 PID 1을 systemd로 교체하고 싶은 경우 다음과 같은 Dockerfile 조각을 실험할 수 있다.
+[Service]
+ExecStart=/opt/my-app/run.sh
+Restart=on-failure
 
-```Dockerfile
+[Install]
+WantedBy=default.target             # user 매니저의 부팅 타겟 (multi-user.target의 user판)
+```
+
+```bash
+# 3) prxsvc로 작업 — su 경유라면 세션이 없으므로 환경 변수만 손으로 보충
+sudo su -s /bin/bash - prxsvc       # 서비스 계정이 nologin 셸이면 -s 필요
+export XDG_RUNTIME_DIR=/run/user/$(id -u)
+                                    # linger 덕분에 디렉토리·bus·매니저가 이미 존재
+systemctl --user daemon-reload
+systemctl --user enable --now my-app.service
+systemctl --user is-active my-app.service   # 관측: active
+
+# 4) root에서 su 없이 직접 조작할 수도 있음 (관측 환경 systemd 259에서 동작 확인)
+systemctl --user -M prxsvc@ status my-app.service
+# 구버전(예: RHEL 8의 239)에서는 이 -M user@ 형태가 지원되지 않을 수 있음 — 버전 확인 필요
+```
+
+이렇게 띄운 프로세스의 cgroup은 `/user.slice/user-<uid>.slice/user@<uid>.service/app.slice/my-app.service`(관측값) — 어떤 세션 scope에도 속하지 않으므로 로그아웃·세션 종료와 무관하게 살아남고, 부팅 시에도 linger가 user 매니저를 올리면서 함께 기동됩니다.
+
+### user 유닛이냐, system 유닛 + User= 냐
+
+| 축 | user 유닛 + linger | system 유닛 + `User=` |
+|---|---|---|
+| 유닛 파일 위치 | `~/.config/systemd/user/` (계정 소유) | `/etc/systemd/system/` (root 소유) |
+| 일상 관리 주체 | 계정 스스로 (`systemctl --user`) | root, 또는 좁게 위임받은 계정 |
+| root 개입 | 최초 `enable-linger` 한 번 | 유닛 변경 때마다 root 경유 |
+| 부팅 기동 | linger → user 매니저 → `default.target` | PID 1 → `multi-user.target` |
+| 시스템 유닛과 의존성 | 불가 — user 매니저는 분리된 그래프라 `After=network-online.target` 같은 시스템 타겟 참조 불가 | 자유롭게 가능 |
+| 1024 미만 포트 / capability | 불가 (`AmbientCapabilities=` 무효) | 가능 |
+| 운영 가시성 | 시스템 `systemctl list-units`에 안 보임 (user@ 안에 숨음) | 전사 표준 도구에서 보임 |
+| 로그 접근 | `journalctl --user -u` — 계정이 uid 1000 미만 시스템 계정이면 `systemd-journal` 그룹 필요할 수 있음 | root/`systemd-journal` 그룹 |
+| 권한 위임 메커니즘 | 불필요 (자기 영역) | sudoers 또는 polkit rule로 유닛 단위 허용 |
+| 어울리는 경우 | 계정 단위 self-service 배포(CI가 ssh로 배포), 비특권 포트 | 부팅 순서·특권 포트·전사 운영 표준이 걸릴 때 |
+
+system 유닛 쪽을 택하면서 계정에게 제어만 위임하는 두 가지 방식:
+
+```bash
+# sudoers — 명령 단위로 좁게
+prxsvc ALL=(root) NOPASSWD: /usr/bin/systemctl start my-app.service, \
+    /usr/bin/systemctl stop my-app.service, /usr/bin/systemctl restart my-app.service
+```
+
+```js
+// polkit rule (/etc/polkit-1/rules.d/55-prxsvc-myapp.rules, JS rules 지원 배포판)
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.systemd1.manage-units" &&
+        action.lookup("unit") == "my-app.service" &&     // 유닛 단위로 한정
+        subject.user == "prxsvc") {
+        return polkit.Result.YES;
+    }
+});
+```
+
+### su의 대안들
+
+su 자체가 "로그인"이 아니라 "uid 변경"이라는 한계 인식에서 나온 공식 대안들입니다.
+
+- `machinectl shell prxsvc@` — 제대로 된 logind 세션을 만들어 전환 (systemd-container 패키지 필요; 관측 환경에는 미설치였음)
+- `ssh prxsvc@localhost` — 진짜 로그인 세션
+- `systemctl --user -M prxsvc@ ...` — root가 세션 생성 없이 대상 user 매니저에 직접 접속
+- `systemd-run --uid=prxsvc ...` — 세션이 아니라 유닛으로 실행
+
+## 컨테이너의 PID 1 — 왜 SIGRTMIN+3인가
+
+### PID 1에는 init이 필요하다
+
+컨테이너 안에서 일반 애플리케이션을 PID 1로 두면 두 가지 문제가 생깁니다(Red Hat 컨테이너 블로그의 정리).
+
+1. **좀비 누적** — 고아가 된 프로세스는 PID 1의 자식으로 재입양되는데, PID 1이 `SIGCHLD`를 받고 `wait()`해 주지 않으면 좀비가 무한히 쌓입니다.
+2. **syslog 유실** — `/dev/log`를 리스닝하는 프로세스가 없으면 syslog(3)로 보낸 로그가 사라집니다.
+
+systemd를 PID 1로 넣으면 재입양·journald·서비스 그래프가 컨테이너 안에서도 호스트와 동일한 API로 동작합니다.
+
+### systemd PID 1의 신호 의미론
+
+PID 1은 커널이 특별 취급합니다 — 핸들러를 설치하지 않은 신호는 전달되지 않고, 같은 네임스페이스 안에서는 SIGKILL로도 죽일 수 없습니다. 그 위에서 systemd는 신호별 의미를 자체 정의합니다. systemd(1) man page의 SIGNALS 절 원문 기준입니다.
+
+| 신호 | 시스템 매니저의 동작 (man 원문) | 비고 |
+|---|---|---|
+| `SIGTERM` | "serializes its state, reexecutes itself and deserializes the saved state again" | **종료가 아니라 reexec** — `systemctl daemon-reexec` 상당 |
+| `SIGINT` | "start the ctrl-alt-del.target unit" | 콘솔 Ctrl-Alt-Del |
+| `SIGRTMIN+3` | "Halts the machine, starts the halt.target unit" | **질서 있는 전체 종료** |
+| `SIGRTMIN+4` | "starts the poweroff.target unit" | 전원 차단 |
+| `SIGRTMIN+5` | "starts the reboot.target unit" | 재부팅 |
+| (참고) user 매니저의 `SIGTERM` | "start the exit.target unit" | user 매니저는 SIGTERM으로 정상 종료함 |
+
+여기서 `docker stop`의 함정이 그대로 설명됩니다. docker stop은 기본적으로 SIGTERM을 보내고 타임아웃 후 SIGKILL을 보냅니다. PID 1이 systemd라면 SIGTERM은 reexec(사실상 무시처럼 보임)이고, 이어지는 SIGKILL은 하위 서비스를 정리할 기회 없이 전체를 즉사시킵니다. `SIGRTMIN+3`을 받아야 systemd가 `halt.target`으로 모든 유닛을 의존성 역순으로 — `systemctl stop`과 동일한 경로로 — 내리며 데이터 손실을 피합니다.
+
+신호 번호로 보내야 한다면 주의가 필요합니다. glibc가 실시간 신호 앞부분(32·33)을 스레딩에 예약하므로 `SIGRTMIN`은 보통 34이고, 따라서 `SIGRTMIN+3` = 37입니다(관측: `kill -l RTMIN+3` → `37`). 번호 37을 하드코딩하기보다 이름으로 지정하는 편이 안전합니다.
+
+### Dockerfile 패턴
+
+```dockerfile
 FROM ubuntu:24.04
 
 ENV container=docker
-STOPSIGNAL SIGRTMIN+3            # systemd 표준 종료 시그널
+STOPSIGNAL SIGRTMIN+3             # docker stop이 SIGTERM 대신 이 신호를 보내게 함
 RUN apt-get update && apt-get install -y systemd systemd-sysv
 
-VOLUME [ "/sys/fs/cgroup" ]       # cgroup v2 전파
-CMD [ "/lib/systemd/systemd" ]
+VOLUME [ "/sys/fs/cgroup" ]       # systemd가 cgroup 트리를 관리할 수 있어야 함
+CMD [ "/lib/systemd/systemd" ]    # PID 1로 systemd 실행
 ```
 
-호스트가 `docker run --privileged -v /sys/fs/cgroup:/sys/fs/cgroup:rw …` 형태로 기동해 주면, 컨테이너 내부에서도 `systemctl`·`journalctl`·`loginctl`이 완전한 기능을 갖춘다. 이때 `SIGTERM` 대신 `SIGRTMIN+3`을 보내야 정상 셧다운 시퀀스가 실행되는데, freedesktop 사양서가 “PID 1로 동작하는 systemd는 실시간 시그널 3번을 ‘종료’로 예약해 두었다”고 못 박고 있기 때문이다.
+호스트에서 `docker run --privileged -v /sys/fs/cgroup:/sys/fs/cgroup:rw ...`로 기동하면 컨테이너 내부에서 `systemctl`·`journalctl`·`loginctl`이 호스트와 동일하게 동작합니다.
 
-지금까지 살펴본 예제는 모두 한 가지 사실을 강조한다. **ini 한 장**이 의존성, 재시작 조건, 리소스 상한, 예약 스케줄, 소켓 전달 같은 엔터프라이즈급 요구 사항을 통합하는 “정책 인터페이스”가 된다는 점이다. 컨테이너이든 베어메탈이든, 루트이든 일반 사용자이든, systemd가 해석하는 문법은 동일하고 그 결과물은 커널 cgroup·네임스페이스·file-descriptor 로 바로 환원된다. 따라서 유닛 파일을 작성한다는 행위는 “스크립트 몇 줄”을 넘어서 **리눅스 자원 모델 위에 추상적 계약서를 올려 두는 작업**이며, 그 계약은 `systemctl show -p` `MainPID`, `systemd-cgls`, `journalctl` 같은 도구로 언제든 증빙할 수 있다. 이런 구조 덕분에 개발자는 코드와 정책을 함께 버전 관리하고, 운영자는 장애 분석과 리소스 회계를 한 곳에서 끝낼 수 있다.
+## 직접 확인해 보기
 
-## by gemini
+각 주장에 대해 무엇을 실행하면 되는지와, 이 문서 작성 시의 실제 관측값입니다. 관측 환경: WSL2 Ubuntu 26.04, systemd 259.
 
-네, 제공해주신 방대한 양의 학습 자료를 바탕으로 systemd에 대한 심도 깊고 체계적인 설명을 제공해 드리겠습니다. 제공된 마크다운 파일은 systemd의 철학부터 실전 문법, 고급 주제까지 매우 훌륭하게 정리되어 있습니다.
+| 확인할 주장 | 명령 | 관측값 (PASS 기준) |
+|---|---|---|
+| systemd가 PID 1로 동작 중 | `ps -p 1 -o comm=` | `systemd` |
+| 부팅 임계 경로 | `systemd-analyze critical-chain` | `graphical.target @2.953s └─...` 트리 출력 |
+| 로그인 세션·runtime dir | `loginctl list-sessions; echo $XDG_RUNTIME_DIR` | 세션 목록 + `/run/user/1000` |
+| su(세션 안)는 세션을 안 만듦 | 로그인 셸에서 `sudo su - <계정>` 후 `echo [$XDG_RUNTIME_DIR]; cat /proc/self/cgroup` | `[]` + 호출자의 `session-cN.scope` 그대로 |
+| 그 상태의 systemctl --user 실패 | 위 셸에서 `systemctl --user status` | `Failed to connect to user scope bus ... $XDG_RUNTIME_DIR not defined` (구버전: `No such file or directory`) |
+| 비root의 시스템 유닛 제어 거부 | su된 비root에서 `systemctl stop <유닛>` | `Access denied as the requested operation requires interactive authentication...` |
+| linger가 user 매니저를 상시 기동 | root: `loginctl enable-linger <계정>` 후 `systemctl is-active user@<uid>.service; ls /run/user/` | `active` + uid 디렉토리 존재 |
+| user 유닛은 세션 밖에 산다 | `cat /proc/<유닛 프로세스 PID>/cgroup` | `/user.slice/user-<uid>.slice/user@<uid>.service/app.slice/<유닛>` |
+| root의 타 사용자 user 매니저 접속 | `systemctl --user -M <계정>@ is-active <유닛>` | `active` (systemd 259에서 동작; 구버전은 미지원 가능) |
+| KillUserProcesses 실값 | `busctl get-property org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager KillUserProcesses` | `b false` (배포판마다 다름) |
+| SIGRTMIN+3의 번호 | `kill -l RTMIN+3` | `37` (glibc 기준 — 번호 대신 이름 사용 권장) |
+| enable의 실체는 심볼릭 링크 | `systemctl --user enable <유닛>` 출력 | `Created symlink '...default.target.wants/...'` |
+| 살아남은 nohup 프로세스는 "버려진" scope에 잔류 | 세션 안에서 `nohup sleep 300 &` 후 세션 종료, `systemctl status session-cN.scope` | `Active: active (abandoned)` + 프로세스 cgroup이 닫힌 세션 scope 그대로 |
+| bash는 clean exit에 잡을 죽이지 않음 (기본값) | `shopt -p huponexit` | `shopt -u huponexit` (off) |
 
-이 내용을 바탕으로, 요청하신 대로 각 주제를 명확히 나누어 상세하게 설명하겠습니다.
+컨테이너의 SIGRTMIN+3 동작은 이 환경에서 검증하지 않았습니다(PID 1에 신호를 보내는 실험은 동작 중인 시스템을 내리므로 제외). systemd(1) man page 인용과 Red Hat·raby.sh 문서를 근거로 두며, 검증하려면 일회용 컨테이너에서 `docker kill -s SIGRTMIN+3 <컨테이너>` 후 내부 서비스가 의존성 역순으로 stop되는 journald 로그를 확인하면 됩니다.
 
-***
+## 출처
 
-### Part 1: Systemd의 탄생 배경과 핵심 철학 (The "Why")
+- systemd(1) — SIGNALS 절. 신호별 동작 원문 인용의 출처. <https://man7.org/linux/man-pages/man1/systemd.1.html> (freedesktop.org 원본은 봇 차단으로 man7 미러 사용)
+- pam_systemd(8) — 세션 등록·`/run/user/$UID`·`user@.service` 기동 원문 인용의 출처. <https://man7.org/linux/man-pages/man8/pam_systemd.8.html>
+- Lennart Poettering, "Rethinking PID 1" (2010-04-30) — 설계 배경과 launchd 영감. <http://0pointer.de/blog/projects/systemd.html>
+- Red Hat Developers, "Running systemd in a non-privileged container" (2016) — 컨테이너 PID 1 문제와 SIGRTMIN+3. <https://developers.redhat.com/blog/2016/09/13/running-systemd-in-a-non-privileged-container>
+- raby.sh, "SIGTERM and PID 1: why does a container linger after receiving a SIGTERM?" — docker stop과 PID 1 신호 의미론. <https://raby.sh/sigterm-and-pid-1-why-does-a-container-linger-after-receiving-a-sigterm.html>
+- Spring Boot 공식 문서, "Installing Spring Boot Applications" — systemd 서비스 배포 예제. <https://docs.spring.io/spring-boot/how-to/deployment/installing.html>
+- Red Hat 문서, "cgroup의 systemd 계층 구조 개요" (RHEL 9). <https://docs.redhat.com/ko/documentation/red_hat_enterprise_linux/9/html/managing_monitoring_and_updating_the_kernel/con_overview-of-systemd-hierarchy-for-cgroups_assembly_using-systemd-to-manage-resources-used-by-applications>
+- SUSE, "Managing systemd Services". <https://documentation.suse.com/smart/systems-management/html/systemd-management/index.html>
+- linuxhandbook, "How to create a systemd service in Linux". <https://linuxhandbook.com/create-systemd-services/>
+- 직접 관측 — 이 문서의 모든 "관측:" 표기 값은 WSL2 Ubuntu 26.04 / systemd 259.5에서 2026-06-10 실행한 결과.
 
-Systemd는 단순히 기존의 **SysVinit**을 개선한 것이 아니라, 현대적인 리눅스 서버 환경이 마주한 근본적인 문제들을 해결하기 위해 완전히 새로운 패러다임을 제시한 시스템입니다.
+## 저장소 안 관련 문서
 
-#### SysVinit의 구조적 한계
-
-과거의 SysVinit은 다음과 같은 명확한 한계를 가지고 있었습니다:
-
-* **순차적 실행으로 인한 부팅 속도 저하**: 런레벨(Run-level) 스크립트들이 정해진 순서대로 하나씩 실행되어야 했습니다. 이로 인해 SSD와 멀티코어 CPU의 성능을 제대로 활용하지 못하고 부팅 시간이 길어졌습니다.
-* **불명확한 의존성 및 상태 관리**: 서비스 간의 의존 관계가 스크립트 파일명의 숫자(예: `S20network`, `S80nginx`)와 같은 암묵적인 규칙에 의존했습니다. 또한, init 프로세스 자체가 특정 서비스가 성공적으로 시작되었는지, 혹은 실행 중에 중단되었는지를 추적할 표준적인 방법이 없었습니다.
-* **동적 환경 변화 대응의 어려움**: USB 장치 연결이나 네트워크 상태 변경과 같이 시스템이 실행되는 동안 발생하는 이벤트에 유연하게 반응하여 서비스를 시작하거나 중지하기 어려웠습니다.
-* **커널 신기능과의 통합 부재**: Cgroups, 네임스페이스와 같은 커널의 강력한 기능들을 init 시스템 차원에서 통합하여 리소스 제어나 격리 환경을 제공하지 못했습니다.
-
-#### Systemd의 두 가지 핵심 철학
-
-Systemd는 이러한 문제들을 해결하기 위해 두 가지 강력한 철학을 기반으로 설계되었습니다.
-
-1.  **"모든 것은 의존성 그래프다 (Everything-is-a-dependency graph)"**
-    Systemd는 서비스, 소켓, 마운트, 타이머 등 시스템의 모든 구성 요소를 **유닛(Unit)**이라는 표준화된 객체로 추상화합니다. 그리고 이 유닛들 사이의 관계(`Requires=`, `After=`, `Wants=`)를 명시적으로 선언하여, 시스템 전체를 하나의 거대한 **유향 비순환 그래프(Directed Acyclic Graph, DAG)**로 모델링합니다.
-    * **결과**: 서로 의존성이 없는 유닛들은 최대한 **병렬로 실행**하여 부팅 속도를 획기적으로 단축합니다. 또한, 동적으로 장치가 추가되면 의존성 그래프가 실시간으로 재계산되어 필요한 유닛만 활성화할 수 있습니다.
-
-2.  **"상태 추적은 관리자 자신이 한다 (State tracking by the manager itself)"**
-    SysVinit에서는 서비스 스크립트가 "시작했다"고 알려주면 그만이었지만, systemd(PID 1)는 `ExecStart=`로 실행한 프로세스의 주 PID(`$MAINPID`)를 직접 추적합니다. 더 나아가 **Cgroups(Control Groups)**를 이용해 해당 서비스가 생성한 모든 자식 프로세스와 스레드까지 하나의 그룹으로 묶어 감시하고 제어합니다.
-    * **결과**: 서비스가 예기치 않게 종료되면 systemd가 즉시 인지하고 `Restart=` 정책에 따라 자동으로 재시작할 수 있습니다 (`Self-healing`). 또한, `MemoryMax=`, `CPUQuota=` 같은 지시어를 통해 유닛별로 할당된 리소스를 정확하게 제한하고 추적하는 것이 가능해졌습니다.
-
-이처럼 systemd는 "스크립트 실행기"를 넘어, **리눅스 사용자 공간 전체를 모델링하고 관리하는 통합 런타임**으로 자리매김했습니다.
-
-***
-
-### Part 2: Systemd 동작 메커니즘 (The "How")
-
-Systemd의 동작은 부팅부터 런타임 관리, 종료까지 일관된 잡(Job) 스케줄링과 상태 추적 메커니즘을 통해 이루어집니다.
-
-1.  **부팅 및 초기화**:
-    * 커널은 부팅 마지막 단계에서 `/usr/lib/systemd/systemd`를 PID 1로 실행합니다.
-    * PID 1은 가장 먼저 모든 유닛을 관리할 최상위 Cgroup인 `system.slice`를 생성합니다.
-    * 기본 목표인 `default.target`(대부분 `multi-user.target`이나 `graphical.target`의 심볼릭 링크)을 활성화하고, 이 타겟에 연결된 `.wants/` 디렉터리의 유닛들을 기반으로 초기 의존성 그래프를 구성합니다.
-
-2.  **유닛 로드 및 그래프 구성**:
-    * Systemd는 정해진 우선순위(A. `/etc/systemd/system` → B. `/run/systemd/system` → C. `/usr/lib/systemd/system`)에 따라 유닛 파일들을 읽어 메모리 내에 의존성 그래프를 완성합니다. 관리자가 생성한 파일(`/etc`)이 패키지 기본 파일(`/usr/lib`)을 덮어쓰는 구조입니다.
-
-3.  **잡(Job) 스케줄링 및 실행**:
-    * 구성된 그래프를 위상 정렬(topological sort)하여, 의존성이 해결된 유닛들을 잡(Job) 큐에 넣고 병렬로 실행합니다.
-    * 각 잡은 `queued → starting → running → done/failed` 상태를 거치며, `systemctl list-jobs` 명령어로 현재 진행 중인 잡들을 확인할 수 있습니다.
-    * 만약 어떤 유닛이 `Requires=`로 의존하는 다른 유닛의 시작이 실패하면, 해당 잡은 "dependency failed"로 처리되어 실행되지 않습니다. 이는 서비스 장애가 다른 서비스로 전파되는 것을 막는 중요한 메커니즘입니다.
-
-4.  **런타임 관리 및 프로세스 감시**:
-    * 부팅이 완료된 후에도 systemd는 cgroup을 통해 각 서비스의 모든 프로세스(자식, 스레드 포함)를 지속적으로 감시합니다.
-    * 프로세스가 비정상 종료(crash)되면, systemd는 이를 즉시 감지하고 `Restart=` 정책에 따라 재시작 잡을 생성합니다. 이때 `StartLimitBurst`와 `StartLimitIntervalSec` 옵션은 무한 재시작 루프를 방지하는 역할을 합니다.
-    * `systemctl kill` 명령은 지정된 cgroup 내의 모든 프로세스에게 시그널을 전파하므로, 좀비 프로세스를 남기지 않고 서비스를 확실하게 종료시킬 수 있습니다.
-
-5.  **종료 및 타겟 전환**:
-    * `systemctl isolate rescue.target`과 같은 명령은 목표 타겟을 시스템의 새로운 루트 노드로 설정하고, 현재 그래프와의 차집합을 계산하여 불필요한 유닛들을 정해진 의존성 순서에 따라 안전하게 중지시킵니다.
-    * 시스템 종료 시에는 `systemd-shutdown` 프로세스가 파일 시스템을 안전하게 unmount하고 모든 서비스를 순차적으로 종료하는 과정을 책임집니다.
-
-***
-
-### Part 3: Systemd Unit 파일 핵심 문법 (The "What")
-
-Systemd 유닛 파일은 INI 스타일의 단순한 텍스트 파일이며, 크게 세 가지 섹션으로 구성됩니다.
-
-| 섹션 | 주요 지시어 | 설명 및 목적 |
-| :--- | :--- | :--- |
-| **`[Unit]`** | `Description`, `Documentation`, `After`, `Before`, `Requires`, `Wants` | **의존성 그래프의 노드 정보**를 정의합니다. `Description`은 사람이 읽기 위한 설명이며, `After`/`Requires` 등은 그래프의 엣지(연결 관계)를 명시합니다. |
-| **`[Service]`** | `Type`, `ExecStart`, `ExecStop`, `ExecReload`, `Restart`, `User`, `Group`, `EnvironmentFile`, `WorkingDirectory`, 보안 설정 (`PrivateTmp` 등) | **서비스의 동작 방식과 실행 환경**을 정의합니다. `Type`은 프로세스 모델(예: `simple`, `forking`, `notify`)을 지정하며, `ExecStart`는 실제 실행할 명령어를 기술합니다. `Restart`는 자가 치유(self-healing) 정책을, `User`는 최소 권한 원칙을 적용하는 데 사용됩니다. |
-| **`[Install]`** | `WantedBy`, `RequiredBy`, `Alias` | **`systemctl enable` 명령어가 실행될 때의 동작**을 정의합니다. 예를 들어 `WantedBy=multi-user.target`은 `systemctl enable myapp.service` 실행 시 `/etc/systemd/system/multi-user.target.wants/myapp.service` 심볼릭 링크를 생성하여 부팅 시 자동으로 시작되도록 설정합니다. |
-
-#### 서비스 타입(`Type=`)의 이해
-
-* `Type=simple`: `ExecStart`로 지정된 프로세스가 주 프로세스입니다. 가장 일반적이고 권장되는 방식입니다.
-* `Type=forking`: `ExecStart`로 지정된 프로세스가 자식 프로세스를 생성한 후 자신은 종료되는 전통적인 데몬 모델입니다. 이 경우 systemd가 주 프로세스를 추적할 수 있도록 `PIDFile=`을 함께 명시해야 합니다.
-* `Type=notify`: 서비스가 준비 완료 시점을 `sd_notify()` 함수를 통해 systemd에게 명시적으로 알리는 방식입니다. 초기화에 시간이 걸리는 서비스의 시작 완료 시점을 정확히 파악할 수 있어, 의존성 관리에 매우 유용합니다.
-* `Type=oneshot`: 한 번만 실행되고 바로 종료되는 스크립트 등에 사용됩니다. 타이머와 함께 사용되는 경우가 많습니다.
-
-***
-
-### Part 4: 고급 주제 및 실전 활용법
-
-#### 사용자 서비스(User Instance)와 Lingering
-
-* **개념**: Systemd는 시스템 전체를 관리하는 인스턴스(PID 1) 외에, 각 사용자별로 독립된 `systemd --user` 인스턴스를 실행할 수 있습니다.
-* **유닛 파일 위치**: 사용자 유닛은 `~/.config/systemd/user/` 디렉터리에 위치합니다.
-* **Lingering 활성화**: 기본적으로 사용자 인스턴스는 해당 사용자가 로그인해 있는 동안에만 활성화됩니다. 사용자가 로그아웃한 후에도 서비스가 계속 실행되게 하려면, `sudo loginctl enable-linger <username>` 명령으로 'lingering'을 활성화해야 합니다. 이는 개발 환경의 백그라운드 서비스나 멀티테넌트 환경에 매우 유용합니다.
-
-#### 소켓 활성화 (Socket Activation)
-
-* **개념**: 서비스가 항상 실행되어 메모리를 차지하는 대신, systemd가 먼저 서비스의 소켓(예: TCP 포트)을 열어두고 있다가 첫 연결 요청이 들어오면 그제야 해당 서비스를 활성화하는 방식입니다.
-* **장점**: 시스템 리소스를 매우 효율적으로 사용할 수 있으며, 서비스가 재시작되는 동안에도 클라이언트의 연결 요청을 유실하지 않고 큐에 보관할 수 있어 가용성을 높입니다.
-* **구현**: `.socket` 유닛과 `.service` 유닛을 쌍으로 만들어 사용합니다. 서비스는 `sd_notify(READY=1)`를 통해 준비 완료 신호를 보내야 합니다.
-
-#### 타이머 (Timer Units)
-
-* **개념**: `cron`을 대체하는 현대적인 방식의 작업 스케줄러입니다. `.timer` 유닛이 `.service` 유닛을 정해진 시간에 활성화합니다.
-* **주요 기능**:
-    * `OnCalendar=`: `cron`과 유사한 형식으로 실행 시간을 지정합니다.
-    * `Persistent=true`: 서버가 꺼져 있어서 정해진 시간에 작업을 실행하지 못했다면, 다음 부팅 시 즉시 실행해 줍니다.
-    * `RandomizedDelaySec=`: 여러 서버에서 동시에 작업이 시작되어 부하가 몰리는 것을 방지하기 위해 임의의 지연 시간을 추가합니다.
-
-#### 컨테이너 환경에서의 Systemd (PID 1)
-
-* **문제점**: Docker와 같은 컨테이너 환경에서 `docker stop` 명령은 기본적으로 `SIGTERM` 신호를 PID 1에게 보냅니다. 하지만 systemd는 이 신호를 일반적인 종료 신호로 해석하지 않습니다. `SIGKILL`은 하위 서비스를 정리할 시간을 주지 않고 즉시 종료시켜 데이터 무결성을 해칠 수 있습니다.
-* **해결책**: Systemd를 PID 1로 사용하는 컨테이너의 경우, 정상적인 종료 시퀀스를 트리거하기 위해 **`SIGRTMIN+3`** 신호를 사용해야 합니다. Dockerfile에 `STOPSIGNAL SIGRTMIN+3`을 명시하면 `docker stop` 시 이 신호가 전달됩니다. 이 신호를 받은 systemd는 `systemctl stop`과 유사하게 모든 유닛을 순차적이고 안전하게 종료합니다.
-* **실행 환경**: 컨테이너 내에서 systemd를 완전한 기능으로 사용하려면, cgroup 파일 시스템에 접근 권한이 필요합니다 (예: `docker run --privileged -v /sys/fs/cgroup:/sys/fs/cgroup:rw`).
-
-이처럼 systemd는 단순한 서비스 실행 도구를 넘어, 현대 리눅스 시스템의 안정성, 성능, 관리 효율성을 극대화하는 핵심적인 프레임워크입니다. 제공해주신 자료를 통해 이미 깊이 이해하고 계시며, 이 설명을 통해 개념들이 더욱 명확하게 정리되셨기를 바랍니다.
-
-## 기타
-
-- [How to create a systemd service in Linux](https://linuxhandbook.com/create-systemd-services/)
-- [Managing systemd Services](https://documentation.suse.com/smart/systems-management/html/systemd-management/index.html)
+- [systemd_raw.md](systemd_raw.md) — 이 문서로 정리되기 전의 원자료 모음 (영문 튜토리얼, 사례 서사, AI 답변 원문 포함)
+- [commands/systemd.md](../commands/systemd.md) — systemd.generator와 `.d/` 드롭인 상세
+- [commands/systemctl.md](../commands/systemctl.md) — `reload` vs `daemon-reload` 혼동쌍
+- [commands/su.md](../commands/su.md) — `sudo su -`와 `-`(로그인 셸 시뮬레이션)의 의미
+- [commands/nohup.md](../commands/nohup.md) — SIGHUP·세션·CTTY·PGID 메커니즘 상세 (이 문서 "`&`·nohup 수명" 절의 층 1에 해당)
+- [commands/crontab.md](../commands/crontab.md) — timer 유닛이 대체하는 대상
