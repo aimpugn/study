@@ -80,7 +80,17 @@ tasks.test { useJUnitPlatform() }
 
 디렉터리는 `src/main/java/<패키지>/`(구현)와 `src/test/java/<패키지>/`(테스트), 그리고 `gradle test`.
 
-> 더 빠르게: `gradle init`(대화형)이 위 파일과 wrapper를 만들어 준다. 위 build 파일은 그게 무엇을 만드는지 알고 직접 쓰는 버전이다.
+**한 줄 스캐폴드 (도구·네트워크 있을 때).** 표준 템플릿 명령이 위 파일 + wrapper + 샘플을 한 번에 만든다. 요즘은 둘 다 JUnit 5를 기본 생성한다(2026-06 확인: Maven quickstart도 junit-jupiter + Java 17).
+
+```bash
+# Gradle: 이 프로젝트와 같은 구성(Kotlin DSL + JUnit 5 + Java 21)
+gradle init --type java-library --test-framework junit-jupiter --dsl kotlin --java-version 21 --use-defaults
+
+# Maven: quickstart archetype (현재 버전은 JUnit 5 BOM + Java 17 생성)
+mvn archetype:generate -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
+```
+
+생성물엔 샘플 클래스(Gradle은 version catalog도)가 딸려 오니 지우고 쓴다. 그래도 위의 손으로 쓴 최소 build 파일을 외워 두는 이유는 둘이다. (1) 도구·네트워크가 막힌 면접 환경(CoderPad 등) 대비, (2) 템플릿이 무엇을 만드는지 이해하고 직접 고치기 위해.
 
 ### 3. 핵심 재사용 트릭 — 계약 테스트 패턴
 
