@@ -718,7 +718,7 @@ gitlab-psql -c 'SHOW listen_addresses;'   # 빈 값이면 TCP 미청취 (소켓 
 ss -ltnp | grep -E ':(5432|5433)'         # 실제 TCP 점유 확인
 ```
 
-그래도 Nexus용 PostgreSQL은 전용 포트(예: 5433)와 localhost 바인드로 두는 편이 혼동을 없앤다.
+그래도 Nexus용 PostgreSQL은 전용 포트(예: 5433)와 localhost 바인드로 두는 편이 혼동을 없앤다. TCP와 Unix 소켓이라는 두 접속 통로, `listen_addresses`의 의미, 같은 호스트 다중 인스턴스 공존 규칙의 일반 원리는 [database/postgresql/connections.md](../database/postgresql/connections.md)에 정리되어 있다.
 
 ### PostgreSQL 준비와 Nexus 연결
 
