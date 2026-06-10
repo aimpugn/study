@@ -30,6 +30,7 @@ git push --set-upstream origin feature-branch
 - 오픈 소스 소프트웨어 프로젝트에서의 기여 과정에서도 사용된다
 - `upstream`은 프로젝트의 주 저장소, 즉 메인 리포지토리를 가리킨다. 즉, 개인 개발자가 작업한 코드를 이 주 저장소에 기여하는 방향을 의미한다
 - 가령, 오픈 소스 프로젝트에 기여할 때, 개인 포크(fork)에서 메인 리포지토리로 풀 리퀘스트(pull request)를 보내는 과정이 `upstream`으로 기여하는 것이라고 한다
+- 리눅스 커널·배포판 생태계에서 "기여는 upstream으로만, 코드는 downstream으로만" 흐르는 upstream first 원칙이 실제로 어떻게 작동하는지는 [../linux/upstream_to_distro.md](../linux/upstream_to_distro.md) 참고
 
 ### 네트워킹 및 데이터 흐름
 
