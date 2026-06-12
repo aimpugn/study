@@ -105,7 +105,7 @@ Header always unset Server
 
 `mod_headers`가 헤더를 손보는 시점은 코어가 `Server`를 붙이기 *전*입니다. 아직 존재하지 않는 헤더를 unset 해 봐야 소용이 없고, 이후 코어가 다시 붙여 버립니다. (반면 `X-Powered-By`처럼 코어가 아니라 앱/모듈이 만든 헤더는 `mod_headers`로 잘 지워집니다. 발원지가 코어가 아니기 때문입니다.)
 
-origin에서 `Server`를 끝까지 손보려면 보통 **ModSecurity**의 `SecServerSignature` 지시어를 씁니다. 이건 코어가 헤더를 붙인 *이후* 단계에서 값을 덮어쓰는 방식이라, 완전 제거는 아니어도 임의 문자열로 위장할 수 있습니다. 다만 이걸 위해 ModSecurity를 새로 들이는 건 배보다 배꼽입니다. **이 한계가, "그러면 차라리 앞단(BIG-IP)에서 지우자"는 결론으로 자연스럽게 이어집니다** — 뒤에서 다시 봅니다.
+origin에서 `Server`를 끝까지 손보려면 보통 **ModSecurity**의 `SecServerSignature` 지시어를 씁니다. 이건 기동 시점에 코어가 들고 있는 배너 문자열 자체를 메모리에서 교체하는 방식입니다 — 덮어쓸 버퍼 길이를 확보해야 해서 `ServerTokens Full`이 전제 조건입니다. 완전 제거는 아니어도 임의 문자열로 위장할 수 있습니다. 다만 이걸 위해 ModSecurity를 새로 들이는 건 배보다 배꼽입니다. **이 한계가, "그러면 차라리 앞단(BIG-IP)에서 지우자"는 결론으로 자연스럽게 이어집니다** — 뒤에서 다시 봅니다.
 
 PHP를 쓴다면 `Server`와 별개로 `X-Powered-By: PHP/7.4.3`가 새는데, 이건 Apache가 아니라 PHP 설정에서 끕니다.
 
@@ -339,4 +339,4 @@ curl.exe -i -X TRACE https://example.com
 - [RFC 9110 — HTTP Semantics (TRACE, §9.3.8)](https://www.rfc-editor.org/rfc/rfc9110.html#name-trace)
 - [F5 iRules — HTTP::respond](https://clouddocs.f5.com/api/irules/HTTP__respond.html)
 - [F5 iRules — HTTP::header](https://clouddocs.f5.com/api/irules/HTTP__header.html)
-- ModSecurity `SecServerSignature` (Reference Manual) — `Server` 헤더 위장이 필요할 때
+- [ModSecurity Reference Manual — `SecServerSignature`](https://github.com/owasp-modsecurity/ModSecurity/wiki/Reference-Manual-%28v2.x%29#secserversignature) — `Server` 헤더 위장이 필요할 때. "This directive will only work if the Apache directive ServerTokens is set to Full" (ServerTokens Full 전제의 출처)
