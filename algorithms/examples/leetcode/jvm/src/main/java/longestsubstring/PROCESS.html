@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>풀이 시각화 — 두 포인터 윈도우 (LeetCode 3)</title>
+<style>
+:root{
+  --color-page:#faf9f5;
+  --color-background-primary:#ffffff;
+  --color-background-secondary:#f1efe8;
+  --color-background-info:#e6f1fb;
+  --color-background-danger:#fcebeb;
+  --color-text-primary:#1f1f1d;
+  --color-text-secondary:#6b6a64;
+  --color-text-tertiary:#9a988f;
+  --color-text-info:#185fa5;
+  --color-text-danger:#a32d2d;
+  --color-border-tertiary:rgba(0,0,0,0.15);
+  --color-border-secondary:rgba(0,0,0,0.30);
+  --color-border-danger:rgba(163,45,45,0.45);
+  --border-radius-md:8px;
+  --border-radius-lg:12px;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --color-page:#1a1917;
+    --color-background-primary:#2b2a27;
+    --color-background-secondary:#211f1c;
+    --color-background-info:#0c447c;
+    --color-background-danger:#791f1f;
+    --color-text-primary:#ececea;
+    --color-text-secondary:#a8a69d;
+    --color-text-tertiary:#7a786f;
+    --color-text-info:#b5d4f4;
+    --color-text-danger:#f7c1c1;
+    --color-border-tertiary:rgba(255,255,255,0.16);
+    --color-border-secondary:rgba(255,255,255,0.30);
+    --color-border-danger:rgba(247,193,193,0.45);
+  }
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:2rem 1.25rem; background:var(--color-page); color:var(--color-text-primary);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  line-height:1.7; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:760px; margin:0 auto;}
+h1{font-size:22px; font-weight:500; margin:0 0 0.4rem;}
+p.lead{font-size:15px; color:var(--color-text-secondary); margin:0 0 1.25rem;}
+.anchor{background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; font-size:14px; margin:0 0 1.5rem;}
+.anchor b{font-weight:500;}
+button{font:inherit; font-size:14px; padding:6px 12px; border:0.5px solid var(--color-border-secondary); background:transparent; color:var(--color-text-primary); border-radius:var(--border-radius-md); cursor:pointer;}
+button:hover{background:var(--color-background-secondary);}
+button:disabled{opacity:0.4; cursor:default;}
+input[type=text]{font:inherit; font-size:14px; padding:6px 10px; border:0.5px solid var(--color-border-secondary); border-radius:var(--border-radius-md); background:var(--color-background-primary); color:var(--color-text-primary); width:170px;}
+.sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h2 class="sr-only">두 포인터 슬라이딩 윈도우가 문자열을 훑으며 left/right 포인터와 lastSeen 맵을 단계별로 갱신하는 과정을 보여주는 인터랙티브 시각화</h2>
+
+<h1>풀이 시각화 — 두 포인터로 창을 미는 법</h1>
+<p class="lead">left/right 두 끝과 lastSeen 맵이 단계마다 어떻게 움직이는지. 프리셋을 고르거나 직접 입력해 단계를 넘겨 보세요. 파랑 = 현재 창, 빨강 = 곧 버려질 옛 글자.</p>
+
+<div class="anchor">
+한 장면으로 기억하기: <b>오른손(right)이 글자를 집는다 → 방명록(lastSeen)에서 "전에 본 적?"을 본다 → 그게 창 안(prev &gt;= left)이면 왼손(left)을 그 다음으로 점프.</b><br>
+핵심은 left를 "중복이 난 그 글자"가 아니라 "이전에 본 같은 글자의 바로 다음"으로 옮긴다는 것. 그리고 그 옛 기록이 이미 창 밖(prev &lt; left)이면 무시한다(abba의 마지막 a).
+</div>
+
+<div id="sw-picker" style="display:flex; gap:8px; margin-bottom:0.75rem; flex-wrap:wrap; align-items:center;"></div>
+<div style="display:flex; gap:8px; margin-bottom:1.5rem; align-items:center; flex-wrap:wrap;">
+  <span style="font-size:14px; color:var(--color-text-secondary);">또는 직접:</span>
+  <input id="sw-custom" type="text" maxlength="40" placeholder="예: pwwkew">
+  <button id="sw-go">이 입력으로 보기</button>
+</div>
+
+<div id="sw-cells" style="display:flex; gap:6px; margin-bottom:0.4rem; flex-wrap:wrap;"></div>
+<div id="sw-ptrs" style="display:flex; gap:6px; margin-bottom:1.25rem; min-height:20px; flex-wrap:wrap;"></div>
+
+<div style="display:flex; gap:16px; align-items:flex-start; margin-bottom:1.25rem; flex-wrap:wrap;">
+  <div style="flex:1; min-width:220px;">
+    <div style="font-size:13px; color:var(--color-text-secondary); margin-bottom:6px;">lastSeen (문자 -&gt; 마지막 위치)</div>
+    <div id="sw-map" style="display:flex; gap:6px; flex-wrap:wrap; min-height:30px;"></div>
+  </div>
+  <div style="text-align:center; min-width:70px;">
+    <div style="font-size:13px; color:var(--color-text-secondary); margin-bottom:6px;">answer</div>
+    <div id="sw-ans" style="font-size:24px; font-weight:500;">0</div>
+  </div>
+</div>
+
+<div id="sw-explain" style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; font-size:14px; line-height:1.6; min-height:50px; margin-bottom:1rem;"></div>
+
+<div id="sw-code" style="font-family:var(--font-mono); font-size:13px; line-height:1.8; background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; margin-bottom:1rem;"></div>
+
+<div style="display:flex; gap:8px; align-items:center;">
+  <button id="sw-prev">이전</button>
+  <button id="sw-next">다음</button>
+  <button id="sw-play">재생</button>
+  <span id="sw-stepno" style="font-size:13px; color:var(--color-text-secondary); margin-left:auto;"></span>
+</div>
+</div>
+
+<script>
+(function(){
+  var INPUTS = ["abcdaxz","abba","abcabcbb"];
+  var cur = "abcdaxz", steps = [], idx = 0, timer = null;
+
+  function compute(s){
+    var last = {}, left = 0, ans = 0, out = [];
+    for(var r=0;r<s.length;r++){
+      var c = s[r];
+      var prev = (c in last) ? last[c] : null;
+      var leftBefore = left;
+      var collision = prev !== null && prev >= left;
+      if(collision) left = prev + 1;
+      last[c] = r;
+      var len = r - left + 1;
+      ans = Math.max(ans, len);
+      out.push({r:r,c:c,prev:prev,leftBefore:leftBefore,left:left,collision:collision,len:len,ans:ans,map:Object.assign({},last)});
+    }
+    return out;
+  }
+  function el(id){ return document.getElementById(id); }
+
+  function render(){
+    var st = steps[idx], s = cur, cells = "", ptrs = "", i;
+    for(i=0;i<s.length;i++){
+      var inWin = i>=st.left && i<=st.r;
+      var isRight = i===st.r;
+      var isPrev = st.collision && i===st.prev;
+      var bg = "transparent", bd = "var(--color-border-tertiary)", col = "var(--color-text-primary)";
+      if(inWin){ bg = "var(--color-background-info)"; col = "var(--color-text-info)"; }
+      if(isPrev){ bg = "var(--color-background-danger)"; col = "var(--color-text-danger)"; bd = "var(--color-border-danger)"; }
+      if(isRight){ bd = "var(--color-text-info)"; }
+      cells += "<div style='width:40px;text-align:center;'>"
+        + "<div style='font-size:11px;color:var(--color-text-tertiary);margin-bottom:3px;'>"+i+"</div>"
+        + "<div style='height:40px;line-height:40px;font-size:18px;font-weight:500;border:1.5px solid "+bd+";border-radius:var(--border-radius-md);background:"+bg+";color:"+col+";'>"+esc(s[i])+"</div>"
+        + "</div>";
+      var lab = (i===st.left && i===st.r) ? "L R" : (i===st.left ? "L" : (i===st.r ? "R" : ""));
+      ptrs += "<div style='width:40px;text-align:center;font-size:13px;font-weight:500;color:var(--color-text-info);'>"+lab+"</div>";
+    }
+    el("sw-cells").innerHTML = cells;
+    el("sw-ptrs").innerHTML = ptrs;
+
+    var mp = "";
+    for(var k in st.map){
+      var hot = k===st.c;
+      mp += "<span style='font-family:var(--font-mono);font-size:13px;padding:3px 8px;border-radius:var(--border-radius-md);background:"
+        +(hot?"var(--color-background-info)":"var(--color-background-primary)")
+        +";border:0.5px solid var(--color-border-tertiary);color:"+(hot?"var(--color-text-info)":"var(--color-text-primary)")+";'>"
+        +esc(k)+":"+st.map[k]+"</span>";
+    }
+    el("sw-map").innerHTML = mp;
+    el("sw-ans").textContent = st.ans;
+
+    var q = "'"+st.c+"'", ex;
+    if(st.prev===null){
+      ex = "right="+st.r+" "+q+" : 처음 보는 글자입니다. 창을 오른쪽으로 한 칸 늘립니다. 길이 "+st.len+".";
+    } else if(st.collision){
+      ex = "right="+st.r+" "+q+" : 전에 "+st.prev+"번에서 봤고("+st.prev+" >= left "+st.leftBefore+"), 아직 창 안입니다. left를 "+st.prev+"+1 = "+st.left+"로 점프해 옛 "+q+"를 버립니다. 길이 "+st.len+".";
+    } else {
+      ex = "right="+st.r+" "+q+" : 전에 "+st.prev+"번에서 봤지만 "+st.prev+" < left "+st.leftBefore+", 이미 창 밖입니다. 무시하고 left는 그대로 둡니다. 길이 "+st.len+".";
+    }
+    el("sw-explain").textContent = ex;
+
+    var lines = ["var prev = lastSeen.get(c);", "if (prev != null && prev >= left)", "    left = prev + 1;"];
+    var hi = [false, st.collision, st.collision];
+    var code = "";
+    for(i=0;i<lines.length;i++){
+      code += "<div style='padding:1px 6px;border-radius:4px;background:"+(hi[i]?"var(--color-background-info)":"transparent")
+        +";color:"+(hi[i]?"var(--color-text-info)":"var(--color-text-secondary)")+";'>"+lines[i].replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</div>";
+    }
+    el("sw-code").innerHTML = code;
+
+    el("sw-stepno").textContent = "단계 "+(idx+1)+" / "+steps.length;
+    el("sw-prev").disabled = idx===0;
+    el("sw-next").disabled = idx===steps.length-1;
+  }
+
+  function esc(ch){ return ch.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/ /g,"·"); }
+
+  function renderPicker(){
+    var p = "";
+    INPUTS.forEach(function(s){
+      var on = s===cur;
+      p += "<button data-s='"+s+"' style='font-family:var(--font-mono);"+(on?"border-color:var(--color-text-info);color:var(--color-text-info);":"")+"'>"+s+"</button>";
+    });
+    el("sw-picker").innerHTML = p;
+    Array.prototype.forEach.call(el("sw-picker").querySelectorAll("button"), function(b){
+      b.onclick = function(){ setInput(b.getAttribute("data-s")); };
+    });
+  }
+  function stop(){ if(timer){ clearInterval(timer); timer = null; el("sw-play").textContent = "재생"; } }
+  function setInput(s){ if(s==null || s.length===0) return; cur = s; steps = compute(s); idx = 0; stop(); renderPicker(); render(); }
+  function play(){
+    if(timer){ stop(); return; }
+    if(idx===steps.length-1) idx = 0;
+    el("sw-play").textContent = "멈춤";
+    timer = setInterval(function(){ if(idx<steps.length-1){ idx++; render(); } else stop(); }, 1100);
+  }
+
+  el("sw-prev").onclick = function(){ stop(); if(idx>0){ idx--; render(); } };
+  el("sw-next").onclick = function(){ stop(); if(idx<steps.length-1){ idx++; render(); } };
+  el("sw-play").onclick = play;
+  el("sw-go").onclick = function(){ var v = el("sw-custom").value.trim(); if(v) setInput(v); };
+  el("sw-custom").addEventListener("keydown", function(e){ if(e.key==="Enter"){ var v=el("sw-custom").value.trim(); if(v) setInput(v); } });
+
+  setInput("abcdaxz");
+})();
+</script>
+</body>
+</html>
