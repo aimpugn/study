@@ -36,10 +36,10 @@ examples/programmers/jvm/src/main/kotlin/p<problemId>/Main.kt
 
 ## 새 문제 준비
 
-새 문제를 시작할 때는 `programmers-jvm-setup` 스킬로 언어와 문제 URL을 넘겨 scaffold를 만듭니다.
+새 문제를 시작할 때는 `algo-setup` 스킬로 플랫폼·언어·문제를 넘겨 scaffold를 만듭니다.
 
 ```text
-$programmers-jvm-setup java https://school.programmers.co.kr/learn/courses/30/lessons/<problemId> 준비
+$algo-setup programmers java https://school.programmers.co.kr/learn/courses/30/lessons/<problemId> 준비
 ```
 
-스킬은 문제 제목, 공식 난이도 표시, 자체 체감 난이도, 예상 소요 시간, 첫 풀이 방향을 함께 확인합니다.
+스킬은 문제 제목, 공식 난이도, 입력 규모, 시그니처, 예상 소요 시간(실전 숙련자 / 학습 모드)을 중립적으로 확인합니다. 유형·접근·첫 풀이 방향은 풀기 전에 흘리지 않습니다.
