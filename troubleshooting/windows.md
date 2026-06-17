@@ -127,3 +127,49 @@ netsh wlan show all 실행 중...
 보고서를 다음에 기록했습니다:C:\ProgramData\Microsoft\Windows\WlanReport\wlan-report-latest.html
 완료.
 ```
+
+## 새로 만든 파일을 도구로 읽으면 암호화된 바이너리로 보인다 (Fasoo DRM)
+
+### 문제
+
+스크립트로 파일을 하나 만들고(예: 분석 결과를 `target/result.txt`로 저장) 다시 읽으면, 평문이 아니라 `DRMONE ... Fasoo DRM`으로 시작하는 깨진 바이너리가 나온다. 정작 빌드 도구(javac, mvn)는 같은 류의 파일을 정상적으로 읽는다.
+
+### 원인
+
+회사 보안 정책으로 깔린 Fasoo 같은 DRM 에이전트가, 특정 경로/확장자에 새로 생성되는 파일을 **저장 시점에 자동 암호화**한다. 인가된 애플리케이션은 투명하게 복호화해 읽지만(그래서 빌드는 정상), 그 보호 경계 밖에서 raw 바이트로 읽는 도구·뷰어는 암호문을 보게 된다. 즉 파일이 손상된 게 아니라 *암호화된 채로 저장*된 것이다.
+
+### 해결
+
+- 다시 읽어야 하는 분석 산출물은 파일로 떨구지 말고 **표준출력(콘솔)으로 바로 출력**한다. 콘솔 텍스트는 DRM 대상이 아니다.
+- 꼭 파일이 필요하면 DRM 정책에서 제외되는 위치(보통 소스 트리)인지 확인한다. 실측상 빌드 산출물 디렉터리(`target/` 등)에 쓴 파일은 암호화됐고, 소스 트리에 쓴 `.java`는 평문으로 읽혔다.
+- 근본적으로는, 도구 체인이 raw 파일 읽기에 의존한다면 DRM 예외 경로를 보안팀과 합의해야 한다.
+
+## PowerShell 함정: 변수 대소문자 무시와 빈 컬렉션 정렬
+
+### 문제
+
+- `$F`에 값을 누적하는데 같은 스코프의 `$f`(예: `foreach ($f in ...)`) 때문에 엉뚱한 타입 오류가 난다: `Method invocation failed because [System.IO.FileInfo] does not contain a method named 'op_Addition'`.
+- 결과가 없을 때 `(@($x) | Sort-Object -Unique).Count` 같은 코드가 `Argument types do not match`로 멈춘다.
+
+### 원인
+
+- PowerShell 변수명은 **대소문자를 구분하지 않는다**. `$F`와 `$f`는 같은 변수다. 누적용 변수와 루프 변수가 철자만 다르고 대소문자만 다르면 서로 덮어쓴다.
+- 빈 컬렉션이나 단일 객체에 파이프라인 연산(`Sort-Object` 등)을 걸면 타입 추론이 어긋나 오류가 날 수 있다.
+
+### 해결
+
+- 변수명은 대소문자가 아니라 **철자로** 구분한다. `$F`/`$f` 대신 `$sumF`/`$file`처럼 명확히 다른 이름을 쓴다.
+- 컬렉션은 항상 `@(...)`로 배열화하고, 비었을 때의 분기를 먼저 둔다. 예: `if ($items.Count -gt 0) { $items | Sort-Object -Unique }`.
+
+## 잠긴 개발 PC에서 빌드 도구(mvn/JDK) 찾기
+
+### 문제
+
+`mvn`이 PATH에 없고, 어떤 JDK들이 설치돼 있는지도 불분명하다. 인터넷 설치도 제약이 있다.
+
+### 해결
+
+- Maven은 단독 설치 없이도 **mvnd(Maven 데몬) 번들** 안에 정규 `mvn`이 들어 있는 경우가 많다. 예: `C:\dev\mvnd\<버전>\mvn\bin\mvn.cmd`(`mvn -v`로 Apache Maven 정식 버전 확인).
+- 여러 JDK가 한 폴더에 공존할 수 있다(예: `C:\dev\jdk\{17.x,21.x,25.x}`). 단계별로 `JAVA_HOME`을 바꿔 끼워 쓴다. 빌드 모듈마다 요구 JDK가 다르면(예: 한 모듈이 release 21 요구) 그 단계만 상위 JDK로 돌린다.
+- Windows의 `bash`는 둘일 수 있다. `MINGW64`(Git Bash)는 Windows 경로(`/c/...`)와 `.cmd` 실행을 그대로 다루지만, WSL의 `bash`는 별개 리눅스 환경(`/mnt/c/...`, 별도 툴체인)이다. `.cmd` 기반 Windows 빌드를 돌릴 때는 MINGW 쪽이 마찰이 적다. `uname -a`로 어느 쪽인지 먼저 확인한다.
+- 이 도구 발굴은 망분리 코드를 로컬에서 되살리는 작업의 첫 단계이기도 하다([`../jvm/maven_local_shim_repo.md`](../jvm/maven_local_shim_repo.md)).
