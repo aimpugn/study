@@ -1,5 +1,7 @@
 # GraalVM와 JVM을 직관적으로 이해하기
 
+> 이 문서는 특정 예제(fully-portable-spring-boot)를 토대로 libjvm·glibc·musl 정적 링킹·배포 전략까지 OS·툴체인 관점에서 깊게 파는 심화 노트다. native-image의 **개념 요약**(closed-world·AOT·빌드타임 초기화·대가)은 [../../java/graalvm_native_image.md](../../java/graalvm_native_image.md)에 따로 정리돼 있다.
+
 ## JDK와 JVM: 기본 구조를 먼저 잡기
 - JDK = 언어 도구 모음집입니다. `javac`(컴파일러), 표준 라이브러리, 그리고 실행기의 핵심인 JVM(HotSpot)까지 한 꾸러미로 제공합니다.
 - JVM(HotSpot) = 바이트코드 실행기입니다. C/C++로 작성된 `libjvm`이 OS 위에서 동작하며, 클래스 로딩 → 검증 → 초기화 → JIT 컴파일 → GC 같은 일을 수행합니다.

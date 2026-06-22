@@ -9,11 +9,13 @@ Spring Boot 서비스에 흔히 붙이는 Grafana 공식 대시보드 **"JVM (Mi
 - JVM: HotSpot, JDK 9 이상(캡처에 G1 + 분할 CodeHeap이 보이므로 확실), GC는 G1
 - 캡처된 실측값: 4 vCPU, 힙 512 MiB 고정으로 도는 소형 서비스의 2026-06 시점 스냅숏 — 본문 예시와 11장 진단에 그대로 사용
 
-같은 디렉터리의 짝 문서:
+관련 문서:
 
 - [gc.md](./gc.md) — GC 종류별 특성과 선택 기준
 - [options.md](./options.md) — JVM 옵션 사전
-- [thread_leak.md](./thread_leak.md) — 스레드 누수 진단
+- [thread_leak.md](./thread_leak.md) — 스레드 누수 진단(live threads 패널이 우상향할 때)
+- [java/metaspace_leak_diagnosis.md](./java/metaspace_leak_diagnosis.md) — Metaspace 패널이 계단식으로 오를 때(클래스로더 누수)
+- [java/resource_management_and_leaks.md](./java/resource_management_and_leaks.md) — 힙 vs 외부 자원, GC의 책임 범위
 
 목차:
 

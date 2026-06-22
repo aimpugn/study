@@ -237,3 +237,8 @@ java -XX:+UseCompressedOops -jar myapp.jar
 # 비활성화
 java -XX:-UseCompressedOops -jar myapp.jar
 ```
+
+## 관련 노트
+
+- [java/metaspace_leak_diagnosis.md](./java/metaspace_leak_diagnosis.md) — `-XX:MaxMetaspaceSize`·`-Xlog:class+load/unload`를 누수 진단에 쓰는 맥락.
+- [gc.md](./gc.md) — `-XX:+UseG1GC` 등 GC 옵션의 배경(알고리즘별 특성과 선택).
