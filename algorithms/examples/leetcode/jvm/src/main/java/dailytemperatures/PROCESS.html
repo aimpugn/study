@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Temperatures — 단조 스택 상태 전이</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1a1a; --muted: #6b7280; --panel: #f9fafb;
+    --cell-bg: #f3f4f6; --cell-border: #d1d5db;
+    --accent: #2563eb; --accent-bg: #eff6ff;
+    --warm: #ea580c; --warm-bg: #fff7ed;
+    --wait: #7c3aed; --wait-bg: #f5f3ff;
+    --done: #6b7280;
+    --code-bg: #f8fafc; --code-hl: #fef3c7;
+    --radius: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f172a; --fg: #e2e8f0; --muted: #94a3b8; --panel: #111c33;
+      --cell-bg: #1e293b; --cell-border: #334155;
+      --accent: #60a5fa; --accent-bg: #0f1f3d;
+      --warm: #fb923c; --warm-bg: #2a1a0f;
+      --wait: #a78bfa; --wait-bg: #1e1633;
+      --done: #64748b;
+      --code-bg: #0b1120; --code-hl: #3f3a1a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.55; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+  input[type=text] { flex: 1 1 260px; min-width: 200px; padding: 7px 10px; font-size: 13px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    background: var(--cell-bg); color: var(--fg); border: 1px solid var(--cell-border); border-radius: var(--radius); }
+  button { padding: 7px 12px; font-size: 13px; cursor: pointer; background: var(--cell-bg); color: var(--fg);
+    border: 1px solid var(--cell-border); border-radius: var(--radius); }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .preset { font-size: 12px; }
+  .err { color: var(--warm); font-size: 12px; margin: -6px 0 10px; min-height: 16px; }
+  .stepbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .stepbar .count { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+  .narr { background: var(--panel); border: 1px solid var(--cell-border); border-left: 3px solid var(--accent);
+    border-radius: var(--radius); padding: 10px 12px; margin-bottom: 16px; min-height: 22px; font-size: 13.5px; }
+  .board { display: flex; flex-wrap: wrap; gap: 22px; margin-bottom: 16px; }
+  .arrayZone { flex: 1 1 420px; }
+  .stackZone { flex: 0 0 150px; }
+  .zone-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; text-transform: none; }
+  .arr { display: flex; gap: 5px; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .idx { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .cell { width: 38px; height: 40px; display: flex; align-items: center; justify-content: center;
+    background: var(--cell-bg); border: 2px solid var(--cell-border); border-radius: var(--radius);
+    font-variant-numeric: tabular-nums; font-weight: 600; transition: background .12s, border-color .12s; }
+  .ans { font-size: 11px; height: 16px; color: var(--done); font-variant-numeric: tabular-nums; }
+  .ans.filled { color: var(--warm); font-weight: 700; }
+  .cell.cur { border-color: var(--accent); background: var(--accent-bg); }
+  .cell.wait { border-color: var(--wait); background: var(--wait-bg); }
+  .cell.pop { border-color: var(--warm); background: var(--warm-bg); }
+  .ptr { font-size: 11px; height: 14px; color: var(--accent); font-weight: 700; }
+  .stack { display: flex; flex-direction: column-reverse; gap: 4px; min-height: 44px; padding: 6px;
+    background: var(--panel); border: 1px dashed var(--cell-border); border-radius: var(--radius); }
+  .scard { display: flex; justify-content: space-between; padding: 5px 8px; font-size: 12px;
+    background: var(--wait-bg); border: 1px solid var(--wait); border-radius: 6px; font-variant-numeric: tabular-nums; }
+  .scard.poptop { background: var(--warm-bg); border-color: var(--warm); }
+  .scard .t { color: var(--muted); }
+  .stack-empty { color: var(--muted); font-size: 12px; text-align: center; padding: 8px 0; }
+  .stack-top { font-size: 11px; color: var(--muted); margin-top: 4px; text-align: center; }
+  .vars { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted);
+    margin-bottom: 16px; line-height: 1.7; }
+  .vars b { color: var(--fg); font-weight: 600; }
+  pre.code { background: var(--code-bg); border: 1px solid var(--cell-border); border-radius: var(--radius);
+    padding: 10px 0; margin: 0 0 14px; overflow-x: auto; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; }
+  pre.code .ln { display: block; padding: 1px 12px; white-space: pre; }
+  pre.code .ln.hl { background: var(--code-hl); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .sw { width: 12px; height: 12px; border-radius: 3px; border: 2px solid; }
+  .sw.cur { border-color: var(--accent); background: var(--accent-bg); }
+  .sw.wait { border-color: var(--wait); background: var(--wait-bg); }
+  .sw.pop { border-color: var(--warm); background: var(--warm-bg); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Daily Temperatures — 단조 스택이 움직이는 모습</h1>
+  <p class="sub">각 날에서 "며칠 뒤에 더 따뜻해지나"를 구합니다. 스택에는 아직 더 따뜻한 날을 못 만난 인덱스만 쌓이고, 더 따뜻한 날이 오면 꺼내며 답을 채웁니다. 한 칸씩 넘기며 무엇이 변하는지 보세요.</p>
+
+  <div class="controls">
+    <input id="input" type="text" value="73, 74, 75, 71, 69, 72, 76, 73" aria-label="온도 배열 입력">
+    <button id="run" class="primary">적용</button>
+    <button class="preset" data-v="73, 74, 75, 71, 69, 72, 76, 73">예제1</button>
+    <button class="preset" data-v="99, 99, 99, 99, 99, 100">같은 값+봉우리</button>
+    <button class="preset" data-v="100, 99, 98, 97">단조 감소</button>
+  </div>
+  <div id="err" class="err"></div>
+
+  <div class="stepbar">
+    <button id="prev">이전</button>
+    <button id="play">재생</button>
+    <button id="next">다음</button>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="narr" id="narr" aria-live="polite"></div>
+
+  <div class="board">
+    <div class="arrayZone">
+      <div class="zone-label">온도 배열 (위: 인덱스, 아래: answer)</div>
+      <div class="arr" id="arr"></div>
+    </div>
+    <div class="stackZone">
+      <div class="zone-label">스택 (대기 중 인덱스)</div>
+      <div class="stack" id="stack"></div>
+      <div class="stack-top">아래 = 바닥, 위 = 최근</div>
+    </div>
+  </div>
+
+  <div class="vars" id="vars"></div>
+
+  <pre class="code" id="code"></pre>
+
+  <div class="legend">
+    <span><span class="sw cur"></span> 현재 i (방금 도착한 날)</span>
+    <span><span class="sw wait"></span> 스택에서 대기 중</span>
+    <span><span class="sw pop"></span> 방금 꺼내 답을 채운 날</span>
+  </div>
+  <p class="sr-only" id="srsum" aria-live="polite"></p>
+</div>
+
+<script>
+// === compute: 단조 스택 단계 생성 (node로 정확성 결제됨 — 대표 입력 5개에서 최종 answer == 정답) ===
+function computeSteps(temps) {
+  const n = temps.length;
+  const answer = new Array(n).fill(null); // null = 아직 안 정해짐(표시는 0)
+  const stack = [];
+  const steps = [];
+  const snap = (phase, i, narr, popped, line) => steps.push({
+    phase, i, stack: stack.slice(), answer: answer.slice(), popped: (popped == null ? null : popped), narr, line
+  });
+  snap('start', -1, '시작합니다. 스택은 비어 있고 answer는 모두 0입니다.', null, 1);
+  for (let i = 0; i < n; i++) {
+    snap('arrive', i, `i=${i} 도착 (온도 ${temps[i]}). 스택 맨 위 날보다 따뜻하면 그 날의 답이 정해집니다.`, null, 4);
+    while (stack.length > 0 && temps[i] > temps[stack[stack.length - 1]]) {
+      const idx = stack[stack.length - 1];
+      stack.pop();
+      answer[idx] = i - idx;
+      snap('pop', i, `${temps[i]} > ${temps[idx]} 이므로 idx=${idx}를 꺼냅니다. answer[${idx}] = ${i} - ${idx} = ${i - idx}.`, idx, 6);
+    }
+    stack.push(i);
+    snap('push', i, `i=${i}는 아직 더 따뜻한 날을 못 만났으니 스택에 쌓고 기다립니다.`, null, 8);
+  }
+  snap('end', n, '끝났습니다. 스택에 남은 인덱스는 더 따뜻한 날이 없어 answer가 0으로 남습니다.', null, 11);
+  return steps;
+}
+
+const CODE = [
+  'int[] answer = new int[n];',
+  'Deque<Integer> stack = new ArrayDeque<>();  // 대기 인덱스',
+  'for (int i = 0; i < n; i++) {',
+  '    while (!stack.isEmpty() && t[i] > t[stack.peek()]) {',
+  '        int idx = stack.pop();',
+  '        answer[idx] = i - idx;   // i가 idx의 더 따뜻한 날',
+  '    }',
+  '    stack.push(i);',
+  '}',
+  'return answer;',
+];
+// 단계 phase -> 강조할 코드 줄(1-base). start=1, arrive=4(루프/비교), pop=6, push=8, end=10
+function lineFor(step){ return step.line === 11 ? 10 : step.line; }
+
+let temps = [], steps = [], cur = 0, timer = null;
+
+function parseInput(raw) {
+  const parts = raw.split(/[\s,]+/).filter(s => s.length > 0);
+  if (parts.length === 0) throw new Error('숫자를 하나 이상 넣어 주세요.');
+  const nums = parts.map(s => {
+    const v = Number(s);
+    if (!Number.isInteger(v)) throw new Error(`정수만 넣어 주세요: "${s}"`);
+    return v;
+  });
+  if (nums.length > 40) throw new Error('40개 이하로 넣어 주세요(시각화 가독성).');
+  return nums;
+}
+
+function load(raw) {
+  const err = document.getElementById('err');
+  try {
+    const t = parseInput(raw);
+    temps = t; steps = computeSteps(t); cur = 0; stopPlay();
+    err.textContent = '';
+    render();
+  } catch (e) {
+    err.textContent = e.message;
+  }
+}
+
+function render() {
+  const step = steps[cur];
+  const n = temps.length;
+  const inStack = new Set(step.stack);
+
+  // 배열
+  const arr = document.getElementById('arr');
+  arr.innerHTML = '';
+  for (let k = 0; k < n; k++) {
+    const col = document.createElement('div'); col.className = 'col';
+    const ptr = document.createElement('div'); ptr.className = 'ptr';
+    ptr.textContent = (step.phase !== 'end' && k === step.i) ? 'i' : '';
+    const idx = document.createElement('div'); idx.className = 'idx'; idx.textContent = k;
+    const cell = document.createElement('div'); cell.className = 'cell'; cell.textContent = temps[k];
+    if (k === step.popped) cell.classList.add('pop');
+    else if (step.phase !== 'end' && k === step.i && step.phase !== 'pop') cell.classList.add('cur');
+    else if (inStack.has(k)) cell.classList.add('wait');
+    const ans = document.createElement('div'); ans.className = 'ans';
+    const a = step.answer[k];
+    if (a != null) { ans.textContent = a; ans.classList.add('filled'); }
+    else { ans.textContent = '0'; }
+    col.appendChild(ptr); col.appendChild(idx); col.appendChild(cell); col.appendChild(ans);
+    arr.appendChild(col);
+  }
+
+  // 스택
+  const st = document.getElementById('stack');
+  st.innerHTML = '';
+  if (step.stack.length === 0) {
+    const e = document.createElement('div'); e.className = 'stack-empty'; e.textContent = '(비어 있음)';
+    st.appendChild(e);
+  } else {
+    step.stack.forEach((si, pos) => {
+      const c = document.createElement('div'); c.className = 'scard';
+      const isTop = pos === step.stack.length - 1;
+      // pop 단계에서는 "막 꺼낸 것"을 보여주려고, 다음 비교 대상 top을 강조
+      const sp = document.createElement('span'); sp.textContent = `i=${si}`;
+      const t = document.createElement('span'); t.className = 't'; t.textContent = `T=${temps[si]}`;
+      c.appendChild(sp); c.appendChild(t);
+      if (isTop && step.phase === 'arrive') c.classList.add('poptop');
+      st.appendChild(c);
+    });
+  }
+
+  // 변수 패널
+  const vars = document.getElementById('vars');
+  const stackStr = step.stack.length ? step.stack.map(si => `${si}(T${temps[si]})`).join(', ') : '비어 있음';
+  const ansStr = step.answer.map(a => a == null ? 0 : a).join(', ');
+  vars.innerHTML = `<b>i</b> = ${step.phase === 'end' ? '— (끝)' : step.i} &nbsp;&nbsp; ` +
+    `<b>stack</b> = [${stackStr}] &nbsp;&nbsp; (아래=바닥)<br><b>answer</b> = [${ansStr}]`;
+
+  // 코드
+  const code = document.getElementById('code');
+  const hl = lineFor(step);
+  code.innerHTML = CODE.map((line, i) =>
+    `<span class="ln${(i + 1) === hl ? ' hl' : ''}">${(i + 1).toString().padStart(2, ' ')}  ${escapeHtml(line)}</span>`
+  ).join('');
+
+  document.getElementById('narr').textContent = step.narr;
+  document.getElementById('count').textContent = `단계 ${cur + 1} / ${steps.length}`;
+  document.getElementById('srsum').textContent =
+    `단계 ${cur + 1}, ${step.narr} 스택 ${stackStr}.`;
+  document.getElementById('prev').disabled = cur === 0;
+  document.getElementById('next').disabled = cur === steps.length - 1;
+}
+
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function go(d){ cur = Math.max(0, Math.min(steps.length - 1, cur + d)); render(); }
+function stopPlay(){ if (timer){ clearInterval(timer); timer = null; document.getElementById('play').textContent = '재생'; } }
+function togglePlay(){
+  if (timer){ stopPlay(); return; }
+  if (cur === steps.length - 1) cur = 0;
+  document.getElementById('play').textContent = '멈춤';
+  timer = setInterval(() => { if (cur === steps.length - 1){ stopPlay(); return; } go(1); }, 750);
+}
+
+document.getElementById('prev').onclick = () => { stopPlay(); go(-1); };
+document.getElementById('next').onclick = () => { stopPlay(); go(1); };
+document.getElementById('play').onclick = togglePlay;
+document.getElementById('run').onclick = () => load(document.getElementById('input').value);
+document.getElementById('input').addEventListener('keydown', e => { if (e.key === 'Enter') load(e.target.value); });
+document.querySelectorAll('.preset').forEach(b => b.onclick = () => {
+  document.getElementById('input').value = b.dataset.v; load(b.dataset.v);
+});
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowLeft'){ stopPlay(); go(-1); }
+  if (e.key === 'ArrowRight'){ stopPlay(); go(1); }
+});
+
+load(document.getElementById('input').value);
+</script>
+</body>
+</html>

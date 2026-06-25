@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>풀이 시각화 — 연결 리스트 제자리 뒤집기 (LeetCode 206)</title>
+<style>
+:root{
+  --color-page:#faf9f5;
+  --color-background-primary:#ffffff;
+  --color-background-secondary:#f1efe8;
+  --color-background-info:#e6f1fb;
+  --color-background-danger:#fcebeb;
+  --color-background-done:#eaf3ec;
+  --color-text-primary:#1f1f1d;
+  --color-text-secondary:#6b6a64;
+  --color-text-tertiary:#9a988f;
+  --color-text-info:#185fa5;
+  --color-text-danger:#a32d2d;
+  --color-text-done:#2f7d4f;
+  --color-border-tertiary:rgba(0,0,0,0.15);
+  --color-border-secondary:rgba(0,0,0,0.30);
+  --color-border-danger:rgba(163,45,45,0.45);
+  --color-border-done:rgba(47,125,79,0.45);
+  --border-radius-md:8px;
+  --border-radius-lg:12px;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --color-page:#1a1917;
+    --color-background-primary:#2b2a27;
+    --color-background-secondary:#211f1c;
+    --color-background-info:#0c447c;
+    --color-background-danger:#791f1f;
+    --color-background-done:#1d3a28;
+    --color-text-primary:#ececea;
+    --color-text-secondary:#a8a69d;
+    --color-text-tertiary:#7a786f;
+    --color-text-info:#b5d4f4;
+    --color-text-danger:#f7c1c1;
+    --color-text-done:#a6dcb9;
+    --color-border-tertiary:rgba(255,255,255,0.16);
+    --color-border-secondary:rgba(255,255,255,0.30);
+    --color-border-danger:rgba(247,193,193,0.45);
+    --color-border-done:rgba(166,220,185,0.45);
+  }
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:2rem 1.25rem; background:var(--color-page); color:var(--color-text-primary);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  line-height:1.7; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:760px; margin:0 auto;}
+h1{font-size:22px; font-weight:500; margin:0 0 0.4rem;}
+p.lead{font-size:15px; color:var(--color-text-secondary); margin:0 0 1.25rem;}
+.anchor{background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; font-size:14px; margin:0 0 1.5rem;}
+.anchor b{font-weight:500;}
+button{font:inherit; font-size:14px; padding:6px 12px; border:0.5px solid var(--color-border-secondary); background:transparent; color:var(--color-text-primary); border-radius:var(--border-radius-md); cursor:pointer;}
+button:hover{background:var(--color-background-secondary);}
+button:disabled{opacity:0.4; cursor:default;}
+input[type=text]{font:inherit; font-size:14px; padding:6px 10px; border:0.5px solid var(--color-border-secondary); border-radius:var(--border-radius-md); background:var(--color-background-primary); color:var(--color-text-primary); width:150px;}
+.sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);}
+.node-box{height:44px; min-width:44px; padding:0 8px; line-height:44px; text-align:center; font-size:18px; font-weight:500; border:1.5px solid var(--color-border-tertiary); border-radius:var(--border-radius-md); background:transparent;}
+.plabel{height:18px; font-size:12px; font-weight:500; text-align:center; line-height:18px;}
+.arrow{font-family:var(--font-mono); font-size:15px; color:var(--color-text-tertiary); padding:0 4px; height:44px; line-height:44px;}
+.nullbox{font-family:var(--font-mono); font-size:13px; color:var(--color-text-tertiary); height:44px; line-height:44px;}
+.slot{text-align:center; min-width:64px;}
+.slot .v{font-family:var(--font-mono); font-size:20px; font-weight:500; height:30px; line-height:30px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h2 class="sr-only">단일 연결 리스트를 제자리에서 뒤집는 과정을 prev/cur/next 세 포인터와 노드 화살표의 단계별 변화로 보여주는 인터랙티브 시각화</h2>
+
+<h1>풀이 시각화 — 화살표를 제자리에서 뒤집는 법</h1>
+<p class="lead">prev/cur/next 세 손이 리스트를 걸어가며 각 노드의 next 화살표를 뒤로 돌립니다. 프리셋을 고르거나 직접 입력해 단계를 넘겨 보세요. 파랑 = cur(지금 보는 노드), 초록 = 이미 뒤집힌 부분.</p>
+
+<div class="anchor">
+한 장면으로 기억하기: <b>다음을 먼저 붙잡는다(next) → cur의 화살표를 prev로 돌린다 → prev와 cur를 한 칸씩 민다.</b><br>
+핵심은 cur.next = prev로 돌리는 순간 원래 다음 노드로 가는 길이 끊긴다는 것. 그래서 next로 미리 붙잡아 둬야 나머지를 잃지 않습니다. cur가 null이 되면 prev가 새 머리입니다.
+</div>
+
+<div id="rl-picker" style="display:flex; gap:8px; margin-bottom:0.75rem; flex-wrap:wrap; align-items:center;"></div>
+<div style="display:flex; gap:8px; margin-bottom:1.5rem; align-items:center; flex-wrap:wrap;">
+  <span style="font-size:14px; color:var(--color-text-secondary);">또는 직접:</span>
+  <input id="rl-custom" type="text" maxlength="40" placeholder="예: 1,2,3,4">
+  <button id="rl-go">이 입력으로 보기</button>
+</div>
+
+<div id="rl-row" style="display:flex; gap:0; margin-bottom:1.25rem; align-items:flex-end; flex-wrap:wrap; min-height:64px;"></div>
+
+<div style="display:flex; gap:14px; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap;">
+  <div class="slot"><div style="font-size:13px; color:var(--color-text-secondary); margin-bottom:4px;">prev (뒤집은 머리)</div><div class="v" id="rl-prev">null</div></div>
+  <div class="slot"><div style="font-size:13px; color:var(--color-text-secondary); margin-bottom:4px;">cur (지금 보는)</div><div class="v" id="rl-cur">-</div></div>
+  <div class="slot"><div style="font-size:13px; color:var(--color-text-secondary); margin-bottom:4px;">next (붙잡아 둔)</div><div class="v" id="rl-next">-</div></div>
+</div>
+
+<div id="rl-explain" style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; font-size:14px; line-height:1.6; min-height:50px; margin-bottom:1rem;"></div>
+
+<div id="rl-code" style="font-family:var(--font-mono); font-size:13px; line-height:1.8; background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; margin-bottom:1rem;"></div>
+
+<div style="display:flex; gap:8px; align-items:center;">
+  <button id="rl-prevbtn">이전</button>
+  <button id="rl-nextbtn">다음</button>
+  <button id="rl-play">재생</button>
+  <span id="rl-stepno" style="font-size:13px; color:var(--color-text-secondary); margin-left:auto;"></span>
+</div>
+</div>
+
+<script>
+(function(){
+  var INPUTS = [[1,2,3],[1,2,3,4,5],[1,2],[7]];
+  var cur = [1,2,3], steps = [], idx = 0, timer = null;
+
+  // 상태 전이 계산: reversedUpto = 화살표가 뒤로 돌아간 노드의 마지막 인덱스(prefix). prev/cur는 노드 인덱스(-1 = null).
+  function compute(vals){
+    var n = vals.length, out = [];
+    if(n === 0){ out.push({reversedUpto:-1, prev:-1, cur:-1, next:-1, phase:"empty", done:-1}); return out; }
+    out.push({reversedUpto:-1, prev:-1, cur:0, next:-1, phase:"init", done:-1});
+    var prev = -1, c = 0;
+    for(var k=0;k<n;k++){
+      var nxt = (c === n-1) ? -1 : c+1;   // origNext[c], c===k
+      prev = c;                            // prev <- k
+      c = nxt;                             // cur  <- k+1 또는 null
+      out.push({reversedUpto:k, prev:prev, cur:c, next:nxt, phase:(c===-1?"done":"iter"), done:k});
+    }
+    return out;
+  }
+  function el(id){ return document.getElementById(id); }
+
+  // 한 step의 노드 행을 토큰으로 만든다: null 박스, 화살표(L/R), cut(끊긴 자리), 노드.
+  function buildRow(st, vals){
+    var n = vals.length, items = [], ru = st.reversedUpto, i;
+    if(ru >= 0){ items.push({t:"null"}); items.push({t:"arr", d:"L"}); }  // null <-- node0
+    for(i=0;i<n;i++){
+      items.push({t:"node", i:i});
+      if(i < n-1){
+        var ri = i <= ru, ri1 = (i+1) <= ru;
+        if(ri1) items.push({t:"arr", d:"L"});        // node(i+1) -> node(i)
+        else if(!ri) items.push({t:"arr", d:"R"});   // node(i) -> node(i+1)
+        else items.push({t:"cut"});                  // 프런티어: 끊긴 자리
+      }
+    }
+    if(ru < n-1){ items.push({t:"arr", d:"R"}); items.push({t:"null"}); }  // tail --> null
+    return items;
+  }
+
+  function render(){
+    var st = steps[idx], vals = cur, n = vals.length;
+
+    if(st.phase === "empty"){
+      el("rl-row").innerHTML = "<div class='nullbox'>null (빈 리스트)</div>";
+    } else {
+      var items = buildRow(st, vals), html = "", j;
+      for(j=0;j<items.length;j++){
+        var it = items[j];
+        if(it.t === "null"){
+          html += "<div class='nullbox'>null</div>";
+        } else if(it.t === "arr"){
+          html += "<div class='arrow'>" + (it.d === "L" ? "&lt;--" : "--&gt;") + "</div>";
+        } else if(it.t === "cut"){
+          html += "<div class='arrow' style='color:var(--color-text-danger);'>&nbsp;&#10005;&nbsp;</div>";
+        } else {
+          var i = it.i;
+          var isCur = i === st.cur, isPrev = i === st.prev, reversed = i <= st.reversedUpto;
+          var bd = "var(--color-border-tertiary)", bg = "transparent", col = "var(--color-text-primary)";
+          if(reversed){ bd = "var(--color-border-done)"; bg = "var(--color-background-done)"; col = "var(--color-text-done)"; }
+          if(isCur){ bd = "var(--color-text-info)"; bg = "var(--color-background-info)"; col = "var(--color-text-info)"; }
+          var lab = isPrev ? "prev" : (isCur ? "cur" : "");
+          var labCol = isPrev ? "var(--color-text-done)" : "var(--color-text-info)";
+          html += "<div style='display:flex; flex-direction:column;'>"
+            + "<div class='plabel' style='color:"+labCol+";'>"+lab+"</div>"
+            + "<div class='node-box' style='border-color:"+bd+";background:"+bg+";color:"+col+";'>"+vals[i]+"</div>"
+            + "</div>";
+        }
+      }
+      el("rl-row").innerHTML = html;
+    }
+
+    el("rl-prev").textContent = st.prev >= 0 ? vals[st.prev] : "null";
+    el("rl-cur").textContent  = st.cur  >= 0 ? vals[st.cur]  : "null";
+    el("rl-next").textContent = (st.phase === "iter" || st.phase === "done") ? (st.next >= 0 ? vals[st.next] : "null") : "-";
+
+    el("rl-explain").innerHTML = explain(st, vals);
+
+    var lines = [
+      "prev = null, cur = head;",
+      "while (cur != null) {",
+      "    next = cur.next;",
+      "    cur.next = prev;",
+      "    prev = cur;",
+      "    cur = next;",
+      "}",
+      "return prev;"
+    ];
+    var hi = [];
+    for(var t=0;t<lines.length;t++) hi.push(false);
+    if(st.phase === "init"){ hi[0] = true; }
+    else if(st.phase === "done"){ hi[7] = true; }
+    else { hi[2] = hi[3] = hi[4] = hi[5] = true; }
+    var code = "";
+    for(var L=0;L<lines.length;L++){
+      code += "<div style='padding:1px 6px;border-radius:4px;background:"+(hi[L]?"var(--color-background-info)":"transparent")
+        +";color:"+(hi[L]?"var(--color-text-info)":"var(--color-text-secondary)")+";'>"
+        + lines[L].replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") + "</div>";
+    }
+    el("rl-code").innerHTML = code;
+
+    el("rl-stepno").textContent = "단계 " + (idx+1) + " / " + steps.length;
+    el("rl-prevbtn").disabled = idx === 0;
+    el("rl-nextbtn").disabled = idx === steps.length-1;
+  }
+
+  function explain(st, vals){
+    if(st.phase === "empty") return "빈 리스트입니다. 뒤집을 노드가 없어 그대로 null을 반환합니다.";
+    if(st.phase === "init"){
+      return "시작입니다. prev는 null, cur는 첫 노드(" + vals[0] + ")입니다. 아직 어떤 화살표도 뒤집히지 않았습니다.";
+    }
+    var v = vals[st.done];
+    if(st.phase === "done"){
+      return "cur가 null이 되어 루프가 끝났습니다. 마지막으로 뒤집은 prev(=" + v + ")가 새 머리이고, 리스트 전체가 뒤집혔습니다. 이 prev를 반환합니다.";
+    }
+    var base = "노드 " + v + "을 뒤집었습니다. 먼저 next로 다음 노드(" + (st.next >= 0 ? vals[st.next] : "null")
+      + ")를 붙잡고, " + v + ".next를 prev(" + (st.prev === st.done && st.done > 0 ? vals[st.done-1] : (st.done === 0 ? "null" : "")) ;
+    // prev 직전 값 계산을 단순화: 이 step 직전의 prev는 reversedUpto-1 노드(또는 null)
+    var prevBeforeVal = st.done === 0 ? "null" : vals[st.done-1];
+    base = "노드 " + v + "을 뒤집었습니다. 먼저 next로 다음 노드(" + (st.next >= 0 ? vals[st.next] : "null")
+      + ")를 붙잡고, " + v + ".next를 prev(" + prevBeforeVal + ")로 돌려 화살표가 뒤로 향했습니다. ";
+    if(st.done === 0){
+      base += "노드 " + v + "와 다음 노드 사이가 끊겼지만, next로 미리 붙잡아 둬서 나머지를 잃지 않았습니다. ";
+    }
+    base += "이제 prev는 " + v + ", cur는 " + (st.cur >= 0 ? vals[st.cur] : "null") + "입니다.";
+    return base;
+  }
+
+  function renderPicker(){
+    var p = "";
+    INPUTS.forEach(function(arr){
+      var s = arr.join(","), on = s === cur.join(",");
+      p += "<button data-s='" + s + "' style='font-family:var(--font-mono);" + (on ? "border-color:var(--color-text-info);color:var(--color-text-info);" : "") + "'>[" + s + "]</button>";
+    });
+    el("rl-picker").innerHTML = p;
+    Array.prototype.forEach.call(el("rl-picker").querySelectorAll("button"), function(b){
+      b.onclick = function(){ setInput(parse(b.getAttribute("data-s"))); };
+    });
+  }
+  function parse(s){
+    return s.split(",").map(function(x){ return parseInt(x.trim(), 10); }).filter(function(x){ return !isNaN(x); }).slice(0, 8);
+  }
+  function stop(){ if(timer){ clearInterval(timer); timer = null; el("rl-play").textContent = "재생"; } }
+  function setInput(arr){ if(arr == null) return; cur = arr; steps = compute(arr); idx = 0; stop(); renderPicker(); render(); }
+  function play(){
+    if(timer){ stop(); return; }
+    if(idx === steps.length-1) idx = 0;
+    el("rl-play").textContent = "멈춤";
+    timer = setInterval(function(){ if(idx < steps.length-1){ idx++; render(); } else stop(); }, 1200);
+  }
+
+  el("rl-prevbtn").onclick = function(){ stop(); if(idx > 0){ idx--; render(); } };
+  el("rl-nextbtn").onclick = function(){ stop(); if(idx < steps.length-1){ idx++; render(); } };
+  el("rl-play").onclick = play;
+  el("rl-go").onclick = function(){ var v = parse(el("rl-custom").value); if(v.length) setInput(v); };
+  el("rl-custom").addEventListener("keydown", function(e){ if(e.key === "Enter"){ var v = parse(el("rl-custom").value); if(v.length) setInput(v); } });
+
+  setInput([1,2,3]);
+})();
+</script>
+</body>
+</html>
