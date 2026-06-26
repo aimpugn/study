@@ -172,4 +172,4 @@ netsh wlan show all 실행 중...
 - Maven은 단독 설치 없이도 **mvnd(Maven 데몬) 번들** 안에 정규 `mvn`이 들어 있는 경우가 많다. 예: `C:\dev\mvnd\<버전>\mvn\bin\mvn.cmd`(`mvn -v`로 Apache Maven 정식 버전 확인).
 - 여러 JDK가 한 폴더에 공존할 수 있다(예: `C:\dev\jdk\{17.x,21.x,25.x}`). 단계별로 `JAVA_HOME`을 바꿔 끼워 쓴다. 빌드 모듈마다 요구 JDK가 다르면(예: 한 모듈이 release 21 요구) 그 단계만 상위 JDK로 돌린다.
 - Windows의 `bash`는 둘일 수 있다. `MINGW64`(Git Bash)는 Windows 경로(`/c/...`)와 `.cmd` 실행을 그대로 다루지만, WSL의 `bash`는 별개 리눅스 환경(`/mnt/c/...`, 별도 툴체인)이다. `.cmd` 기반 Windows 빌드를 돌릴 때는 MINGW 쪽이 마찰이 적다. `uname -a`로 어느 쪽인지 먼저 확인한다.
-- 이 도구 발굴은 망분리 코드를 로컬에서 되살리는 작업의 첫 단계이기도 하다([`../jvm/maven_local_shim_repo.md`](../jvm/maven_local_shim_repo.md)).
+- 이 도구 발굴은 접근 제한 Maven 프로젝트를 로컬에서 되살리는 작업의 첫 단계이기도 하다([`../jvm/maven_local_shim_repo.md`](../jvm/maven_local_shim_repo.md)). `mvn` 경로, JDK, `.mvn/maven.config`, `.project-m2`, offline 실행까지 이어지는 Nushell 명령 순서는 [`../jvm/maven_local_shim_repo.md` 13절](../jvm/maven_local_shim_repo.md#13-실제-windowsnushell-런북-public-repository-없이-mvn-돌리기)에 정리했다.

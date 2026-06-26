@@ -1,6 +1,7 @@
 # Maven
 
 - [Maven](#maven)
+    - [관련 원리 문서](#관련-원리-문서)
     - [Plugin org.apache.maven.plugins:maven-archetype-plugin:3.4.0 or one of its dependencies could not be resolved](#plugin-orgapachemavenpluginsmaven-archetype-plugin340-or-one-of-its-dependencies-could-not-be-resolved)
         - [문제](#문제)
         - [원인](#원인)
@@ -8,6 +9,12 @@
             - [Nexus 저장소 캐시 무효화](#nexus-저장소-캐시-무효화)
             - [`mvn dependency:get`을 통한 단일 아티팩트 다운로드해보기](#mvn-dependencyget을-통한-단일-아티팩트-다운로드해보기)
             - [수동으로 아티팩트 설치](#수동으로-아티팩트-설치)
+
+## 관련 원리 문서
+
+- Maven이 좌표와 로컬 저장소로 의존성을 찾는 방식: [`../jvm/maven_dependency_resolution.md`](../jvm/maven_dependency_resolution.md)
+- 비공개 저장소와 public repository에 의존하지 않고 프로젝트-로컬 shim 저장소로 빌드를 되살리는 방식: [`../jvm/maven_local_shim_repo.md`](../jvm/maven_local_shim_repo.md)
+- Windows/Nushell에서 `JAVA_HOME`, Maven, `.mvn/maven.config`, `.project-m2`, offline mode를 묶어 실행하는 런북: [`../jvm/maven_local_shim_repo.md` 13절](../jvm/maven_local_shim_repo.md#13-실제-windowsnushell-런북-public-repository-없이-mvn-돌리기)
 
 ## Plugin org.apache.maven.plugins:maven-archetype-plugin:3.4.0 or one of its dependencies could not be resolved
 
