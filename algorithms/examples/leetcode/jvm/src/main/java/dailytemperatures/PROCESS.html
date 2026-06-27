@@ -13,6 +13,7 @@
     --wait: #7c3aed; --wait-bg: #f5f3ff;
     --done: #6b7280;
     --code-bg: #f8fafc; --code-hl: #fef3c7;
+    --syn-kw: #9333ea; --syn-ty: #0e7490; --syn-num: #b45309;
     --radius: 8px;
   }
   @media (prefers-color-scheme: dark) {
@@ -24,6 +25,7 @@
       --wait: #a78bfa; --wait-bg: #1e1633;
       --done: #64748b;
       --code-bg: #0b1120; --code-hl: #3f3a1a;
+      --syn-kw: #c9a6f5; --syn-ty: #5fcfe0; --syn-num: #e0a85f;
     }
   }
   * { box-sizing: border-box; }
@@ -77,6 +79,7 @@
     padding: 10px 0; margin: 0 0 14px; overflow-x: auto; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; }
   pre.code .ln { display: block; padding: 1px 12px; white-space: pre; }
   pre.code .ln.hl { background: var(--code-hl); }
+  #code .k { color: var(--syn-kw); } #code .t { color: var(--syn-ty); } #code .n { color: var(--syn-num); } #code .c { color: var(--muted); font-style: italic; } #code .s { color: var(--warm); }
   .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 6px; }
   .legend span { display: inline-flex; align-items: center; gap: 5px; }
   .sw { width: 12px; height: 12px; border-radius: 3px; border: 2px solid; }
@@ -255,7 +258,7 @@ function render() {
   const code = document.getElementById('code');
   const hl = lineFor(step);
   code.innerHTML = CODE.map((line, i) =>
-    `<span class="ln${(i + 1) === hl ? ' hl' : ''}">${(i + 1).toString().padStart(2, ' ')}  ${escapeHtml(line)}</span>`
+    `<span class="ln${(i + 1) === hl ? ' hl' : ''}">${(i + 1).toString().padStart(2, ' ')}  ${synHi(line)}</span>`
   ).join('');
 
   document.getElementById('narr').textContent = step.narr;
@@ -267,6 +270,22 @@ function render() {
 }
 
 function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// 초경량 자체 구문 색칠 — 외부 라이브러리 없이 한 줄을 주석/문자열/식별자/숫자/그 외로 분해해 색 span으로.
+const SYN_KW = {while:1,if:1,else:1,return:1,new:1,null:1,var:1,for:1,true:1,false:1,break:1,continue:1};
+const SYN_TY = {ListNode:1,int:1,long:1,boolean:1,void:1,char:1,String:1,Integer:1,double:1,Map:1,HashMap:1,Set:1,HashSet:1,Deque:1,ArrayDeque:1};
+function synHi(line){
+  const re = /(\/\/.*)|("(?:[^"\\]|\\.)*")|([A-Za-z_$][A-Za-z0-9_$]*)|(\d+)|(.)/g;
+  let out = '', m;
+  while ((m = re.exec(line)) !== null){
+    const tk = m[0]; let cls = '';
+    if (m[1]) cls = 'c'; else if (m[2]) cls = 's';
+    else if (m[3]) cls = SYN_KW[tk] ? 'k' : (SYN_TY[tk] ? 't' : '');
+    else if (m[4]) cls = 'n';
+    const e = escapeHtml(tk);
+    out += cls ? `<span class="${cls}">${e}</span>` : e;
+  }
+  return out;
+}
 function go(d){ cur = Math.max(0, Math.min(steps.length - 1, cur + d)); render(); }
 function stopPlay(){ if (timer){ clearInterval(timer); timer = null; document.getElementById('play').textContent = '재생'; } }
 function togglePlay(){

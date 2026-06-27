@@ -24,6 +24,7 @@
   --color-border-done:rgba(47,125,79,0.45);
   --border-radius-md:8px;
   --border-radius-lg:12px;
+  --syn-kw:#9333ea; --syn-ty:#0e7490; --syn-num:#b45309;
   --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){
@@ -44,6 +45,7 @@
     --color-border-secondary:rgba(255,255,255,0.30);
     --color-border-danger:rgba(247,193,193,0.45);
     --color-border-done:rgba(166,220,185,0.45);
+    --syn-kw:#c9a6f5; --syn-ty:#5fcfe0; --syn-num:#e0a85f;
   }
 }
 *{box-sizing:border-box;}
@@ -68,6 +70,8 @@ input[type=text]{font:inherit; font-size:14px; padding:6px 10px; border:0.5px so
 .nullbox{font-family:var(--font-mono); font-size:13px; color:var(--color-text-tertiary); height:44px; line-height:44px;}
 .slot{text-align:center; min-width:64px;}
 .slot .v{font-family:var(--font-mono); font-size:20px; font-weight:500; height:30px; line-height:30px;}
+.codeline{white-space:pre; padding:1px 6px; border-radius:4px; color:var(--color-text-primary);}
+.k{color:var(--syn-kw);} .t{color:var(--syn-ty);} .n{color:var(--syn-num);} .c{color:var(--color-text-tertiary); font-style:italic;} .s{color:var(--color-text-done);}
 </style>
 </head>
 <body>
@@ -129,6 +133,21 @@ input[type=text]{font:inherit; font-size:14px; padding:6px 10px; border:0.5px so
     return out;
   }
   function el(id){ return document.getElementById(id); }
+  // 초경량 자체 구문 색칠 — 외부 라이브러리 없이 한 줄을 주석/문자열/식별자/숫자/그 외로 분해해 색 span으로.
+  var SYN_KW = {"while":1,"if":1,"else":1,"return":1,"new":1,"null":1,"var":1,"for":1,"true":1,"false":1,"break":1,"continue":1};
+  var SYN_TY = {"ListNode":1,"int":1,"long":1,"boolean":1,"void":1,"char":1,"String":1,"Integer":1,"double":1,"Map":1,"HashMap":1,"Set":1,"HashSet":1,"Deque":1,"ArrayDeque":1};
+  function synHi(line){
+    var re = /(\/\/.*)|("(?:[^"\\]|\\.)*")|([A-Za-z_$][A-Za-z0-9_$]*)|(\d+)|(.)/g, out = "", m;
+    while((m = re.exec(line)) !== null){
+      var t = m[0], cls = "";
+      if(m[1]) cls = "c"; else if(m[2]) cls = "s";
+      else if(m[3]) cls = SYN_KW[t] ? "k" : (SYN_TY[t] ? "t" : "");
+      else if(m[4]) cls = "n";
+      var e = t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      out += cls ? "<span class='"+cls+"'>"+e+"</span>" : e;
+    }
+    return out;
+  }
 
   // 한 step의 노드 행을 토큰으로 만든다: null 박스, 화살표(L/R), cut(끊긴 자리), 노드.
   function buildRow(st, vals){
@@ -202,9 +221,7 @@ input[type=text]{font:inherit; font-size:14px; padding:6px 10px; border:0.5px so
     else { hi[2] = hi[3] = hi[4] = hi[5] = true; }
     var code = "";
     for(var L=0;L<lines.length;L++){
-      code += "<div style='padding:1px 6px;border-radius:4px;background:"+(hi[L]?"var(--color-background-info)":"transparent")
-        +";color:"+(hi[L]?"var(--color-text-info)":"var(--color-text-secondary)")+";'>"
-        + lines[L].replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") + "</div>";
+      code += "<div class='codeline' style='background:"+(hi[L]?"var(--color-background-info)":"transparent")+";'>" + synHi(lines[L]) + "</div>";
     }
     el("rl-code").innerHTML = code;
 
