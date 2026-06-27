@@ -1,4 +1,4 @@
-# WORK 20260610 — 코테 대비 LC 교차 바퀴 (쿠팡·네이버제트 가정)
+# WORK 20260610 — 코테 대비 LC 교차 바퀴 (기업A·기업B 가정)
 
 상태: ACTIVE · 시작 2026-06-10
 연계: `WORK_20260511_PROGRAMMERS_JAVA_REHAB_SETUP.md`(프로그래머스 레인, 계속) · `books/easy_to_learn_algorithms/INDEX.md`(책은 막힌 직후 조회) · 회고 = algorithm-retrospective 스킬
@@ -68,7 +68,7 @@
 ## 3바퀴+ — 중간 난도 마감
 
 - [ ] LC 215 Kth Largest · LC 424 Longest Repeating Character Replacement · LC 1011 Capacity to Ship(875 패턴 강화) · LC 695 Max Area of Island · LC 1143 LCS(=책 9장) · LC 300 LIS · LC 79 Word Search
-- [ ] LC 146 LRU Cache (LLD 트랙 연계, 쿠팡 라이브 빈출 보고)
+- [ ] LC 146 LRU Cache (LLD 트랙 연계, 기업A 라이브 빈출 보고)
 
 ## 부스터 예비 (쉬움 — 유형 붕괴 시에만 투입, 평소 사용 금지)
 
@@ -77,7 +77,7 @@ LC 1 · 20 · 125 · 704 · 278 · 35 · 455 · 70
 ## 프로그래머스 레인 — 주 1회
 
 - [ ] 잔여 Lv1(42840 모의고사 + 42862 체육복)은 한 세션에 묶어 빠르게 소진
-- [ ] 이후 카카오 기출 Lv2 합류 (네이버식 구현·긴 지문) — 같은 양방향 튜닝 규칙 적용
+- [ ] 이후 카카오 기출 Lv2 합류 (기업B식 구현·긴 지문) — 같은 양방향 튜닝 규칙 적용
 
 ## 라이브 모의 로그
 

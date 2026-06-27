@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>풀이 시각화 — 정렬된 두 리스트 병합 (LeetCode 21)</title>
+<style>
+:root{
+  --color-page:#faf9f5;
+  --color-background-primary:#ffffff;
+  --color-background-secondary:#f1efe8;
+  --color-background-info:#e6f1fb;
+  --color-background-danger:#fcebeb;
+  --color-background-done:#eaf3ec;
+  --color-text-primary:#1f1f1d;
+  --color-text-secondary:#6b6a64;
+  --color-text-tertiary:#9a988f;
+  --color-text-info:#185fa5;
+  --color-text-danger:#a32d2d;
+  --color-text-done:#2f7d4f;
+  --color-border-tertiary:rgba(0,0,0,0.15);
+  --color-border-secondary:rgba(0,0,0,0.30);
+  --color-border-done:rgba(47,125,79,0.45);
+  --border-radius-md:8px;
+  --border-radius-lg:12px;
+  --syn-kw:#9333ea; --syn-ty:#0e7490; --syn-num:#b45309;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --color-page:#1a1917;
+    --color-background-primary:#2b2a27;
+    --color-background-secondary:#211f1c;
+    --color-background-info:#0c447c;
+    --color-background-danger:#791f1f;
+    --color-background-done:#1d3a28;
+    --color-text-primary:#ececea;
+    --color-text-secondary:#a8a69d;
+    --color-text-tertiary:#7a786f;
+    --color-text-info:#b5d4f4;
+    --color-text-danger:#f7c1c1;
+    --color-text-done:#a6dcb9;
+    --color-border-tertiary:rgba(255,255,255,0.16);
+    --color-border-secondary:rgba(255,255,255,0.30);
+    --color-border-done:rgba(166,220,185,0.45);
+    --syn-kw:#c9a6f5; --syn-ty:#5fcfe0; --syn-num:#e0a85f;
+  }
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:2rem 1.25rem; background:var(--color-page); color:var(--color-text-primary);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  line-height:1.7; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:760px; margin:0 auto;}
+h1{font-size:22px; font-weight:500; margin:0 0 0.4rem;}
+p.lead{font-size:15px; color:var(--color-text-secondary); margin:0 0 1.25rem;}
+.anchor{background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; font-size:14px; margin:0 0 1.5rem;}
+.anchor b{font-weight:500;}
+button{font:inherit; font-size:14px; padding:6px 12px; border:0.5px solid var(--color-border-secondary); background:transparent; color:var(--color-text-primary); border-radius:var(--border-radius-md); cursor:pointer;}
+button:hover{background:var(--color-background-secondary);}
+button:disabled{opacity:0.4; cursor:default;}
+input[type=text]{font:inherit; font-size:14px; padding:6px 10px; border:0.5px solid var(--color-border-secondary); border-radius:var(--border-radius-md); background:var(--color-background-primary); color:var(--color-text-primary); width:110px;}
+.sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);}
+.listrow{display:flex; gap:0; align-items:flex-end; min-height:62px; margin-bottom:6px; flex-wrap:wrap;}
+.rowlabel{width:62px; font-size:13px; color:var(--color-text-secondary); line-height:44px; flex:0 0 auto;}
+.node-box{height:44px; min-width:44px; padding:0 8px; line-height:44px; text-align:center; font-size:18px; font-weight:500; border:1.5px solid var(--color-border-tertiary); border-radius:var(--border-radius-md); background:transparent;}
+.plabel{height:18px; font-size:12px; font-weight:500; text-align:center; line-height:18px;}
+.arrow{font-family:var(--font-mono); font-size:15px; color:var(--color-text-tertiary); padding:0 4px; height:44px; line-height:44px;}
+.nullbox{font-family:var(--font-mono); font-size:13px; color:var(--color-text-tertiary); height:44px; line-height:44px;}
+.slot{text-align:center; min-width:72px;}
+.slot .lab{font-size:13px; color:var(--color-text-secondary); margin-bottom:4px;}
+.slot .v{font-family:var(--font-mono); font-size:20px; font-weight:500; height:30px; line-height:30px;}
+.codeline{white-space:pre; padding:1px 6px; border-radius:4px; color:var(--color-text-primary);}
+.k{color:var(--syn-kw);} .t{color:var(--syn-ty);} .n{color:var(--syn-num);} .c{color:var(--color-text-tertiary); font-style:italic;} .s{color:var(--color-text-done);}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h2 class="sr-only">정렬된 두 연결 리스트를 하나로 병합하는 과정을, 두 리스트의 앞을 비교해 작은 쪽을 결과에 잇는 단계별 변화로 보여주는 인터랙티브 시각화</h2>
+
+<h1>풀이 시각화 — 두 앞을 비교해 작은 쪽을 잇는다</h1>
+<p class="lead">두 정렬 리스트의 맨 앞만 비교해, 작은 쪽 노드를 결과 끝에 이어 붙입니다. 프리셋을 고르거나 직접 입력해 단계를 넘겨 보세요. 파랑 = 지금 비교하는 두 앞, 초록 = 방금 결과에 붙은 노드, 흐림 = 이미 가져간 노드.</p>
+
+<div class="anchor">
+한 장면으로 기억하기: <b>두 리스트의 앞 중 작은 쪽(같으면 list1)을 결과 꼬리에 잇고, 그쪽만 한 칸 전진한다.</b><br>
+핵심은 노드를 새로 만들지 않는다는 것. 노드는 이미 두 입력 안에 있으니 그 노드 자체를 이으면(splice) 공간이 O(1)입니다. 한쪽이 비면 남은 리스트를 통째로 잇습니다.
+</div>
+
+<div id="mg-picker" style="display:flex; gap:8px; margin-bottom:0.75rem; flex-wrap:wrap; align-items:center;"></div>
+<div style="display:flex; gap:8px; margin-bottom:1.5rem; align-items:center; flex-wrap:wrap;">
+  <span style="font-size:14px; color:var(--color-text-secondary);">또는 직접:</span>
+  <input id="mg-c1" type="text" maxlength="30" placeholder="list1: 1,2,4">
+  <input id="mg-c2" type="text" maxlength="30" placeholder="list2: 1,3,4">
+  <button id="mg-go">이 입력으로 보기</button>
+</div>
+
+<div id="mg-row1" class="listrow"></div>
+<div id="mg-row2" class="listrow"></div>
+<div style="height:1px; background:var(--color-border-tertiary); margin:10px 0 12px;"></div>
+<div id="mg-rowR" class="listrow"></div>
+
+<div style="display:flex; gap:14px; align-items:center; margin:1rem 0 1.25rem; flex-wrap:wrap;">
+  <div class="slot"><div class="lab">list1 앞</div><div class="v" id="mg-l1">-</div></div>
+  <div class="slot"><div class="lab">list2 앞</div><div class="v" id="mg-l2">-</div></div>
+  <div class="slot"><div class="lab">고른 것</div><div class="v" id="mg-pick">-</div></div>
+</div>
+
+<div id="mg-explain" style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; font-size:14px; line-height:1.6; min-height:50px; margin-bottom:1rem;"></div>
+
+<div id="mg-code" style="font-family:var(--font-mono); font-size:13px; line-height:1.8; background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; margin-bottom:1rem;"></div>
+
+<div style="display:flex; gap:8px; align-items:center;">
+  <button id="mg-prevbtn">이전</button>
+  <button id="mg-nextbtn">다음</button>
+  <button id="mg-play">재생</button>
+  <span id="mg-stepno" style="font-size:13px; color:var(--color-text-secondary); margin-left:auto;"></span>
+</div>
+</div>
+
+<script>
+(function(){
+  var PRESETS = [[[1,2,4],[1,3,4]],[[1,2,3],[4,5,6]],[[2,2],[1,2]],[[],[0]]];
+  var a = [1,2,4], b = [1,3,4], steps = [], idx = 0, timer = null;
+
+  // 상태 전이 계산: 매 단계 두 앞을 비교해 작은 쪽을 결과(res)에 잇고 그쪽 인덱스만 전진.
+  // i1/i2 = 각 리스트의 현재 앞 인덱스(소비 후), res = 지금까지 합쳐진 값, l1v/l2v = 그 단계에 비교한 두 앞 값.
+  // 이 compute는 node로 결제했다(대표 입력 8건 모두 정답 일치, 빈 입력 포함).
+  function compute(a, b){
+    var i1=0, i2=0, res=[], out=[];
+    out.push({i1:0,i2:0,res:[],picked:null,from:null,l1v:(a.length?a[0]:null),l2v:(b.length?b[0]:null),phase:"init"});
+    while(i1<a.length && i2<b.length){
+      var l1v=a[i1], l2v=b[i2];
+      var fromL = l1v <= l2v;                       // <= : 같으면 list1 먼저(안정성)
+      var picked = fromL?l1v:l2v;
+      if(fromL) i1++; else i2++;
+      res = res.concat([picked]);
+      out.push({i1:i1,i2:i2,res:res.slice(),picked:picked,from:(fromL?"l1":"l2"),l1v:l1v,l2v:l2v,phase:"compare"});
+    }
+    while(i1<a.length){ var p=a[i1]; i1++; res=res.concat([p]); out.push({i1:i1,i2:i2,res:res.slice(),picked:p,from:"l1",l1v:p,l2v:null,phase:"drain"}); }
+    while(i2<b.length){ var q=b[i2]; i2++; res=res.concat([q]); out.push({i1:i1,i2:i2,res:res.slice(),picked:q,from:"l2",l1v:null,l2v:q,phase:"drain"}); }
+    out.push({i1:i1,i2:i2,res:res.slice(),picked:null,from:null,l1v:null,l2v:null,phase:"done"});
+    return out;
+  }
+  function el(id){ return document.getElementById(id); }
+  function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  // 초경량 자체 구문 색칠 — 외부 라이브러리 없이 한 줄을 주석/문자열/식별자/숫자/그 외로 분해해 색 span으로.
+  var SYN_KW = {"while":1,"if":1,"else":1,"return":1,"new":1,"null":1,"var":1,"for":1,"true":1,"false":1};
+  var SYN_TY = {"ListNode":1,"int":1,"long":1,"boolean":1,"void":1,"String":1,"Integer":1,"double":1};
+  function synHi(line){
+    var re = /(\/\/.*)|("(?:[^"\\]|\\.)*")|([A-Za-z_$][A-Za-z0-9_$]*)|(\d+)|(.)/g, out = "", m;
+    while((m = re.exec(line)) !== null){
+      var t = m[0], cls = "";
+      if(m[1]) cls = "c"; else if(m[2]) cls = "s";
+      else if(m[3]) cls = SYN_KW[t] ? "k" : (SYN_TY[t] ? "t" : "");
+      else if(m[4]) cls = "n";
+      out += cls ? "<span class='"+cls+"'>"+esc(t)+"</span>" : esc(t);
+    }
+    return out;
+  }
+
+  // 입력 리스트 한 행: 소비된 노드는 흐리게, 현재 앞은 파랑 + 아래 라벨, 나머지는 기본.
+  function inputRow(vals, frontIdx, frontLabel){
+    if(vals.length === 0) return "<div class='nullbox'>null (빈 리스트)</div>";
+    var html = "", i;
+    for(i=0;i<vals.length;i++){
+      var consumed = i < frontIdx, front = i === frontIdx;
+      var bd = "var(--color-border-tertiary)", bg = "transparent", col = "var(--color-text-primary)", op = "1";
+      if(consumed){ col = "var(--color-text-tertiary)"; op = "0.45"; }
+      if(front){ bd = "var(--color-text-info)"; bg = "var(--color-background-info)"; col = "var(--color-text-info)"; }
+      var lab = front ? frontLabel : "";
+      html += "<div style='display:flex; flex-direction:column; opacity:"+op+";'>"
+        + "<div class='plabel' style='color:var(--color-text-info);'>"+lab+"</div>"
+        + "<div class='node-box' style='border-color:"+bd+";background:"+bg+";color:"+col+";'>"+esc(vals[i])+"</div>"
+        + "</div>";
+      if(i < vals.length-1) html += "<div class='arrow'>--&gt;</div>";
+    }
+    return html;
+  }
+
+  // 결과 행: dummy 머리 뒤로 합쳐진 노드들. 방금 붙은 마지막 노드는 초록.
+  function resultRow(res){
+    var html = "<div style='display:flex; flex-direction:column;'><div class='plabel' style='color:var(--color-text-tertiary);'>dummy</div>"
+      + "<div class='node-box' style='border-style:dashed; color:var(--color-text-tertiary);'>&middot;</div></div>";
+    if(res.length === 0){
+      html += "<div class='arrow'>--&gt;</div><div class='nullbox'>null (아직 없음)</div>";
+      return html;
+    }
+    for(var i=0;i<res.length;i++){
+      var last = i === res.length-1;
+      var bd = last ? "var(--color-border-done)" : "var(--color-border-tertiary)";
+      var bg = last ? "var(--color-background-done)" : "transparent";
+      var col = last ? "var(--color-text-done)" : "var(--color-text-primary)";
+      html += "<div class='arrow'>--&gt;</div>"
+        + "<div style='display:flex; flex-direction:column;'><div class='plabel'></div>"
+        + "<div class='node-box' style='border-color:"+bd+";background:"+bg+";color:"+col+";'>"+esc(res[i])+"</div></div>";
+    }
+    return html;
+  }
+
+  function listName(f){ return f === "l1" ? "list1" : "list2"; }
+
+  function explain(st){
+    if(st.phase === "init"){
+      if(a.length === 0 && b.length === 0) return "두 리스트가 모두 비어 있습니다. 결과도 비어 dummy.next는 null입니다.";
+      var p1 = a.length ? a[0] : "없음", p2 = b.length ? b[0] : "없음";
+      return "시작입니다. dummy 뒤에 결과를 쌓습니다. list1의 앞은 " + p1 + ", list2의 앞은 " + p2 + "입니다. 매 단계 이 두 앞만 비교합니다.";
+    }
+    if(st.phase === "done"){
+      var r = st.res.length ? "[" + st.res.join(", ") + "]" : "[] (빈 리스트)";
+      return "두 리스트를 다 소진했습니다. dummy.next가 합쳐진 정렬 리스트입니다: " + r + ".";
+    }
+    if(st.phase === "drain"){
+      var side = st.from === "l1" ? "list2가 비고 list1" : "list1이 비고 list2";
+      return side + "만 남았습니다. 남은 노드 " + st.picked + "를 결과에 잇습니다. 코드에서는 남은 리스트를 한 줄로 통째로 잇습니다(curr.next = 남은 머리).";
+    }
+    // compare
+    var eq = st.l1v === st.l2v;
+    var why = eq ? "두 앞이 같아 <= 규칙으로 list1을 먼저 골랐습니다" :
+      "더 작은 쪽은 " + listName(st.from) + "의 " + st.picked + "입니다";
+    return "list1 앞 " + st.l1v + " vs list2 앞 " + st.l2v + ". " + why + ". 그 노드를 결과 끝에 이어 붙이고(값 복사가 아니라 노드 자체를 splice) " + listName(st.from) + "만 한 칸 전진했습니다.";
+  }
+
+  function render(){
+    var st = steps[idx];
+    el("mg-row1").innerHTML = "<div class='rowlabel'>list1</div>" + inputRow(a, st.i1, "앞");
+    el("mg-row2").innerHTML = "<div class='rowlabel'>list2</div>" + inputRow(b, st.i2, "앞");
+    el("mg-rowR").innerHTML = "<div class='rowlabel'>결과</div>" + resultRow(st.res);
+
+    el("mg-l1").textContent = (st.i1 < a.length) ? a[st.i1] : "없음";
+    el("mg-l2").textContent = (st.i2 < b.length) ? b[st.i2] : "없음";
+    el("mg-pick").textContent = st.picked == null ? "-" : (st.picked + " (" + listName(st.from) + ")");
+
+    el("mg-explain").innerHTML = explain(st);
+
+    var lines = [
+      "ListNode dummy = new ListNode(), curr = dummy;",
+      "while (list1 != null && list2 != null) {",
+      "    if (list1.val <= list2.val) {",
+      "        curr.next = list1; list1 = list1.next;",
+      "    } else {",
+      "        curr.next = list2; list2 = list2.next;",
+      "    }",
+      "    curr = curr.next;",
+      "}",
+      "curr.next = (list1 != null) ? list1 : list2;",
+      "return dummy.next;"
+    ];
+    var hi = lines.map(function(){ return false; });
+    if(st.phase === "init") hi[0] = true;
+    else if(st.phase === "done") hi[10] = true;
+    else if(st.phase === "drain") hi[9] = true;
+    else if(st.from === "l1"){ hi[1]=hi[2]=hi[3]=hi[7]=true; }
+    else { hi[1]=hi[4]=hi[5]=hi[7]=true; }
+    var code = "";
+    for(var L=0;L<lines.length;L++){
+      code += "<div class='codeline' style='background:"+(hi[L]?"var(--color-background-info)":"transparent")+";'>" + synHi(lines[L]) + "</div>";
+    }
+    el("mg-code").innerHTML = code;
+
+    el("mg-stepno").textContent = "단계 " + (idx+1) + " / " + steps.length;
+    el("mg-prevbtn").disabled = idx === 0;
+    el("mg-nextbtn").disabled = idx === steps.length-1;
+  }
+
+  function renderPicker(){
+    var p = "";
+    PRESETS.forEach(function(pair, k){
+      var s1 = "[" + pair[0].join(",") + "]", s2 = "[" + pair[1].join(",") + "]";
+      var on = pair[0].join(",") === a.join(",") && pair[1].join(",") === b.join(",");
+      p += "<button data-k='" + k + "' style='font-family:var(--font-mono);" + (on ? "border-color:var(--color-text-info);color:var(--color-text-info);" : "") + "'>" + s1 + " + " + s2 + "</button>";
+    });
+    el("mg-picker").innerHTML = p;
+    Array.prototype.forEach.call(el("mg-picker").querySelectorAll("button"), function(btn){
+      btn.onclick = function(){ var k = +btn.getAttribute("data-k"); setInput(PRESETS[k][0], PRESETS[k][1]); };
+    });
+  }
+  function parse(s){
+    return s.split(",").map(function(x){ return parseInt(x.trim(), 10); }).filter(function(x){ return !isNaN(x); }).slice(0, 6);
+  }
+  function stop(){ if(timer){ clearInterval(timer); timer = null; el("mg-play").textContent = "재생"; } }
+  function setInput(na, nb){ a = na; b = nb; steps = compute(a, b); idx = 0; stop(); renderPicker(); render(); }
+  function play(){
+    if(timer){ stop(); return; }
+    if(idx === steps.length-1) idx = 0;
+    el("mg-play").textContent = "멈춤";
+    timer = setInterval(function(){ if(idx < steps.length-1){ idx++; render(); } else stop(); }, 1200);
+  }
+
+  el("mg-prevbtn").onclick = function(){ stop(); if(idx > 0){ idx--; render(); } };
+  el("mg-nextbtn").onclick = function(){ stop(); if(idx < steps.length-1){ idx++; render(); } };
+  el("mg-play").onclick = play;
+  el("mg-go").onclick = function(){ setInput(parse(el("mg-c1").value), parse(el("mg-c2").value)); };
+  function onEnter(e){ if(e.key === "Enter"){ setInput(parse(el("mg-c1").value), parse(el("mg-c2").value)); } }
+  el("mg-c1").addEventListener("keydown", onEnter);
+  el("mg-c2").addEventListener("keydown", onEnter);
+
+  setInput([1,2,4], [1,3,4]);
+})();
+</script>
+</body>
+</html>
