@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LC543 트리의 지름 — 코드 실행 순서로 보는 재귀</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --panel:#ffffff; --panel-2:#fbfcfd; --ink:#15181d; --muted:#626b78;
+    --faint:#9aa3af; --line:#e6e9ee; --line-2:#eef1f5;
+    --shadow:0 1px 2px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.06);
+    --accent:#5b5bd6; --accent-soft:#edecfc;   /* 호출/스택(내려감) */
+    --ok:#15803d;     --ok-soft:#e7f6ec;        /* 반환 끝, 높이 확정 */
+    --warn:#b45309;   --warn-soft:#fbf0dd;      /* 지름 후보(좌+우) */
+    --danger:#c0392b; --danger-soft:#fbeae8;
+    --node-bg:#ffffff; --code-bg:#f4f5f8; --code-ink:#28303b;
+  }
+  [data-theme="dark"]{
+    --bg:#0b0d11; --panel:#14171c; --panel-2:#11141a; --ink:#e7eaee; --muted:#98a2b0;
+    --faint:#5e6773; --line:#252a32; --line-2:#1d222a;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
+    --accent:#8d8bf2; --accent-soft:#23223a;
+    --ok:#4ade80; --ok-soft:#15271c; --warn:#f5b454; --warn-soft:#2a2113;
+    --danger:#f08a7d; --danger-soft:#2a1815;
+    --node-bg:#171b21; --code-bg:#0e1115; --code-ink:#cdd4dc;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;line-height:1.5}
+  #app{max-width:1240px;margin:0 auto;padding:20px 14px 48px}
+  .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+  .title{font-size:21px;font-weight:680;letter-spacing:-.01em;margin:0}
+  .subtitle{color:var(--muted);font-size:13.5px;margin-top:4px;max-width:700px}
+  .icon-btn{height:36px;padding:0 12px;border:1px solid var(--line);background:var(--panel);border-radius:9px;color:var(--ink);cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+  .icon-btn:hover{border-color:var(--accent)}
+  .grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:18px;align-items:start}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
+  .sticky-col{align-self:start}
+  @media (min-width:901px){.sticky-col{position:sticky;top:14px}}
+  .diagram-wrap{padding:14px 14px 10px}
+  .diagram{position:relative;width:100%}
+  .diagram svg.edges{position:absolute;inset:0;width:100%;height:100%}
+  .node{position:absolute;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:50%;
+    background:var(--node-bg);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;
+    font-size:15px;font-weight:660;color:var(--ink);transition:border-color .18s,box-shadow .18s,background .18s;z-index:2}
+  .node.onstack{border-color:var(--accent)}
+  .node.calling{border-color:var(--accent);box-shadow:0 0 0 5px var(--accent-soft);background:var(--accent-soft)}
+  .node.returning{border-color:var(--accent);box-shadow:0 0 0 5px var(--accent-soft);background:var(--accent);color:#fff}
+  .node.done{border-color:var(--ok)}
+  .node.pending{opacity:.5}
+  .hchip{position:absolute;transform:translate(-50%,-185%);font-size:10.5px;font-weight:680;
+    padding:1px 6px;border-radius:999px;background:var(--ok-soft);color:var(--ok);white-space:nowrap;z-index:3;font-variant-numeric:tabular-nums}
+  .edge-base{stroke:var(--line);stroke-width:2;fill:none;vector-effect:non-scaling-stroke}
+  .edge-spine{stroke:var(--accent);stroke-width:2.5;fill:none;vector-effect:non-scaling-stroke;stroke-linecap:round}
+  .edge-cur{stroke:var(--warn);stroke-width:3;fill:none;vector-effect:non-scaling-stroke;stroke-linecap:round}
+  .legend{display:flex;gap:13px;flex-wrap:wrap;padding:8px 4px 2px;font-size:11.5px;color:var(--muted)}
+  .legend i{width:11px;height:11px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:-1px;border:2px solid}
+  .stackrow{display:flex;align-items:baseline;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-2);font-size:13px;flex-wrap:wrap}
+  .stackrow .sk{font-size:10.5px;font-weight:680;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .stackrow .sv{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:var(--accent)}
+  .stackrow .sv b{color:var(--accent);font-weight:700}
+  .stackrow .empty{color:var(--faint);font-style:italic;font-family:inherit}
+  .board{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .board .b{flex:1 1 120px;border:1px solid var(--line);border-radius:11px;padding:9px 12px;background:var(--panel-2)}
+  .board .b .k{font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .board .b .v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+  .board .ledger{border-color:var(--ok)} .board .ledger .v{color:var(--ok)}
+  .board .ledger.flash{animation:flash .9s ease}
+  @keyframes flash{0%{box-shadow:0 0 0 0 var(--ok-soft)}30%{box-shadow:0 0 0 6px var(--ok-soft)}100%{box-shadow:0 0 0 0 var(--ok-soft)}}
+  .controls{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line-2)}
+  .ctl{width:42px;height:42px;border-radius:11px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .ctl:hover{border-color:var(--accent)}
+  .ctl.play{background:var(--accent);border-color:var(--accent);color:#fff}
+  .ctl:disabled{opacity:.4;cursor:not-allowed}
+  .ctl-label{font-size:12px;color:var(--muted);margin-left:2px;font-variant-numeric:tabular-nums}
+  .inputrow{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .inputrow input{flex:1 1 200px;min-width:0;border:1px solid var(--line);border-radius:9px;padding:8px 11px;background:var(--panel-2);color:var(--ink);font-size:13px;font-family:inherit}
+  .inputrow input:focus{outline:none;border-color:var(--accent)}
+  .inputrow .err{color:var(--danger);font-size:12px;align-self:center}
+  .hint{font-size:11.5px;color:var(--faint);margin-top:6px}
+  .panel{padding:16px 18px 18px}
+  .p-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .stepno{font-size:12px;color:var(--muted);font-weight:560;font-variant-numeric:tabular-nums}
+  .badge{font-size:11px;font-weight:660;padding:3px 9px;border-radius:999px}
+  .badge.call{background:var(--accent-soft);color:var(--accent)}
+  .badge.ret{background:var(--ok-soft);color:var(--ok)}
+  .p-title{font-size:17px;font-weight:660;letter-spacing:-.01em;margin:10px 0 4px}
+  .p-desc{font-size:13.5px;color:var(--ink);margin:0 0 4px}
+  .flowbox{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+  .frow{display:flex;align-items:center;gap:9px;font-size:13px;border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--panel-2)}
+  .frow .tag{font-size:10px;font-weight:680;padding:2px 7px;border-radius:6px;white-space:nowrap}
+  .frow.down{border-left:3px solid var(--accent)} .frow.down .tag{background:var(--accent-soft);color:var(--accent)}
+  .frow.up{border-left:3px solid var(--ok)} .frow.up .tag{background:var(--ok-soft);color:var(--ok)}
+  .frow.led{border-left:3px solid var(--warn)} .frow.led .tag{background:var(--warn-soft);color:var(--warn)}
+  .frow .eq{font-variant-numeric:tabular-nums}
+  .frow b{font-weight:680}
+  .note{background:var(--accent-soft);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--ink);margin-top:6px}
+  .steplog{margin-top:14px}
+  .slog-cap{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:2px 0 6px}
+  .slog-row{display:flex;align-items:center;gap:8px;font-size:12.5px;border:1px solid transparent;border-radius:8px;padding:5px 9px;cursor:pointer;font-variant-numeric:tabular-nums}
+  .slog-row:hover{background:var(--panel-2)}
+  .slog-row.cur{background:var(--accent-soft);border-color:var(--accent)}
+  .slog-row.past{color:var(--muted)}
+  .slog-row.future{color:var(--faint)}
+  .slog-row .ar{width:14px;display:inline-block;text-align:center;font-weight:700}
+  .slog-row .ar.c{color:var(--accent)} .slog-row .ar.r{color:var(--ok)}
+  .slog-row .o{margin-left:auto;font-size:11px}
+  .slog-row .o.max{color:var(--ok);font-weight:680}
+  .code{margin-top:14px;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+  .code-h{font-size:11.5px;font-weight:620;color:var(--muted);padding:7px 12px;background:var(--panel-2);border-bottom:1px solid var(--line)}
+  .code pre{margin:0;padding:10px 0;background:var(--code-bg);color:var(--code-ink);overflow-x:auto;
+    font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.7}
+  .code .ln{display:block;padding:0 13px;white-space:pre}
+  .code .ln.onC{background:var(--accent-soft)}
+  .code .ln.onR{background:var(--warn-soft)}
+  .code .cm{color:var(--faint)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ── compute (node로 정확성 결제 통과한 call/return 이벤트 모델 그대로) ─────────
+function buildTree(arr){
+  if(!arr.length || arr[0]==null) return null;
+  const nodes = arr.map(v => v==null ? null : {val:v,left:null,right:null});
+  const root = nodes[0]; const q=[root]; let i=1;
+  while(q.length && i<nodes.length){
+    const cur=q.shift();
+    if(i<nodes.length){ cur.left=nodes[i]; if(nodes[i]) q.push(nodes[i]); i++; }
+    if(i<nodes.length){ cur.right=nodes[i]; if(nodes[i]) q.push(nodes[i]); i++; }
+  }
+  return root;
+}
+function analyze(arr){
+  const root=buildTree(arr); const byId={},list=[]; let idc=0,xc=0,maxD=0;
+  (function pos(n,d){ if(!n) return; pos(n.left,d+1);
+    n.id=idc++; n.depth=d; n.x=xc++; maxD=Math.max(maxD,d); list.push(n); byId[n.id]=n; pos(n.right,d+1);
+  })(root,0);
+  const ev=[]; let diameter=0; const stack=[];
+  (function dfs(n){ if(!n) return 0;
+    stack.push(n.id);
+    ev.push({type:'call', id:n.id, val:n.val, diameter, stack:[...stack], leaf:(!n.left&&!n.right)});
+    const L=dfs(n.left), R=dfs(n.right);
+    const h=1+Math.max(L,R), cand=L+R, isNewMax=cand>diameter;
+    if(isNewMax) diameter=cand;
+    ev.push({type:'return', id:n.id, val:n.val, L,R,h,cand,diameter,isNewMax, stack:[...stack],
+      leftId:n.left?n.left.id:null, rightId:n.right?n.right.id:null});
+    stack.pop();
+    return h;
+  })(root);
+  return {root,byId,list,steps:ev,diameter,width:Math.max(xc,1),rows:maxD+1};
+}
+
+const CODE=[
+  {t:'int height(TreeNode node) {'},
+  {t:'    if (node == null) return 0;'},
+  {t:'    int L = height(node.left);'},
+  {t:'    int R = height(node.right);'},
+  {t:'    diameter = max(diameter, L + R);', cm:'  바깥 장부에 기록'},
+  {t:'    return 1 + max(L, R);', cm:'         부모에게 높이만'},
+  {t:'}'},
+];
+
+const DEFAULT_INPUT='1,2,3,4,5';
+let model=analyze([1,2,3,4,5]);
+const state={step:0, playing:false, theme:'light', input:DEFAULT_INPUT, err:''};
+let timer=null;
+
+function parseInput(s){
+  const parts=s.split(',').map(x=>x.trim()).filter(x=>x.length);
+  if(!parts.length) throw new Error('빈 입력');
+  const arr=parts.map(x=>{
+    if(x==='null'||x==='x'||x==='-') return null;
+    const n=Number(x); if(!Number.isInteger(n)) throw new Error('정수 또는 null만');
+    return n;
+  });
+  if(arr[0]==null) throw new Error('루트가 비어 있음');
+  if(arr.length>15) throw new Error('15개까지만(그림 가독성)');
+  return arr;
+}
+function applyInput(){
+  try{ const arr=parseInput(state.input); model=analyze(arr); state.step=0; state.err=''; stop(); }
+  catch(e){ state.err=e.message; }
+  render();
+}
+function clampStep(i){ return Math.max(0, Math.min(model.steps.length-1, i)); }
+function go(i){ state.step=clampStep(i); render(); }
+function stop(){ state.playing=false; if(timer){clearTimeout(timer);timer=null;} }
+function tick(){
+  if(state.step>=model.steps.length-1){ stop(); render(); return; }
+  state.step++; render(); timer=setTimeout(tick,1300);
+}
+function play(){ if(state.playing){stop();render();return;}
+  if(state.step>=model.steps.length-1) state.step=0;
+  state.playing=true; render(); timer=setTimeout(tick,1300);
+}
+
+function px(n){ return ((n.x+0.5)/model.width*100); }
+function py(n){ return ((n.depth+0.5)/model.rows*100); }
+
+function diagramHTML(){
+  const cur=model.steps[state.step];
+  const onStack=new Set(cur.stack);
+  const spine=new Set(); for(let i=0;i+1<cur.stack.length;i++) spine.add(cur.stack[i]+'-'+cur.stack[i+1]);
+  const candPairs=new Set();
+  if(cur.type==='return'){ if(cur.leftId!=null) candPairs.add(cur.id+'-'+cur.leftId); if(cur.rightId!=null) candPairs.add(cur.id+'-'+cur.rightId); }
+  const heightById={}; model.steps.slice(0,state.step+1).forEach(s=>{ if(s.type==='return') heightById[s.id]=s.h; });
+
+  let edges='';
+  for(const n of model.list){
+    for(const c of [n.left,n.right]){
+      if(!c) continue;
+      const key=n.id+'-'+c.id;
+      const cls = candPairs.has(key) ? 'edge-cur' : (spine.has(key) ? 'edge-spine' : 'edge-base');
+      edges += `<line class="${cls}" x1="${px(n)}" y1="${py(n)}" x2="${px(c)}" y2="${py(c)}"/>`;
+    }
+  }
+  let nodes='';
+  for(const n of model.list){
+    let cls='node';
+    if(n.id===cur.id) cls += cur.type==='call' ? ' calling' : ' returning';
+    else if(onStack.has(n.id)) cls += ' onstack';
+    else if(heightById[n.id]!=null) cls += ' done';
+    else cls += ' pending';
+    nodes += `<div class="${cls}" style="left:${px(n)}%;top:${py(n)}%">${n.val}</div>`;
+    if(heightById[n.id]!=null) nodes += `<div class="hchip" style="left:${px(n)}%;top:${py(n)}%">h=${heightById[n.id]}</div>`;
+  }
+  const ar=Math.max(model.width,2.4)/(model.rows+0.45);
+  return `<div class="diagram" style="aspect-ratio:${ar.toFixed(3)}">
+    <svg class="edges" viewBox="0 0 100 100" preserveAspectRatio="none">${edges}</svg>${nodes}</div>`;
+}
+
+function render(){
+  document.documentElement.setAttribute('data-theme',state.theme);
+  const cur=model.steps[state.step];
+  const last=model.steps.length-1;
+  const isCall=cur.type==='call';
+
+  const stackHtml = cur.stack.length
+    ? cur.stack.map((id,i)=>{ const v=model.byId[id].val; const lastOne=i===cur.stack.length-1;
+        return (lastOne?`<b>height(${v})</b>`:`height(${v})`); }).join(' &rarr; ')
+    : `<span class="empty">비어 있음</span>`;
+  const stackRow=`<div class="stackrow"><span class="sk">콜 스택</span><span class="sv">${stackHtml}</span></div>`;
+
+  const flashCls = (!isCall && cur.isNewMax) ? 'flash' : '';
+  const board=`<div class="board">
+    <div class="b"><div class="k">현재 높이 (return)</div><div class="v" style="color:var(--ok)">${isCall?'&mdash;':cur.h}</div></div>
+    <div class="b"><div class="k">지름 후보 L+R</div><div class="v" style="color:var(--warn)">${isCall?'&mdash;':cur.cand}</div></div>
+    <div class="b ledger ${flashCls}"><div class="k">바깥 장부: 최대 지름</div><div class="v">${cur.diameter}</div></div>
+  </div>`;
+
+  const legend=`<div class="legend">
+    <span><i style="border-color:var(--accent);background:var(--accent)"></i>호출/반환 중</span>
+    <span><i style="border-color:var(--accent)"></i>스택에 있음(내려가는 중)</span>
+    <span><i style="border-color:var(--ok)"></i>반환 끝(높이 확정)</span>
+    <span><i style="border-color:var(--warn);background:var(--warn)"></i>지름 후보 간선</span>
+  </div>`;
+
+  const controls=`<div class="controls">
+    <button class="ctl" data-act="prev" ${state.step===0?'disabled':''} aria-label="이전">&#9664;</button>
+    <button class="ctl play" data-act="play" aria-label="재생">${state.playing?'&#10073;&#10073;':'&#9654;'}</button>
+    <button class="ctl" data-act="next" ${state.step===last?'disabled':''} aria-label="다음">&#9654;</button>
+    <span class="ctl-label">${state.step+1} / ${model.steps.length} 단계</span>
+  </div>`;
+
+  const input=`<div class="inputrow">
+      <input id="treein" value="${state.input.replace(/"/g,'&quot;')}" placeholder="레벨오더: 1,2,3,4,5 (null 가능)" />
+      <button class="icon-btn" data-act="apply">다시 시뮬</button>
+      ${state.err?`<span class="err">${state.err}</span>`:''}
+    </div>
+    <div class="hint">레벨오더 입력(LeetCode 형식). 빈 자식은 null. 예: 1,2,3,4,5 · 1,2,3,4,5,6,null,null,7,8,null,null,9</div>`;
+
+  const left=`<div class="sticky-col"><div class="card diagram-wrap">
+      ${diagramHTML()}${legend}${stackRow}${board}${controls}${input}
+    </div></div>`;
+
+  // 우측: 단계 상세
+  let detail;
+  if(isCall){
+    const desc = cur.leaf
+      ? `잎(자식 없음)이라 곧바로 두 자식이 0을 돌려주고, 이 노드의 반환으로 넘어갑니다.`
+      : `아직 값을 못 정합니다. 먼저 왼쪽 자식 height로 <b>더 내려갑니다</b>.`;
+    detail = `<div class="flowbox">
+        <div class="frow down"><span class="tag">호출 &darr;</span>
+          <span class="eq">height(노드 ${cur.val})에 들어왔습니다.</span></div>
+      </div>
+      <div class="note">재귀는 먼저 <b>내려가기만</b> 합니다. 바닥(잎)에 닿기 전에는 높이도 지름도 정할 수 없어요. 그래서 값은 위가 아니라 <b>아래에서부터</b> 올라옵니다 — "왜 잎부터 채워지나"의 답입니다. ${desc}</div>`;
+  } else {
+    const childLine = (cur.L===0&&cur.R===0)
+      ? `두 자식이 없어(잎) L=0, R=0입니다.`
+      : `두 자식이 이미 높이를 올려보냈습니다 — 왼쪽 L=${cur.L}, 오른쪽 R=${cur.R}.`;
+    const noteHtml = state.step===last
+      ? `<div class="note">루트까지 반환이 끝났습니다. 한 번의 순회로 모든 노드를 정확히 한 번씩 방문했고, 바깥 장부의 <b>최대 지름 = ${cur.diameter}</b>가 답입니다. 높이를 노드마다 다시 재지 않은 것 — 그게 O(n)입니다.</div>`
+      : `<div class="note">집배원이 한 집에 들러 <b>본사에 보고할 것(높이, 부모에게 &uarr;)</b>과 <b>수첩에 적어둘 것(지름, 장부에)</b>을 한 번 방문에 둘 다 끝냅니다.</div>`;
+    detail = `<div class="flowbox">
+        <div class="frow"><span class="tag" style="background:var(--accent-soft);color:var(--accent)">반환 &uarr;</span>
+          <span class="eq">노드 <b>${cur.val}</b> — ${childLine}</span></div>
+        <div class="frow up"><span class="tag">부모에게 &uarr;</span>
+          <span class="eq">높이 = 1 + max(${cur.L}, ${cur.R}) = <b>${cur.h}</b></span></div>
+        <div class="frow led"><span class="tag">장부에 기록</span>
+          <span class="eq">지름 후보 = ${cur.L} + ${cur.R} = <b>${cur.cand}</b>${cur.isNewMax?' &rarr; 최대 갱신!':''}, 최대 지름 = <b>${cur.diameter}</b></span></div>
+      </div>${noteHtml}`;
+  }
+
+  const codeActive = isCall ? new Set([2,3]) : new Set([4,5]);
+  const onCls = isCall ? 'onC' : 'onR';
+  const code=`<div class="code"><div class="code-h">height() — ${isCall?'호출(내려감)':'반환(올라옴)'}</div><pre>` +
+    CODE.map((l,i)=>{
+      const on = codeActive.has(i) ? ' '+onCls : '';
+      const txt=l.t.replace(/</g,'&lt;');
+      const cm=l.cm?`<span class="cm">${l.cm}</span>`:'';
+      return `<span class="ln${on}">${txt}${cm}</span>`;
+    }).join('') + `</pre></div>`;
+
+  const timeline=`<div class="steplog"><div class="slog-cap">실행 순서 (코드대로: 호출 &darr; 내려가고, 반환 &uarr; 올라온다)</div>` +
+    model.steps.map((s,i)=>{
+      const c = i===state.step?'cur':(i<state.step?'past':'future');
+      if(s.type==='call') return `<div class="slog-row ${c}" data-act="jump" data-i="${i}">
+          <span class="ar c">&darr;</span><span>호출 height(${s.val})</span></div>`;
+      return `<div class="slog-row ${c}" data-act="jump" data-i="${i}">
+          <span class="ar r">&uarr;</span><span>반환 height(${s.val})</span>
+          <span class="o ${s.isNewMax?'max':''}">h=${s.h}, 좌+우=${s.cand}${s.isNewMax?' &uarr;지름 '+s.diameter:''}</span></div>`;
+    }).join('') + `</div>`;
+
+  const badge = isCall ? `<span class="badge call">호출 &darr; 노드 ${cur.val}</span>` : `<span class="badge ret">반환 &uarr; 노드 ${cur.val}</span>`;
+  const ptitle = isCall ? `height(노드 ${cur.val}) 호출 — 내려가는 중` : `height(노드 ${cur.val}) 반환 — 두 가지 일`;
+  const pdesc = isCall
+    ? `재귀가 자식으로 내려갑니다. 값은 바닥에 닿은 뒤 올라옵니다.`
+    : `한 번의 재귀가 <b>부모에게 올릴 높이</b>와 <b>장부에 적을 지름</b>을 동시에 만듭니다.`;
+
+  const right=`<div class="card panel">
+    <div class="p-top"><span class="stepno">단계 ${state.step+1} / ${model.steps.length}</span>${badge}</div>
+    <div class="p-title">${ptitle}</div>
+    <p class="p-desc">${pdesc}</p>
+    ${detail}${code}${timeline}
+  </div>`;
+
+  document.getElementById('app').innerHTML=`
+    <div class="head">
+      <div>
+        <h1 class="title">LC543 트리의 지름 — 코드 실행 순서로 보는 재귀</h1>
+        <p class="subtitle">루트에서 호출이 <b>내려갔다가</b>(call &darr;), 잎에 닿으면 높이가 <b>올라오며</b>(return &uarr;) 각 노드에서 좌+우(지름 후보)를 바깥 장부에 최대로 적습니다. 높이 DFS 한 번이 모든 노드를 정확히 한 번 방문 → O(n).</p>
+      </div>
+      <button class="icon-btn" data-act="theme">${state.theme==='dark'?'&#9728; 라이트':'&#9790; 다크'}</button>
+    </div>
+    <div class="grid">${left}${right}</div>`;
+
+  const inp=document.getElementById('treein');
+  if(inp) inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ state.input=inp.value; applyInput(); } });
+}
+
+document.getElementById('app').addEventListener('click', e=>{
+  const el=e.target.closest('[data-act]'); if(!el) return;
+  const a=el.dataset.act;
+  if(a==='prev'){ stop(); go(state.step-1); }
+  else if(a==='next'){ stop(); go(state.step+1); }
+  else if(a==='play'){ play(); }
+  else if(a==='jump'){ stop(); go(+el.dataset.i); }
+  else if(a==='apply'){ const inp=document.getElementById('treein'); if(inp) state.input=inp.value; applyInput(); }
+  else if(a==='theme'){ state.theme=state.theme==='dark'?'light':'dark'; render(); }
+});
+render();
+</script>
+</body>
+</html>
