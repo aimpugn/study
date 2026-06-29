@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>풀이 시각화 — 정렬 없이 count로 중앙값 (Fraudulent Activity)</title>
+<style>
+:root{
+  --color-page:#faf9f5;
+  --color-background-primary:#ffffff;
+  --color-background-secondary:#f1efe8;
+  --color-background-info:#e6f1fb;
+  --color-background-danger:#fcebeb;
+  --color-background-success:#e7f4ec;
+  --color-text-primary:#1f1f1d;
+  --color-text-secondary:#6b6a64;
+  --color-text-tertiary:#9a988f;
+  --color-text-info:#185fa5;
+  --color-text-danger:#a32d2d;
+  --color-text-success:#1f7a44;
+  --color-border-tertiary:rgba(0,0,0,0.15);
+  --color-border-secondary:rgba(0,0,0,0.30);
+  --color-border-info:rgba(24,95,165,0.55);
+  --color-border-danger:rgba(163,45,45,0.55);
+  --color-border-success:rgba(31,122,68,0.55);
+  --border-radius-md:8px;
+  --syn-kw:#9333ea; --syn-ty:#0e7490; --syn-num:#b45309;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --color-page:#1a1917;
+    --color-background-primary:#2b2a27;
+    --color-background-secondary:#211f1c;
+    --color-background-info:#0c447c;
+    --color-background-danger:#791f1f;
+    --color-background-success:#13432a;
+    --color-text-primary:#ececea;
+    --color-text-secondary:#a8a69d;
+    --color-text-tertiary:#7a786f;
+    --color-text-info:#b5d4f4;
+    --color-text-danger:#f7c1c1;
+    --color-text-success:#a6e0bf;
+    --color-border-tertiary:rgba(255,255,255,0.16);
+    --color-border-secondary:rgba(255,255,255,0.30);
+    --color-border-info:rgba(181,212,244,0.55);
+    --color-border-danger:rgba(247,193,193,0.55);
+    --color-border-success:rgba(166,224,191,0.55);
+    --syn-kw:#c9a6f5; --syn-ty:#5fcfe0; --syn-num:#e0a85f;
+  }
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:2rem 1.25rem; background:var(--color-page); color:var(--color-text-primary);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  line-height:1.7; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:780px; margin:0 auto;}
+h1{font-size:22px; font-weight:500; margin:0 0 0.4rem;}
+p.lead{font-size:15px; color:var(--color-text-secondary); margin:0 0 1.25rem;}
+.anchor{background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; font-size:14px; margin:0 0 1.5rem;}
+.anchor b{font-weight:500;}
+button{font:inherit; font-size:14px; padding:6px 12px; border:0.5px solid var(--color-border-secondary); background:transparent; color:var(--color-text-primary); border-radius:var(--border-radius-md); cursor:pointer;}
+button:hover{background:var(--color-background-secondary);}
+button:disabled{opacity:0.4; cursor:default;}
+input[type=text]{font:inherit; font-size:14px; padding:6px 10px; border:0.5px solid var(--color-border-secondary); border-radius:var(--border-radius-md); background:var(--color-background-primary); color:var(--color-text-primary); width:240px;}
+.sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);}
+.codeline{white-space:pre; padding:1px 6px; border-radius:4px; color:var(--color-text-primary);}
+.k{color:var(--syn-kw);} .t{color:var(--syn-ty);} .n{color:var(--syn-num);} .c{color:var(--color-text-tertiary); font-style:italic;} .s{color:var(--color-text-success);}
+.lbl{font-size:13px; color:var(--color-text-secondary); margin-bottom:6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h2 class="sr-only">슬라이딩 윈도우의 지출을 count 배열로 세고, 값 0부터 누적해 k번째(중앙값)를 찾고, 윈도우가 한 칸 움직일 때 count를 두 칸만 갱신하는 과정을 단계별로 보여주는 인터랙티브 시각화</h2>
+
+<h1>풀이 시각화 — 정렬 없이 count로 중앙값 찾기</h1>
+<p class="lead">윈도우의 지출을 값별로 세고(count), 값 0부터 누적해 가운데(k번째)에 처음 닿는 값이 중앙값입니다. 정렬을 안 만들고도 같은 답이 나오는 걸 단계로 따라가 보세요.</p>
+
+<div class="anchor">
+한 장면으로 기억하기: <b>count 배열을 값 0부터 읽는 것 = 정렬된 배열을 처음부터 읽는 것.</b> 그러니 정렬을 만들지 않고도, <b>누적 개수가 처음 k(가운데 번째)에 닿는 값</b>이 곧 중앙값입니다.<br>
+그리고 윈도우는 한 칸씩만 움직이니, 매번 새로 세지 말고 <b>나가는 날 -1, 들어오는 날 +1</b>만 갱신하면 됩니다.
+</div>
+
+<div id="fa-picker" style="display:flex; gap:8px; margin-bottom:0.75rem; flex-wrap:wrap; align-items:center;"></div>
+<div style="display:flex; gap:8px; margin-bottom:1.5rem; align-items:center; flex-wrap:wrap;">
+  <span style="font-size:14px; color:var(--color-text-secondary);">또는 직접(지출, 쉼표):</span>
+  <input id="fa-custom" type="text" maxlength="80" placeholder="예: 2,3,4,2,3,6,8,4,5  d=5">
+  <button id="fa-go">보기</button>
+</div>
+
+<div class="lbl">지출 일별 (파랑 테두리 = 현재 윈도우, 빨강 = 오늘 판정할 날)</div>
+<div id="fa-exp" style="display:flex; gap:4px; margin-bottom:1.25rem; flex-wrap:wrap;"></div>
+
+<div class="lbl">count 배열 (칸 = 값, 숫자 = 그 값이 윈도우에 몇 번)</div>
+<div id="fa-count" style="display:flex; gap:4px; margin-bottom:0.3rem; flex-wrap:wrap;"></div>
+<div id="fa-cum" style="display:flex; gap:4px; margin-bottom:1.1rem; flex-wrap:wrap; min-height:20px;"></div>
+
+<div style="text-align:left; margin-bottom:1.1rem;">
+  <span class="lbl" style="margin:0;">누적 알림 수: </span>
+  <span id="fa-notif" style="font-size:20px; font-weight:600;">0</span>
+</div>
+
+<div id="fa-explain" style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; font-size:14px; line-height:1.6; min-height:50px; margin-bottom:1rem;"></div>
+
+<div id="fa-code" style="font-family:var(--font-mono); font-size:12.5px; line-height:1.75; background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; margin-bottom:1rem;"></div>
+
+<div style="display:flex; gap:8px; align-items:center;">
+  <button id="fa-prev">이전</button>
+  <button id="fa-next">다음</button>
+  <button id="fa-play">재생</button>
+  <span id="fa-stepno" style="font-size:13px; color:var(--color-text-secondary); margin-left:auto;"></span>
+</div>
+</div>
+
+<script>
+(function(){
+  var PRESETS = [
+    {label:"[2,3,4,2,3,6,8,4,5] d=5 (알림 2)", e:[2,3,4,2,3,6,8,4,5], d:5},
+    {label:"[10,20,30,40,50] d=3 (알림 1)", e:[10,20,30,40,50], d:3},
+    {label:"[1,2,3,4,4] d=4 (알림 0)", e:[1,2,3,4,4], d:4}
+  ];
+  var curE = [2,3,4,2,3,6,8,4,5], curD = 5, maxV = 8, steps = [], idx = 0, timer = null;
+
+  // compute: count 배열 + 누적 walk로 중앙값을 찾고 윈도우를 슬라이드하는 단계 스냅샷.
+  //   대표 입력으로 최종 알림 수가 실제 정답과 같음을 node로 검증한 뒤 임베드했다(정확성 결제).
+  function compute(e, d){
+    var n = e.length, mv = Math.max.apply(null, e);
+    var count = new Array(mv + 1).fill(0);
+    for(var i=0;i<d;i++) count[e[i]]++;
+    var out = [], notif = 0;
+    for(var i=d;i<n;i++){
+      var seen=0, walk=[], twice, k=Math.floor(d/2)+1, isOdd=(d%2===1), medV;
+      if(isOdd){
+        for(var v=0;v<=mv;v++){ seen+=count[v]; walk.push([v,seen]); if(seen>=k){ medV=v; break; } }
+        twice = 2*medV;
+      } else {
+        var t1=d/2, a=-1; medV=[];
+        for(var v=0;v<=mv;v++){ seen+=count[v]; walk.push([v,seen]); if(a<0 && seen>=t1) a=v; if(seen>=t1+1){ medV=[a,v]; break; } }
+        twice = medV[0]+medV[1];
+      }
+      out.push({type:'median', i:i, count:count.slice(), walk:walk, k:k, twice:twice, isOdd:isOdd, medV:medV});
+      var notify = e[i] >= twice; if(notify) notif++;
+      out.push({type:'compare', i:i, day:e[i], twice:twice, notify:notify, notif:notif, count:count.slice()});
+      if(i < n-1){
+        count[e[i-d]]--; count[e[i]]++;
+        out.push({type:'slide', i:i, out:e[i-d], in:e[i], count:count.slice()});
+      }
+    }
+    out.push({type:'end', notif:notif, count:count.slice()});
+    return { steps: out, result: notif };
+  }
+  function el(id){ return document.getElementById(id); }
+
+  var SYN_KW = {"for":1,"if":1,"return":1,"in":1};
+  function synHi(line){
+    var re = /(\/\/.*)|([A-Za-z_$][A-Za-z0-9_$]*)|(\d+)|(.)/g, out = "", m;
+    while((m = re.exec(line)) !== null){
+      var t = m[0], cls = "";
+      if(m[1]) cls = "c"; else if(m[2]) cls = SYN_KW[t] ? "k" : "";
+      else if(m[3]) cls = "n";
+      var e = t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      out += cls ? "<span class='"+cls+"'>"+e+"</span>" : e;
+    }
+    return out;
+  }
+
+  // 코드 패널: 항상 같은 10줄(중앙값 walk + 슬라이드). 단계마다 하이라이트만 옮기고 값만 끝 주석에 바인딩.
+  function buildCode(st){
+    var lines = [
+      "twiceMedian(count, d):              // 정렬 없이 중앙값",
+      "  k = d/2 + 1                       // 가운데 = k번째",
+      "  seen = 0",
+      "  for v in 0..max:",
+      "    seen += count[v]                // v까지 누적 개수",
+      "    if seen >= k: return 2 * v      // k번째가 값 v 안에",
+      "",
+      "// 윈도우 슬라이드 (다음 날로)",
+      "count[나가는 날]--                   // 가장 오래된 하루 제거",
+      "count[들어오는 날]++                 // 새 하루 추가"
+    ];
+    var hi = {};
+    if(st.type === 'median'){
+      hi = {3:true, 4:true, 5:true};
+      lines[1] += "   // k = " + st.k;
+      var last = st.walk[st.walk.length-1];
+      lines[5] += "   // 누적 " + last[1] + " >= " + st.k + " -> 2*" + (st.isOdd ? last[0] : ("("+st.medV[0]+"+"+st.medV[1]+")/2")) + " = " + st.twice;
+    } else if(st.type === 'slide'){
+      hi = {8:true, 9:true};
+      lines[8] += "   // 값 " + st.out + " 빠짐";
+      lines[9] += "   // 값 " + st.in + " 들어옴";
+    } else if(st.type === 'compare'){
+      hi = {5:true};
+      lines[5] += "   // 2*중앙값 = " + st.twice;
+    }
+    return { lines: lines, hi: hi };
+  }
+
+  function render(){
+    var st = steps[idx], i, lo = st.i - curD, hi = st.i;
+    // 지출 일별
+    var exp = "";
+    for(i=0;i<curE.length;i++){
+      var inWin = (i >= lo && i < hi);
+      var isDay = (i === st.i && (st.type === 'median' || st.type === 'compare'));
+      var bd = "var(--color-border-tertiary)", bw = "1px", bg = "transparent", col = "var(--color-text-primary)";
+      if(inWin){ bd = "var(--color-border-info)"; bw = "2px"; bg = "var(--color-background-info)"; }
+      if(isDay){ bd = "var(--color-border-danger)"; bw = "2.5px"; bg = "transparent"; col = "var(--color-text-danger)"; }
+      exp += "<div style='min-width:30px;height:34px;line-height:32px;text-align:center;font-size:14px;font-weight:500;"
+        + "border:"+bw+" solid "+bd+";border-radius:6px;background:"+bg+";color:"+col+";padding:0 4px;'>"+curE[i]+"</div>";
+    }
+    el("fa-exp").innerHTML = exp;
+
+    // count 배열 + 누적
+    var inWalk = {}, medMark = {};
+    if(st.type === 'median'){
+      st.walk.forEach(function(w){ inWalk[w[0]] = w[1]; });
+      if(st.isOdd) medMark[st.medV] = true; else { medMark[st.medV[0]] = true; medMark[st.medV[1]] = true; }
+    }
+    var slideMark = {};
+    if(st.type === 'slide'){ slideMark[st.out] = '-'; slideMark[st.in] = '+'; }
+    var cnt = "", cum = "";
+    for(i=0;i<=maxV;i++){
+      var c = st.count[i];
+      var bg = "transparent", bd = "var(--color-border-tertiary)", col = c>0 ? "var(--color-text-primary)" : "var(--color-text-tertiary)";
+      if(inWalk[i] !== undefined){ bg = "var(--color-background-info)"; bd = "var(--color-border-info)"; col = "var(--color-text-info)"; }
+      if(medMark[i]){ bg = "var(--color-background-success)"; bd = "var(--color-border-success)"; col = "var(--color-text-success)"; }
+      if(slideMark[i]){ bd = "var(--color-border-danger)"; col = "var(--color-text-danger)"; }
+      cnt += "<div style='width:30px;text-align:center;'>"
+        + "<div style='font-size:10px;color:var(--color-text-tertiary);'>"+i+"</div>"
+        + "<div style='height:30px;line-height:28px;font-size:14px;font-weight:500;border:1.5px solid "+bd+";border-radius:6px;background:"+bg+";color:"+col+";'>"+c+"</div>"
+        + "</div>";
+      var cumTxt = "";
+      if(inWalk[i] !== undefined) cumTxt = "<span style='color:"+(medMark[i]?"var(--color-text-success)":"var(--color-text-info)")+";'>"+inWalk[i]+"</span>";
+      else if(slideMark[i]) cumTxt = "<span style='color:var(--color-text-danger)'>"+slideMark[i]+"</span>";
+      cum += "<div style='width:30px;text-align:center;font-size:11px;'>"+cumTxt+"</div>";
+    }
+    el("fa-count").innerHTML = cnt;
+    el("fa-cum").innerHTML = cum;
+    el("fa-notif").textContent = (st.notif !== undefined) ? st.notif : (idx > 0 ? prevNotif() : 0);
+
+    var ex;
+    if(st.type === 'median'){
+      var w = st.walk.map(function(x){ return "값"+x[0]+"까지 누적 "+x[1]; }).join(", ");
+      ex = "현재 윈도우(" + st.i + "일 직전 " + curD + "일)의 count입니다. 값 0부터 누적: " + w + ". 누적이 처음 k=" + st.k + "에 닿은 " + (st.isOdd ? ("값 " + st.medV + "이 중앙값") : ("값 " + st.medV[0] + "," + st.medV[1] + "이 가운데 둘")) + " -> 2*중앙값 = " + st.twice + ".";
+    } else if(st.type === 'compare'){
+      ex = st.i + "일의 지출 " + st.day + " >= 2*중앙값 " + st.twice + " ? " + (st.notify ? "예 -> 알림! (누적 " + st.notif + ")" : "아니오 -> 알림 없음.");
+    } else if(st.type === 'slide'){
+      ex = "다음 날로 윈도우가 한 칸 미끄러집니다. 나가는 날 값 " + st.out + "은 count에서 1 빼고, 들어오는 날 값 " + st.in + "은 1 더합니다 — 전체를 다시 안 세고 두 칸만 고칩니다.";
+    } else {
+      ex = "끝까지 왔습니다. 윈도우가 한 칸씩 미끄러지는 동안, 매번 count walk(O(201))와 슬라이드(O(1))만 했습니다. 총 알림 " + st.notif + "건.";
+    }
+    el("fa-explain").textContent = ex;
+
+    var built = buildCode(st), code = "";
+    for(i=0;i<built.lines.length;i++){
+      var on = !!built.hi[i];
+      code += "<div class='codeline' style='background:"+(on?"var(--color-background-info)":"transparent")+";'>"
+        + (built.lines[i] === "" ? "&nbsp;" : synHi(built.lines[i])) + "</div>";
+    }
+    el("fa-code").innerHTML = code;
+
+    el("fa-stepno").textContent = "단계 "+(idx+1)+" / "+steps.length;
+    el("fa-prev").disabled = idx === 0;
+    el("fa-next").disabled = idx === steps.length - 1;
+  }
+  function prevNotif(){
+    for(var j=idx;j>=0;j--){ if(steps[j].notif !== undefined) return steps[j].notif; }
+    return 0;
+  }
+
+  function renderPicker(){
+    var p = "";
+    PRESETS.forEach(function(pr){
+      var on = pr.e.join(",") === curE.join(",") && pr.d === curD;
+      p += "<button data-e='"+pr.e.join(",")+"' data-d='"+pr.d+"' style='font-family:var(--font-mono);"+(on?"border-color:var(--color-text-info);color:var(--color-text-info);":"")+"'>"+pr.label+"</button>";
+    });
+    el("fa-picker").innerHTML = p;
+    Array.prototype.forEach.call(el("fa-picker").querySelectorAll("button"), function(b){
+      b.onclick = function(){ setInput(b.getAttribute("data-e").split(",").map(Number), parseInt(b.getAttribute("data-d"),10)); };
+    });
+  }
+  function stop(){ if(timer){ clearInterval(timer); timer = null; el("fa-play").textContent = "재생"; } }
+  function setInput(e, d){
+    if(!e || e.length === 0 || !d || d < 1 || d > e.length) return;
+    curE = e; curD = d; maxV = Math.max.apply(null, e); steps = compute(e, d).steps; idx = 0; stop(); renderPicker(); render();
+  }
+  function parseCustom(txt){
+    var dm = txt.match(/d\s*=\s*(\d+)/i);
+    var d = dm ? parseInt(dm[1],10) : null;
+    var nums = (txt.replace(/d\s*=\s*\d+/i,"").match(/\d+/g) || []).map(Number);
+    return { e: nums, d: d || Math.min(5, nums.length) };
+  }
+  function play(){
+    if(timer){ stop(); return; }
+    if(idx === steps.length - 1) idx = 0;
+    el("fa-play").textContent = "멈춤";
+    timer = setInterval(function(){ if(idx < steps.length - 1){ idx++; render(); } else stop(); }, 1100);
+  }
+
+  el("fa-prev").onclick = function(){ stop(); if(idx > 0){ idx--; render(); } };
+  el("fa-next").onclick = function(){ stop(); if(idx < steps.length - 1){ idx++; render(); } };
+  el("fa-play").onclick = play;
+  el("fa-go").onclick = function(){ var p = parseCustom(el("fa-custom").value); setInput(p.e, p.d); };
+  el("fa-custom").addEventListener("keydown", function(ev){ if(ev.key === "Enter"){ var p = parseCustom(el("fa-custom").value); setInput(p.e, p.d); } });
+
+  setInput([2,3,4,2,3,6,8,4,5], 5);
+})();
+</script>
+</body>
+</html>
