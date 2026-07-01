@@ -198,12 +198,19 @@ function buildFrames(grid, sr, sc, gr, gc) {
             msg: "[" + dirName(dr,dc) + "] (" + nr + "," + nc + ") 는 이미 방문(dist=" + dist[nr][nc] + "). 그냥 지나칩니다." }));
         }
         nr += dr; nc += dc;
+        var inBounds = nr >= 0 && nr < rows && nc >= 0 && nc < cols;
+        var blocked = inBounds && isX(nr, nc);
+        var stop = !inBounds || blocked;
+        frames.push(snap({ current: [r,c], marching: stop ? null : [nr,nc], dir: [dr,dc], qi: qi, codeLine: 15,
+          msg: stop
+            ? ("nx += d, ny += d  →  " + (blocked ? "(" + nr + "," + nc + ")=X 막힘" : "격자 밖") + " → [" + dirName(dr,dc) + "] 방향 미끄러짐 끝")
+            : ("nx += d, ny += d  →  같은 [" + dirName(dr,dc) + "] 방향 (" + nr + "," + nc + ")로 계속 미끄러짐") }));
       }
     }
   }
   if (answer === null) {
     answer = dist[gr][gc];
-    frames.push(snap({ done: true, codeLine: 18, msg: "큐가 비었습니다. dist[목표]=" + answer + (answer === -1 ? " (도달 불가)" : "") + " 를 반환." }));
+    frames.push(snap({ done: true, codeLine: 19, msg: "큐가 비었습니다. dist[목표]=" + answer + (answer === -1 ? " (도달 불가)" : "") + " 를 반환." }));
   }
   return { frames: frames, answer: answer };
 }
