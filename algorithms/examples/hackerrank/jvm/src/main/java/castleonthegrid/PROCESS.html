@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Castle on the Grid — BFS 파동 시각화</title>
+<style>
+  :root {
+    --bg: #f7f8fa; --panel: #ffffff; --ink: #1c2330; --muted: #6b7280;
+    --line: #e3e7ee; --accent: #2563eb; --accent-soft: #dbeafe;
+    --block: #374151; --block-ink: #e5e7eb;
+    --start: #16a34a; --goal: #dc2626; --current: #f59e0b; --march: #a855f7;
+    --code-bg: #0f172a; --code-ink: #cbd5e1; --code-hl: #1e3a5f;
+    --font: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --panel: #161b22; --ink: #e6edf3; --muted: #9198a1;
+      --line: #2a313c; --accent: #58a6ff; --accent-soft: #16324f;
+      --block: #30363d; --block-ink: #8b949e;
+      --code-bg: #010409; --code-ink: #c9d1d9; --code-hl: #163056;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    line-height: 1.6; padding: 20px; }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+  .col { flex: 1 1 320px; min-width: 300px; }
+  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+  textarea, input { font-family: var(--font); background: var(--bg); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 13px; }
+  textarea { width: 100%; resize: vertical; }
+  .coords { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .coords label { display: inline; margin-right: 4px; }
+  .coords input { width: 48px; }
+  button { font-family: inherit; font-size: 13px; cursor: pointer; border: 1px solid var(--line);
+    background: var(--panel); color: var(--ink); border-radius: 6px; padding: 7px 14px; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+
+  .grid { display: grid; gap: 4px; justify-content: start; margin: 4px 0; }
+  .cell { width: 46px; height: 46px; border-radius: 7px; display: flex; align-items: center; justify-content: center;
+    font-family: var(--font); font-size: 17px; font-weight: 600; position: relative; border: 2px solid transparent;
+    transition: background .12s, border-color .12s; }
+  .cell .badge { position: absolute; top: 2px; left: 4px; font-size: 9px; font-weight: 700; letter-spacing: .5px; }
+  .cell.block { background: var(--block); color: var(--block-ink); }
+  .cell.unvisited { background: var(--bg); color: var(--muted); border-color: var(--line); }
+  .cell.current { border-color: var(--current); box-shadow: 0 0 0 2px var(--current); }
+  .cell.march { border-color: var(--march); }
+  .cell.assigned { animation: pop .4s ease; }
+  @keyframes pop { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; border: 1px solid var(--line); }
+
+  .queue { display: flex; gap: 6px; flex-wrap: wrap; min-height: 30px; }
+  .chip { font-family: var(--font); font-size: 12px; padding: 3px 7px; border-radius: 5px; background: var(--accent-soft); color: var(--ink); border: 1px solid var(--line); }
+  .chip.done { opacity: .38; text-decoration: line-through; }
+  .chip.head { border-color: var(--current); box-shadow: 0 0 0 1px var(--current); }
+
+  .msg { font-size: 14px; min-height: 44px; padding: 8px 10px; background: var(--accent-soft); border-radius: 8px; }
+  .stepbar { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  .counter { font-family: var(--font); font-size: 13px; color: var(--muted); margin-left: auto; }
+
+  pre.code { background: var(--code-bg); color: var(--code-ink); border-radius: 8px; padding: 12px 10px; margin: 0;
+    font-family: var(--font); font-size: 12.5px; line-height: 1.5; overflow-x: auto; }
+  pre.code .ln { display: block; padding: 0 6px; border-radius: 4px; white-space: pre; }
+  pre.code .ln.hl { background: var(--code-hl); }
+  .answer { font-weight: 700; color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Castle on the Grid — BFS 파동이 흐르는 법</h1>
+  <p class="sub">큐에서 칸을 꺼내 → 네 방향으로 → 그 방향으로 <code>nx += d</code> 미끄러지며 → 미방문 칸에 dist를 적는다. 그 흐름을 한 단계씩 보세요.</p>
+
+  <div class="card">
+    <div class="row">
+      <div class="col">
+        <label>격자 (한 줄에 한 행, <code>.</code>=통과 <code>X</code>=막힘)</label>
+        <textarea id="gridInput" rows="4">.X.
+.X.
+...</textarea>
+        <div class="coords">
+          <span><label>시작 행</label><input id="sx" type="number" value="0"></span>
+          <span><label>시작 열</label><input id="sy" type="number" value="0"></span>
+          <span><label>목표 행</label><input id="gx" type="number" value="0"></span>
+          <span><label>목표 열</label><input id="gy" type="number" value="2"></span>
+        </div>
+      </div>
+      <div class="col" style="flex:0 0 auto;">
+        <label>&nbsp;</label>
+        <button class="primary" id="rebuild">이 입력으로 다시 시뮬레이션</button>
+        <p class="sub" id="answerLine" style="margin-top:10px;"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col card">
+      <label>격자 상태 (칸 안 숫자 = 그 칸까지의 최소 이동 횟수 dist)</label>
+      <div class="grid" id="grid"></div>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--start)"></span>시작</span>
+        <span><span class="swatch" style="background:var(--goal)"></span>목표</span>
+        <span><span class="swatch" style="border-color:var(--current);box-shadow:0 0 0 2px var(--current)"></span>지금 꺼낸 칸</span>
+        <span><span class="swatch" style="border-color:var(--march);border-width:2px"></span>미끄러지는 중</span>
+        <span><span class="swatch" style="background:var(--block)"></span>막힘(X)</span>
+      </div>
+    </div>
+    <div class="col card">
+      <label>큐 (앞에서 꺼냄, 취소선 = 이미 처리)</label>
+      <div class="queue" id="queue"></div>
+      <label style="margin-top:14px;">이번 단계</label>
+      <div class="msg" id="msg"></div>
+      <div class="stepbar">
+        <button id="prev">◀ 이전</button>
+        <button id="play">▶ 재생</button>
+        <button id="next">다음 ▶</button>
+        <span class="counter" id="counter"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>코드 (현재 단계의 줄이 강조됩니다)</label>
+    <pre class="code" id="code"></pre>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ── compute (node로 정답 3/0/2/-1 검증 완료) ─────────────────────────────
+var CODE = [
+  "var dist = new int[rows][cols];",
+  "for (var row : dist) Arrays.fill(row, -1);   // -1 = 미방문",
+  "queue.offer(start);  dist[start] = 0;",
+  "int[][] dirs = { {-1,0},{1,0},{0,-1},{0,1} }; // 상 하 좌 우",
+  "while (!queue.isEmpty()) {",
+  "    var curr = queue.poll();",
+  "    if (curr == goal) return dist[curr];      // 처음 꺼낸 순간이 최단",
+  "    for (var d : dirs) {",
+  "        var nx = curr.x + d[0], ny = curr.y + d[1];",
+  "        while (격자 안 && !isBlocked(nx, ny)) {  // 미끄러짐",
+  "            if (dist[nx][ny] == -1) {           // 미방문 칸만",
+  "                dist[nx][ny] = dist[curr] + 1;",
+  "                queue.offer(nx, ny);",
+  "            }",
+  "            nx += d[0];  ny += d[1];            // 같은 방향 다음 칸",
+  "        }",
+  "    }",
+  "}",
+  "return dist[goal];   // 시작==목표면 0, 못 닿으면 -1"
+];
+function dirName(dr, dc){ return dr === -1 ? "위" : dr === 1 ? "아래" : dc === -1 ? "왼쪽" : "오른쪽"; }
+function buildFrames(grid, sr, sc, gr, gc) {
+  var rows = grid.length, cols = grid[0].length;
+  var dist = []; for (var i = 0; i < rows; i++) { dist.push(new Array(cols).fill(-1)); }
+  var isX = function(r, c){ return grid[r][c] === "X"; };
+  var dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+  var frames = [], queue = [];
+  dist[sr][sc] = 0; queue.push([sr, sc]);
+  var answer = null;
+  function snap(e){
+    var d = dist.map(function(row){ return row.slice(); });
+    var q = queue.map(function(x){ return x.slice(); });
+    var base = { dist: d, queue: q, current: null, marching: null, dir: null, assigned: null, done: false, qi: 0, codeLine: 1, msg: "" };
+    for (var k in e) base[k] = e[k];
+    return base;
+  }
+  frames.push(snap({ codeLine: 3, msg: "시작 (" + sr + "," + sc + ") 를 큐에 넣고 dist=0. 여기서 파동이 퍼져 나갑니다." }));
+  var qi = 0;
+  while (qi < queue.length) {
+    var cur = queue[qi]; qi++;
+    var r = cur[0], c = cur[1];
+    frames.push(snap({ current: [r,c], qi: qi, codeLine: 6, msg: "큐에서 (" + r + "," + c + ") 를 꺼냅니다 (dist=" + dist[r][c] + ")." }));
+    if (r === gr && c === gc) {
+      answer = dist[r][c];
+      frames.push(snap({ current: [r,c], qi: qi, done: true, codeLine: 7, msg: "목표에 처음 닿았습니다. dist=" + answer + " 를 반환하고 끝냅니다." }));
+      break;
+    }
+    for (var di = 0; di < dirs.length; di++) {
+      var dr = dirs[di][0], dc = dirs[di][1];
+      var nr = r + dr, nc = c + dc;
+      while (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !isX(nr, nc)) {
+        if (dist[nr][nc] === -1) {
+          dist[nr][nc] = dist[r][c] + 1; queue.push([nr, nc]);
+          frames.push(snap({ current: [r,c], marching: [nr,nc], dir: [dr,dc], assigned: [nr,nc], qi: qi, codeLine: 12,
+            msg: "[" + dirName(dr,dc) + "] 로 미끄러져 (" + nr + "," + nc + ") 방문 → dist=" + dist[nr][nc] + ", 큐에 추가." }));
+        } else {
+          frames.push(snap({ current: [r,c], marching: [nr,nc], dir: [dr,dc], qi: qi, codeLine: 11,
+            msg: "[" + dirName(dr,dc) + "] (" + nr + "," + nc + ") 는 이미 방문(dist=" + dist[nr][nc] + "). 그냥 지나칩니다." }));
+        }
+        nr += dr; nc += dc;
+      }
+    }
+  }
+  if (answer === null) {
+    answer = dist[gr][gc];
+    frames.push(snap({ done: true, codeLine: 18, msg: "큐가 비었습니다. dist[목표]=" + answer + (answer === -1 ? " (도달 불가)" : "") + " 를 반환." }));
+  }
+  return { frames: frames, answer: answer };
+}
+
+// ── render ──────────────────────────────────────────────────────────────
+var waveBg = ["#16a34a", "#2563eb", "#0891b2", "#7c3aed", "#db2777", "#ea580c", "#0d9488", "#4f46e5"];
+var state = { frames: [], i: 0, grid: [], sr: 0, sc: 0, gr: 0, gc: 0, playing: false, timer: null };
+
+function $(id){ return document.getElementById(id); }
+
+function rebuild() {
+  var raw = $("gridInput").value.replace(/\r/g, "").split("\n").filter(function(s){ return s.length > 0; });
+  if (raw.length === 0) { $("answerLine").textContent = "격자가 비었습니다."; return; }
+  var cols = raw[0].length;
+  for (var i = 0; i < raw.length; i++) { if (raw[i].length !== cols) { $("answerLine").textContent = "모든 행의 길이가 같아야 합니다."; return; } }
+  var sr = +$("sx").value, sc = +$("sy").value, gr = +$("gx").value, gc = +$("gy").value;
+  var rows = raw.length;
+  function bad(r, c){ return r < 0 || r >= rows || c < 0 || c >= cols || raw[r][c] === "X"; }
+  if (bad(sr, sc) || bad(gr, gc)) { $("answerLine").textContent = "시작/목표 좌표가 격자 밖이거나 막힌 칸입니다."; return; }
+  var out = buildFrames(raw, sr, sc, gr, gc);
+  state.frames = out.frames; state.i = 0; state.grid = raw;
+  state.sr = sr; state.sc = sc; state.gr = gr; state.gc = gc;
+  $("answerLine").innerHTML = "최소 이동 횟수 = <span class='answer'>" + out.answer + "</span>" + (out.answer === -1 ? " (도달 불가)" : "");
+  stopPlay();
+  render();
+}
+
+function render() {
+  var f = state.frames[state.i];
+  var grid = state.grid, rows = grid.length, cols = grid[0].length;
+  // grid
+  var g = $("grid");
+  g.style.gridTemplateColumns = "repeat(" + cols + ", 46px)";
+  g.innerHTML = "";
+  for (var r = 0; r < rows; r++) {
+    for (var c = 0; c < cols; c++) {
+      var cell = document.createElement("div");
+      cell.className = "cell";
+      var isBlock = grid[r][c] === "X";
+      var d = f.dist[r][c];
+      if (isBlock) { cell.classList.add("block"); cell.textContent = "X"; }
+      else if (d === -1) { cell.classList.add("unvisited"); cell.textContent = "·"; }
+      else {
+        cell.textContent = d;
+        cell.style.background = waveBg[d % waveBg.length];
+        cell.style.color = "#fff";
+      }
+      if (f.current && f.current[0] === r && f.current[1] === c) cell.classList.add("current");
+      if (f.marching && f.marching[0] === r && f.marching[1] === c) cell.classList.add("march");
+      if (f.assigned && f.assigned[0] === r && f.assigned[1] === c) cell.classList.add("assigned");
+      if (r === state.sr && c === state.sc) { var b1 = document.createElement("span"); b1.className = "badge"; b1.style.color = "#fff"; b1.textContent = "S"; cell.appendChild(b1); }
+      if (r === state.gr && c === state.gc) { var b2 = document.createElement("span"); b2.className = "badge"; b2.style.color = "#fff"; b2.style.left = "auto"; b2.style.right = "4px"; b2.textContent = "G"; cell.appendChild(b2); }
+      g.appendChild(cell);
+    }
+  }
+  // queue
+  var q = $("queue");
+  q.innerHTML = "";
+  if (f.queue.length === 0) { q.innerHTML = "<span class='chip done'>(빔)</span>"; }
+  for (var k = 0; k < f.queue.length; k++) {
+    var chip = document.createElement("span");
+    chip.className = "chip";
+    if (k < f.qi) chip.classList.add("done");
+    if (k === f.qi - 1) chip.classList.add("head");
+    chip.textContent = "(" + f.queue[k][0] + "," + f.queue[k][1] + ")";
+    q.appendChild(chip);
+  }
+  // message + code + counter
+  $("msg").textContent = f.msg;
+  var code = $("code");
+  code.innerHTML = "";
+  for (var li = 0; li < CODE.length; li++) {
+    var line = document.createElement("span");
+    line.className = "ln" + ((li + 1) === f.codeLine ? " hl" : "");
+    line.textContent = CODE[li];
+    code.appendChild(line);
+  }
+  $("counter").textContent = (state.i + 1) + " / " + state.frames.length;
+  $("prev").disabled = state.i === 0;
+  $("next").disabled = state.i === state.frames.length - 1;
+}
+
+function step(delta) { state.i = Math.max(0, Math.min(state.frames.length - 1, state.i + delta)); render(); }
+function stopPlay() { state.playing = false; if (state.timer) { clearInterval(state.timer); state.timer = null; } $("play").textContent = "▶ 재생"; }
+function togglePlay() {
+  if (state.playing) { stopPlay(); return; }
+  if (state.i === state.frames.length - 1) state.i = 0;
+  state.playing = true; $("play").textContent = "⏸ 정지";
+  state.timer = setInterval(function () {
+    if (state.i >= state.frames.length - 1) { stopPlay(); render(); return; }
+    step(1);
+  }, 650);
+}
+
+$("rebuild").addEventListener("click", rebuild);
+$("prev").addEventListener("click", function () { stopPlay(); step(-1); });
+$("next").addEventListener("click", function () { stopPlay(); step(1); });
+$("play").addEventListener("click", togglePlay);
+rebuild();
+</script>
+</body>
+</html>
