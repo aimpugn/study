@@ -65,6 +65,8 @@
   .chip.head { border-color: var(--current); box-shadow: 0 0 0 1px var(--current); }
 
   .msg { font-size: 14px; min-height: 44px; padding: 8px 10px; background: var(--accent-soft); border-radius: 8px; }
+  .calc { font-family: var(--font); font-size: 13px; min-height: 22px; margin-top: 6px; padding: 8px 10px; background: var(--code-bg); color: var(--code-ink); border-radius: 8px; white-space: pre-wrap; }
+  .calc:empty::before { content: "—"; opacity: .4; }
   .stepbar { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
   .counter { font-family: var(--font); font-size: 13px; color: var(--muted); margin-left: auto; }
 
@@ -119,6 +121,8 @@
       <div class="queue" id="queue"></div>
       <label style="margin-top:14px;">이번 단계</label>
       <div class="msg" id="msg"></div>
+      <label style="margin-top:10px;">이 단계의 값 계산 (d 값 + 더한 결과)</label>
+      <div class="calc" id="calc"></div>
       <div class="stepbar">
         <button id="prev">◀ 이전</button>
         <button id="play">▶ 재생</button>
@@ -170,7 +174,7 @@ function buildFrames(grid, sr, sc, gr, gc) {
   function snap(e){
     var d = dist.map(function(row){ return row.slice(); });
     var q = queue.map(function(x){ return x.slice(); });
-    var base = { dist: d, queue: q, current: null, marching: null, dir: null, assigned: null, done: false, qi: 0, codeLine: 1, msg: "" };
+    var base = { dist: d, queue: q, current: null, marching: null, dir: null, assigned: null, done: false, qi: 0, codeLine: 1, msg: "", calc: "" };
     for (var k in e) base[k] = e[k];
     return base;
   }
@@ -192,16 +196,19 @@ function buildFrames(grid, sr, sc, gr, gc) {
         if (dist[nr][nc] === -1) {
           dist[nr][nc] = dist[r][c] + 1; queue.push([nr, nc]);
           frames.push(snap({ current: [r,c], marching: [nr,nc], dir: [dr,dc], assigned: [nr,nc], qi: qi, codeLine: 12,
+            calc: "dist[" + nr + "][" + nc + "] = dist[" + r + "][" + c + "] + 1 = " + dist[r][c] + " + 1 = " + dist[nr][nc],
             msg: "[" + dirName(dr,dc) + "] 로 미끄러져 (" + nr + "," + nc + ") 방문 → dist=" + dist[nr][nc] + ", 큐에 추가." }));
         } else {
           frames.push(snap({ current: [r,c], marching: [nr,nc], dir: [dr,dc], qi: qi, codeLine: 11,
             msg: "[" + dirName(dr,dc) + "] (" + nr + "," + nc + ") 는 이미 방문(dist=" + dist[nr][nc] + "). 그냥 지나칩니다." }));
         }
+        var prevNr = nr, prevNc = nc;
         nr += dr; nc += dc;
         var inBounds = nr >= 0 && nr < rows && nc >= 0 && nc < cols;
         var blocked = inBounds && isX(nr, nc);
         var stop = !inBounds || blocked;
         frames.push(snap({ current: [r,c], marching: stop ? null : [nr,nc], dir: [dr,dc], qi: qi, codeLine: 15,
+          calc: "d = (" + dr + ", " + dc + ")    nx = " + prevNr + " + (" + dr + ") = " + nr + ",    ny = " + prevNc + " + (" + dc + ") = " + nc,
           msg: stop
             ? ("nx += d, ny += d  →  " + (blocked ? "(" + nr + "," + nc + ")=X 막힘" : "격자 밖") + " → [" + dirName(dr,dc) + "] 방향 미끄러짐 끝")
             : ("nx += d, ny += d  →  같은 [" + dirName(dr,dc) + "] 방향 (" + nr + "," + nc + ")로 계속 미끄러짐") }));
@@ -280,6 +287,7 @@ function render() {
   }
   // message + code + counter
   $("msg").textContent = f.msg;
+  $("calc").textContent = f.calc || "";
   var code = $("code");
   code.innerHTML = "";
   for (var li = 0; li < CODE.length; li++) {
