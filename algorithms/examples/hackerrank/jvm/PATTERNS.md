@@ -59,6 +59,7 @@
 ## 2. 패턴 카드 (움직임 + 골격 + 불변식을 같이 — 한 몸)
 
 ### 2-A. BFS — 격자 최단 거리/횟수  (겪음: Castle)
+문제: [HR Castle on the Grid](https://www.hackerrank.com/challenges/castle-on-the-grid/problem) · [PRG 게임 맵 최단거리](https://school.programmers.co.kr/learn/courses/30/lessons/1844) · [PRG 단어 변환](https://school.programmers.co.kr/learn/courses/30/lessons/43163) · [PRG 가장 먼 노드](https://school.programmers.co.kr/learn/courses/30/lessons/49189) · [LC 102 Binary Tree Level Order](https://leetcode.com/problems/binary-tree-level-order-traversal/)
 움직임 — dist를 파동처럼 채운다. 목표에 처음 닿은 값이 최단:
 ```
 0 1 2     시작 0에서 한 겹씩 +1로 퍼짐. 큐(FIFO)라 가까운 것부터.
@@ -112,6 +113,7 @@ while(!queue.isEmpty()){
 **창발(사고→코드)**: 소원=`dist` 선언 / 좌표수=`[n][m]` / 초기화=`fill(-1)+start=0` / 점화식=`+1` 줄 / 순서보장=`Queue.poll·add` / 처음만=`==-1` 가드 / 종료=`return dist[goal]`. **골격의 모든 줄은 위 어느 단계의 산물** — 통째 외우지 말고 순서로 재생성.
 
 ### 2-B. flood fill — 이어진 덩어리 크기/개수  (겪음: Connected Cells, Number of Islands)
+문제: [HR Connected Cells in a Grid](https://www.hackerrank.com/challenges/connected-cell-in-a-grid/problem) · [LC 200 Number of Islands](https://leetcode.com/problems/number-of-islands/) · [PRG 네트워크](https://school.programmers.co.kr/learn/courses/30/lessons/43162)
 움직임 — 찾은 칸이 다시 출발점(연쇄). 꺾어가며 이어진 것을 다 방문:
 ```
 1 1 0     (0,0)->이웃 (0,1),(1,1)->그 이웃 (1,2)... "이웃의 이웃의 이웃"
@@ -139,6 +141,7 @@ while(!queue.isEmpty()){ cur=poll(); size++;
 **바깥 중첩 for의 역할**: 씨앗 심기다 — 서로 안 이어진 덩어리가 여러 개라서 각 덩어리에 한 번씩 불을 붙이는 것. 연결을 따라가는 건 flood가 한다(for는 꺾어 들어가지 못한다 — (1,2)는 (0,1)이나 (1,1)에서 꺾어야 닿는다). 시작점이 하나로 주어지면(Castle) 바깥 for 불필요.
 
 ### 2-C. 미끄러짐(룩) — 격자 최소 이동  (겪음: Castle, 2-B와 구별용)
+문제: [HR Castle on the Grid](https://www.hackerrank.com/challenges/castle-on-the-grid/problem)
 움직임 — 한 방향으로 막힐 때까지 쭉, 그 직선 위 아무 칸에나 설 수 있음:
 ```
 . X .     (0,0)에서 우는 X로 막힘, 아래로 쭉 -> (1,0),(2,0). 한 번에 여러 칸.
@@ -159,6 +162,7 @@ for(int[] d : DIRS){
 **불변식**: 2-A와 동일(큐=거리 오름차순, 처음 닿은 값=최단). 달라진 건 "이웃"의 정의뿐 — 인접 한 칸이 아니라 직선 위 모든 칸. 도출 순서도 2-A와 같고 5번(이웃 규칙)만 바뀜.
 
 ### 2-D. 힙 — 최솟값을 반복해 꺼내 처리  (겪음: Jesse and Cookies)
+문제: [HR Jesse and Cookies](https://www.hackerrank.com/challenges/jesse-and-cookies/problem) · [PRG 더 맵게](https://school.programmers.co.kr/learn/courses/30/lessons/42626)(사실상 같은 문제) · [PRG 디스크 컨트롤러](https://school.programmers.co.kr/learn/courses/30/lessons/42627) · [PRG 이중우선순위큐](https://school.programmers.co.kr/learn/courses/30/lessons/42628)
 움직임 — 정렬 전체를 안 하고 매번 극값만:
 ```
 넣기 5,1,3  ->  꺼내면 1,3,5 (항상 최솟값이 꼭대기). 넣고 꺼낼 때마다 O(log n).
@@ -179,6 +183,7 @@ return ops;                       // 루프 0회 = 이미 만족 = 0
 **불변식**: 힙 꼭대기 = 현재 최소. 탐욕이 맞는 근거는 "가장 작은 둘을 합치는 게 항상 최선"(교환논법). 루프 불변: `peek()<k`인 동안만 도니 끝나면 전부 ≥k. (2-A식 상태-표가 아님 — 도출은 좌표세기가 아니라 탐욕 정당화.)
 
 ### 2-E. DP/메모 — 겹치는 부분문제  (겪음: Davis' Staircase)
+문제: [HR Davis' Staircase](https://www.hackerrank.com/challenges/ctci-recursive-staircase/problem) · [PRG 멀리 뛰기](https://school.programmers.co.kr/learn/courses/30/lessons/12914)(같은 점화식) · [PRG 정수 삼각형](https://school.programmers.co.kr/learn/courses/30/lessons/43105) · [PRG 등굣길](https://school.programmers.co.kr/learn/courses/30/lessons/42898) · [PRG 땅따먹기](https://school.programmers.co.kr/learn/courses/30/lessons/12913) · [PRG N으로 표현](https://school.programmers.co.kr/learn/courses/30/lessons/42895)
 움직임 — 나열하면 지수, 상태별 1회 저장하면 선형:
 ```
 f(n)=f(n-1)+f(n-2)+f(n-3). 여러 경로가 f(3)을 또 계산 -> 지수 폭발.
@@ -206,6 +211,7 @@ int f(int i){ if(i==0)return 1; if(i<0)return 0;
 **불변식**: `dp[i]` = i까지의 최적/개수. 순회 순서(작은 i 먼저)가 dp[i]가 참조하는 것들(i-1,i-2,i-3)이 *이미 확정*임을 보장 — 2-A의 "큐"가 하던 순서 보장을 여기선 for 순서가 한다. **도출은 2-A "왜 맞나"와 같은 족보**: 상태=dp 인덱스, 순서 장치=순회 순서(또는 위상정렬).
 
 ### 2-F. 이분탐색 — 정렬된 것에서 반씩 버림
+문제: [PRG 입국심사](https://school.programmers.co.kr/learn/courses/30/lessons/43238)(답을 이분탐색 — "시간 T에 다 처리 가능?"을 판정으로)
 움직임:
 ```
 [1,3,5,7,9]서 7: 가운데 5<7 -> 오른쪽만 -> 가운데 7 = 찾음. 매번 절반 O(log n).
@@ -224,6 +230,7 @@ return -1;
 **불변식**: "답이 있다면 반드시 `[lo,hi]` 안에 있다". 매 반복 절반을 버려도 이게 유지되므로 안전. 종료(lo>hi)=구간 비었으니 없음.
 
 ### 2-G. 슬라이딩 윈도우 — 연속 구간, 두 포인터
+문제: [LC 3 Longest Substring Without Repeating](https://leetcode.com/problems/longest-substring-without-repeating-characters/) · [HR Fraudulent Activity Notifications](https://www.hackerrank.com/challenges/fraudulent-activity-notifications/problem)(창 + 계수 배열)
 움직임:
 ```
 [2,1,5,1,3] 길이3 최대합: right로 더하고, 창이 3 넘으면 left 것을 뺀다. O(n).
@@ -240,6 +247,7 @@ for(int r=0;r<n;r++){
 **불변식**: `sum` = 지금 창(최근 k개)의 합. r 진행 때 더하고 벗어난 왼쪽을 빼는 짝이 이 한 문장을 유지 → 매 위치에서 O(1)로 정답.
 
 ### 2-H. 스택 — 최근 것부터 / 짝 맞추기
+문제: [HR Balanced Brackets](https://www.hackerrank.com/challenges/balanced-brackets/problem) · [PRG 올바른 괄호](https://school.programmers.co.kr/learn/courses/30/lessons/12909) · [LC 739 Daily Temperatures](https://leetcode.com/problems/daily-temperatures/) · [PRG 뒤에 있는 큰 수 찾기](https://school.programmers.co.kr/learn/courses/30/lessons/154539) · [PRG 주식가격](https://school.programmers.co.kr/learn/courses/30/lessons/42584)
 움직임:
 ```
 "([)": '(' push, '[' push, ')' pop해 짝 확인 -> 짝은 '['이라 불일치. 끝에 비면 정상.
@@ -256,6 +264,7 @@ return st.isEmpty();
 **불변식**: 스택 = "아직 안 닫힌 여는 괄호들"(가장 최근이 맨 위). 닫는 걸 만나면 반드시 맨 위와 짝이어야 함 → 끝에 비면 전부 짝 맞음.
 
 ### 2-I. 백트래킹 — 모든 조합/순열 생성
+문제: [PRG 타겟 넘버](https://school.programmers.co.kr/learn/courses/30/lessons/43165) · [PRG 소수 찾기](https://school.programmers.co.kr/learn/courses/30/lessons/42839)(순열 생성) · [PRG 모의고사](https://school.programmers.co.kr/learn/courses/30/lessons/42840)(완전탐색)
 움직임:
 ```
 [1,2,3] 조합: 1 고름 -> {1,2},{1,3} -> 1 빼고(되돌리기) 2 고름 -> {2,3}...
@@ -339,9 +348,23 @@ void rec(int start, List<Integer> path){
 - 관찰된 유형: **BFS · Stack · Interval · String** (+ 구현/정렬/해시).
 - 평가: 개발 능력만이 아니라 **문제 해결 과정 + 커뮤니케이션 + 프로그래밍 습관** 전체.
 
-**이미 손에 있는 유형 (자신감 근거):**
-Stack(괄호) · flood(Connected Cells, 섬) · BFS(Castle) · 슬라이딩 윈도우 · 정렬(퀵) · 힙(Jesse) · DP(Davis) · Interval(병합) · 해시 2단(Sherlock).
-관찰된 유형 전부 커버되어 있다.
+**이미 손에 있는 유형 (자신감 근거 — 전부 직접 푼/만진 문제, 관찰된 유형 전부 커버):**
+
+| 유형 | 카드 | 푼/만진 문제 |
+|---|---|---|
+| 스택 | 2-H | [HR Balanced Brackets](https://www.hackerrank.com/challenges/balanced-brackets/problem) · [LC 739 Daily Temperatures](https://leetcode.com/problems/daily-temperatures/) |
+| flood | 2-B | [HR Connected Cells](https://www.hackerrank.com/challenges/connected-cell-in-a-grid/problem) · [LC 200 Number of Islands](https://leetcode.com/problems/number-of-islands/) |
+| BFS | 2-A/2-C | [HR Castle on the Grid](https://www.hackerrank.com/challenges/castle-on-the-grid/problem) |
+| 슬라이딩 윈도우 | 2-G | [LC 3 Longest Substring](https://leetcode.com/problems/longest-substring-without-repeating-characters/) · [HR Fraudulent Activity](https://www.hackerrank.com/challenges/fraudulent-activity-notifications/problem) |
+| 정렬 | — | [HR Quicksort 2](https://www.hackerrank.com/challenges/quicksort2/problem) · [PRG K번째수](https://school.programmers.co.kr/learn/courses/30/lessons/42748) · [PRG H-Index](https://school.programmers.co.kr/learn/courses/30/lessons/42747) |
+| 힙 | 2-D | [HR Jesse and Cookies](https://www.hackerrank.com/challenges/jesse-and-cookies/problem) |
+| DP | 2-E | [HR Davis' Staircase](https://www.hackerrank.com/challenges/ctci-recursive-staircase/problem) |
+| Interval | — | [LC 56 Merge Intervals](https://leetcode.com/problems/merge-intervals/) · [LC 57 Insert Interval](https://leetcode.com/problems/insert-interval/) · [PRG 단속카메라](https://school.programmers.co.kr/learn/courses/30/lessons/42884) |
+| 해시 | — | [HR Sherlock Valid String](https://www.hackerrank.com/challenges/sherlock-and-valid-string/problem)(빈도의 빈도) · [LC 49 Group Anagrams](https://leetcode.com/problems/group-anagrams/) · [PRG 의상](https://school.programmers.co.kr/learn/courses/30/lessons/42578) · [PRG 전화번호 목록](https://school.programmers.co.kr/learn/courses/30/lessons/42577) · [PRG 완주하지 못한 선수](https://school.programmers.co.kr/learn/courses/30/lessons/42576) · [PRG 베스트앨범](https://school.programmers.co.kr/learn/courses/30/lessons/42579) |
+| 큐/시뮬레이션 | — | [PRG 기능개발](https://school.programmers.co.kr/learn/courses/30/lessons/42586) · [PRG 프로세스](https://school.programmers.co.kr/learn/courses/30/lessons/42587) · [PRG 다리를 지나는 트럭](https://school.programmers.co.kr/learn/courses/30/lessons/42583) |
+| 연결 리스트 | — | [LC 206 Reverse Linked List](https://leetcode.com/problems/reverse-linked-list/) · [LC 21 Merge Two Sorted Lists](https://leetcode.com/problems/merge-two-sorted-lists/) |
+| 그리디 | — | [PRG 체육복](https://school.programmers.co.kr/learn/courses/30/lessons/42862) · [PRG 큰 수 만들기](https://school.programmers.co.kr/learn/courses/30/lessons/42883)(스택 결합) · [PRG 구명보트](https://school.programmers.co.kr/learn/courses/30/lessons/42885)(투 포인터) |
+| 트리 재귀 | — | [LC 104 Maximum Depth](https://leetcode.com/problems/maximum-depth-of-binary-tree/) · [LC 543 Diameter of Binary Tree](https://leetcode.com/problems/diameter-of-binary-tree/) |
 
 **전날 밤:**
 - [ ] HackerRank 에디터(CodePair 유사 환경) 5분 만져보기 — 실행 버튼, 단축키. 도구 낯설면 그것만으로 버벅인다.
