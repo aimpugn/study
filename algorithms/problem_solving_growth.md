@@ -830,7 +830,17 @@ step 2:
 
 ## 같이 보면 좋은 저장소 자산
 
-이 문서는 문제를 읽고 풀이를 만들어 가는 공통 뼈대입니다. 개별 알고리즘을 더 깊게 복원할 때는 아래 문서를 함께 봅니다.
+이 문서는 문제를 읽고 풀이를 만들어 가는 공통 뼈대입니다. 같은 사고를 다른 밀도로 보는 짝 문서를 먼저 둡니다.
+
+- [examples/hackerrank/jvm/PATTERNS.md](examples/hackerrank/jvm/PATTERNS.md)
+
+  이 문서의 사고 흐름을 책상에서 바로 꺼내 쓰는 전술 압축입니다. 패턴별 움직임·골격·불변식 카드와 반복하는 실수를 봅니다.
+
+- [problem_solving_diagnosis.md](problem_solving_diagnosis.md)
+
+  이 뼈대에서 실제로 이탈한 지점의 근본 원인과 교정 훈련을 봅니다.
+
+개별 알고리즘을 더 깊게 복원할 때는 아래 문서를 함께 봅니다.
 
 - [algorithms.md](algorithms.md)
 
