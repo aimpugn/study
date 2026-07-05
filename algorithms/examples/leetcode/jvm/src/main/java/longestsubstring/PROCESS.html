@@ -81,13 +81,13 @@ input[type=text]{font:inherit; font-size:14px; padding:6px 10px; border:0.5px so
   <button id="sw-go">이 입력으로 보기</button>
 </div>
 
-<div id="sw-cells" style="display:flex; gap:6px; margin-bottom:0.4rem; flex-wrap:wrap;"></div>
-<div id="sw-ptrs" style="display:flex; gap:6px; margin-bottom:1.25rem; min-height:20px; flex-wrap:wrap;"></div>
+<div id="sw-cells" style="display:flex; gap:6px; margin-bottom:0.4rem; flex-wrap:nowrap; overflow-x:auto; padding-bottom:2px;"></div>
+<div id="sw-ptrs" style="display:flex; gap:6px; margin-bottom:1.25rem; height:20px; flex-wrap:nowrap; overflow-x:auto;"></div>
 
 <div style="display:flex; gap:16px; align-items:flex-start; margin-bottom:1.25rem; flex-wrap:wrap;">
   <div style="flex:1; min-width:220px;">
     <div style="font-size:13px; color:var(--color-text-secondary); margin-bottom:6px;">lastSeen (문자 -&gt; 마지막 위치)</div>
-    <div id="sw-map" style="display:flex; gap:6px; flex-wrap:wrap; min-height:30px;"></div>
+    <div id="sw-map" style="display:flex; gap:6px; flex-wrap:wrap; height:60px; overflow:auto; align-content:flex-start;"></div>
   </div>
   <div style="text-align:center; min-width:70px;">
     <div style="font-size:13px; color:var(--color-text-secondary); margin-bottom:6px;">answer</div>
@@ -95,16 +95,16 @@ input[type=text]{font:inherit; font-size:14px; padding:6px 10px; border:0.5px so
   </div>
 </div>
 
-<div id="sw-explain" style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; font-size:14px; line-height:1.6; min-height:50px; margin-bottom:1rem;"></div>
+<div id="sw-code" style="font-family:var(--font-mono); font-size:13px; line-height:1.8; background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; margin-bottom:0.75rem; overflow-x:auto;"></div>
 
-<div id="sw-code" style="font-family:var(--font-mono); font-size:13px; line-height:1.8; background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; margin-bottom:1rem;"></div>
-
-<div style="display:flex; gap:8px; align-items:center;">
+<div style="display:flex; gap:8px; align-items:center; margin-bottom:1rem;">
   <button id="sw-prev">이전</button>
   <button id="sw-next">다음</button>
   <button id="sw-play">재생</button>
   <span id="sw-stepno" style="font-size:13px; color:var(--color-text-secondary); margin-left:auto;"></span>
 </div>
+
+<div id="sw-explain" style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; font-size:14px; line-height:1.6; height:96px; overflow:auto; margin-bottom:1rem;"></div>
 </div>
 
 <script>

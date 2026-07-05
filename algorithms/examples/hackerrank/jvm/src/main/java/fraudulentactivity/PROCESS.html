@@ -90,27 +90,27 @@ input[type=text]{font:inherit; font-size:14px; padding:6px 10px; border:0.5px so
 </div>
 
 <div class="lbl">지출 일별 (파랑 테두리 = 현재 윈도우, 빨강 = 오늘 판정할 날)</div>
-<div id="fa-exp" style="display:flex; gap:4px; margin-bottom:1.25rem; flex-wrap:wrap;"></div>
+<div id="fa-exp" style="display:flex; gap:4px; margin-bottom:1.25rem; flex-wrap:nowrap; overflow-x:auto; padding-bottom:2px;"></div>
 
 <div class="lbl">count 배열 (칸 = 값, 숫자 = 그 값이 윈도우에 몇 번)</div>
-<div id="fa-count" style="display:flex; gap:4px; margin-bottom:0.3rem; flex-wrap:wrap;"></div>
-<div id="fa-cum" style="display:flex; gap:4px; margin-bottom:1.1rem; flex-wrap:wrap; min-height:20px;"></div>
+<div id="fa-count" style="display:flex; gap:4px; margin-bottom:0.3rem; flex-wrap:nowrap; overflow-x:auto;"></div>
+<div id="fa-cum" style="display:flex; gap:4px; margin-bottom:1.1rem; flex-wrap:nowrap; overflow-x:auto; height:22px;"></div>
 
 <div style="text-align:left; margin-bottom:1.1rem;">
   <span class="lbl" style="margin:0;">누적 알림 수: </span>
   <span id="fa-notif" style="font-size:20px; font-weight:600;">0</span>
 </div>
 
-<div id="fa-explain" style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; font-size:14px; line-height:1.6; min-height:50px; margin-bottom:1rem;"></div>
+<div id="fa-code" style="font-family:var(--font-mono); font-size:12.5px; line-height:1.75; background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; margin-bottom:0.75rem; overflow-x:auto;"></div>
 
-<div id="fa-code" style="font-family:var(--font-mono); font-size:12.5px; line-height:1.75; background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; margin-bottom:1rem;"></div>
-
-<div style="display:flex; gap:8px; align-items:center;">
+<div style="display:flex; gap:8px; align-items:center; margin-bottom:1rem;">
   <button id="fa-prev">이전</button>
   <button id="fa-next">다음</button>
   <button id="fa-play">재생</button>
   <span id="fa-stepno" style="font-size:13px; color:var(--color-text-secondary); margin-left:auto;"></span>
 </div>
+
+<div id="fa-explain" style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:12px 14px; font-size:14px; line-height:1.6; height:104px; overflow:auto; margin-bottom:1rem;"></div>
 </div>
 
 <script>
