@@ -18,21 +18,26 @@ import support.Judge;
  * 깨집니다(4+1+1=3 vs 3+3=2) — 왜 깨지는지가 DP가 필요한 이유입니다.
  */
 class Solution {
-    static void main() {
-        // 풀기 전에는 빨간 상태(AssertionError)가 정상입니다. 풀면 초록이 됩니다.
-        Judge.check(Result.coinChange(new int[]{1, 2, 5}, 11), 3);  // 일반: 5+5+1
-        Judge.check(Result.coinChange(new int[]{1, 3, 4}, 6), 2);   // 그리디 함정: 4+1+1(3) 아니라 3+3(2)
-        Judge.check(Result.coinChange(new int[]{2}, 3), -1);        // 만들 수 없음 -> -1
-        Judge.check(Result.coinChange(new int[]{1, 2, 5}, 0), 0);   // 금액 0 -> 0개
-        Judge.check(Result.coinChange(new int[]{5}, 5), 1);         // 단일 동전 딱 맞음
-        Judge.check(Result.coinChange(new int[]{5}, 3), -1);        // 단일 동전 불가능
-        // 반례를 여기에 추가하세요:
-    }
-}
-
-class Result {
-    public static int coinChange(int[] coins, int amount) {
+    /**
+     * @param coins 동전 액면가 배열 (각 동전은 무한히 사용 가능)
+     * @param amount 만들 목표 금액
+     *
+     * @return amount를 만드는 최소 동전 수, 불가능하면 -1
+     */
+    public int coinChange(int[] coins, int amount) {
         // Write your code here
         return -2;
+    }
+
+    static void main() {
+        // 풀기 전에는 빨간 상태(AssertionError)가 정상입니다. 풀면 초록이 됩니다.
+        var s = new Solution();
+        Judge.check(s.coinChange(new int[]{1, 2, 5}, 11), 3);  // 일반: 5+5+1
+        Judge.check(s.coinChange(new int[]{1, 3, 4}, 6), 2);   // 그리디 함정: 4+1+1(3) 아니라 3+3(2)
+        Judge.check(s.coinChange(new int[]{2}, 3), -1);        // 만들 수 없음 -> -1
+        Judge.check(s.coinChange(new int[]{1, 2, 5}, 0), 0);   // 금액 0 -> 0개
+        Judge.check(s.coinChange(new int[]{5}, 5), 1);         // 단일 동전 딱 맞음
+        Judge.check(s.coinChange(new int[]{5}, 3), -1);        // 단일 동전 불가능
+        // 반례를 여기에 추가하세요:
     }
 }
