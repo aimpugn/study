@@ -26,7 +26,7 @@
 
 ## 핵심 요약
 
-> 등록 계좌는 사용할 수 있는 결제수단이 준비되었다는 뜻이지, 앞으로의 모든 출금이 허용되었다는 뜻은 아닙니다. 먼저 커머스 서버가 금액·통화·수취인·결제수단이 고정된 결제 의도를 만들고, 고객은 결제 서버가 통제하는 채널에서 직접 인증한 뒤 그 거래를 허용해야 합니다. 커머스 서버는 고객 비밀번호나 재사용 가능한 거래 허용 토큰을 받지 않습니다. 고객 허용이 끝나면 커머스 서버가 주문 금액과 재고를 다시 확인하고 결제 실행을 요청합니다. 결제 서버는 하나의 논리적 지급 지시와 안정된 외부 요청 ID만 만들도록 상태를 원자적으로 바꿉니다. 전송 재시도는 같은 ID를 사용하며, 실제 자금 효과가 한 번이라는 보장은 외부 지급망의 중복 제거 또는 결과 조회 계약과 함께 닫습니다. 결과는 서버 조회, 결제 서버가 상태 변화를 밀어 주는 서명된 웹훅(webhook), 내부 기록과 기관 기록을 맞추는 대사로 확정합니다. 인증 성공은 돈 이동 성공이 아니며, 외부 호출의 타임아웃도 곧바로 실패가 아닙니다.
+> 등록 계좌는 사용할 수 있는 결제수단이 준비되었다는 뜻이지, 앞으로의 모든 출금이 허용되었다는 뜻은 아닙니다. 커머스가 인증한 고객 계정과 결제 서비스가 인증한 고객 계정은 서로 다른 식별자 공간에 있으므로, 최초 등록 때 두 계정의 연결과 결제수단 사용 권한을 별도 관계로 만들고 결제할 때 다시 확인해야 합니다. 먼저 커머스 서버가 금액·통화·수취인·결제수단이 고정된 결제 의도를 만들고, 고객은 결제 서버가 통제하는 채널에서 직접 인증한 뒤 그 거래를 허용해야 합니다. 커머스 서버는 고객 비밀번호나 재사용 가능한 거래 허용 토큰을 받지 않습니다. 고객 허용이 끝나면 커머스 서버가 주문 금액과 재고를 다시 확인하고 결제 실행을 요청합니다. 결제 서버는 하나의 논리적 지급 지시와 안정된 외부 요청 ID만 만들도록 상태를 원자적으로 바꿉니다. 전송 재시도는 같은 ID를 사용하며, 실제 자금 효과가 한 번이라는 보장은 외부 지급망의 중복 제거 또는 결과 조회 계약과 함께 닫습니다. 결과는 서버 조회, 결제 서버가 상태 변화를 밀어 주는 서명된 웹훅(webhook), 내부 기록과 기관 기록을 맞추는 대사로 확정합니다. 인증 성공은 돈 이동 성공이 아니며, 외부 호출의 타임아웃도 곧바로 실패가 아닙니다.
 
 가장 중요한 문장은 “등록은 준비이고, 현재 거래 허용은 별도다”입니다. 나머지 API와 상태는 이 구분을 시스템으로 보존하기 위해 따라옵니다.
 
@@ -156,19 +156,61 @@
 
 이를 자료구조로 보면 더 분명합니다.
 
+먼저 서로 다른 식별자 공간을 구분하겠습니다.
+
+- `M`은 서버 간 인증으로 확인한 커머스 또는 가맹점입니다.
+- `C`는 커머스가 인증한 고객 계정입니다. 정식 연합 인증을 사용한다면 최소한 발급자와 주체의 조합인 `(issuer, subject)`로 식별하고, 커머스가 자체 고객 참조를 발급한다면 `(merchantId, customerReference)`처럼 커머스 범위 안에서 해석합니다.
+- `P`는 결제 인증 경계가 확인한 결제 고객 계정입니다.
+- `A`는 지금 행동하는 주체입니다. 단순한 본인 결제에서는 `A=P`지만, 법인·공동·대리 결제에서는 유효한 위임을 받은 다른 주체일 수 있습니다.
+- `pm`은 원본 계좌정보를 감춘 등록 결제수단 참조입니다.
+
+이 식별자들이 같은 문자열이어야 할 이유는 없습니다. 결제 서비스는 하나의 `C -> P -> pm` 동일인 사슬을 저장하지 않고, 성격이 다른 두 관계를 나누어 보관해야 합니다.
+
 ```json
 {
-  "paymentMethodId": "pm_bank_7f2a",
-  "customerReference": "cust_81d4",
+  "linkId": "link_3d91",
+  "merchantId": "merchant_42",
+  "commerceSubject": {
+    "issuer": "merchant_42",
+    "subject": "customer_81d4"
+  },
+  "payCustomerId": "pay_customer_b719",
   "status": "ACTIVE",
-  "mandate": {
-    "type": "ONE_TIME_ACTION_REQUIRED",
-    "scope": null
-  }
+  "version": 4,
+  "linkedAt": "2026-07-14T07:30:00+09:00"
 }
 ```
 
-이 객체는 “사용 가능한 계좌 결제수단이 있다”는 사실을 표현합니다. 42,800원 주문을 결제한다는 현재 의도는 별도 객체입니다.
+이 `CommercePaymentAccountLink`는 커머스 계정 `C`와 결제 계정 `P`가 안전한 연결 절차를 거쳤다는 사실만 표현합니다. 두 계정이 같은 법적 인물의 소유라는 사실이나 특정 계좌를 출금할 권한까지 자동으로 증명하지는 않습니다.
+
+등록 수단을 사용할 권한은 별도 관계로 둡니다.
+
+```json
+{
+  "entitlementId": "ent_95af",
+  "payCustomerId": "pay_customer_b719",
+  "authorizedActorId": "pay_customer_b719",
+  "paymentMethodId": "pm_bank_7f2a",
+  "authorityType": "ACCOUNT_CONTROL",
+  "authorityEvidenceId": "authority_evidence_62c8",
+  "evidenceVerifier": "account_institution_or_trusted_verifier",
+  "evidenceType": "ACCOUNT_CONTROL",
+  "verifiedAt": "2026-07-14T07:34:00+09:00",
+  "validUntil": null,
+  "revokedAt": null,
+  "scope": {
+    "transactionType": "ONE_TIME_ACTION_REQUIRED"
+  },
+  "status": "ACTIVE",
+  "version": 3
+}
+```
+
+이 `PaymentMethodEntitlement`는 `P` 또는 위임받은 `A`가 `pm`을 어떤 근거와 범위에서 사용할 수 있는지 표현합니다. 금융기관이나 신뢰받는 검증 경계가 만든 권한 근거의 원문은 결제·금융 경계 안에 두고, 결제 서비스는 검증자·근거 유형·검증 시각·만료·철회·범위를 추적할 참조만 저장합니다. 결제수단의 `registeredForPayCustomerId`도 결제 도메인의 등록 관계를 뜻할 뿐, 법적인 예금주라고 단정하는 필드가 아닙니다.
+
+법적 동일인 확인이나 고객확인(KYC)이 필요한 상품이라면 그 증거는 세 번째 관계로 분리해야 합니다. 두 계정에 연달아 로그인했다는 사실은 그 시점에 두 계정을 통제했다는 강한 증거이지만, 공동·법인·대리 계좌까지 포함해 언제나 같은 법적 인물이라는 증거는 아닙니다.
+
+42,800원 주문을 결제한다는 현재 의도는 다시 별도 객체입니다.
 
 ```json
 {
@@ -177,6 +219,8 @@
   "amount": { "value": 42800, "currency": "KRW" },
   "payee": "merchant_account_default",
   "paymentMethodId": "pm_bank_7f2a",
+  "linkId": "link_3d91",
+  "entitlementId": "ent_95af",
   "executionStatus": "REQUIRES_CUSTOMER_ACTION"
 }
 ```
@@ -267,7 +311,7 @@
 3. 응답의 `authToken`이 일정 시간 돈을 움직일 수 있는 bearer token이면 유출·재사용 위험이 큽니다.
 4. token이 금액·통화·수취인·결제수단에 결합되지 않으면 다른 거래에 붙일 수 있습니다.
 
-고객은 결제 서버가 통제하는 결제 화면(hosted page), 소프트웨어 개발 키트(SDK) 또는 앱 채널에서 직접 인증하고 거래 내용을 확인해야 합니다. 어떤 UI를 쓰든 커머스 서버는 비밀번호·PIN·금융기관 로그인 정보를 받지 않습니다. 결제 서버가 만든 거래 허용 증거는 내부에 두고, 커머스에는 결제 상태만 알립니다.
+고객은 결제 서버가 통제하는 결제 화면(hosted page), 소프트웨어 개발 키트(SDK) 또는 앱 채널에서 직접 인증하고 거래 내용을 확인해야 합니다. 다만 결제 로고가 보이거나 SDK를 썼다는 사실만으로 경계가 분리되지는 않습니다. 커머스와 다른 웹 출처(origin)나 격리된 앱 프로세스에서 자격증명이 신뢰한 검증기로 직접 전송되어, 커머스 JavaScript·서버·로그가 입력을 가로챌 수 없어야 합니다. 결제 서버가 만든 거래 허용 증거는 내부에 두고, 커머스에는 결제 상태만 알립니다.
 
 ### 7.3 출금 API
 
@@ -346,6 +390,12 @@ WHERE payment_id = :paymentId
 
 ### 9.2 결제 의도 생성
 
+커머스 서버 인증은 `M`을 증명할 뿐, 지금 브라우저를 조작하는 고객 `C`까지 증명하지는 않습니다. 커머스 서버는 자기 로그인 세션에서 `C`를 먼저 확인한 뒤, 그 세션에서 파생된 짧은 고객 문맥을 결제 요청에 넣어야 합니다. 정식 연합 인증을 사용하면 결제 서비스가 발급자·대상·서명·만료·nonce를 검증한 서명된 인증 진술(assertion)에서 `C`를 얻습니다. 연합 인증이 없다면 커머스가 활성 고객 세션에서만 발급하는 일회성 인증 진술을 양자 계약으로 검증할 수 있습니다. 후자는 조건부 설계안이며, 단순한 `customerReference` 문자열과 가맹점 서버 자격증명만으로는 현재 고객을 증명할 수 없습니다.
+
+양자 계약의 일회성 인증 진술에는 인증된 `M`, `(issuer, subject)`로 표현한 `C`, 대상 API, 주문 또는 요청 지문, 브라우저 결합 challenge, 요청 nonce, 발급·만료 시각, assertion ID를 묶어야 합니다. 결제 서비스는 assertion ID의 최초 사용 기록과 결제 의도 생성을 같은 트랜잭션에서 처리합니다. 그래야 동시에 들어온 두 요청이 모두 “미사용”으로 판단하거나, 한 주문의 고객 문맥을 다른 주문·연결 요청에 붙이는 일을 막을 수 있습니다.
+
+결제 의도를 만들기 전에도 결제 측 origin이나 격리된 SDK·앱이 원 verifier를 만들고 보관하며, 단방향으로 계산한 challenge만 커머스 서버에 전달합니다. 이 challenge를 요청과 assertion 지문에 함께 넣어야 나중에 `customerAction.session`을 시작한 브라우저가 원래 브라우저인지 확인할 수 있습니다.
+
 ```http
 POST /v1/payment-intents
 Authorization: <merchant-server-credential>
@@ -360,7 +410,11 @@ Content-Type: application/json
     "value": 42800,
     "currency": "KRW"
   },
-  "customerReference": "customer_81d4",
+  "commerceCustomerContext": {
+    "type": "MERCHANT_ASSERTION",
+    "assertion": "cca_opaque_single_request"
+  },
+  "browserBindingChallenge": "challenge_for_payment_browser",
   "paymentMethodId": "pm_bank_7f2a",
   "payee": "merchant_account_default",
   "executionMode": "MERCHANT_CONFIRM"
@@ -386,11 +440,123 @@ Location: /v1/payment-intents/pay_01J0W8G6K9
 
 `Idempotency-Key`는 이 API가 자체 계약으로 정의하는 멱등성 식별자입니다. 같은 키와 같은 요청 지문(request fingerprint), 즉 금액·통화·주문·수취인·결제수단의 요약값이 오면 같은 결과를 반환합니다. 같은 키로 다른 요청 본문(payload)이 오면 `409 Conflict`로 거부합니다. 헤더 이름만 붙였다고 멱등성이 생기는 것은 아니며, 키 보존 기간·동시 요청 선점·기존 `PROCESSING` 응답을 함께 정의해야 합니다.
 
-`payee`는 임의의 계좌번호를 받는 필드가 아닙니다. 위 예시의 값은 서버 인증으로 확인된 가맹점의 기본 수취 설정을 가리키며, 결제 서버가 내부 계약 정보로 해석합니다. 여러 하위 수취인을 지원한다면 인증된 가맹점이 사용할 수 있도록 미리 등록된 `payeeId`만 허용하고 매 요청에서 소유권을 확인해야 합니다. `customerReference`와 `paymentMethodId`도 문자열이 같다는 이유만으로 연결하지 않고, 해당 가맹점 범위의 고객과 그 고객이 사용할 수 있는 등록 수단인지 검사합니다.
+`payee`는 임의의 계좌번호를 받는 필드가 아닙니다. 위 예시의 값은 서버 인증으로 확인된 가맹점의 기본 수취 설정을 가리키며, 결제 서버가 내부 계약 정보로 해석합니다. 여러 하위 수취인을 지원한다면 인증된 가맹점이 사용할 수 있도록 미리 등록된 `payeeId`만 허용하고 매 요청에서 소유권을 확인해야 합니다.
 
-응답의 고객 세션은 결제 실행 권한이 아닙니다. 한 결제 의도와 고객 행동 화면이라는 대상(audience)에만 결합되고, 짧게 만료되며, 커머스 서버가 이것으로 출금을 실행할 수 없어야 합니다.
+`commerceCustomerContext`는 결제 실행 권한이 아닙니다. `M`, 발급자, `C`, 대상 API, 인증 시각, 만료, 인증 진술 식별자를 묶은 한 요청용 문맥이며, 결제 서비스가 서명과 재사용 여부를 검사합니다. 결제 서비스는 이 문맥으로 활성 `C↔P` 연결을 찾고, 다시 그 `P`에 속한 `A↔pm` 권한 관계를 확인합니다. `paymentMethodId`를 알고 있다는 사실만으로 수단 사용 권한을 주어서는 안 됩니다.
+
+응답의 `customerAction.session`은 결제 실행 grant는 아니지만, 특정 고객 인증 흐름을 여는 단기 권한값입니다. 정확한 `paymentId`, 고객 행동 화면이라는 대상(audience), 브라우저 결합 challenge, 만료에 묶습니다. 첫 교환 때 결제 측 origin·격리 앱이 보관한 원 verifier를 결제 검증기로 직접 보내고, 검증기는 단방향 계산 결과가 저장한 challenge와 같은지 확인한 뒤 verifier와 session을 한 번만 소비합니다. 불일치하거나 재사용되면 고객 인증·거래 허용 전에 종료하며 상태나 grant를 만들지 않습니다. 이 값은 전달 중에만 취급하고 커머스 로그·APM·분석·상담 기록과 외부 referrer에 남기지 않습니다. 커머스 서버가 이 값만으로 출금을 실행할 수 없어야 합니다.
 
 ### 9.3 고객이 직접 인증하고 거래 내용을 허용
+
+> 결제 서비스가 커머스 고객을 알아보는 방법은 두 시스템의 고객 ID를 같은 값으로 만드는 것이 아닙니다. 커머스가 인증한 계정 `C`와 결제 경계가 인증한 계정 `P`를 검증된 절차로 연결하고, 결제할 때마다 그 연결과 별도의 결제수단 사용 권한을 다시 확인하는 것입니다.
+
+#### 9.3.1 “이 고객이 이 고객이다”를 세 가지 질문으로 나눈다
+
+“같은 고객인가?”라는 한 문장에는 서로 다른 증명이 섞여 있습니다.
+
+1. **커머스 계정 통제**: 지금 브라우저를 사용하는 사람이 커머스 계정 `C`의 로그인 세션을 통제합니까?
+2. **결제 계정 통제**: 결제 경계에서 인증한 사람이 결제 계정 `P` 또는 허용된 행위자 `A`입니까?
+3. **결제수단 사용 권한**: `A`가 등록 수단 `pm`을 현재 거래 또는 위임 범위에서 사용할 근거가 있습니까?
+
+앞의 두 계정 인증이 모두 성공해도 세 번째 질문은 자동으로 참이 되지 않습니다. 공동계좌, 법인계좌, 가족 대리 결제, 반복 출금 위임에서는 로그인한 사람과 법적 예금주가 다를 수 있습니다. 따라서 계정 연결, 결제수단 권한, 필요한 경우의 법적 동일인 증거를 각각 보관해야 합니다.
+
+디지털 신원 지침도 연합 식별자를 발급자와 주체의 조합으로 다루고, 계정 연결 기능에 인증된 세션을 요구합니다. 이는 커머스와 결제의 구체 API를 정하는 결제 표준은 아니지만, 서로 다른 식별자 공간을 문자열 비교로 합치지 말아야 한다는 근거가 됩니다. ([디지털 신원 연합과 계정 연결 지침](https://pages.nist.gov/800-63-4/sp800-63c/Federation/))
+
+#### 9.3.2 누가 무엇을 확인하는가
+
+| 판단 | 확인하는 경계 | 입력 | 남기는 결과 | 이것만으로 증명하지 못하는 것 |
+| --- | --- | --- | --- | --- |
+| 커머스 고객 인증 | 커머스 인증 서비스 또는 신뢰한 신원 제공자(IdP) | 커머스 자격증명·세션·인증기 | 발급자 범위의 `C`, 인증 이벤트 | 결제 계정 `P`, 계좌 사용 권한 |
+| 결제 고객 인증 | 결제 서비스가 통제하거나 공식적으로 신뢰하는 검증기 | 결제 PIN·패스키·금융기관 인증 또는 검증된 인증 진술 | `P` 또는 `A`, 인증 방법·강도·시각 | 현재 금액의 거래 허용, 실제 출금 성공 |
+| 계좌 사용 권한 확인 | 금융기관 또는 계약된 권한 검증 경계 | 계좌 통제·소유 주장·위임·대리 증거 | `P/A↔pm` 권한 관계와 범위 | 이번 주문의 금액·수취인 허용 |
+| 현재 거래 허용 | 고객 행동 또는 유효한 사전 위임 | 불변 거래 내용, 현재 인증 또는 mandate | 거래별 내부 허용 근거 | 금융기관의 잔액·계좌 판단 |
+| 결제 정책 판단 | 결제 서비스의 권한·위험 정책 | 연결·수단 권한·거래 범위·위험 신호 | 거래별 내부 권한 증거(grant) 또는 거절 기록 | 금융기관 접수·계좌 반영 |
+| 기관 승인·접수와 계좌 반영 | 계좌 관리 기관·지급망 | 지급 지시, 잔액, 계좌·위험·규정 상태 | 접수·거절·POSTED 결과 | 되돌릴 수 없는 최종성, 가맹점 정산 |
+| 후속 자금 결과 | 원장·지급망·대사 | 기관 기록, 반환·반대 거래, 정산 기록 | 최종성·반환·대사·정산 상태 | 앞 단계의 인증 의미를 바꾸는 것 |
+
+결제 PIN을 누가 검증해야 하는지에 대한 답도 이 표에서 나옵니다. 결제 서비스가 외부에 제공하는 결제 인증 책임을 맡되, PIN 원문이 반드시 결제 애플리케이션 서버에 도착해야 한다는 뜻은 아닙니다. 자격증명은 결제 서비스가 통제하거나 정식으로 신뢰한 검증기에서 끝나야 합니다. 은행이 운영하는 인증 화면이나 연합 인증을 쓰면 결제 서비스도 PIN 원문 대신 검증된 결과만 받을 수 있습니다. 변하지 않는 경계는 커머스 서버·커머스 JavaScript·로그·운영자가 그 자격증명을 보거나 중계하지 못한다는 점입니다.
+
+#### 9.3.3 처음 연결할 때 두 계정과 결제수단 권한을 따로 만든다
+
+연결은 커머스 로그인 세션에서 시작합니다. 커머스 서버는 브라우저가 보낸 임의의 고객 ID를 그대로 전달하지 않고, 이미 인증한 고객 세션에서 `C`를 얻습니다. 결제 서비스에 `C`를 증명하는 방법은 두 가지가 대표적입니다.
+
+- 정식 연합 인증이 있으면 결제 서비스가 `issuer`, `subject`, `audience`, 서명, 유효기간, nonce와 재사용 여부를 검증합니다. OpenID Connect가 안정적이고 고유한 사용자 식별자로 보장하는 값은 `(iss, sub)` 조합입니다. 따라서 이 설계에서는 변경되거나 다른 사람에게 다시 할당될 수 있는 이메일·전화번호·이름을 계정 연결 키로 쓰지 않습니다. ([OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html#ClaimStability))
+- 연합 인증이 없으면 커머스가 활성 고객 세션에서만 짧은 고객 assertion을 발급하고, 결제 서비스가 양자 신뢰 계약에 따라 서명·대상·만료·재사용을 검증할 수 있습니다. 이는 조건부 설계이며, 가맹점 서버 인증만으로 현재 사용자 `C`까지 증명했다고 보아서는 안 됩니다.
+
+결제 서비스는 커머스의 로그인 세션 데이터베이스를 직접 볼 수 없으므로, 커머스 사용자를 독립적으로 재확인할 수는 없습니다. 정식 연합 인증에서는 신원 제공자의 표준 assertion을 신뢰하고, 양자 계약 방식에서는 커머스가 “활성 고객 세션에서만 이 assertion을 발급한다”는 계약·키 관리·감사 절차를 신뢰합니다. 결제 서비스가 직접 확인할 수 있는 것은 assertion의 발급자·대상·서명·시각·재사용 여부와, 과거에 안전하게 만든 `C↔P` 연결입니다. 이 신뢰 경계를 숨기고 `customerReference`만 받으면 검증되지 않은 가정을 API 안에 묻어 두게 됩니다.
+
+연결 세션을 만들기 전에 결제 측 출처의 작은 bootstrap 화면이나 격리된 결제 SDK·앱이 임의의 브라우저 결합 검증값(verifier)을 생성합니다. 원 verifier는 결제 측 origin의 저장소나 격리된 앱 프로세스에만 두고, 단방향으로 계산한 `browserBindingChallenge`만 커머스 화면과 서버에 전달합니다. 커머스 JavaScript가 원 verifier를 만들거나 읽을 수 있는 구조라면 브라우저 바꿔치기 방어가 성립하지 않습니다.
+
+연결 세션 API는 다음처럼 설계할 수 있습니다.
+
+```http
+POST /v1/payment-method-link-sessions
+Authorization: <merchant-server-credential>
+Idempotency-Key: 56c995f1-831d-4f22-9682-6aef0bd47a71
+Content-Type: application/json
+```
+
+```json
+{
+  "commerceCustomerContext": {
+    "type": "MERCHANT_ASSERTION",
+    "assertion": "cca_opaque_single_request"
+  },
+  "returnUriId": "checkout_default",
+  "callbackState": "state_merchant_session_bound",
+  "browserBindingChallenge": "challenge_for_one_browser"
+}
+```
+
+`returnUriId`는 임의 URL이 아니라 미리 등록한 반환 주소를 가리킵니다. 커머스의 `callbackState`는 돌아온 브라우저가 연결을 시작한 커머스 로그인 세션과 같은지 확인합니다. 결제 측의 연결 nonce와 브라우저 결합 검증값(binding verifier)은 별개의 값입니다. 이 값들은 결제 연결 절차가 원래의 `M+C`와 브라우저에 묶였는지 확인하며, 반환 요청(callback)의 위조 방지 값과 서로 대신 쓰지 않습니다.
+
+이 연결 요청에 쓰는 고객 인증 진술도 `M`, `C`, `audience=payment-method-link`, `returnUriId`, `browserBindingChallenge`, 연결 요청 nonce, 발급·만료 시각, assertion ID에 묶습니다. assertion ID의 최초 사용 기록과 `linkingSession` 생성을 원자적으로 처리하여 동시 재사용과 다른 연결 요청으로의 전용을 막습니다.
+
+```json
+{
+  "linkingSessionId": "link_session_784e",
+  "status": "REQUIRES_CUSTOMER_ACTION",
+  "customerAction": {
+    "type": "PAYMENT_HOSTED",
+    "url": "https://pay.example.invalid/link/link_session_784e",
+    "expiresAt": "2026-07-14T08:05:00+09:00"
+  }
+}
+```
+
+`customerAction.url`도 결제 실행 grant는 아니지만 특정 연결 인증 흐름을 여는 단기 권한값입니다. 정확한 연결 세션·대상·브라우저 challenge·만료에 묶고, 처음 일치하는 결제 채널이 내부 인증 세션으로 교환하면 다시 사용할 수 없게 합니다. 전달 중에만 사용하고 로그·APM·분석·상담 기록과 외부 referrer에는 남기지 않습니다.
+
+주소가 불투명하고 짧게 만료된다는 사실만으로 안전해지는 것은 아닙니다. 결제 화면은 커머스와 다른 웹 출처 또는 격리된 앱 프로세스에서 열려야 하고, 결제 측에 보관한 원 verifier는 결제 검증기에 직접 전달되어야 합니다. 결제 서비스는 서버에 다음 관계를 먼저 고정합니다.
+
+```text
+linkingSession = {
+  merchantId = M,
+  commerceSubject = C(issuer + subject),
+  registeredReturnUriId,
+  paymentLinkNonce,
+  browserBindingChallenge,
+  expiresAt,
+  status,
+  boundPayCustomerId = 아직 없음
+}
+```
+
+그 뒤 고객은 결제 경계에서 `P`를 인증하고, 사용할 `pm` 하나를 선택하며, 금융기관 또는 신뢰한 검증 경계에서 계좌 통제·위임 근거를 확인합니다.
+
+```text
+CREATED(M, C, challenge, returnUriId)
+  -> PAYMENT_CHANNEL_OPENED(verifier 일치)
+  -> P_AUTHENTICATED
+  -> METHOD_AUTHORITY_CONFIRMED(검증자와 근거 참조 저장)
+  -> P와 선택한 수단 권한을 최초 한 번 원자적으로 연결
+  -> LINKED
+```
+
+결제 검증기는 원 verifier를 단방향으로 계산해 저장된 challenge와 비교하고, 일치하면 한 번만 소비합니다. 만료된 세션, 다른 verifier, 재사용된 verifier·nonce, 이미 종료된 세션은 `P` 인증과 최초 binding 전에 종료하며 어떤 관계도 바꾸지 않습니다. 먼저 연결된 값과 다른 `P`도 관계를 바꾸지 않고 거절합니다. 연결 성공 시에도 결제 서비스는 `P`가 가진 모든 수단을 커머스에 노출하지 않고, 고객이 선택한 `paymentMethodId`, 마스킹 표시, 상태만 돌려줍니다.
+
+브라우저 callback은 `linkingSessionId`와 커머스의 `state` 같은 상관관계만 전달하며 성공의 원본이 아닙니다. 커머스 서버는 서버 간 인증으로 연결 세션을 조회합니다. 일회성 결과 코드(code)를 쓰더라도 같은 `M`, 연결 세션, 시작한 커머스 세션, 등록 반환 주소에 묶어 한 번만 교환하게 해야 합니다. 그 코드로 결제를 실행하거나 다른 계좌를 조회할 수 없어야 합니다.
+
+#### 9.3.4 결제할 때 연결·수단 권한·현재 거래를 다시 묶는다
 
 고객 행동 화면에는 적어도 다음 내용이 보여야 합니다.
 
@@ -400,7 +566,33 @@ Location: /v1/payment-intents/pay_01J0W8G6K9
 - 일회성 결제인지 반복 출금 위임인지
 - 취소·만료 조건
 
-고객의 비밀번호·PIN·금융기관 로그인 자격증명은 결제·금융 인증 경계에 직접 입력됩니다. 이 경계는 인증 결과가 가리키는 고객 주체(subject)가 결제 의도에 연결된 고객, 등록 결제수단의 소유자 또는 유효한 위임의 주체와 일치하는지도 다시 검사합니다. 요청의 `customerReference` 문자열만 같다고 고객과 계좌의 관계가 증명되지는 않습니다. 커머스 서버에는 다음과 같은 상태 변화만 보입니다.
+일회성 결제와 반복 위임 실행은 인증 입력이 다릅니다.
+
+- **대화형 결제**에서는 신뢰한 검증기의 현재 인증 결과와 고객이 화면에서 확인한 거래 허용을 함께 사용합니다.
+- **반복·대리 실행**에서는 인증된 실행 주체와 활성 mandate·위임 근거를 사용합니다. 정책·위험·범위를 벗어나면 그때 대화형 추가 인증(step-up)을 요구합니다.
+
+두 경로는 다음 검사 뒤에만 한 번 실행할 수 있는 내부 grant를 만듭니다.
+
+1. `M`이 이 결제 의도의 소유자인지 확인합니다.
+2. 결제 의도에 저장된 `C`에서 활성 `C↔P` 연결을 찾습니다.
+3. `P` 범위의 수단 권한에서 `A`와 `pm`을 확인합니다. 이때 `link.P == entitlement.P == method.registeredForP`여야 합니다.
+4. 금융기관 또는 신뢰한 검증자가 만든 권한 근거가 같은 `P+pm`에 속하고, 아직 만료·철회되지 않았는지 확인합니다.
+5. 금액·통화·수취인·기간·횟수가 현재 허용 또는 mandate 범위 안인지 확인하고, 위험 정책과 필요한 추가 인증을 적용합니다.
+6. 모든 검사가 통과하면 다음 값을 불변으로 묶은 내부 grant를 만듭니다.
+
+```text
+transactionAuthorizationGrant.boundTo = hash(
+  M + C + P + A + merchantOrderId + paymentId
+  + amount + currency + payee + paymentMethodId
+  + linkId/linkVersion + entitlementId/entitlementVersion
+  + authenticationEventId 또는 mandateEvidenceId/version
+  + authorizationNonce + expiresAt
+)
+```
+
+커머스의 `confirm`과 실제 지급 지시 사이에도 권한 철회 경쟁이 생길 수 있습니다. 따라서 `CUSTOMER_AUTHORIZED -> PROCESSING` 전이를 선점하는 같은 트랜잭션에서 grant가 미사용·미만료인지, 거래 내용이 그대로인지, link·entitlement·mandate의 상태와 버전이 여전히 허용되는지 다시 확인합니다. 그 뒤에만 grant 소비, 상태 전이, outbox와 안정된 외부 요청 ID 생성을 함께 수행합니다. 지급 지시 전에 철회되었다면 실행하지 않고 재인증·재연결을 요구합니다. 이미 지급 지시를 보낸 뒤의 철회는 지시를 없던 일로 만들 수 없으므로 기관 결과·반환·반대 거래·대사로 처리합니다.
+
+커머스 서버에는 다음과 같은 상태 변화만 보입니다.
 
 ```text
 REQUIRES_CUSTOMER_ACTION
@@ -410,6 +602,52 @@ REQUIRES_CUSTOMER_ACTION
 ```
 
 `CUSTOMER_AUTHORIZED`는 **고객 거래 허용 증거가 내부에 생겼다**는 상태입니다. 아직 기관이 출금을 승인했다거나 돈이 움직였다는 뜻이 아닙니다. 내부 증거는 불변 거래 tuple, 인증 강도, 생성 시각, 만료 시각, nonce에 결합합니다. 커머스에 범용 `authToken`으로 노출하지 않습니다.
+
+반복 위임을 함께 지원한다면 더 일반적인 상태 이름인 `TRANSACTION_AUTHORIZED`를 사용할 수 있습니다. 이때도 증거 유형을 `INTERACTIVE_CUSTOMER_ACTION`과 `STANDING_MANDATE`처럼 나누어 기록해야 합니다. 위임 실행을 새 대화형 고객 인증이 있었던 것처럼 남기면 안 됩니다.
+
+#### 9.3.5 인증 서비스와 결제 서비스의 책임을 어떻게 나누는가
+
+외부 계약으로 보면 결제 서비스가 결제 인증 경계를 책임지는 편이 자연스럽습니다. 결제수단과 거래 허용을 관리하는 주체가 자격증명 노출을 막고 인증 결과를 수단 권한·거래 내용에 결합해야 하기 때문입니다. 그러나 내부를 하나의 거대한 서비스로 만들 필요는 없습니다.
+
+| 내부 책임 | 받는 입력 | 내보내는 결과 | 하지 않는 일 |
+| --- | --- | --- | --- |
+| 자격증명 검증기·인증 서비스 | PIN·패스키 검증값 또는 신뢰한 IdP 인증 진술 | `AuthenticationContext(P/A, method, assurance, authenticatedAt, eventId)` | 금액·수취인 거래를 실행하지 않음 |
+| 계정 연결 서비스 | 검증된 `C`, 검증된 `P`, 연결 세션 | 버전이 있는 `C↔P` link | 계좌 사용 권한을 자동 부여하지 않음 |
+| 수단 권한 서비스 | 금융기관·검증자의 권한 근거, `P`, `A`, `pm` | 범위와 버전이 있는 entitlement | 법적 예금주를 추측하지 않음 |
+| 거래 권한·위험 정책 | link, entitlement, 인증·mandate 문맥, 불변 거래 내용 | 거래별 내부 grant 또는 거절 기록 | 금융기관 처리 성공을 선언하지 않음 |
+| 결제 실행 서비스 | 유효한 미사용 grant와 커머스 confirm | 원자적 상태 전이, outbox, 외부 요청 ID | 자격증명을 다시 받지 않음 |
+
+인증 서비스의 성공 응답은 “이 인증 이벤트는 `P/A`를 가리킨다”는 문맥입니다. 이것을 그대로 커머스에 주는 범용 token으로 만들지 않습니다. 결제 권한 서비스가 연결·수단 권한·거래 범위를 확인해 거래별 grant로 좁히고, 실행 서비스가 그 grant를 한 번만 소비합니다.
+
+#### 9.3.6 계정을 연결하는 세 가지 전략
+
+| 비교축 | A. 명시적으로 지속 연결 | B. 연합 인증·계정 해석으로 지속 연결 | C. 결제마다 일회성 연결 |
+| --- | --- | --- | --- |
+| 증명 방식 | 활성 `C` 세션과 `P` 인증을 연결 절차에서 모두 확인 | 신뢰 계약 아래 IdP assertion으로 C/P를 해석·준비 | 현재 거래에 한해 C 문맥과 P·수단 권한을 새로 확인 |
+| 사용자 경험 | 처음 한 번 연결하고 이후 등록 수단을 짧게 재사용 | 연합 체계가 성숙하면 반복 로그인이 가장 적음 | 결제할 때마다 고객 행동이 늘어남 |
+| 보관 상태·사생활 | C↔P와 선택한 수단 권한을 보관하므로 철회·보존 정책 필요 | 계정 준비(provisioning)·연결 상태가 남고 연합 상관관계의 사생활 위험도 관리 | 지속 C↔P를 남기지 않아 교차 서비스 상관관계가 가장 적음 |
+| 철회 | link와 entitlement를 독립적으로 철회 | 연합 계정 생명주기와 entitlement를 모두 철회 | 거래 만료와 함께 권한이 사라짐 |
+| 결제 시 검사 | 활성 link + P 범위 entitlement + 거래/mandate 범위 | 계정 준비로 만든 활성 link + entitlement + 인증 진술·세션 정책 | 새 일회성 전달 절차 + 현재 수단 권한 + 불변 거래 내용 |
+| 적합한 조건 | 공유 신원 기반 없이 등록 계좌를 반복 사용 | 안정된 파트너와 성숙한 연합·키·계정 생명주기 보유 | 드문 결제, 지속 연결 최소화가 더 중요한 경우 |
+
+이 문서의 기본안은 A입니다. 공유 신원 체계가 없다는 전제에서 등록 계좌를 반복 사용하려면, 한 번의 연결 비용으로 link와 수단 권한을 독립적으로 철회·감사할 수 있기 때문입니다. 이미 성숙한 연합 인증과 계정 준비 체계가 있다면 B가 더 단순할 수 있고, 지속적인 교차 서비스 연결을 남기지 않는 일이 가장 중요하면 C가 더 적합합니다.
+
+커머스가 서명한 고객 assertion은 B나 A의 연결 요청에서 `C` 문맥을 전달하는 보조 수단이지, 독립적인 완결 설계가 아닙니다. 현재 사용자 통제, 결제수단 권한, 거래별 허용을 대신하지 못합니다.
+
+#### 9.3.7 커머스에 보이는 데이터는 채널마다 다르게 제한한다
+
+| 채널 | 보여도 되는 정보 | 보여서는 안 되거나 권한으로 쓰면 안 되는 정보 |
+| --- | --- | --- |
+| 결제 생성·confirm | 주문·금액·통화·수취 설정, 불투명한 수단 참조 | 수단 ID 소지만으로 생기는 사용 권한, 인증 자격증명 |
+| 서버 간 고객 인증 진술 | `M`, issuer+subject, 대상, 요청 지문·nonce, 발급·만료 시각, assertion ID | 결제 실행 권한으로 재사용, 다른 요청에 전용, 로그·분석·상담 기록 보존 |
+| 결제·연결 시작의 상관관계 | 결제·연결 세션 ID, 상태, 만료 | 상관관계 ID만으로 생기는 고객·수단 열람 또는 실행 권한 |
+| 고객 행동 단기 권한값 | 정확한 결제·연결 세션, 대상, 브라우저 challenge, 만료에 묶인 일회성 session·URL | 최초 교환 뒤 재사용, 로그·APM·분석·상담·외부 referrer 노출, 결제 실행 grant로 사용 |
+| callback·redirect | 상관관계와 최종 판단 근거가 아닌 진행 상태 | 결제 성공의 최종 근거, 재사용 가능한 grant |
+| 결제수단 표시 | 지속 가능한 불투명 `paymentMethodId`, 마스킹 이름, 상태 | 전체 계좌번호, 모든 P 수단 목록, 권한 근거 원문 |
+| 웹훅 | payment ID, 상태, 버전, 서명 전달 정보와 필요한 거래 내용 | 비밀번호·PIN·은행 token·내부 grant·mandate 증거 원문 |
+| 로그·APM·분석·상담 | 상관관계 ID, 상태, 마스킹 값 | 자격증명, 검증기 비밀, 전체 계좌정보, 실행 가능한 세션 권한값 |
+
+`paymentMethodId`가 불투명하다는 사실 자체가 보안을 만들지는 않습니다. 모든 API가 인증된 `M`, 저장된 `C↔P`, `P` 범위 entitlement를 다시 검사해야 합니다. 반대로 내부 설명에 `mandateId`나 `authorizationGrantId`가 등장한다고 곧바로 유출은 아닙니다. 커머스가 그 값을 보고 실행 가능한 권한으로 사용할 수 있는지가 경계 판단의 핵심입니다.
 
 ### 9.4 커머스가 주문을 재확인하고 실행 요청
 
@@ -563,7 +801,10 @@ PROCESSING ──────> SUCCEEDED
 | 불변식 | 지키지 않으면 생기는 일 | 구현·검증 방법 |
 | --- | --- | --- |
 | 인증된 가맹점만 자기 결제를 읽고 confirm한다. | 다른 가맹점 결제 조회·실행 | `merchant_id + payment_id` 소유권 조건, 모든 endpoint 권한 검사 |
+| `C`는 활성 커머스 고객 세션 또는 검증된 사용자 assertion에서 온다. | 가맹점 서버 인증만으로 임의 고객을 연결 | issuer·subject·audience·서명·만료·재사용 검사 또는 활성 세션 기반의 짧은 계약 assertion |
+| `C↔P` link와 `P/A↔pm` entitlement를 분리하고 같은 `P`를 가리키게 한다. | 다른 결제 계정의 유효한 수단 권한 재사용 | `link.P == entitlement.P == method.registeredForP`, 상태·version·권한 근거 검사 |
 | 고객 허용 뒤 amount/currency/payee/paymentMethod는 바뀌지 않는다. | 고객이 보지 않은 거래 실행 | 거래 묶음의 해시값 또는 버전 결합, 변경 시 새 intent |
+| grant 소비 직전에 link·entitlement·mandate를 다시 검사한다. | 허용 뒤 지급 전 철회된 권한으로 출금 | version 조건을 포함한 원자적 grant 소비·상태 전이·outbox 생성 |
 | 한 멱등성 키는 한 요청 지문에만 쓴다. | 같은 키로 다른 주문 덮어쓰기 | 고유 키 제약 + 요청 지문 불일치 거절 |
 | `CUSTOMER_AUTHORIZED -> PROCESSING` 승자는 한 요청뿐이다. | 동시 confirm의 중복 출금 | 조건부 UPDATE/낙관적 잠금/행 잠금과 영향 행 1개 확인 |
 | 한 결제에는 안정된 `externalRequestId`가 있다. | timeout 재시도 때 새 출금 | 최초 전이와 함께 ID 저장, 재시도는 조회 또는 같은 ID 사용 |
@@ -595,8 +836,20 @@ payment.payee = merchant_account_default
 고객은 결제 서버가 통제하는 화면에서 42,800원, 수취 정보, 등록 계좌를 확인합니다. 인증과 확인이 성공하면 결제 서버는 내부 거래 허용 증거를 저장합니다.
 
 ```text
+commercePaymentAccountLink:
+  C(merchant_42, customer_81d4) <-> P(pay_customer_b719)
+  linkId = link_3d91, version = 4, status = ACTIVE
+
+paymentMethodEntitlement:
+  P(pay_customer_b719) + A(pay_customer_b719) -> pm_bank_7f2a
+  entitlementId = ent_95af, version = 3, status = ACTIVE
+  authorityEvidenceId = authority_evidence_62c8
+
 authorizationGrant.boundTo = hash(
-  merchant + order + payment + 42,800 KRW + payee + paymentMethod
+  merchant + C + P + A + order + payment
+  + 42,800 KRW + payee + paymentMethod
+  + link_3d91/version_4 + ent_95af/version_3
+  + authenticationEvent + authorizationNonce
 )
 authorizationGrant.expiresAt = 짧은 만료 시각
 payment.executionStatus = CUSTOMER_AUTHORIZED
@@ -609,9 +862,10 @@ payment.executionStatus = CUSTOMER_AUTHORIZED
 
 커머스 서버는 할인·포인트·재고·취소 상태를 다시 계산합니다. 여전히 42,800원이면 `confirm-1042`라는 멱등성 키로 confirm합니다.
 
-결제 서버는 소유권, 금액, 허용 증거, 만료를 검사하고 다음 전이를 한 트랜잭션에서 선점합니다.
+결제 서버는 소유권, 금액, 허용 증거, 만료를 검사합니다. 이어서 link와 entitlement가 여전히 `ACTIVE`이고 각각 version 4와 3인지 다시 확인한 뒤, 다음 전이와 grant 소비·outbox 생성을 한 트랜잭션에서 선점합니다. 고객 허용 뒤 link나 수단 권한이 철회되어 version이 바뀌었다면 외부 지급 지시를 만들지 않습니다.
 
 ```text
+authorizationGrant: UNUSED -> CONSUMED
 CUSTOMER_AUTHORIZED -> PROCESSING
 externalRequestId = ext_pay_01J0W8G6K9
 outbox = "금융 연결망에 ext_pay_01J0W8G6K9 전송"
@@ -696,6 +950,23 @@ outbox는 데이터베이스 변경과 외부 전송 의도를 같은 로컬 트
 
     실행 상태가 `SUCCEEDED`인 뒤 자금이 반환되거나 반대 거래가 생깁니다. 원결제를 `DECLINED`로 되감지 않고 별도 조정 거래를 연결합니다. `fundsStatus=RETURNED` 또는 `REVERSED`와 원장 항목(entry)을 기록하고, 집금형이면 가맹점 정산 조정으로 이어 갑니다.
 
+### 12.3 계정 연결과 수단 권한을 열 가지 흐름으로 검증한다
+
+아래 표는 연결 record, 수단 권한, 긍정적인 거래 허용 grant, 외부 지급 지시가 언제 생기거나 생기지 않아야 하는지를 고정합니다. 거절·공격 탐지·감사를 위한 내부 결정 기록은 남길 수 있지만, A1–A5에서는 실행 가능한 grant와 외부 지급 지시가 생기면 안 됩니다.
+
+| ID | 입력과 조건 | 기대 결과 |
+| --- | --- | --- |
+| N1 | 본인 `A=P`가 활성 `C↔P` link를 만들고, 같은 `P`에 등록된 `pm`의 권한과 현재 거래를 확인 | link·entitlement가 각각 버전과 함께 존재하고, 거래별 grant 한 개가 confirm에서 소비되며 외부 지급 지시 한 개가 생김 |
+| N2 | 위임받은 `A≠P` 또는 반복 출금 실행 주체가 활성 mandate의 수취인·금액·기간·횟수 범위 안에서 실행 | 새 대화형 고객 인증이 있었다고 기록하지 않고 mandate 근거를 참조한 실행별 grant 한 개와 지급 지시 한 개가 생김 |
+| N3 | 신뢰한 IdP assertion으로 `C`를 확인한 뒤 활성 `C↔P` link와 별도 수단 권한으로 결제 | assertion 검증은 `C` 확인에만 쓰이고, entitlement·현재 거래 검사를 별도로 통과한 뒤에만 grant와 지급 지시가 생김 |
+| A1 | 다른 `M` 또는 tenant의 `C/P` link를 대입 | 소유권 검사에서 거절. 긍정적 grant와 외부 지급 지시 없음 |
+| A2 | 같은 가맹점이라도 다른 `C/P`에 등록된 `paymentMethodId`를 대입 | `link.P == entitlement.P == method.registeredForP`가 깨져 거절. 긍정적 grant와 외부 지급 지시 없음 |
+| A3 | 거래 허용 전에 link가 이미 만료·철회됨 | 재연결을 요구하고 긍정적 grant와 외부 지급 지시 없음 |
+| A4 | 연결 URL·nonce·callback을 재사용하거나 다른 브라우저·`P`로 바꿔치기 | verifier·state·nonce·최초 P binding 검사에서 거절하고 link를 새로 만들거나 바꾸지 않음 |
+| A5 | 인증한 `A`에게 `pm` 권한이 없거나 현재 금액·수취인·기간이 entitlement·mandate 범위를 벗어남 | 추가 인증 또는 새 허용을 요구. 긍정적 grant와 외부 지급 지시 없음 |
+| A6 | 지급 지시 한 개를 보낸 뒤 기관 응답만 timeout | grant는 이미 소비되었고 외부 요청 ID 한 개가 존재함. `PROCESSING/UNKNOWN`을 유지하며 조회·웹훅·대사로 수렴하고 새 출금을 만들지 않음 |
+| A7 | grant 생성 뒤 confirm 전에 link·entitlement·mandate가 철회되거나 version이 바뀜 | confirm의 원자적 재검사에서 거절. grant를 소비하지 않고 outbox·외부 지급 지시를 만들지 않으며 재인증·재연결을 요구 |
+
 ## 13. 운영에서 남겨야 할 식별자와 대사 정보
 
 돈이 움직이는 시스템에서 식별자는 단순 로그 장식이 아닙니다. 어느 주체의 어떤 기록을 맞출지 결정하는 연결 고리입니다.
@@ -703,6 +974,13 @@ outbox는 데이터베이스 변경과 외부 전송 의도를 같은 로컬 트
 | 필드 | 소유자와 역할 |
 | --- | --- |
 | `merchantId` | 서버 인증으로 결정되는 가맹점 경계 |
+| `commerceIssuer` + `commerceSubject` | 커머스가 인증한 `C`의 발급자 범위 식별자. 커머스 로컬 참조라면 `merchantId`가 식별자 범위(namespace)를 제공 |
+| `payCustomerId` | 결제 인증 경계가 관리하는 `P`. 커머스 고객 ID와 직접 비교하지 않음 |
+| `authorizedActorId` | 현재 인증되었거나 위임으로 허용된 `A`. 본인 결제에서는 `P`와 같을 수 있음 |
+| `authenticationEventId` | 검증기·방법·강도·시각을 역추적하는 인증 이벤트. 자격증명 원문은 보관하지 않음 |
+| `linkId` + `linkVersion` | issuer-qualified `C↔P` 연결과 철회·변경 시점을 추적 |
+| `entitlementId` + `entitlementVersion` | 같은 `P` 범위의 `A↔pm` 권한·위임과 철회·변경 시점을 추적 |
+| `authorityEvidenceId` | 금융기관·신뢰 검증자가 만든 계좌 통제·소유 주장·위임 근거를 내부에서 추적. 원문은 커머스에 비노출 |
 | `merchantOrderId` | 커머스 주문과 결제를 연결하며 가맹점 범위에서 유일 |
 | `paymentId` | 결제 서버가 소유하는 결제 의도 식별자 |
 | `paymentMethodId` | 원본 계좌정보를 노출하지 않는 등록 수단 참조 |
@@ -734,6 +1012,14 @@ outbox는 데이터베이스 변경과 외부 전송 의도를 같은 로컬 트
 
 고객 인증은 “누구인가”를 확인하고, 고객 거래 허용은 “이 금액·수취인·수단을 허용했는가”를 증명하며, 금융기관의 거래 판단은 “잔액과 계좌 상태상 처리 가능한가”를 결정합니다. 커머스의 confirm은 주문과 재고가 아직 유효한지 다시 봅니다. 주체·입력·증거·실패가 다르기 때문에 분리해야 하며, 인증 성공을 결제 성공으로 보면 안 됩니다. 다만 논리적 분리가 반드시 네 번의 네트워크 호출을 뜻하지는 않습니다.
 
+### “결제 서비스는 어떻게 커머스 고객을 알아보나요?”
+
+커머스 고객 ID와 결제 고객 ID를 직접 맞추지 않습니다. 커머스는 활성 로그인 세션이나 검증된 assertion으로 발급자 범위의 고객 `C`를 증명하고, 결제 경계는 결제 계정 `P` 또는 행위자 `A`를 따로 인증합니다. 최초 등록 때 두 계정의 통제를 확인해 버전이 있는 `C↔P` link를 만들고, 금융기관·신뢰 검증자가 확인한 `P/A↔paymentMethod` 권한은 별도 entitlement로 저장합니다. 결제 시에는 두 관계가 모두 활성이고 같은 `P`를 가리키며 현재 금액·수취인·위임 범위를 허용하는지 다시 검사합니다. 이메일·전화번호·이름이나 같은 `customerReference` 문자열은 이 관계의 증거가 아닙니다.
+
+### “결제 PIN은 인증 서비스와 결제 서비스 중 누가 받아야 하나요?”
+
+커머스가 아니라 결제 서비스가 책임지는 인증 경계에서 검증해야 합니다. 내부에서는 전용 인증 서비스가 PIN·패스키 또는 금융기관 인증 진술을 검증해 `AuthenticationContext`만 만들고, 결제 권한 서비스가 그 결과를 link·entitlement·거래 내용과 결합해 거래별 grant를 만듭니다. 은행 호스팅 인증처럼 신뢰한 외부 검증기를 쓰면 결제 서비스도 PIN 원문을 받지 않을 수 있습니다. 중요한 불변식은 커머스 서버·JavaScript·로그·운영자가 자격증명을 보거나 중계하지 못한다는 점입니다.
+
 ### “이미 등록된 계좌인데 왜 다시 확인하나요?”
 
 등록은 사용할 계좌와 동의 관계를 준비한 것입니다. 일회성 결제라면 현재 금액·수취인·결제수단에 대한 거래 허용이 별도로 필요합니다. 반복 출금 위임이 있다면 매번 대화형 확인을 생략할 수 있지만, 현재 거래가 위임의 한도·기간·수취인 범위 안인지 검사해야 합니다.
@@ -758,6 +1044,19 @@ outbox는 데이터베이스 변경과 외부 전송 의도를 같은 로컬 트
 6. 직접 수취형과 집금 후 정산형에서 결제 성공 뒤 돈의 경로가 어떻게 다릅니까?
 7. `SUCCEEDED`가 어느 수준의 최종성을 뜻하는지 왜 계약으로 정해야 합니까?
 8. 웹훅, 조회, 대사가 각각 어떤 실패를 복구합니까?
+9. 커머스가 인증한 `C`, 결제 계정 `P`, 행위자 `A`, 결제수단 `pm`은 왜 서로 다른 식별자입니까?
+10. 두 계정의 연결 절차가 성공해도 법적 동일인이나 계좌 사용 권한이 자동으로 증명되지 않는 이유는 무엇입니까?
+11. 고객 거래 허용 뒤 confirm 전에 link나 entitlement가 철회되면 어떤 원자적 검사가 외부 지급 지시를 막아야 합니까?
+12. 연합 인증 assertion을 검증해도 별도의 수단 권한과 거래별 허용이 필요한 이유는 무엇입니까?
+
+계정 연결 경계는 작은 공격 실험으로 확인할 수 있습니다.
+
+1. 고객 `C1`의 연결 세션 URL과 callback을 복사해 다른 브라우저에서 `P2`로 완료해 봅니다.
+2. browser verifier, `state`, 결제 nonce, 최초 `P` binding 중 하나라도 맞지 않으면 link가 생성·변경되지 않아야 PASS입니다.
+3. 정상적으로 연결한 `C1↔P1`에 `P2` 범위의 `paymentMethodId`를 넣어 결제 의도를 만듭니다.
+4. `link.P == entitlement.P == method.registeredForP` 검사가 grant 생성 전에 거절하고 outbox가 생기지 않아야 PASS입니다.
+5. 거래별 grant를 만든 직후 entitlement version을 올리며 철회하고 confirm합니다.
+6. grant가 소비되지 않고 `PROCESSING` 전이와 외부 지급 지시가 없으며 재인증·재연결을 요구하면 PASS입니다.
 
 작은 설계 실험도 해볼 수 있습니다.
 
@@ -776,6 +1075,9 @@ outbox는 데이터베이스 변경과 외부 전송 의도를 같은 로컬 트
 | 자료 | 이 문서에서 지지하는 주장 | 일반화하지 않는 범위 |
 | --- | --- | --- |
 | [결제 보안 표준 용어집](https://www.pcisecuritystandards.org/glossary/) | 인증의 신원 확인 의미, 접근 권한과 카드 거래 authorization의 구별 | 계좌이체 API 전체의 직접 표준은 아님 |
+| [NIST 디지털 인증 보증 수준](https://pages.nist.gov/800-63-4/sp800-63b/aal/) | 고객 계정에 결합된 인증기의 통제를 검증하고 인증 강도 수준을 구분하는 원칙 | 계정 인증이 법적 동일인·계좌 소유·결제 허용까지 증명한다는 자료는 아님 |
+| [NIST 디지털 신원 연합 요구사항](https://pages.nist.gov/800-63-4/sp800-63c/Federation/) | 발급자+주체 식별, 인증된 세션 기반 계정 연결, assertion 서명·대상·유효기간·재사용 방지 | 연방 디지털 신원 지침이며 커머스-결제-은행 연결 API나 수단 entitlement 표준은 아님 |
+| [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html) | `(iss, sub)`의 안정적 식별 의미와 ID Token의 발급자·대상·서명 등 검증 | OIDC를 실제 채택한 연합 경로에만 적용하며 결제수단 권한·거래 허용을 대신하지 않음 |
 | [비대면 카드 인증 표준 개요](https://www.emvco.com/wp-content/uploads/2022/09/Quick-Resource_-EMV-3DS-for-E-Commerce.pdf) | 2001년 초기 버전, 2016년 2.0 공개, 구매자 인증과 통상 거래 승인 처리의 구분 | 카드 비대면 인증의 역사이며 계좌이체의 직접 표준은 아님 |
 | [직불카드 메시지 구조 설명](https://www.federalreserve.gov/paymentsystems/regii-average-interchange-fee.htm) | 승인·청산 메시지를 분리하거나 결합할 수 있다는 사례 | 미국 직불카드 구조를 모든 지급망에 적용하지 않음 |
 | [계좌 기반 결제 연구 노트](https://www.federalreserve.gov/econres/notes/feds-notes/pay-by-bank-and-the-merchant-payments-use-case-benefits-20250707.html) | 자격증명 직접 채널, 금액·수취인 허용, 후속 승인·청산·결제 | 미국 사례이며 국내·모든 계좌이체의 규범은 아님 |
