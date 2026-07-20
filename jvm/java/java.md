@@ -1524,6 +1524,9 @@ https://github.com/topyheun/growth/blob/main/growth/2024.05.23%20-%20JVM%20%ED%8
 
 ## 16. 멀티 스레드
 
+`synchronized`의 monitor 대상, JVM bytecode, happens-before, 넓은 lock 범위의 오용과 대안은
+[`synchronized` 범위 설계와 오용 회고](java_synchronized.md)에서 별도로 설명한다.
+
     1. 개념
        1. 프로세스와 스레드
           1. 프로세스 : 운영체제에서 실행중인 하나의 애플리케이션. 프로그램.
