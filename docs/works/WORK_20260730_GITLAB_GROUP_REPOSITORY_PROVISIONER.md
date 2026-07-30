@@ -63,7 +63,10 @@
 
 ## 5. Design
 
-- Python 표준 라이브러리만 사용한다.
+- Linux의 Bash 4 이상, curl, jq, Git과 일반 GNU 도구만 사용한다.
+- Python은 실행 의존성에서 제외한다.
+- jq를 우선 사용하고, jq가 없는 환경에서는 Perl의 표준 JSON 모듈을
+  보조 경로로 사용할 수 있다.
 - 토큰은 기본적으로 `SOURCE_GITLAB_TOKEN`, `TARGET_GITLAB_TOKEN` 환경 변수에서 읽는다.
 - 실행 모드:
   - 기본: 계획 출력만
@@ -76,21 +79,19 @@
 
 ## 6. Verification
 
-- PASS: `python -B -W error::ResourceWarning -m unittest .\git\tools\test_migrate_gitlab_group.py`
-  - 15개 테스트 통과
-  - 기존 프로젝트 skip
-  - 생성 응답 유실 뒤 생긴 프로젝트의 fail-closed 차단
-  - 생성과 Git 이전의 2단계 실행
-  - 실패 후 resume
-  - LFS 후속 resume
-  - 프로젝트 필터와 중첩 그룹
-  - API 페이지네이션, POST 비재시도, 오류 내 토큰 제거
-  - Git 인증 URL 범위 제한
-  - 로컬 bare source/target의 branches/tags 실제 이전과 SHA 비교
-- PASS: CLI `--help`
-- PASS: `--allow-insecure-http` 없는 평문 HTTP 입력은 네트워크 요청 전 종료 코드 2로 거부
-- PASS: Python 파일의 88자 초과 줄 없음
-- PASS: `git diff --check`
+- PASS: WSL2 Ubuntu에서 두 스크립트의 `bash -n`
+- PASS: WSL2 Ubuntu에서 CLI `--help`
+- PASS: WSL2 Ubuntu에서 jq 1.8.1 경로로 6개 Bash 테스트
+  - JSON 응답과 프로젝트 생성 payload
+  - 상태 파일과 중첩 그룹 경로 매핑
+  - 모의 GitLab API 계획 실행, POST 차단, curl 인자 토큰 비노출
+  - 적용 모드에서 기존 프로젝트 보존, 없는 그룹과 프로젝트만 생성
+  - 잘못된 프로젝트 정규식의 API 접근 전 거부
+  - 로컬 bare source/target의 여러 branches/tags 실제 이전
+  - ref SHA 일치와 대상 전용 ref 거부
+- PASS: jq가 없는 WSL2 Ubuntu에서 Perl fallback으로 같은 6개 테스트
+- PASS: ShellCheck 0.11.0
+- PASS: 최종 변경의 `git diff --check`
 - 미실행: 실제 사내 GitLab API와 프록시를 통과하는 end-to-end 실행
 
 ## 7. Open Risks
