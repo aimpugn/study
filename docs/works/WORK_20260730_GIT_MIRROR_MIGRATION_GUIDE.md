@@ -8,6 +8,7 @@
 - 작업 유형: `research + analysis + explain + execute`
 - 작업 깊이: `full`
 - 원문 사용자 요청: "git clone mirror 한 결과를 새로운 원격 저장소로 push하여 그대로 반영하는 방법 가이드"
+- 후속 사용자 요청: "현재 윈도우 기준으로 정리한 건지? 그렇다면 리눅스 기준으로도 정리"
 - 대상 경로: `git/git_clone_mirror.md`, `git/clone.md`, `git/push.md`, `git/lfs.md`
 - 시작일: 2026-07-30
 - 현재 상태: `COMPLETE`
@@ -135,6 +136,8 @@
     - PASS: 로컬 mutation 실험, 링크 검사, Markdown 검사, 공식 문서 링크가 남는다.
 - C-06 (AI): 저장소 closure를 지킨다.
     - PASS: 관련 파일만 stage하고 commit하며 push하지 않는다.
+- C-07 (사용자): Linux 기준에서도 독립적으로 실행 가능한 가이드가 있다.
+    - PASS: Bash 전체 경로, 셸 차이, hidden ref 선택 push, ref 비교, 주기 동기화 명령이 있다.
 
 ## 18. Execution Log
 
@@ -146,20 +149,35 @@
 - Git plumbing으로 만든 두 번째 최소 저장소 실험에서 `git push --mirror` 종료 코드 0, source/target ref 차이 0건, 대상 전용 `obsolete` ref 삭제를 다시 확인했다.
 - 두 번째 실험 디렉터리도 경로를 확인한 뒤 휴지통으로 이동했다.
 - 본문과 관련 문서 교차 링크를 작성했다.
+- 후속 요청에서 기존 실행 예제가 PowerShell 중심임을 확인했다.
+- 공통 Git 의미는 유지하고 Windows PowerShell과 Linux Bash의 변수, 종료 코드, 정렬, 비교, 배열, 줄 연결 문법 차이를 추가했다.
+- Linux Bash의 일회성 전체 이전, hidden ref 선택 push, ref 비교, 주기 동기화 경로를 추가했다.
+- WSL Ubuntu의 `/tmp/codex-git-mirror-linux-20260730`에서 Bash mirror 실험을 실행하고 같은 셸 안에서 검증 후 임시 저장소를 정리했다.
 
 ## 19. Verification
 
 - `npx --yes markdownlint-cli2`로 대상 Markdown 5개 검사: PASS, 오류 0건.
+- Linux 보강 뒤 변경 Markdown 2개를 다시 검사: PASS, 오류 0건.
 - 상대 Markdown 링크의 파일 경로 검사: PASS, 누락 0건.
 - `git diff --check`: PASS, whitespace 오류 0건.
 - PowerShell 배열 refspec과 `Compare-Object` 예제 실행: PASS, 비교 차이 0건.
+- PowerShell 코드 블록 24개 parser 검사: PASS, 구문 오류 0건.
+- Bash 코드 블록 21개를 WSL Ubuntu의 `bash -n`으로 검사: PASS, 구문 오류 0건.
 - bare mirror 설정 관측: `remote.origin.fetch=+refs/*:refs/*`, `remote.origin.mirror=true`.
 - mutation 실험:
     - 갈라진 대상 `main`: forced update 확인.
     - 대상 전용 `obsolete`: 삭제 확인.
     - tag, notes, 사용자 정의 ref: 생성 확인.
     - source/target ref 이름과 객체 ID 차이: 0건.
-    - 두 번째 최소 실험의 실제 push 종료 코드: 0.
+- 두 번째 최소 실험의 실제 push 종료 코드: 0.
+- WSL Ubuntu 실제 Bash 검증:
+    - Git `2.53.0`, Bash `5.3.9`.
+    - mirror 설정 `+refs/*:refs/*`, `remote.origin.mirror=true` 확인.
+    - 빈 대상 탐지, dry-run, 실제 mirror push 성공.
+    - 갈라진 `main` 강제 갱신과 대상 전용 `obsolete` 삭제 확인.
+    - 전체 ref 및 브랜치·태그 선택 비교 차이 0건.
+    - symbolic `HEAD` 일치와 새 일반 clone의 `git fsck --full` 통과.
+    - Linux 임시 경로 정리 확인.
 - `git fsck --full`: 객체 손상 오류 0건. 강제 갱신 전 대상 커밋의 `dangling commit`만 관측.
 - 공식 링크: Git `clone`, `push`, `ls-remote`, GitLab Gitaly, GitHub repository duplication 문서를 2026-07-30에 열어 본문 주장과 대조.
 - 실행하지 못한 검증: 실제 GitLab/GitHub/사내 원격에는 push하지 않았다. 권한, hook, quota, 보호 브랜치 동작은 대상별 preflight 항목으로 남겼다.
@@ -173,6 +191,8 @@
 - 각 destructive 단계 앞에 중단 조건을 두고, 종료 코드뿐 아니라 ref 이름과 객체 ID를 비교하게 했다.
 - 로컬 mutation 실험의 관측과 실제 호스팅 서버에서 미검증한 정책 경계를 구분했다.
 - 문서의 명령을 순서대로 실행하면 다른 문서를 찾아 조립하지 않고도 preflight, push, verification, rollback 판단을 수행할 수 있다.
+- Windows와 Linux를 전체 본문으로 중복하지 않고, 공통 위험 설명 하나와 셸별 완결된 실행 경로로 분리했다.
+- Linux 독자는 PowerShell 문법을 Bash로 추측 변환하지 않고도 변수 선언부터 ref 비교와 검증 clone까지 실행할 수 있다.
 
 ## 21. Final Audit & Closure
 
@@ -186,6 +206,7 @@
 - C-04: `PASS`
 - C-05: `PASS`
 - C-06: `PASS`
+- C-07: `PASS`
 - 최종 상태: `COMPLETE`
 - 완료 게이트: `ALLOW_COMPLETE`
-- 커밋: 본 WORK 문서를 포함하는 작업 커밋으로 마감한다.
+- 커밋: 최초 가이드 커밋과 Linux Bash 보강 후속 커밋으로 마감한다.

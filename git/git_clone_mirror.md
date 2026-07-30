@@ -1,9 +1,11 @@
 # `git clone --mirror` 결과를 새 원격 저장소에 그대로 반영하기
 
 - [핵심 결론](#핵심-결론)
+- [Windows와 Linux에서 달라지는 부분](#windows와-linux에서-달라지는-부분)
 - [`--mirror`가 복사하는 것과 복사하지 않는 것](#--mirror가-복사하는-것과-복사하지-않는-것)
 - [`git push --mirror`가 위험한 이유](#git-push---mirror가-위험한-이유)
 - [안전한 일회성 이전 절차](#안전한-일회성-이전-절차)
+- [Linux Bash에서 같은 절차 실행하기](#linux-bash에서-같은-절차-실행하기)
 - [GitLab과 GitHub의 서버 관리 ref를 만났을 때](#gitlab과-github의-서버-관리-ref를-만났을-때)
 - [주기적으로 원본을 대상에 동기화하려면](#주기적으로-원본을-대상에-동기화하려면)
 - [실패 상황별 판단](#실패-상황별-판단)
@@ -14,6 +16,8 @@
 ## 핵심 결론
 
 새 원격 저장소가 비어 있고 대상 서버가 원본의 모든 ref 네임스페이스를 받아들인다면, 아래 흐름으로 Git 저장소를 이전할 수 있습니다.
+
+Windows PowerShell:
 
 ```powershell
 $sourceUrl = 'https://old.example.com/group/project.git'
@@ -29,9 +33,52 @@ git push --mirror --dry-run --porcelain $targetUrl
 git push --mirror $targetUrl
 ```
 
+Linux Bash:
+
+```bash
+source_url='https://old.example.com/group/project.git'
+target_url='https://new.example.com/group/project.git'
+
+git clone --mirror "$source_url" project-mirror.git
+cd -- project-mirror.git
+
+git fetch --prune origin
+git fsck --full
+
+git push --mirror --dry-run --porcelain "$target_url"
+git push --mirror "$target_url"
+```
+
 그러나 `git push --mirror`는 단순히 브랜치와 태그를 추가하는 명령이 아닙니다. 로컬 `refs/` 아래의 ref를 대상에 강제로 맞추며, 로컬에 없는 대상 ref는 삭제합니다. 따라서 대상 저장소는 README, 라이선스, `.gitignore`조차 만들지 않은 빈 저장소여야 합니다. 대상에 이미 데이터가 있다면 위 명령을 실행하지 말고 먼저 별도 백업과 덮어쓰기 승인을 준비해야 합니다.
 
 여기서 "그대로"는 Git이 관리하는 ref와 그 ref에서 도달 가능한 Git 객체가 같다는 뜻입니다. 기본 브랜치 설정, 이슈, Merge Request 또는 Pull Request, 권한, 보호 브랜치, 웹훅, CI/CD 변수, 릴리스 첨부 파일은 별도 이전 대상입니다. Git Large File Storage(LFS)의 실제 대용량 파일과 서브모듈 저장소도 별도로 옮겨야 합니다.
+
+## Windows와 Linux에서 달라지는 부분
+
+Git이 ref와 객체를 처리하는 방식은 Windows와 Linux에서 같습니다. 달라지는 것은 Git 명령을 둘러싼 셸 문법입니다. 이 문서의 PowerShell 예제는 Windows에서 실행하는 PowerShell 7을, Linux 예제는 Bash를 기준으로 합니다.
+
+| 작업 | Windows PowerShell | Linux Bash |
+| --- | --- | --- |
+| 변수 선언 | `$sourceUrl = '...'` | `source_url='...'` |
+| 변수 사용 | `$sourceUrl` | `"$source_url"` |
+| 디렉터리 이동 | `Set-Location $mirrorDir` | `cd -- "$mirror_dir"` |
+| 직전 Git 종료 코드 | `$LASTEXITCODE` | `$?` 또는 `if ! git ...; then` |
+| 오류 즉시 중단 | 명령 뒤 `$LASTEXITCODE` 검사 | 스크립트 처음에 `set -euo pipefail` |
+| 정렬 | `Sort-Object` | `sort` |
+| 두 ref 목록 비교 | `Compare-Object` | `diff -u`와 Bash process substitution |
+| 여러 refspec 전달 | PowerShell 배열 | Bash 배열과 `"${array[@]}"` |
+| 여러 줄 명령 연결 | 줄 끝의 backtick | 줄 끝의 backslash |
+
+PowerShell의 backtick과 Bash의 backslash 뒤에는 공백을 붙이지 않습니다. 줄 연결 문자가 불편하면 명령을 한 줄로 입력해도 Git의 동작은 같습니다.
+
+Linux에서 명령을 스크립트로 저장해 실행한다면 첫 줄의 interpreter와 안전 옵션을 다음처럼 둡니다.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+```
+
+`set -e`만으로 모든 실패를 완벽하게 잡을 수 있는 것은 아닙니다. 조건문과 pipeline의 종료 규칙이 별도로 적용되므로, 원격 접속과 ref 비교처럼 판정이 필요한 명령은 이 문서처럼 `if ! ...; then` 또는 명시적인 `if diff ...; then`으로 검사합니다.
 
 ## `--mirror`가 복사하는 것과 복사하지 않는 것
 
@@ -56,7 +103,7 @@ flowchart LR
 ```
 
 | 대상 | mirror 이전 결과 | 이유 또는 후속 조치 |
-|---|---|---|
+| --- | --- | --- |
 | `refs/heads/*` 브랜치 | 복사됨 | 브랜치 ref와 도달 가능한 커밋, 트리, blob이 전송됨 |
 | `refs/tags/*` 태그 | 복사됨 | lightweight tag와 annotated tag 객체가 전송됨 |
 | `refs/notes/*`, 사용자 정의 ref | 원본이 공개하고 대상이 허용하면 복사됨 | 대상 서버의 ref 정책을 확인해야 함 |
@@ -340,6 +387,206 @@ git -C project-verify lfs pull
 
 PASS는 기본 브랜치 checkout, `git fsck --full`, 필요한 LFS 파일 다운로드가 모두 성공하는 상태입니다. mirror 디렉터리 안에서만 검사하면 일반 clone 경로의 기본 브랜치와 LFS 문제를 놓칠 수 있습니다.
 
+## Linux Bash에서 같은 절차 실행하기
+
+앞 절의 위험 조건과 중단 조건은 Linux에서도 그대로 적용됩니다. 이 절은 동일한 일회성 이전 절차를 Ubuntu, Debian, RHEL 계열 등에서 일반적으로 사용할 수 있는 Bash 문법으로 다시 적습니다.
+
+필수 도구는 Git과 Bash입니다. ref 비교에는 일반적인 Linux 배포판에 기본으로 들어 있는 `sort`와 `diff`를 사용합니다. 저장소가 Git LFS를 사용한다면 해당 배포판에 `git-lfs`도 설치해야 합니다.
+
+### 1. 변수와 mirror 저장소를 준비한다
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+source_url='https://old.example.com/group/project.git'
+target_url='https://new.example.com/group/project.git'
+mirror_dir='project-mirror.git'
+
+if [[ -e "$mirror_dir" ]]; then
+    printf '중단: 경로가 이미 존재합니다: %s\n' "$mirror_dir" >&2
+    exit 1
+fi
+
+git clone --mirror "$source_url" "$mirror_dir"
+cd -- "$mirror_dir"
+```
+
+`[[ ... ]]`와 process substitution은 Bash 문법입니다. 이 명령을 `/bin/sh`로 실행하지 말고 Bash로 실행합니다.
+
+### 2. URL과 mirror 설정을 확인한다
+
+```bash
+git remote -v
+
+fetch_refspec=$(git config --get-all remote.origin.fetch)
+mirror_mode=$(git config --bool remote.origin.mirror)
+
+if [[ "$fetch_refspec" != '+refs/*:refs/*' ]]; then
+    printf '중단: 예상하지 못한 fetch refspec: %s\n' "$fetch_refspec" >&2
+    exit 1
+fi
+
+if [[ "$mirror_mode" != 'true' ]]; then
+    printf '중단: remote.origin.mirror가 true가 아닙니다.\n' >&2
+    exit 1
+fi
+```
+
+PASS 기준은 PowerShell 경로와 같습니다. `origin`의 fetch URL은 원본이어야 하고, fetch refspec은 `+refs/*:refs/*`, mirror 설정은 `true`여야 합니다.
+
+### 3. ref와 객체 상태를 확인한다
+
+```bash
+git for-each-ref \
+    --format='%(objectname:short) %(refname)' |
+    sort
+
+git for-each-ref \
+    --format='%(refname)' \
+    refs/merge-requests \
+    refs/pull \
+    refs/environments \
+    refs/keep-around \
+    refs/pipelines
+
+git fsck --full
+```
+
+두 번째 명령에서 서버 관리 ref가 출력되면 전체 mirror push 전에 대상 서버가 해당 네임스페이스를 허용하는지 확인합니다. GitLab 또는 GitHub로 이전한다면 아래의 브랜치·태그 선택 push 경로를 먼저 검토합니다.
+
+### 4. 대상이 비어 있는지 확인한다
+
+```bash
+if ! target_refs=$(git ls-remote --refs "$target_url"); then
+    printf '중단: 대상 원격 저장소에 접속하지 못했습니다.\n' >&2
+    exit 1
+fi
+
+if [[ -n "$target_refs" ]]; then
+    printf '%s\n' "$target_refs"
+    printf '중단: 대상 저장소가 비어 있지 않습니다.\n' >&2
+    exit 1
+fi
+```
+
+`target_refs`가 빈 문자열일 때만 계속합니다. 대상에 README 초기 커밋이나 다른 ref가 있으면 강제로 덮어쓰지 않습니다.
+
+기존 대상을 백업해야 한다면 mirror 디렉터리의 상위 경로에서 다음 명령을 실행합니다.
+
+```bash
+git clone --mirror "$target_url" ../target-before-migration.git
+```
+
+백업 경로가 이미 존재하지 않는지 먼저 확인합니다. 기존 백업을 삭제하거나 덮어쓰는 명령은 이 가이드에 포함하지 않습니다.
+
+### 5. 원본의 마지막 상태와 LFS 객체를 가져온다
+
+원본 쓰기를 중지한 뒤 실행합니다.
+
+```bash
+git remote get-url origin
+git fetch --prune origin
+git fsck --full
+```
+
+저장소가 Git LFS를 사용한다면 `git-lfs` 설치와 파일 목록을 확인한 뒤 모든 객체를 가져옵니다.
+
+```bash
+if ! git lfs version >/dev/null 2>&1; then
+    printf '중단: 이 저장소는 LFS를 사용하지만 git-lfs를 실행할 수 없습니다.\n' >&2
+    exit 1
+fi
+
+git lfs ls-files --all
+git lfs fetch --all origin
+```
+
+LFS를 사용하지 않는 저장소에서는 이 블록을 실행하지 않습니다. 저장소의 `.gitattributes`와 기존 운영 문서로 LFS 사용 여부를 먼저 확인합니다.
+
+### 6. dry-run 결과를 사람이 검토한다
+
+```bash
+git push \
+    --mirror \
+    --dry-run \
+    --porcelain \
+    "$target_url"
+```
+
+이 명령이 종료 코드 0을 반환해도 곧바로 다음 명령을 자동 실행하지 않습니다. forced update, deleted, hidden ref, 보호 규칙 오류가 없는지 출력을 읽습니다. 특히 빈 대상에서 `[deleted]`가 보이면 실제 push를 중단합니다.
+
+### 7. 실제 mirror와 LFS 객체를 push 한다
+
+dry-run 검토가 끝난 뒤 별도 명령으로 실행합니다.
+
+```bash
+git push --mirror "$target_url"
+```
+
+서버가 atomic push를 지원하고 전체 ref의 원자적 갱신이 필요하다면 다음 명령을 대신 사용합니다.
+
+```bash
+git push --mirror --atomic "$target_url"
+```
+
+LFS를 사용한다면 Git ref push 뒤에 실제 LFS 객체를 보냅니다.
+
+```bash
+git lfs push --all "$target_url"
+```
+
+### 8. 전체 ref와 기본 브랜치를 비교한다
+
+Bash의 process substitution은 두 명령의 출력을 임시 파일처럼 `diff`에 연결합니다.
+
+```bash
+if diff -u \
+    <(git ls-remote --refs origin | sort) \
+    <(git ls-remote --refs "$target_url" | sort); then
+    printf 'PASS: 원본과 대상의 공개된 ref가 모두 일치합니다.\n'
+else
+    printf '중단: 원본과 대상의 ref 이름 또는 객체 ID가 다릅니다.\n' >&2
+    exit 1
+fi
+```
+
+`diff` 출력의 `-` 행은 원본에만 있는 항목, `+` 행은 대상에만 있는 항목입니다. 차이가 있으면 서버 관리 ref인지 사용자 ref인지 분류하기 전까지 이전 완료로 판단하지 않습니다.
+
+기본 브랜치도 별도로 확인합니다.
+
+```bash
+git ls-remote --symref origin HEAD
+git ls-remote --symref "$target_url" HEAD
+```
+
+두 출력의 `ref: refs/heads/<브랜치> HEAD`가 같아야 합니다. 다르면 대상 저장소의 UI 또는 API에서 기본 브랜치를 수정합니다.
+
+### 9. 새로운 디렉터리에서 일반 clone을 검증한다
+
+```bash
+cd ..
+
+verify_dir='project-verify'
+if [[ -e "$verify_dir" ]]; then
+    printf '중단: 검증 경로가 이미 존재합니다: %s\n' "$verify_dir" >&2
+    exit 1
+fi
+
+git clone "$target_url" "$verify_dir"
+git -C "$verify_dir" fsck --full
+git -C "$verify_dir" branch --all
+git -C "$verify_dir" tag --list
+```
+
+LFS를 사용한다면 검증 clone에서도 실제 다운로드를 확인합니다.
+
+```bash
+git -C "$verify_dir" lfs pull
+```
+
+이 단계가 통과한 뒤에만 사용자와 자동화의 원격 URL을 새 저장소로 전환합니다.
+
 ## GitLab과 GitHub의 서버 관리 ref를 만났을 때
 
 ### 왜 전체 mirror push가 거부되는가
@@ -378,10 +625,35 @@ if ($LASTEXITCODE -ne 0) {
 }
 ```
 
+Linux Bash에서는 배열의 각 refspec을 별도 인자로 전달합니다.
+
+```bash
+portable_refspecs=(
+    'refs/heads/*:refs/heads/*'
+    'refs/tags/*:refs/tags/*'
+)
+
+git push \
+    --dry-run \
+    --porcelain \
+    "$target_url" \
+    "${portable_refspecs[@]}"
+
+git push \
+    "$target_url" \
+    "${portable_refspecs[@]}"
+```
+
 notes도 이식해야 하고 대상이 허용한다면 refspec을 추가합니다.
 
 ```powershell
 $portableRefspecs += 'refs/notes/*:refs/notes/*'
+```
+
+Linux Bash:
+
+```bash
+portable_refspecs+=('refs/notes/*:refs/notes/*')
 ```
 
 이 경로는 전체 mirror와 같지 않습니다. 브랜치와 태그, 선택한 notes만 이식합니다. MR/PR 내부 ref는 옮기지 않으며, MR/PR 자체는 호스팅 서비스의 import/export 또는 API로 별도 이전합니다.
@@ -406,6 +678,24 @@ if ($refDiff.Count -ne 0) {
 'PASS: 원본과 대상의 브랜치와 태그가 모두 일치합니다.'
 ```
 
+Linux Bash:
+
+```bash
+patterns=(
+    'refs/heads/*'
+    'refs/tags/*'
+)
+
+if diff -u \
+    <(git ls-remote --refs origin "${patterns[@]}" | sort) \
+    <(git ls-remote --refs "$target_url" "${patterns[@]}" | sort); then
+    printf 'PASS: 원본과 대상의 브랜치와 태그가 모두 일치합니다.\n'
+else
+    printf '중단: 원본과 대상의 브랜치 또는 태그가 다릅니다.\n' >&2
+    exit 1
+fi
+```
+
 notes refspec을 추가했다면 비교 패턴에도 `refs/notes/*`를 추가합니다.
 
 ## 주기적으로 원본을 대상에 동기화하려면
@@ -427,6 +717,17 @@ origin (push)  = 대상 저장소
 동기화할 때마다 반드시 원본을 먼저 기준 상태로 복원한 뒤 대상에 push합니다.
 
 ```powershell
+git fetch --prune origin
+git push --mirror --dry-run --porcelain origin
+git push --mirror origin
+```
+
+Linux Bash에서도 Git 명령은 같고 변수 표기만 다릅니다.
+
+```bash
+git remote set-url --push origin "$target_url"
+git remote -v
+
 git fetch --prune origin
 git push --mirror --dry-run --porcelain origin
 git push --mirror origin
