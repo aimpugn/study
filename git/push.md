@@ -1,5 +1,7 @@
 # push
 
+새 원격 저장소에 전체 ref를 강제로 맞추는 `git push --mirror`는 일반 push와 삭제 범위가 다릅니다. 실행 전 점검, GitLab/GitHub hidden ref 예외, LFS와 사후 검증은 [`git clone --mirror` 결과를 새 원격 저장소에 그대로 반영하기](git_clone_mirror.md)를 참고합니다.
+
 - [push](#push)
     - [로컬 브랜치를 원격 저장소의 특정 브랜치로 푸시](#로컬-브랜치를-원격-저장소의-특정-브랜치로-푸시)
 
