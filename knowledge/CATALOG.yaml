@@ -102,3 +102,41 @@ cards:
       - "메시지 큐만으로 해결하려면 결국 운영 관측/복구를 위한 최소 원장이 필요해지는 경우가 많다"
     primary_case_commits:
       - "e014ecb"
+
+  - id: K-SUBSTANCE-BEFORE-FORM-GATE-DESIGN
+    title: "실질 선행 게이트 설계: 형식 검사가 완료의 정의를 차지하지 않게 하기"
+    quality: "draft"
+    tags: ["gate", "ci", "review", "ai-collaboration", "process", "goodhart", "verification"]
+    problem_signature: ["green gate wrong result", "checklist ceremony", "form over substance", "ai skips reasoning", "single pass token"]
+    path: "cards/K-SUBSTANCE-BEFORE-FORM-GATE-DESIGN.md"
+    default_decision: "단일 PASS를 없애고 [형식 판정 / 실행별 실질 미판정 목록] 두 칸으로 출력하며, 기록은 내용이 아니라 shape과 참조 실재만 검사하고, 질문 축은 도메인이 아니라 판단 종류(6종)로 잡고 트리거를 좁힌다"
+    key_variants:
+      - "리뷰어가 모든 변경을 실제로 읽는 소규모 팀이면 게이트 유지비가 이득을 넘을 수 있어 리뷰 시선 축 공유로 대체"
+      - "감사 요구가 있는 도메인이면 슬롯이 어차피 필요한 산출물이므로 승인자·시점까지 포함해 더 강하게 둔다"
+    primary_case_commits: []
+
+  - id: K-COMPONENT-OWNED-INVARIANT-VS-PASSTHROUGH
+    title: "코드 단위의 존재 근거: 소유 불변식과 공통 CRUD 컴포넌트의 실패"
+    quality: "draft"
+    tags: ["architecture", "layering", "reuse", "crud", "anemic-model", "middle-man", "naming", "intent", "audit"]
+    problem_signature: ["generic update component", "pass-through layer", "upsert merges rules", "intent loss", "thin wrapper removal risk"]
+    path: "cards/K-COMPONENT-OWNED-INVARIANT-VS-PASSTHROUGH.md"
+    default_decision: "새 단위는 소유물(업무 규칙 / 실행 경계 / 없음)이 있을 때만 만들고, CRUD 원시연산 재사용은 지속성 층에서 하며, 이름에 변경 의도를 넣고 등록·수정을 upsert로 합치지 않는다"
+    key_variants:
+      - "외부가 소유한 데이터를 미러링하는 동기화 유스케이스는 '현재 상태 반영'이 진짜 규칙이므로 upsert가 정답"
+      - "프레임워크가 제공·유지하는 공통 CRUD는 지속성 층이고 유지비를 우리가 내지 않으므로 업무 층 자작과 조건이 다르다"
+      - "감사 컬럼·채번·처리 이력 같은 기술 관심사는 업무 규칙이 아니므로 공통 컴포넌트가 정당하다"
+    primary_case_commits: []
+
+  - id: K-COMMIT-GRANULARITY-COGNITIVE-LOAD
+    title: "커밋 크기와 정리 시점: 인지 부하 대상, 하한, 즉시 정리"
+    quality: "draft"
+    tags: ["git", "commit", "review", "cognitive-load", "batch-size", "bisect", "process", "ai-collaboration"]
+    problem_signature: ["commit size rule", "line limit conflicts with build", "deferred squash", "wip commit series", "format commit hides logic"]
+    path: "cards/K-COMMIT-GRANULARITY-COGNITIVE-LOAD.md"
+    default_decision: "하한은 커밋별 컴파일·통과이고 그 위에서 최대한 세분화하며, 부하 대상은 기존 프로덕션 수정분이고, 정리 결정은 --amend/--fixup으로 즉시 하며, 라인 수는 실측 분포에서 가져온 경고로만 쓴다"
+    key_variants:
+      - "공유 브랜치라 이력 재작성이 불가능하면 각자 브랜치로 분리하거나 규칙 적용 지점을 병합 요청 series로 옮긴다"
+      - "생성 코드 비중이 크면 생성 산출물을 별도 커밋으로 분리·면제하되 '수작업 변경 미포함'을 기계로 검사한다"
+      - "모든 커밋 전체 테스트가 비싸면 전 커밋은 컴파일+범위 테스트, 마지막 커밋만 전체 테스트로 타협한다"
+    primary_case_commits: []

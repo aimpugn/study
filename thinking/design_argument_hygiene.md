@@ -194,3 +194,4 @@ git grep -n "메커니즘이름" -- '*.java'
 - `design/design_mutation_boundary.md` — 오류 1이 다룬 공유 변경 표면과 불변식의 자리를 기술 관점에서 정리.
 - `design/design_tenant_namespace.md` — 오류 4·5가 다룬 테넌트 격리와 다출처 네임스페이스 문제.
 - `thinking/failure_triage.md` — 큰 실패 집합을 원인으로 가르는 사고. "숫자가 아니라 원인으로 본다"는 태도가 이 노트의 "층위로 가른다"와 같은 계열.
+- `knowledge/cards/K-SUBSTANCE-BEFORE-FORM-GATE-DESIGN.md` — 같은 문제를 장치로 막는 쪽. 이 노트의 반박 질문 7개가 사람이 직접 캐묻는 형태라면, 그 카드는 그 캐물음의 답을 기록으로 남기고 형태를 기계가 검사하게 만든다. 특히 5번 질문("어디에 없다는 것인가")은 그 카드의 미판정 목록과 같은 것을 겨냥한다.
