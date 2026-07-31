@@ -104,6 +104,42 @@ Perl의 `JSON::PP`가 설치되어 있을 때 fallback으로 사용할 수 있�
 `axlab/division-dev/kcf`라면 이 그룹까지는 존재해야 합니다. 그 아래의
 하위 그룹과 프로젝트는 스크립트가 필요할 때 만듭니다.
 
+### API 주소와 Git push 주소가 다른 경우
+
+GitLab API는 프로젝트 응답의 `http_url_to_repo`에 GitLab 서버가 설정한
+clone URL을 넣습니다. 예를 들어 API는 프록시 주소로 호출했지만 다음
+내부 주소가 반환될 수 있습니다.
+
+```text
+API 주소:              https://gitlab-rnd.kpn.co.kr
+API가 반환한 Git 주소: https://gitlab-solution.kpn.co.kr/axlab/.../kcf-ui.git
+```
+
+대상 Git push와 ref 검증도 프록시 주소만 사용해야 한다면
+`--target-git-url-base`를 지정합니다.
+
+```bash
+--target-url 'https://gitlab-rnd.kpn.co.kr' \
+--target-git-url-base 'https://gitlab-rnd.kpn.co.kr'
+```
+
+이 옵션은 API가 반환한 저장소 URL의 scheme, host와 port를 교체하고
+프로젝트 경로는 그대로 유지합니다.
+
+```text
+변경 전: https://gitlab-solution.kpn.co.kr/axlab/division-dev/kcf/kcf-ui.git
+변경 후: https://gitlab-rnd.kpn.co.kr/axlab/division-dev/kcf/kcf-ui.git
+```
+
+값에는 scheme, host와 선택적인 port만 넣습니다. 그룹 경로나 프로젝트
+경로는 넣지 않습니다. 예를 들어
+`https://gitlab-rnd.kpn.co.kr/axlab`은 거부됩니다.
+
+이 옵션은 리다이렉트를 허용하지 않습니다. API와 Git 리다이렉트는 계속
+차단하고, 처음부터 바꾼 주소로 Git 요청을 보냅니다. 또한 상태 파일의
+소유권 문맥을 바꾸지 않으므로 기존 프로젝트를 생성했던 같은
+`--work-dir`에 이 옵션을 추가해 재실행할 수 있습니다.
+
 ## 실행 전 점검
 
 저장소 루트에서 실행 파일과 문법을 확인합니다.
@@ -159,6 +195,7 @@ export SOURCE_GITLAB_TOKEN TARGET_GITLAB_TOKEN
 ./git/tools/migrate_gitlab_group.sh \
     --source-url 'https://source.gitlab.example' \
     --target-url 'https://target.gitlab.example' \
+    --target-git-url-base 'https://target.gitlab.example' \
     --source-group 'kcf' \
     --target-group 'axlab/division-dev/kcf' \
     --work-dir '/data/gitlab-migration/kcf'
@@ -176,6 +213,7 @@ export SOURCE_GITLAB_TOKEN TARGET_GITLAB_TOKEN
 ./git/tools/migrate_gitlab_group.sh \
     --source-url 'https://source.gitlab.example' \
     --target-url 'https://target.gitlab.example' \
+    --target-git-url-base 'https://target.gitlab.example' \
     --source-group 'kcf' \
     --target-group 'axlab/division-dev/kcf' \
     --work-dir '/data/gitlab-migration/kcf' \
@@ -189,6 +227,7 @@ export SOURCE_GITLAB_TOKEN TARGET_GITLAB_TOKEN
 ```text
 CREATE_PROJECT
 MIGRATE_REFS
+OVERRIDE_TARGET_GIT_URL  # API와 강제 Git 주소가 다를 때
 VERIFY_PASS
 ```
 
@@ -206,6 +245,7 @@ VERIFY_PASS
 ./git/tools/migrate_gitlab_group.sh \
     --source-url 'https://source.gitlab.example' \
     --target-url 'https://target.gitlab.example' \
+    --target-git-url-base 'https://target.gitlab.example' \
     --source-group 'kcf' \
     --target-group 'axlab/division-dev/kcf' \
     --work-dir '/data/gitlab-migration/kcf' \
@@ -222,6 +262,7 @@ VERIFY_PASS
 ./git/tools/migrate_gitlab_group.sh \
     --source-url 'https://source.gitlab.example' \
     --target-url 'https://target.gitlab.example' \
+    --target-git-url-base 'https://target.gitlab.example' \
     --source-group 'kcf' \
     --target-group 'axlab/division-dev/kcf' \
     --work-dir '/data/gitlab-migration/kcf' \
@@ -235,6 +276,7 @@ LFS 객체도 옮겨야 한다면 마지막 옵션을 추가합니다.
 ./git/tools/migrate_gitlab_group.sh \
     --source-url 'https://source.gitlab.example' \
     --target-url 'https://target.gitlab.example' \
+    --target-git-url-base 'https://target.gitlab.example' \
     --source-group 'kcf' \
     --target-group 'axlab/division-dev/kcf' \
     --work-dir '/data/gitlab-migration/kcf' \
@@ -267,6 +309,7 @@ unset SOURCE_GITLAB_TOKEN TARGET_GITLAB_TOKEN
 | `CREATE_PROJECT` | 빈 프로젝트 생성 완료 | 계속 |
 | `BLOCK_CREATE_AMBIGUOUS` | 생성 응답 실패 뒤 같은 경로 발견 | 소유권 수동 확인 |
 | `MIGRATE_REFS` | 브랜치·태그 전송 시작 | Git 진행 출력 확인 |
+| `OVERRIDE_TARGET_GIT_URL` | API의 Git 주소를 지정한 프록시 주소로 교체 | 변경 전후 URL 확인 |
 | `VERIFY_PASS` | 원본과 대상 ref 일치 | 해당 프로젝트 통과 |
 | `MIGRATION_FAIL` | 전송·기본 브랜치·검증 실패 | 원인 조치 후 재실행 |
 | `RESUME_CREATED` | 도구가 만든 미완료 프로젝트 재개 | 정상 |

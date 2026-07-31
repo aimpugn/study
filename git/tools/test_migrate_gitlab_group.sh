@@ -105,7 +105,44 @@ JSON
     pass "JSON records and project payload"
 }
 
+test_target_repository_url_override() {
+    local previous_base=$TARGET_GIT_URL_BASE
+    local advertised_url
+    local expected_url
+
+    advertised_url="https://gitlab-solution.kpn.co.kr/axlab/kcf/project.git"
+    expected_url="https://gitlab-rnd.kpn.co.kr/axlab/kcf/project.git"
+
+    TARGET_GIT_URL_BASE=$(
+        normalize_git_url_base "https://gitlab-rnd.kpn.co.kr/"
+    )
+    assert_eq \
+        "$expected_url" \
+        "$(target_repository_url "$advertised_url")" \
+        "target repository URL override"
+    assert_eq \
+        "$expected_url" \
+        "$(target_repository_url "${advertised_url/https:/http:}")" \
+        "secure override of an internal plain HTTP URL"
+
+    TARGET_GIT_URL_BASE=""
+    assert_eq \
+        "$advertised_url" \
+        "$(target_repository_url "$advertised_url")" \
+        "target repository URL without override"
+
+    if (normalize_git_url_base "https://gitlab-rnd.kpn.co.kr/gitlab" \
+        >/dev/null 2>&1)
+    then
+        fail "target Git URL base accepted a path"
+    fi
+
+    TARGET_GIT_URL_BASE=$previous_base
+    pass "target repository URL override preserves the repository path"
+}
+
 test_state_and_group_mapping() {
+    local previous_base=$TARGET_GIT_URL_BASE
     SOURCE_URL="https://source.example"
     TARGET_URL="https://target.example"
     SOURCE_GROUP="kcf"
@@ -115,6 +152,9 @@ test_state_and_group_mapping() {
     STATE_FILE="$WORK_DIR/state.tsv"
 
     state_init
+    TARGET_GIT_URL_BASE="https://target-proxy.example"
+    state_init
+    TARGET_GIT_URL_BASE=$previous_base
     state_update \
         11 \
         201 \
@@ -450,6 +490,7 @@ test_local_git_migration_and_extra_ref_detection() {
 main() {
     select_test_json_backend
     test_json_records_and_payloads
+    test_target_repository_url_override
     test_state_and_group_mapping
     test_plan_with_fake_gitlab
     test_apply_creates_only_missing_objects

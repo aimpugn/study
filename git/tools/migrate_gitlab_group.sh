@@ -25,6 +25,7 @@ SOURCE_URL=""
 TARGET_URL=""
 SOURCE_GROUP=""
 TARGET_GROUP=""
+TARGET_GIT_URL_BASE=""
 SOURCE_TOKEN_ENV="SOURCE_GITLAB_TOKEN"
 TARGET_TOKEN_ENV="TARGET_GITLAB_TOKEN"
 WORK_DIR="gitlab-group-migration-work"
@@ -74,6 +75,9 @@ Options:
   --project-regex REGEX   Process only matching source project full paths
   --max-projects N        Process at most N selected projects
   --request-timeout SEC   curl request timeout (default: 30)
+  --target-git-url-base URL
+                          Force target Git push/verify through this URL origin
+                          instead of the API-advertised repository origin
   --apply                 Create missing subgroups and projects
   --migrate-created       Migrate branches/tags for tool-created projects
                           (requires --apply)
@@ -171,6 +175,12 @@ parse_args() {
                 REQUEST_TIMEOUT=$2
                 shift 2
                 ;;
+            --target-git-url-base)
+                (($# >= 2)) ||
+                    die "--target-git-url-base requires a value"
+                TARGET_GIT_URL_BASE=$2
+                shift 2
+                ;;
             --apply)
                 APPLY=1
                 shift
@@ -230,6 +240,32 @@ normalize_base_url() {
     authority=${authority%%/*}
     [[ $authority != *"@"* ]] ||
         die "do not put credentials in a GitLab base URL"
+
+    printf '%s\n' "$value"
+}
+
+normalize_git_url_base() {
+    local value=$1
+    value=${value%/}
+
+    case $value in
+        https://*)
+            ;;
+        http://*)
+            ((ALLOW_INSECURE_HTTP)) ||
+                die "plain HTTP requires --allow-insecure-http: $value"
+            ;;
+        *)
+            die "invalid target Git URL base: $value"
+            ;;
+    esac
+
+    [[ $value != *"?"* && $value != *"#"* ]] ||
+        die "target Git URL base cannot contain query or fragment: $value"
+
+    local authority=${value#*://}
+    [[ -n $authority && $authority != *"/"* && $authority != *"@"* ]] ||
+        die "--target-git-url-base must contain only scheme, host, and optional port"
 
     printf '%s\n' "$value"
 }
@@ -319,6 +355,9 @@ preflight() {
     TARGET_URL=$(normalize_base_url "$TARGET_URL")
     SOURCE_GROUP=$(trim_group_path "$SOURCE_GROUP")
     TARGET_GROUP=$(trim_group_path "$TARGET_GROUP")
+    if [[ -n $TARGET_GIT_URL_BASE ]]; then
+        TARGET_GIT_URL_BASE=$(normalize_git_url_base "$TARGET_GIT_URL_BASE")
+    fi
 
     [[ $SOURCE_URL != "$TARGET_URL" || $SOURCE_GROUP != "$TARGET_GROUP" ]] ||
         die "source and target identify the same GitLab group"
@@ -969,6 +1008,45 @@ validate_repository_url() {
     fi
 }
 
+target_repository_url() {
+    local advertised_url=$1
+    local authority without_scheme path rewritten_url
+
+    if [[ -z $TARGET_GIT_URL_BASE ]]; then
+        validate_repository_url "$advertised_url" || return 1
+        printf '%s\n' "$advertised_url"
+        return
+    fi
+
+    case $advertised_url in
+        https://*|http://*)
+            ;;
+        *)
+            printf 'ERROR: API-advertised repository URL must use HTTP(S): %s\n' \
+                "$advertised_url" >&2
+            return 1
+            ;;
+    esac
+    authority=${advertised_url#*://}
+    authority=${authority%%/*}
+    if [[ $authority == *"@"* ]]; then
+        printf 'ERROR: API-advertised repository URL contains credentials: %s\n' \
+            "$advertised_url" >&2
+        return 1
+    fi
+
+    without_scheme=${advertised_url#*://}
+    [[ $without_scheme == */* ]] || {
+        printf 'ERROR: target repository URL has no path: %s\n' \
+            "$advertised_url" >&2
+        return 1
+    }
+    path=/${without_scheme#*/}
+    rewritten_url="${TARGET_GIT_URL_BASE}${path}"
+    validate_repository_url "$rewritten_url" || return 1
+    printf '%s\n' "$rewritten_url"
+}
+
 git_with_token() {
     local token=$1
     local url=$2
@@ -1002,11 +1080,18 @@ migrate_repository() {
     local source_path=$2
     local source_repo_url=$3
     local target_path=$4
-    local target_repo_url=$5
-    local safe_name repository expected actual_raw actual
+    local advertised_target_repo_url=$5
+    local target_repo_url safe_name repository expected actual_raw actual
 
     validate_repository_url "$source_repo_url" || return 1
-    validate_repository_url "$target_repo_url" || return 1
+    target_repo_url=$(target_repository_url "$advertised_target_repo_url") ||
+        return 1
+    if [[ $target_repo_url != "$advertised_target_repo_url" ]]; then
+        event \
+            "OVERRIDE_TARGET_GIT_URL" \
+            "$advertised_target_repo_url" \
+            "$target_repo_url"
+    fi
 
     safe_name=$(printf '%s' "$target_path" | tr -c 'A-Za-z0-9._-' '_')
     repository="$WORK_DIR/repositories/${source_id}-${safe_name}.git"

@@ -76,20 +76,27 @@
 - Git 인증은 토큰이 URL이나 명령행에 노출되지 않도록 자식 프로세스의 일회성 Git 설정 환경 변수로 전달한다.
 - source fetch는 branches와 tags만 로컬 bare 저장소에 배치한다.
 - target push는 force와 prune 없이 atomic push하고 SHA를 비교한다.
+- `--target-git-url-base`를 지정하면 API가 광고한 target repository
+  URL의 scheme, host, port를 명시한 프록시 주소로 교체하고 repository
+  path는 보존한다.
+- target Git URL override는 기존 생성 상태를 이어갈 수 있도록 state
+  context의 소유권 키에 포함하지 않는다.
 
 ## 6. Verification
 
 - PASS: WSL2 Ubuntu에서 두 스크립트의 `bash -n`
 - PASS: WSL2 Ubuntu에서 CLI `--help`
-- PASS: WSL2 Ubuntu에서 jq 1.8.1 경로로 6개 Bash 테스트
+- PASS: WSL2 Ubuntu에서 jq 1.8.1 경로로 7개 Bash 테스트
   - JSON 응답과 프로젝트 생성 payload
+  - target Git URL base 교체, repository path 보존, path 입력 거부
+  - target Git URL override 추가 후 기존 state context 재사용
   - 상태 파일과 중첩 그룹 경로 매핑
   - 모의 GitLab API 계획 실행, POST 차단, curl 인자 토큰 비노출
   - 적용 모드에서 기존 프로젝트 보존, 없는 그룹과 프로젝트만 생성
   - 잘못된 프로젝트 정규식의 API 접근 전 거부
   - 로컬 bare source/target의 여러 branches/tags 실제 이전
   - ref SHA 일치와 대상 전용 ref 거부
-- PASS: jq가 없는 WSL2 Ubuntu에서 Perl fallback으로 같은 6개 테스트
+- PASS: jq가 없는 WSL2 Ubuntu에서 Perl fallback으로 같은 7개 테스트
 - PASS: ShellCheck 0.11.0
 - PASS: 최종 변경의 `git diff --check`
 - 미실행: 실제 사내 GitLab API와 프록시를 통과하는 end-to-end 실행
@@ -99,12 +106,16 @@
 - 실제 GitLab 버전과 그룹 정책에 따라 프로젝트 생성 또는 초기 push 권한이 거부될 수 있다.
 - 외부 NGINX 요청 크기 제한은 스크립트가 바꾸지 않는다. HTTP 413은 운영 설정을 수정한 뒤 재실행해야 한다.
 - Git LFS는 명시적 `--migrate-lfs`에서만 처리한다.
+- 강제한 target Git URL에는 해당 호스트용 TLS 인증서와 Git HTTP
+  reverse proxy 경로가 준비되어 있어야 한다.
 
 ## 8. Final Audit
 
 - 대상 기존 프로젝트는 상태 파일 소유권 근거가 없으면 항상 건너뛴다.
 - 토큰은 환경 변수로만 받고 URL, 명령 인자, 상태 파일에 저장하지 않는다.
 - HTTP와 리다이렉트는 기본적으로 실패-폐쇄 처리한다.
+- target Git URL override는 API가 광고한 repository path만 재사용하고
+  인증 헤더, push, LFS와 ref 검증을 모두 강제한 URL에 한정한다.
 - target push는 branches와 tags만 대상으로 하며 force와 prune을 사용하지 않는다.
 - 대상 ref에는 누락, SHA 불일치, 예상하지 않은 branch/tag가 없어야 검증을 통과한다.
 - 실제 사내 GitLab 권한, 보호 규칙, hook, quota, NGINX 413 제한은 배포 환경에서 시험 프로젝트로 별도 확인해야 한다.
