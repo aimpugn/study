@@ -643,7 +643,7 @@ $ vmstat 1 3
 - **wa 가 낮다 ≠ 디스크 정상.** CPU 가 바쁘면 iowait 로 분류될 idle 자체가 없다 (3.2절).
 - **wa 가 높다 ≠ 디스크 병목.** CPU 가 한가하면 적은 I/O 로도 비율이 커 보인다 — 판정은 항상 iostat 의 await 로.
 - **si/so 가 움직인다 ≠ 지금 메모리 부족.** `so` > 0 은 지금 압박 진행이지만, `si` 만 있고 `so`=0 이며 MemAvailable 이 충분하면 과거에 스왑아웃된 페이지를 늦게 되읽는 잔재 회수다(리눅스는 메모리가 남아도 스왑 페이지를 선제 복귀시키지 않는다). swpd 가 크고 si 가 K/s 단위로 똑똑 떨어지는 패턴이 전형 — 10장 사례.
-- **free 가 적다 ≠ 메모리 부족.** 부족 판정은 `MemAvailable`(또는 `free -m` 의 available).
+- **free 가 적다 ≠ 메모리 부족.** 부족 판정은 `MemAvailable`(또는 `free -m` 의 available). `MemAvailable` 이 어떻게 계산되며 왜 `MemFree` 로는 안 되는지는 [memory_metrics.md 3장](../../memory/memory_metrics.md)에 계산식 재현과 함께 정리했다.
 - **첫 줄을 현재 상태로 읽음.** 부팅 이후 평균이다.
 
 ### 6.2 iostat — 디바이스별 판정의 중심
