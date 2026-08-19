@@ -27,33 +27,42 @@ flowchart TD
     end
 
     subgraph Tier1["Tier 1: 선행 게이트 및 스코프 라우터 (Scope Router)"]
-        S["스킬 메타데이터 (SKILL.md Frontmatter)"]
+        S["스킬 메타데이터 (SKILL.md)"]
         TF["범용 작업 프레임 (Universal Task Frame)"]
     end
 
     subgraph Tier2["Tier 2: 점진적 지연 로딩 계층 (Lazy Loading via Tool)"]
-        REF["세부 참조 및 스펙 문서 (view_file 온디맨드 로드)"]
+        REF["세부 참조 및 스펙 문서 (deep-rule-ssot.md)"]
     end
 
+    LLM["LLM 추론 및 초안 생성"]
+
     subgraph Tier3["Tier 3: 결정론적 하네스 계층 (Deterministic Harness)"]
-        H["프로그램 기반 검증기 (CLI Scripts / Linter / Tests)"]
+        H["프로그램 기반 검증기 (verify_harness.py)"]
     end
+
+    OUTPUT["최종 결과물 확정"]
 
     subgraph Tier4["Tier 4: 피드백 캘리브레이션 계층 (Calibration & Promotion)"]
         LEDGER["피드백 원장 (feedback_ledger.md)"]
         PROMOTE["5단계 일반화 검증 및 룰 승격"]
     end
 
-    Tier0 -->|런타임 매 턴 강제 주입| Tier1
-    Tier1 -->|작업 매칭 시 view_file 호출| Tier2
-    Tier2 --> LLM["LLM 추론 및 초안 생성"]
-    LLM --> Tier3
-    Tier3 -->|검증 통과: Exit Code 0| Output["최종 결과물 확정"]
-    Tier3 -->|검증 실패: 진단 로그 피드백| LLM
-    Output -.->|사용자 피드백 발생 시| Tier4
+    %% 정방향 파이프라인 실행 흐름 (Top to Bottom)
+    G -->|런타임 매 턴 강제 주입| S
+    S -->|작업 매칭 시 view_file 호출| REF
+    REF -->|온디맨드 로드된 지침| LLM
+    LLM -->|초안 전달| H
+    H -->|검증 통과: Exit Code 0| OUTPUT
+
+    %% 자체 교정 피드백 루프 (Self-Correction Loop)
+    H -.->|검증 실패: 진단 로그 피드백| LLM
+
+    %% 피드백 및 승격 루프 (Calibration & Promotion Loop)
+    OUTPUT -.->|사용자 피드백 발생 시| LEDGER
     LEDGER --> PROMOTE
-    PROMOTE -.->|글로벌 룰 승격| Tier0
-    PROMOTE -.->|도메인 스펙 승격| Tier2
+    PROMOTE -.->|글로벌 헌법 룰 승격| G
+    PROMOTE -.->|도메인 상세 스펙 승격| REF
 ```
 
 ---
