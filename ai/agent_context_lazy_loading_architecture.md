@@ -22,17 +22,17 @@
 ```mermaid
 flowchart TD
     subgraph Tier0["Tier 0: 상시 주입 계층 (Eager Invariants)"]
-        G["글로벌 불변식 & 런타임 규칙"]
+        G["글로벌 불변식 및 런타임 규칙"]
         W["워크스페이스 오버레이 (AGENTS.md)"]
     end
 
-    subgraph Tier1["Tier 1: 선행 게이트 & 스코프 라우터 (Scope Router)"]
+    subgraph Tier1["Tier 1: 선행 게이트 및 스코프 라우터 (Scope Router)"]
         S["스킬 메타데이터 (SKILL.md Frontmatter)"]
         TF["범용 작업 프레임 (Universal Task Frame)"]
     end
 
     subgraph Tier2["Tier 2: 점진적 지연 로딩 계층 (Lazy Loading via Tool)"]
-        REF["세부 참조/스펙 문서 (view_file로 온디맨드 로드)"]
+        REF["세부 참조 및 스펙 문서 (view_file 온디맨드 로드)"]
     end
 
     subgraph Tier3["Tier 3: 결정론적 하네스 계층 (Deterministic Harness)"]
@@ -41,15 +41,15 @@ flowchart TD
 
     subgraph Tier4["Tier 4: 피드백 캘리브레이션 계층 (Calibration & Promotion)"]
         LEDGER["피드백 원장 (feedback_ledger.md)"]
-        PROMOTE["5단계 일반화 검증 -> Tier 0 / Tier 2 승격"]
+        PROMOTE["5단계 일반화 검증 및 룰 승격"]
     end
 
     Tier0 -->|런타임 매 턴 강제 주입| Tier1
-    Tier1 -->|작업 매칭 시 view_file 온디맨드 호출| Tier2
+    Tier1 -->|작업 매칭 시 view_file 호출| Tier2
     Tier2 --> LLM["LLM 추론 및 초안 생성"]
     LLM --> Tier3
-    Tier3 -->|Exit Code 0 (PASS)| Output["최종 결과물 확정"]
-    Tier3 -->|Exit Code != 0 (FAIL) + 진단 로그| LLM
+    Tier3 -->|검증 통과: Exit Code 0| Output["최종 결과물 확정"]
+    Tier3 -->|검증 실패: 진단 로그 피드백| LLM
     Output -.->|사용자 피드백 발생 시| Tier4
     LEDGER --> PROMOTE
     PROMOTE -.->|글로벌 룰 승격| Tier0
