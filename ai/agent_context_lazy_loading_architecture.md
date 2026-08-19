@@ -15,9 +15,9 @@
 
 ---
 
-## 2. 4계층 아키텍처 (The 4-Tier Architecture)
+## 2. 5계층 아키텍처 (The 5-Tier Architecture)
 
-이 아키텍처는 **"상시 주입 불변식 -> 스코프 라우터 -> 점진적 로딩 -> 결정론적 하네스 검증"**의 4단계로 동작한다.
+이 아키텍처는 **"상시 주입 불변식 -> 스코프 라우터 -> 점진적 로딩 -> 결정론적 하네스 검증 -> 피드백 캘리브레이션"**의 5단계 파이프라인으로 동작한다.
 
 ```mermaid
 flowchart TD
@@ -39,12 +39,18 @@ flowchart TD
         H["프로그램 기반 검증기 (CLI Scripts / Linter / Tests)"]
     end
 
+    subgraph Tier4["Tier 4: 피드백 캘리브레이션 계층 (Generalization Loop)"]
+        C["피드백 분석 -> 5단계 일반화 검증 -> 룰셋 영구 승격"]
+    end
+
     Tier0 -->|매 턴 100% 강제 주입| Tier1
     Tier1 -->|조건 부합 시에만 호출| Tier2
     Tier2 --> LLM["LLM 추론 및 초안 생성"]
     LLM --> Tier3
     Tier3 -->|Exit Code 0 (PASS)| Output["최종 결과물 확정"]
     Tier3 -->|Exit Code != 0 (FAIL)| Tier2
+    Output -.->|사용자 피드백 발생 시| Tier4
+    Tier4 -.->|일반화된 룰 영구 반영| Tier0
 ```
 
 ---
@@ -52,7 +58,7 @@ flowchart TD
 ## 3. 계층별 상세 명세
 
 ### [Tier 0] 상시 주입 계층 (Eager System Invariants)
-* **역할**: 대화 컴팩션과 무관하게 항상 유지되어야 하는 최상위 불변식.
+* **역할**: 대화 컴팩션(요약)과 무관하게 항상 유지되어야 하는 최상위 불변식.
 * **주입 방식**: 런타임 전처리기(Runtime Preprocessor)가 시스템 프롬프트 최상단에 강제 주입 (LLM의 호출 여부와 무관하게 100% 결정적 로드).
 * **내용**:
   * 사실 우선 원칙 (Fact > User Opinion / Speculation)
@@ -82,6 +88,15 @@ flowchart TD
   * **제약/예산 검증기**: 글자 수, 라인 수, 토큰 상하한 엄격 검사 (`check_budget.py`)
   * **구조/스키마 검증기**: JSON Schema, Markdown 헤더 구조 검증 (`validate_schema.py`)
 * **종결 기준**: 스크립트의 리턴 코드가 `Exit Code 0`일 때만 작업을 종료.
+
+### [Tier 4] 피드백 캘리브레이션 계층 (Calibration & Generalization Loop)
+* **역할**: 피드백이 발생했을 때 단순 문자열 치환에 머무르지 않고, **작성자의 판단 의사결정 프로세스(Decision Layer)를 일반화하여 영구 룰로 승격**.
+* **5단계 검증 프로세스**:
+  1. `Representative Case`: 최초에 실패했던 사례가 해결되는가?
+  2. `Near Transfer Case`: 같은 장르의 다른 문서에서도 동일하게 자연스러운가?
+  3. `Far Transfer Case`: 다른 장르(기술문서, 보고서 등)에 적용해도 망가지지 않는가?
+  4. `Clean Control`: 원래 정상이었던 대조군 문장을 훼손하지 않는가?
+  5. `Adversarial Control`: 과적합(과도한 억제/검열)이 발생하지 않는가?
 
 ---
 
@@ -162,20 +177,25 @@ def verify_file(file_path: Path) -> bool:
 
     content = file_path.read_text(encoding="utf-8")
     
-    # 1. 길이 및 예산 제약 검증
-    char_count_with_spaces = len(content)
-    if char_count_with_spaces > 1000:
-        print(f"FAIL: Length exceeded {char_count_with_spaces} > 1000")
+    # 1. 길이 및 예산 제약 검증 (공백 포함 글자 수)
+    char_count = len(content)
+    if char_count < 300 or char_count > 1000:
+        print(f"FAIL: Length constraint violated (300 <= {char_count} <= 1000)")
         return False
 
-    # 2. 금지된 패턴/어휘 검증
-    banned_patterns = [r"압도적인", r"혁신적인", r"시너지", r"오너십"]
+    # 2. 금지된 추상/과장 패턴 검증
+    banned_patterns = [r"압도적인", r"혁신적인", r"시너지", r"오너십", r"드라이브", r"흐름을 닫다"]
     for pat in banned_patterns:
         if re.search(pat, content):
             print(f"FAIL: Banned pattern detected: {pat}")
             return False
 
-    print(f"PASS: {file_path} passed all deterministic gates.")
+    # 3. 필수 마크다운 헤더 구조 검증
+    if not re.search(r"^#+\s+", content, re.MULTILINE):
+        print("FAIL: Missing structured markdown headers.")
+        return False
+
+    print(f"PASS: {file_path} ({char_count} chars) passed all deterministic gates.")
     return True
 
 if __name__ == "__main__":
@@ -183,9 +203,34 @@ if __name__ == "__main__":
     sys.exit(0 if verify_file(target) else 1)
 ```
 
+### (4) `calibration/feedback_ledger.md` (Tier 4: 피드백 일반화 원장 템플릿)
+
+```markdown
+# Feedback Calibration Ledger
+
+## Format
+- **Date**: YYYY-MM-DD
+- **Episode**: Rejected candidate vs User corrected candidate
+- **Failing Layer**: Stance / Slot Mismatch / Over-assembly / Collocation
+- **General Principle**: Abstract rule derived (Never a simple keyword ban)
+- **Scope**: Applied genre and role
+```
+
 ---
 
-## 6. 이식 및 동작 테스트 절차
+## 6. 멀티 런타임 연결 및 이식 가이드
+
+각 AI 도구 환경에서 Tier 0 최상위 룰을 인식시키는 방법:
+
+| AI 런타임 | 글로벌 SSOT 연결 방식 | 워크스페이스 로컬 오버레이 |
+| :--- | :--- | :--- |
+| **Codex** | `~/.codex/AGENTS.md` -> 글로벌 `AGENTS.md` 심링크 | 프로젝트 루트의 `AGENTS.md` 자동 로드 |
+| **Claude Code** | `~/.claude/CLAUDE.md` 내에 `@/path/to/global/AGENTS.md` 선언 | 프로젝트 루트의 `CLAUDE.md` 자동 로드 |
+| **Gemini / Antigravity** | `~/.gemini/GEMINI.md` 내에 `@/path/to/global/AGENTS.md` 선언 | `<RULE[workspace/AGENTS.md]>` 자동 주입 |
+
+---
+
+## 7. 동작 테스트 절차
 
 1. 새 저장소에 위 **최소 파일 구조(5개 파일)**를 생성합니다.
 2. 최상위 `AGENTS.md`에 **3대 불변식**을 배치합니다.
