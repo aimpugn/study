@@ -127,3 +127,7 @@ The following options are unaffected by --path-format:
 --show-object-format[=(storage|input|output)]
     Show the object format (hash algorithm) used for the repository for storage inside the .git directory, input, or output.
     For input, multiple algorithms may be printed, space-separated. If not specified, the default is "storage".
+
+## 관련 노트
+
+- [`git/verify_rebase_result.md`](verify_rebase_result.md) — `rev-parse <커밋>:<경로>` 로 blob 해시를 뽑아 내용 동일성을 판정하는 방법

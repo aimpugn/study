@@ -144,3 +144,7 @@ git log --oneline --decorate --graph --all
 
     이 명령은 `master`와 `branch-X` 두 브랜치에서 각각 독립적으로 발생한 커밋들을 모두 보여줍니다.
     이 방법은 두 브랜치가 어떻게 다른지 전체적인 차이를 파악하고 싶을 때 유용합니다 [1].
+
+## 관련 노트
+
+- [`git/rebase_replay_order.md`](rebase_replay_order.md) — `--topo-order` 와 `--date-order` 가 무엇을 다르게 정렬하는지

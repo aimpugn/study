@@ -1306,3 +1306,9 @@ inellij에서
 ## 기타
 
 - [Git Rebase HOWTO](https://openedx.atlassian.net/wiki/spaces/AC/pages/13205835/Git+Rebase+HOWTO)
+
+## 관련 노트
+
+- [`git/rebase_replay_order.md`](rebase_replay_order.md) — 리베이스가 커밋을 어떤 순서로 재적용하는지, 갈래가 둘일 때 날짜가 뒤집히는 이유
+- [`git/rebase_lost_commit_recovery.md`](rebase_lost_commit_recovery.md) — 리베이스 중 빈 커밋이 되어 조용히 사라진 작업을 되살리기
+- [`git/verify_rebase_result.md`](verify_rebase_result.md) — 리베이스 결과가 의도한 것인지 판정하는 명령들

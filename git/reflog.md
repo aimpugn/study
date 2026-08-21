@@ -103,3 +103,7 @@ d4060af4d HEAD@{3}: rebase (continue): coreapi/users: Various enhancements
 # 이는 리베이스 도중 충돌이 발생했거나, 다른 이유로 리베이스를 취소하기로 결정했을 때 발생할 수 있다.
 61e01e865 (HEAD -> feature/awesome) HEAD@{5}: rebase (abort): returning to refs/heads/feature/awesome
 ```
+
+## 관련 노트
+
+- [`git/rebase_lost_commit_recovery.md`](rebase_lost_commit_recovery.md) — reflog 로 리베이스를 되돌릴 때 `@{1}` 을 믿으면 안 되는 이유, 리베이스 항목의 만료 기간

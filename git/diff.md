@@ -226,3 +226,7 @@ git diff origin/main origin/feature/my-branch --name-status | cat
   ```sh
   git diff --cached
   ```
+
+## 관련 노트
+
+- [`git/verify_rebase_result.md`](verify_rebase_result.md) — `--quiet` 종료 코드와 `-w` 로 공백 변경을 걷어 내 두 리베이스 결과를 비교하는 방법

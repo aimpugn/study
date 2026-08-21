@@ -393,3 +393,8 @@ git rebase revert_branch
     - 이미 리베이스된 커밋들은 이러한 충돌을 해결한 후의 상태를 나타낸다
 - **Commits from main**은 main 브랜치에서의 최신 커밋들을 나타낸다
     - 리베이스 작업은 보통 현재 브랜치의 커밋들을 main 브랜치의 최신 상태로 이동시키기 위해 수행된다
+
+## 관련 노트
+
+- [`git/rebase_replay_order.md`](rebase_replay_order.md) — 리베이스 충돌에서 3-way 중앙이 base 인 이유, 좌우가 같은 hunk가 생기는 까닭
+- [`git/rebase_lost_commit_recovery.md`](rebase_lost_commit_recovery.md) — 충돌을 한쪽으로 해소했더니 커밋이 사라진 경우

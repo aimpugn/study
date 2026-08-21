@@ -299,3 +299,8 @@
     ```shell
     git push --force-with-lease
     ```
+
+## 관련 노트
+
+- [`git/rebase_lost_commit_recovery.md`](rebase_lost_commit_recovery.md) — 충돌 해소로 빈 커밋이 되어 사라진 커밋을 복원하는 사례
+- [`git/rebase_replay_order.md`](rebase_replay_order.md) — 갈래가 둘인 이력을 리베이스할 때의 적용 순서
