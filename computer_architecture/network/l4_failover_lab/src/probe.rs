@@ -39,14 +39,6 @@ pub struct Options {
 
 /// 측정을 처음부터 끝까지 진행합니다.
 ///
-/// 순서대로 이렇게 돕니다.
-/// 1. 흐름을 `flows` 개 열고, 첫 흐름의 내 주소와 상대 주소를 찍습니다.
-/// 2. 단계마다 (2단계부터는 셸의 신호를 기다린 뒤) 모든 흐름을 한 번씩 왕복시킵니다.
-///    왕복 순서는 [`shuffled`] 로 섞습니다.
-/// 3. 1단계 결과를 기준선으로 저장하고, 어느 백엔드에 붙었는지를 `backends` 파일에
-///    적습니다. 셸이 이 값을 보고 어느 백엔드를 죽일지 정합니다.
-/// 4. 단계마다 [`report`] 로 결과를 찍습니다.
-///
 /// # Arguments
 /// * `options` — 접속 대상, 흐름 수, 단계 수, 씨앗, 타임아웃, 신호 디렉터리.
 ///
@@ -57,9 +49,13 @@ pub struct Options {
 /// 신호 디렉터리를 만들지 못하거나, 접속에 실패하거나, 기준선 파일 쓰기가
 /// 실패하면 그 오류를 돌려줍니다.
 pub fn run(options: &Options) -> std::io::Result<()> {
+    // 셸과 신호를 주고받을 자리를 먼저 확보합니다. 이 디렉터리가 없으면
+    // 단계 사이에서 서로를 기다리지 못합니다.
     let timeout = Duration::from_secs(options.timeout);
     fs::create_dir_all(&options.gates)?;
 
+    // 측정할 흐름을 한꺼번에 열고, 클라이언트가 무엇을 상대로 인식하는지 남깁니다.
+    // 로드밸런서를 거쳐도 여기 찍히는 상대는 백엔드가 아니라 VIP 입니다.
     let mut streams = open_flows(&options.to, options.flows)?;
     say(&format!(
         "연결: local={}  peer(소켓이 기억하는 상대)={}",
@@ -69,14 +65,20 @@ pub fn run(options: &Options) -> std::io::Result<()> {
 
     let mut origin: Vec<String> = Vec::new();
     for stage in 1..=options.stages {
+        // 2단계부터는 셸이 장애를 낼 시간을 주기 위해 멈춰 기다립니다.
         if stage > 1 {
             wait_gate(&options.gates, stage - 1);
         }
+
+        // 지정된 단계에서는 기존 연결 대신 새 연결로 잽니다. 죽은 백엔드를 걷어낸 뒤
+        // 새 연결은 정상 백엔드로 가는지를 같은 시점에 확인하기 위해서입니다.
         let fresh = options.new_at == Some(stage);
         if fresh {
             streams = open_flows(&options.to, options.flows)?;
         }
 
+        // 순서를 섞어 왕복시킵니다. 실제 트래픽은 연결을 만든 순서대로 도착하지 않는데,
+        // 섞지 않으면 라운드로빈이 생성 순서 그대로 재배분해 우연히 원래 백엔드를 맞춥니다.
         let order = shuffled(options.flows, options.seed.wrapping_add(stage as u64));
         let mut slots: Vec<Option<Outcome>> = (0..options.flows).map(|_| None).collect();
         for &index in &order {
@@ -84,6 +86,8 @@ pub fn run(options: &Options) -> std::io::Result<()> {
         }
         let results: Vec<Outcome> = slots.into_iter().flatten().collect();
 
+        // 1단계 결과를 기준선으로 남깁니다. 이후 단계는 이것과 비교해 유지 여부를 세고,
+        // 셸도 이 파일을 읽어 어느 백엔드를 죽일지 정합니다.
         if stage == 1 {
             origin = results
                 .iter()
@@ -91,6 +95,7 @@ pub fn run(options: &Options) -> std::io::Result<()> {
                 .collect();
             fs::write(options.gates.join("backends"), origin.join(" "))?;
         }
+
         report(stage, options.flows, &origin, &results, fresh);
     }
     Ok(())

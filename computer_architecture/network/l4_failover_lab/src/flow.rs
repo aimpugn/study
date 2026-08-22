@@ -144,11 +144,6 @@ impl Conn {
 
     /// 한 줄을 보내고 한 줄을 받습니다.
     ///
-    /// 순서대로 세 가지를 합니다.
-    /// 1. 읽기 타임아웃을 겁니다.
-    /// 2. 메시지 뒤에 개행을 붙여 보냅니다.
-    /// 3. 개행이 나올 때까지 읽고, 결과를 [`Outcome`] 갈래로 분류합니다.
-    ///
     /// # Arguments
     /// * `message` — 보낼 내용. 개행은 이 함수가 붙입니다.
     /// * `timeout` — 응답을 기다릴 시간.
@@ -157,11 +152,17 @@ impl Conn {
     /// 성공·FIN·RST·타임아웃·기타 중 하나. 이 함수는 실패해도 `Err` 를 돌려주지 않습니다.
     /// 실패 자체가 측정 대상이라 [`Outcome`] 안에 담아 돌려줍니다.
     pub fn roundtrip(&mut self, message: &str, timeout: Duration) -> Outcome {
+        // 응답이 영영 안 올 수 있으므로 기다릴 상한을 먼저 겁니다.
+        // 이 상한이 없으면 VIP 를 아무도 안 들고 있을 때 측정이 멈춰 버립니다.
         self.writer.set_read_timeout(Some(timeout)).ok();
         let start = Instant::now();
+
+        // 보내기부터 실패하면 그 자체가 결과이므로 분류해서 돌려줍니다.
         if let Err(err) = writeln!(self.writer, "{message}") {
             return from_error(&err, start.elapsed().as_secs_f64());
         }
+
+        // 개행이 나올 때까지 읽습니다. 한 번의 read 로는 응답이 잘려 올 수 있습니다.
         let mut line = String::new();
         match self.reader.read_line(&mut line) {
             Ok(0) => Outcome::Fin { secs: start.elapsed().as_secs_f64() },

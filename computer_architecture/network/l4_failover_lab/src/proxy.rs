@@ -47,14 +47,6 @@ pub fn run(options: &Options) -> io::Result<()> {
 
 /// 클라이언트 연결 하나를 백엔드와 이어 줍니다.
 ///
-/// 순서대로 세 가지를 합니다.
-/// 1. 백엔드로 **별도의** TCP 연결을 맺습니다. 이 시점에 연결이 두 개가 됩니다.
-/// 2. 클라이언트 → 백엔드 방향을 맡을 스레드를 하나 띄웁니다.
-/// 3. 백엔드 → 클라이언트 방향은 이 스레드가 직접 맡습니다.
-///
-/// 방향마다 스레드가 필요한 이유는 [`pump`] 안의 `io::copy` 가 상대가 끊을 때까지
-/// 막히기 때문입니다. 한 스레드로 양방향을 처리하면 한쪽이 조용할 때 반대쪽이 굶습니다.
-///
 /// # Arguments
 /// * `client` — 이미 수락된 클라이언트 소켓. 소유권을 가져갑니다.
 /// * `backend` — 접속할 백엔드 주소.
@@ -62,10 +54,17 @@ pub fn run(options: &Options) -> io::Result<()> {
 /// # Errors
 /// 백엔드 접속이나 소켓 핸들 복제에 실패하면 그 오류를 돌려줍니다.
 fn relay(client: TcpStream, backend: &str) -> io::Result<()> {
+    // 백엔드로 별도의 TCP 연결을 맺습니다. 이 한 줄이 패킷 모드와의 차이를 만듭니다.
+    // 이 시점부터 연결이 두 개이고, 백엔드가 보는 상대는 클라이언트가 아니라 이 프로그램입니다.
     let server = TcpStream::connect(backend)?;
     let (client_read, server_write) = (client.try_clone()?, server.try_clone()?);
+
+    // 방향마다 스레드를 하나씩 씁니다. pump 안의 io::copy 가 상대가 끊을 때까지 막히므로,
+    // 한 스레드로 양방향을 처리하면 한쪽이 조용할 때 반대쪽이 굶습니다.
     let upstream = thread::spawn(move || pump(client_read, server_write));
     pump(server, client);
+
+    // 올라가는 방향이 끝날 때까지 기다렸다가 이 연결을 정리합니다.
     upstream.join().ok();
     Ok(())
 }

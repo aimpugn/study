@@ -18,12 +18,6 @@ pub struct Options {
 
 /// 연결을 하나 붙들고, 사용자가 친 줄을 그대로 보내며 결과를 보고합니다.
 ///
-/// 순서대로 이렇게 돕니다.
-/// 1. 접속하고 내 주소와 상대 주소를 찍습니다. 상대는 VIP 로 찍힙니다.
-/// 2. 한 줄을 읽어 보내고 결과를 찍습니다. 실패면 그 신호가 무엇을 뜻하는지도 찍습니다.
-/// 3. 타임아웃은 연결이 아직 살아 있을 수 있으므로 계속 두드려 볼 수 있게 둡니다.
-///    RST 나 FIN 은 이 소켓으로 더 할 수 있는 일이 없으므로 끝냅니다.
-///
 /// # Arguments
 /// * `options` — 접속 주소와 응답 대기 시간.
 ///
@@ -33,6 +27,8 @@ pub struct Options {
 /// # Errors
 /// 접속에 실패하거나 표준 입출력이 실패하면 그 오류를 돌려줍니다.
 pub fn run(options: &Options) -> std::io::Result<()> {
+    // 접속하면서 내 주소와 상대 주소를 보여 줍니다. 로드밸런서를 거쳐도
+    // 상대는 VIP 로 찍히며, 이 값은 연결이 끝날 때까지 바뀌지 않습니다.
     let timeout = Duration::from_secs(options.timeout);
     let mut conn = Conn::connect(&options.to)?;
     println!(
@@ -42,6 +38,7 @@ pub fn run(options: &Options) -> std::io::Result<()> {
     );
     println!("아무 글자나 치고 엔터를 누르세요. 종료는 Ctrl-C 또는 Ctrl-D.\n");
 
+    // 사용자가 한 줄 칠 때마다 그대로 보내고 결과를 보고합니다.
     let stdin = std::io::stdin();
     loop {
         print!("> ");
@@ -59,6 +56,8 @@ pub fn run(options: &Options) -> std::io::Result<()> {
         if let Some(hint) = outcome.hint() {
             println!("     {hint}");
         }
+        // 타임아웃은 연결이 아직 살아 있을 수 있으므로 계속 두드려 보게 둡니다.
+        // RST 나 FIN 은 이 소켓으로 더 할 수 있는 일이 없으므로 끝냅니다.
         if !matches!(outcome, Outcome::Reply { .. } | Outcome::Timeout { .. }) {
             return Ok(());
         }
