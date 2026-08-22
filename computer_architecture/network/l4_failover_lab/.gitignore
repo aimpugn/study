@@ -1,0 +1,5 @@
+# 실행 산출물과 조정용 파일
+bin/
+target/
+logs/
+.gates/

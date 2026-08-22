@@ -1,0 +1,13 @@
+[package]
+name = "l4lab"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# 인자 파싱은 이 실험대의 주제가 아니다. 직접 짰더니 오타(--flow), 잘못된 값
+# (--flows abc), 값 누락이 전부 조용히 통과해 흐름 1개로 측정하고도 아무 말이
+# 없었습니다. 측정 도구가 틀린 조건으로 조용히 도는 것이 여기서 가장 나쁜 실패입니다.
+clap = { version = "4", features = ["derive"] }
+
+[profile.release]
+opt-level = 1

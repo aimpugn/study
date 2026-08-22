@@ -88,6 +88,8 @@ TCP 핸드셰이크는 **클라이언트와 백엔드 서버 사이에 end-to-en
 
 이 가족의 현대적 구성원이 리눅스 커널의 LVS/IPVS, Google의 Maglev(ECMP + 일관 해싱으로 상태 최소화), Meta의 katran(XDP/eBPF로 NIC 드라이버 레벨에서 패킷 처리), AWS NLB입니다.
 
+같은 패킷 모드 안에서도 **연결별 상태를 저장하는가, 매번 계산하는가**가 갈립니다. 흐름 테이블에 `흐름 → 백엔드` 매핑을 적어 두는 구성은 그 테이블을 잃으면 기존 연결이 끊기고, 일관 해싱으로 매번 계산하는 구성은 잃을 상태가 없어 다른 노드가 같은 답에 도달합니다. Maglev가 "상태 최소화"라고 불리는 이유가 이것이며, 이 차이가 장애 시 기존 연결의 생사를 실제로 가릅니다. IPVS로 두 방식을 나란히 재현한 실험이 [L4 장애 전환 실험실](../../computer_architecture/network/l4_failover_lab/README.md)에 있습니다.
+
 패킷 모드의 본질적 한계가 중요합니다. **스트림을 재조립하지 않으므로 페이로드를 "읽을" 수 없고, TLS 핸드셰이크의 당사자가 아니므로 세션키가 존재하지 않아 복호화가 원리적으로 불가능합니다.** HTTP 경로 기반 라우팅, 쿠키 persistence, 헤더 삽입 모두 불가능합니다. 대신 패킷당 처리 비용이 극히 작아 초당 수백만 패킷을 다루고, 클라이언트 IP가 자연히 보존됩니다.
 
 ### 프록시 모드 — 연결을 끝내고, 다시 만든다
@@ -389,7 +391,7 @@ while true:
 
 - **커널 우회와 자체 TCP/IP 스택** — NetScaler는 FreeBSD 위에서 돌지만 데이터 경로는 커널 소켓을 쓰지 않습니다. Packet Engine이라는 프로세스가 NIC에서 패킷을 직접 가져와 자체 구현 TCP/IP 스택으로 처리합니다(인터럽트·시스템콜·컨텍스트 스위치 제거, run-to-completion). 멀티코어 모델(nCore)에서는 코어마다 Packet Engine이 하나씩 돌고 NIC의 RSS가 흐름을 코어에 분배합니다. F5의 TMM도 같은 사상입니다. DPDK 기반 소프트웨어 LB들이 같은 기법을 범용 서버에서 재현합니다. **"OS 소켓 API를 쓰지 않는다"는 것이지 "소켓 의미론이 없다"는 것이 아닙니다.** 연결 테이블의 항목 하나가 곧 소켓 하나에 해당합니다.
 - **암호 가속** — TLS 핸드셰이크의 비대칭 연산(서명)은 CPU에 비쌉니다. 하드웨어 어플라이언스는 이를 전담하는 가속 칩에 오프로드하고, 대칭(벌크) 암복호는 CPU의 AES-NI로 처리합니다. "SSL 오프로드 장비"라는 상품성 자체가, 웹서버 CPU에서 이 비용을 떼어내던 2000년대의 필요에서 나왔습니다.
-- **운영 기능의 제품화** — 헬스체크(주기적으로 백엔드에 프로브를 보내 풀에서 제외/복귀), persistence 테이블, 연결 드레이닝, Active-Standby 이중화(연결 테이블 동기화로 장애 시 세션 유지), SYN flood 흡수(핸드셰이크가 완성되기 전에는 백엔드에 아무것도 전달하지 않고, SYN 쿠키로 상태 없이 버팀) 등이 박스에 묶여 있습니다.
+- **운영 기능의 제품화** — 헬스체크(주기적으로 백엔드에 프로브를 보내 풀에서 제외/복귀), persistence 테이블, 연결 드레이닝, Active-Standby 이중화(연결 테이블 동기화로 장애 시 세션 유지 — 다만 동기화가 비동기라 갓 맺어진 연결은 여전히 희생됩니다. [실측](../../computer_architecture/network/l4_failover_lab/README.md#실험-2-상태-동기화를-켜면)), SYN flood 흡수(핸드셰이크가 완성되기 전에는 백엔드에 아무것도 전달하지 않고, SYN 쿠키로 상태 없이 버팀) 등이 박스에 묶여 있습니다.
 
 ## 왜 이렇게 하는가 — 설계 결정들의 이유
 
@@ -465,4 +467,4 @@ ADC(Application Delivery Controller) — 로드밸런싱에 TLS 종단·L7 라�
 - Google Maglev 논문 — "Maglev: A Fast and Reliable Software Network Load Balancer" (NSDI 2016)
 - Meta katran — github.com/facebookincubator/katran (XDP/eBPF 기반 L4)
 - TLS 1.3 — RFC 8446 (키 교환·PFS·세션 재개)
-- 관련 내부 문서: [소켓 프로그래밍](../../interviews/socket-programming.md), [네트워크 스택과 I/O 멀티플렉싱](../../interviews/os-kernel-distributed-systems-deep-dive/01d_network_stack_and_io_multiplexing.md), [nginx](../../web/nginx/nginx.md), [DDoS](../../security/ddos.md)
+- 관련 내부 문서: [L4 장애 전환 실험실](../../computer_architecture/network/l4_failover_lab/README.md), [소켓 프로그래밍](../../interviews/socket-programming.md), [네트워크 스택과 I/O 멀티플렉싱](../../interviews/os-kernel-distributed-systems-deep-dive/01d_network_stack_and_io_multiplexing.md), [nginx](../../web/nginx/nginx.md), [DDoS](../../security/ddos.md)
