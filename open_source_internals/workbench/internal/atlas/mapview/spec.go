@@ -37,6 +37,10 @@ type Spec struct {
 	Fixed []FixedRef `json:"fixed,omitempty"`
 	// Default는 화면이 처음 보일 경로의 run id 앞부분입니다.
 	Default string `json:"default,omitempty"`
+	// EventNamedKinds는 함수 줌 마디의 이름을 장소 이름이 아니라 사건 이름으로 쓸 장소 종류입니다(프로세스·연결처럼 한 장소에서 여러 일이 일어나는 곳).
+	EventNamedKinds []string `json:"event_named_kinds,omitempty"`
+	// UntimedText는 「시각 없는 사건」 목록에 함께 보일 글의 attrs 열쇠("출처 id.열쇠")이고, 앞의 것부터 찾습니다.
+	UntimedText []string `json:"untimed_text,omitempty"`
 }
 
 // Zone 값은 시스템 줌의 구역 하나입니다. X·Y·W·H는 구역 지도의 칸(0~100의 비율 좌표)입니다.

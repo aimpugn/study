@@ -100,28 +100,32 @@ type Loose struct {
 //
 // Events는 이 칸의 사건(접힌 칸이면 여럿), Leaves는 그 칸을 펼친 나무의 잎 사건 id(정렬)입니다. Key는 칸 사건 장소의 정적 열쇠이고 T5가 범위의 가지 모양 위치로 바꿀 자리입니다.
 type Step struct {
-	Index   int               `json:"i"`
-	Name    string            `json:"name"`
-	Band    string            `json:"band"`
-	Origin  string            `json:"origin,omitempty"`
-	Place   string            `json:"place"`
-	Key     string            `json:"key,omitempty"`
-	Column  string            `json:"column,omitempty"`
-	T0      *int64            `json:"t0"`
-	T1      *int64            `json:"t1"`
-	DurNS   int64             `json:"dur_ns"`
-	Count   int               `json:"count"`
-	Fold    int               `json:"fold,omitempty"`
-	Events  []int             `json:"events"`
-	Leaves  []int             `json:"leaves"`
-	Nature  string            `json:"nature"`
-	Loc     string            `json:"loc,omitempty"`
-	Stack   []string          `json:"stack,omitempty"`
-	Attrs   []AttrView        `json:"attrs,omitempty"`
-	Descent *Descent          `json:"descent,omitempty"`
-	Tree    []Node            `json:"tree"`
-	Bands   map[string]string `json:"bands"`
-	SleepNS int64             `json:"sleep_ns,omitempty"`
+	Index  int    `json:"i"`
+	Name   string `json:"name"`
+	Band   string `json:"band"`
+	Origin string `json:"origin,omitempty"`
+	Place  string `json:"place"`
+	Key    string `json:"key,omitempty"`
+	Column string `json:"column,omitempty"`
+	T0     *int64 `json:"t0"`
+	T1     *int64 `json:"t1"`
+	DurNS  int64  `json:"dur_ns"`
+	// DurNature는 머문 시간의 성격입니다. 칸이 순간이라 펼친 나무의 마디 길이를 쓰면 그 마디의 성격이고, 아니면 칸의 성격과 같습니다.
+	DurNature string `json:"dur_nature"`
+	Count     int    `json:"count"`
+	Fold      int    `json:"fold,omitempty"`
+	// FoldNature는 접기 조건 열쇠의 출처 성격입니다(접은 판단이 해석기 값이면 「규칙으로 셈」).
+	FoldNature string            `json:"fold_nature,omitempty"`
+	Events     []int             `json:"events"`
+	Leaves     []int             `json:"leaves"`
+	Nature     string            `json:"nature"`
+	Loc        string            `json:"loc,omitempty"`
+	Stack      []string          `json:"stack,omitempty"`
+	Attrs      []AttrView        `json:"attrs,omitempty"`
+	Descent    *Descent          `json:"descent,omitempty"`
+	Tree       []Node            `json:"tree"`
+	Bands      map[string]string `json:"bands"`
+	SleepNS    int64             `json:"sleep_ns,omitempty"`
 }
 
 // AttrView 값은 칸의 자세한 내용에 보일 값 하나와 그 출처 성격입니다.
@@ -134,17 +138,19 @@ type AttrView struct {
 // Descent 값은 칸이 지면(시스템 콜 경계)을 건너는지와, 건넜다면 그 아래가 기록됐는지입니다(고친 규칙 4).
 //
 // State가 events면 지면 아래 사건이 펼친 나무에 있고, unseen이면 시스템 콜은 있으나 그 아래를 기록하지 않았습니다.
-// Count는 지면을 건넌 사건의 수(접힌 칸의 「×k」), Nature는 칸에서 지면까지 온 길의 가장 약한 성격입니다.
+// Count는 지면을 건넌 사건의 수(접힌 칸의 「×k」), Recorded는 그 가운데 아래가 기록된 수, Nature는 칸에서 지면까지 온 길의 가장 약한 성격입니다.
+// 접힌 칸에서 Recorded < Count면 화면은 「×k 가운데 r 기록」으로 보여 기록되지 않은 하강을 기록된 것처럼 보이지 않습니다.
 type Descent struct {
-	State  string `json:"state"`
-	Count  int    `json:"count"`
-	Nature string `json:"nature"`
-	DurNS  int64  `json:"dur_ns,omitempty"`
+	State    string `json:"state"`
+	Count    int    `json:"count"`
+	Recorded int    `json:"recorded"`
+	Nature   string `json:"nature"`
+	DurNS    int64  `json:"dur_ns,omitempty"`
 }
 
 // Node 값은 함수 줌 나무의 마디 하나입니다. Parent는 같은 나무의 번호(뿌리는 -1), Via는 부모에서 이 마디로 온 길(parent 또는 연결 종류)입니다.
 //
-// Nature는 사건의 출처, 이 마디로 온 연결의 근거, 띠를 정한 attrs 열쇠의 출처 가운데 가장 약한 성격입니다(고친 규칙 6).
+// Nature는 사건의 출처, 띠를 정한 attrs 열쇠의 출처, 뿌리에서 이 마디까지 온 길(조상의 출처와 거친 연결 근거) 가운데 가장 약한 성격입니다(고친 규칙 6).
 // OtherClock은 칸과 시계가 달라 가로 차례가 시각이 아니라는 표지, Visible은 렌즈가 켜졌을 때 보이는지, Folded는 이 마디에 접힌 숨은 마디 수입니다.
 type Node struct {
 	Event      int    `json:"event"`

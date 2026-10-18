@@ -38,6 +38,11 @@ for (const c of fx.relate) {
   check(got === c.want, `relate ${JSON.stringify(c.a)} ${JSON.stringify(c.b)}: ${got} ≠ Go ${c.want}`);
   n++;
 }
+for (const c of fx.leaves) {
+  const got = R.rangeLeaves(c.cell_leaves.map((l) => l || []), c.first, c.last);
+  check(JSON.stringify(got) === JSON.stringify(c.want || []), `rangeLeaves ${c.first}–${c.last}: ${JSON.stringify(got)} ≠ Go ${JSON.stringify(c.want)}`);
+  n++;
+}
 console.log(`범위 대조 ${n}건`);
 
 // 2) 화면 조작
@@ -122,6 +127,22 @@ if (chromium) {
     await page.evaluate((i) => { window.__atlas.setRoute(i); window.__atlas.setZoom("function"); }, kernelRoute);
     const layers = await page.locator('#canvas rect.band.events[data-band]').count();
     check(layers >= 3, `함수·커널 줌의 사건 있는 띠 ${layers}개`);
+    // 추정 표시(고친 규칙 6): 추정 근거로 내려간 칸은 프로세스 안 줌에서 하강선이 점선 class(inferred)이고, 그 칸의 길이가 추정이면 함수 줌 머리 글에 ≈가 붙습니다.
+    const infStep = await page.evaluate((i) => window.__atlas.V.routes[i].steps.findIndex((s) => s.descent && s.descent.state === "events" && s.dur_nature === "inferred"), kernelRoute);
+    if (infStep >= 0) {
+      const head = await page.evaluate((k) => { const A = window.__atlas; A.S.step = k; A.render(); return A.V.routes[A.S.route].steps[k].name + " · "; }, infStep);
+      const heads = (await page.locator("#canvas text").allTextContents()).filter((t) => t.startsWith(head));
+      check(heads.length === 1 && heads[0].includes("≈"), `길이가 추정인 칸의 함수 줌 머리에 ≈가 없음: ${JSON.stringify(heads)}`);
+      await page.evaluate(() => window.__atlas.setZoom("process"));
+      check((await page.locator("#canvas line.descent.inferred").count()) > 0, "추정 근거 하강선이 점선(inferred)으로 그려지지 않음");
+    }
+    // 기록하지 않은 하강(X1): 선은 지면에서 멈추고 빗금 칸만 있습니다. 그 칸의 하강선은 집 띠 → 지면 하나뿐입니다.
+    const unseenStep = await page.evaluate((i) => window.__atlas.V.routes[i].steps.findIndex((s) => s.descent && s.descent.state === "unseen"), kernelRoute);
+    if (unseenStep >= 0) {
+      await page.evaluate(() => window.__atlas.setZoom("process"));
+      check((await page.locator(`#canvas g[data-cell="${unseenStep}"] line.descent`).count()) === 1, "기록하지 않은 층 안으로 하강선이 들어감");
+      check((await page.locator(`#canvas g[data-cell="${unseenStep}"] rect.hatchcell`).count()) === 1, "기록하지 않은 하강에 빗금 칸이 없음");
+    } else fails.push("커널 경로에 기록하지 않은 하강이 없어 X1 하강 검사를 못 함");
 
     // 기록이 끝나는 층: 지면 아래를 하나도 기록하지 않은 경로는 함수 줌에서 그 띠가 빗금이고, 봤고 0번 띠가 있으면 점선 테두리입니다.
     const ended = await page.evaluate(() => window.__atlas.V.routes.findIndex((r) => r.steps.length && Object.entries(r.bands).every(([b, v]) => !window.__atlas.V.bands.find((x) => x.id === b).below || v === "unseen") && r.steps.some((s) => Object.values(s.bands).includes("watched"))));

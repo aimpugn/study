@@ -11,7 +11,7 @@
   const ZOOMS = ["system", "process", "function"];
   const ZOOM_NAME = { system: "시스템", process: "프로세스 안", function: "함수·커널" };
   const REL_NAME = { same: "같은 자리", same_leaves: "같은 잎 · 줌만 다름", contains: "포함함", inside: "안에 듦", overlap: "겹침", apart: "따로" };
-  const STATE_NAME = { events: "사건 있음", other: "경로 밖 사건만(흐림)", watched: "봤고 0번", unseen: "기록 없음(빗금)" };
+  const STATE_NAME = { events: "사건 있음", other: "경로 밖 사건만(흐림)", watched: "봤고 0번", unseen: "안 봄(빗금)" };
   const NATURE_NAME = { observed: "", derived: "규칙으로 셈", inferred: "≈ 추정", human: "사람이 정함" };
 
   // 화면의 상태입니다. 해설은 접힌 채로 시작합니다(참가자 시험의 시작 상태).
@@ -32,6 +32,10 @@
     const t = NATURE_NAME[nature] || "";
     return t ? `<span class="badge ${nature}">${t}</span>` : "";
   }
+  // 그림 안 글에 붙일 짧은 성격 표지입니다(관찰은 없음).
+  function mark(nature) { return nature === "inferred" ? " ≈" : nature === "derived" ? " (셈)" : ""; }
+  // 접힌 칸의 하강 수입니다. 아래가 기록된 것이 일부뿐이면 「×k 중 r 기록」으로 써서 기록되지 않은 하강을 기록된 것처럼 보이지 않습니다.
+  function descentCount(d) { return d.state === "events" && d.recorded < d.count ? `×${d.count} 중 ${d.recorded} 기록` : `×${d.count}`; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
   function el(tag, attrs, parent) {
     const e = document.createElementNS(SVGNS, tag);
@@ -249,7 +253,7 @@
         div = `<div class="div">${kind}: <b>${where}</b>${d.diff_ns ? ` · 차 ${dur(d.diff_ns)}` : ""} <span class="badge derived">규칙으로 셈</span> <button class="tiny" data-go="${i}">그 자리로</button></div>`;
       }
       return `<div class="cand ${i === S.route ? "on" : ""}" data-route="${i}"><div class="head"><span>${esc(candName(i))}</span><span class="ms">${dur(total)}</span></div>
-        <div class="bar">${bar}</div><div class="tops">${tops.map((s) => `${esc(s.name)} ${dur(s.dur_ns)}`).join(" · ")}</div>${div}</div>`;
+        <div class="bar">${bar}</div><div class="tops">${tops.map((s) => `${esc(s.name)} ${dur(s.dur_ns)}${mark(s.dur_nature)}`).join(" · ")}</div>${div}</div>`;
     }).join("");
 
     // 단계별 안내
@@ -267,11 +271,11 @@
         if (s.column && s.column !== col) {
           col = s.column;
           const c = (r.columns || []).find((x) => x.name === col);
-          html += `<div class="col"><span>${esc(col)}</span><span>${c ? dur(c.dwell_ns) : ""}</span></div>`;
+          html += `<div class="col"><span>${esc(col)}</span><span>${c ? `${dur(c.dwell_ns)} ${badge(c.nature)}` : ""}</span></div>`;
         }
         const dim = i < a || i > b;
         const t = s.t0 == null ? "순서만" : "+" + dur(s.t0 - r.start_ns);
-        html += `<div class="it ${S.step === i ? "on" : ""} ${dim ? "dim" : ""}" data-cell="${i}"><span class="n">${i + 1}</span><span>${esc(s.name)}${s.fold ? ` ×${s.fold}` : ""} ${badge(s.nature)}</span><span class="t">${t}</span></div>`;
+        html += `<div class="it ${S.step === i ? "on" : ""} ${dim ? "dim" : ""}" data-cell="${i}"><span class="n">${i + 1}</span><span>${esc(s.name)}${s.fold ? ` ×${s.fold} ${badge(s.fold_nature)}` : ""} ${badge(s.nature)}</span><span class="t">${t}</span></div>`;
       });
     } else {
       const st = r.steps[focusStep()];
@@ -401,8 +405,8 @@
         el("rect", { x: x0, y: 4, width: Math.max(4, x1 - x0), height: 30, rx: 8, class: `colpill ${focusCol === c.name ? "on" : ""}` }, svg);
         if (x1 - x0 > c.name.length * 11 + 8) {
           text(svg, (x0 + x1) / 2, 17, c.name, "coltext");
-          text(svg, (x0 + x1) / 2, 29, dur(c.dwell_ns), "coltime");
-        } else el("title", {}, svg.lastChild).textContent = `${c.name} ${dur(c.dwell_ns)}`;
+          text(svg, (x0 + x1) / 2, 29, dur(c.dwell_ns) + mark(c.nature), "coltime");
+        } else el("title", {}, svg.lastChild).textContent = `${c.name} ${dur(c.dwell_ns)}${mark(c.nature)}`;
         if (c.steps[0] < 0 && x1 - x0 > 30) text(svg, (x0 + x1) / 2, top + 14, "이동 없음", "ctext muted", { "text-anchor": "middle" });
       }
     }
@@ -443,11 +447,11 @@
               el("rect", { x: cx - wdt / 2 + wdt * (1 - f), y: ry.mid - th / 2 + 1, width: wdt * f - 1, height: th - 2, rx: (th - 2) / 2, class: `cap sleep ${cls}` }, g);
             }
           } else {
+            // 기록하지 않은 층 안으로는 선을 긋지 않습니다(X1). 선은 지면에서 멈추고 그 아래는 빗금 칸만 둡니다.
             el("rect", { x: cx - 7, y: ry.y + 2, width: 14, height: ry.h - 5, class: "hatchcell" }, g);
-            el("line", { x1: cx, y1: gy, x2: cx, y2: ry.y + 2, class: "descent inferred" }, g);
           }
         }
-        if (s.descent.count > 1) text(g, cx + 6, gy - 6, `×${s.descent.count}`, "mark");
+        if (s.descent.count > 1) text(g, cx + 6, gy - 6, descentCount(s.descent), "mark");
       }
       // 목적지 띠의 점(짧은 왕복은 선 없이 점으로)
       const dest = Y[s.band];
@@ -456,7 +460,7 @@
       if (s.fold) {
         const wdt = Math.max(22, (xs[i].x1 - xs[i].x0) * 0.8);
         el("rect", { x: cx - wdt / 2, y: homeY - 8, width: wdt, height: 16, rx: 8, class: `cap ${cls}` }, g);
-        text(g, cx, homeY, `×${s.fold}`, "fold");
+        text(g, cx, homeY, `×${s.fold}${mark(s.fold_nature)}`, "fold");
       } else if (s.dur_ns > 0 && !(s.descent && s.descent.state === "events")) {
         const th = thickness(s.dur_ns) * 2, wdt = Math.max(8, (xs[i].x1 - xs[i].x0) * 0.5);
         el("rect", { x: cx - wdt / 2, y: homeY - th / 2, width: wdt, height: th, rx: th / 2, class: `cap ${cls}` }, g);
@@ -522,7 +526,7 @@
       text(svg, 6, y + rowH / 2 + 3, b.name, "blabel");
       if (stt !== "events" && !b.ground) text(svg, 6, y + rowH / 2 + 12, STATE_NAME[stt], "bstate");
     });
-    text(svg, LW, 16, `${st.name} · ${dur(st.dur_ns)}${st.sleep_ns ? ` · 그중 잠듦 ${dur(st.sleep_ns)}` : ""}`, "ctext");
+    text(svg, LW, 16, `${st.name} · ${dur(st.dur_ns)}${mark(st.dur_nature)}${st.sleep_ns ? ` · 그중 잠듦 ${dur(st.sleep_ns)}` : ""}`, "ctext");
     const unit = (W - LW - 16) / Math.max(1, nodes.length);
     const xs = nodes.map((n, i) => ({ x0: LW + i * unit, x1: LW + (i + 1) * unit - 1 }));
     const yOf = (i) => (Y[nodes[i].band] != null ? Y[nodes[i].band] : top + rowH / 2);
@@ -639,7 +643,7 @@
       ['<svg width="30" height="10"><line x1="0" y1="5" x2="30" y2="5" stroke="var(--other)" stroke-width="2"/></svg>', "다른 후보(시스템 줌만)"],
       ['<svg width="30" height="12"><circle cx="15" cy="6" r="3.5" fill="var(--dot)"/></svg>', "짧은 왕복: 목적지 띠의 점"],
       ['<svg width="30" height="16"><line x1="15" y1="0" x2="15" y2="16" stroke="var(--route)" stroke-width="2" stroke-dasharray="5 3"/></svg>', "지면을 건너는 하강(점선 = 추정 짝)"],
-      ['<svg width="30" height="12"><rect x="2" y="1" width="26" height="10" fill="url(#hatchL)" stroke="var(--hatch)"/><defs><pattern id="hatchL" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="var(--hatch)" stroke-width="2"/></pattern></defs></svg>', "빗금: 기록하지 않은 층"],
+      ['<svg width="30" height="12"><rect x="2" y="1" width="26" height="10" fill="url(#hatchL)" stroke="var(--hatch)"/><defs><pattern id="hatchL" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="var(--hatch)" stroke-width="2"/></pattern></defs></svg>', "빗금: 지켜본 기록이 없는 층(안 봄)"],
       ['<svg width="30" height="12"><rect x="2" y="1" width="26" height="10" fill="none" stroke="var(--watched)" stroke-dasharray="3 3"/></svg>', "점선 테두리: 봤고 0번"],
       ['<svg width="30" height="12"><rect x="2" y="2" width="26" height="8" rx="4" fill="var(--hot)"/></svg>', "두께 = 머문 시간, 색 = 경로 시간 몫(10%·50%)"],
       ['<svg width="30" height="12"><rect x="2" y="2" width="26" height="8" rx="4" fill="none" stroke="var(--hot)"/></svg>', "빈 칸 = 잠든 시간"],
@@ -665,9 +669,9 @@
           ${s.loc ? `<span class="k">코드</span><span class="mono">${esc(s.loc)}</span>` : ""}
           ${s.column ? `<span class="k">처리 단계</span><span>${esc(s.column)}</span>` : ""}
           <span class="k">시각</span><span>${s.t0 == null ? "순서만 기록" : "+" + dur(s.t0 - r.start_ns)}</span>
-          <span class="k">머문 시간</span><span>${dur(s.dur_ns)}${s.sleep_ns ? ` (잠듦 ${dur(s.sleep_ns)}, ${Math.round((100 * s.sleep_ns) / s.dur_ns)}%)` : ""}</span>
+          <span class="k">머문 시간</span><span>${dur(s.dur_ns)} ${badge(s.dur_nature)}${s.sleep_ns ? ` (잠듦 ${dur(s.sleep_ns)}, ${Math.round((100 * s.sleep_ns) / s.dur_ns)}%)` : ""}</span>
           ${s.count > 1 ? `<span class="k">횟수</span><span>원래 이동 ${s.count}번</span>` : ""}
-          ${s.descent ? `<span class="k">지면 아래</span><span>${s.descent.state === "events" ? "기록됨" : "기록 없음(빗금)"}${s.descent.count > 1 ? ` · ${s.descent.count}번` : ""} ${badge(s.descent.nature)}</span>` : ""}
+          ${s.descent ? `<span class="k">지면 아래</span><span>${s.descent.state === "events" ? "기록됨" : "안 봄(빗금)"}${s.descent.count > 1 ? ` · ${descentCount(s.descent)}` : ""} ${badge(s.descent.nature)}</span>` : ""}
           </div>
           ${fixed ? `<div class="fixed"><small>고정 설명 · ${esc(V.fixed.source)}</small><br>${esc(fixed)}</div>` : ""}
           ${s.stack ? `<div class="stack">${s.stack.slice(0, 7).map(esc).join("<br>")}</div>` : ""}

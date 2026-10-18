@@ -1,6 +1,8 @@
 {
  "title": "학습 지도 · pgsql",
  "default": "journey/kernel_insert",
+ "event_named_kinds": ["process", "connection", "lane", "client", "session", "site", "role", "app"],
+ "untimed_text": ["strace.text"],
  "zones": [
   {
    "id": "app",

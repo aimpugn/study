@@ -5,11 +5,15 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -24,7 +28,7 @@ var update = flag.Bool("update", false, "범위 대조표를 다시 씀")
 // 띠는 위에서부터 front(클라이언트), back(프로세스 아래, 대체 규칙), mem(이름이 touch인 사건), ground(지면), kern(커널 요약), 커널 층 둘(kf1·kf2), disk(파일)입니다.
 func toySpec() *Spec {
 	return &Spec{
-		Title: "toy", Default: "toy/s1/a",
+		Title: "toy", Default: "toy/s1/a", EventNamedKinds: []string{"process", "client"},
 		Zones: []Zone{{ID: "cl", Name: "클라"}, {ID: "sv", Name: "서버"}, {ID: "bd", Name: "경계"}, {ID: "kn", Name: "커널"}, {ID: "dk", Name: "디스크"}},
 		Bands: []Band{
 			{ID: "front", Name: "앞", Zoom: ZoomProcess, Zone: "cl", Match: []Rule{{Place: &PlaceMatch{Kinds: []string{"client"}}}}},
@@ -396,6 +400,15 @@ func TestNormalizeAndRelate(t *testing.T) {
 type fixture struct {
 	Normalize []normCase `json:"normalize"`
 	Relate    []relCase  `json:"relate"`
+	Leaves    []leafCase `json:"leaves"`
+}
+
+// leafCase 값은 칸들의 잎 집합 합치기 사례 하나와 Go의 답입니다.
+type leafCase struct {
+	CellLeaves [][]int `json:"cell_leaves"`
+	First      int     `json:"first"`
+	Last       int     `json:"last"`
+	Want       []int   `json:"want"`
 }
 
 // normCase 값은 칸 맞춤 사례 하나와 Go의 답입니다.
@@ -462,6 +475,37 @@ func buildFixture() fixture {
 		}
 		f.Relate = append(f.Relate, relCase{a, b, Relate(a, b)})
 	}
+	// 보기 모형에서 뽑은 사례: 칸마다의 잎 집합(접힌 칸, 커널 나무를 펼친 칸 포함)을 모든 [first, last]로 합치고,
+	// 시스템 칸 하나와 그 칸이 합친 프로세스 안 칸들의 범위(줌만 다르고 잎이 같음), 함수 줌 마디 하나와 그 칸의 범위(안에 듦)를 견줍니다.
+	v, err := Build(MemStore{"toy/s1/a": toyRun("s1/a", true, 0)}, toySpec(), ".")
+	if err != nil {
+		panic(err)
+	}
+	r := v.Routes[0]
+	var cl [][]int
+	for _, st := range r.Steps {
+		cl = append(cl, st.Leaves)
+	}
+	for i := range cl {
+		for j := i; j < len(cl); j++ {
+			f.Leaves = append(f.Leaves, leafCase{cl, i, j, RangeLeaves(cl, i, j)})
+		}
+	}
+	for _, sy := range r.System {
+		a := Range{Zoom: ZoomSystem, First: sy.Index, Last: sy.Index, Leaves: sy.Leaves}
+		b := Range{Zoom: ZoomProcess, First: sy.Steps[0], Last: sy.Steps[1], Leaves: RangeLeaves(cl, sy.Steps[0], sy.Steps[1])}
+		f.Relate = append(f.Relate, relCase{a, b, Relate(a, b)})
+	}
+	for i, st := range r.Steps {
+		for k, n := range st.Tree {
+			if len(st.Tree) < 2 || n.Parent < 0 {
+				continue
+			}
+			a := Range{Zoom: ZoomFunction, First: k, Last: k, Leaves: n.Leaves}
+			b := Range{Zoom: ZoomProcess, First: i, Last: i, Leaves: st.Leaves}
+			f.Relate = append(f.Relate, relCase{a, b, Relate(a, b)}, relCase{b, a, Relate(b, a)})
+		}
+	}
 	return f
 }
 
@@ -495,7 +539,18 @@ func TestRangeFixtureIsCurrent(t *testing.T) {
 //
 // Given 이 패키지와 명령 cmd/atlas-map, 플랫폼 폴더의 시험 아닌 파일에서, When 의존 목록과 파일 글을 보면,
 // Then 의존에 topics/가 없고 주제 이름 글자가 없습니다. 위 시험들은 가짜 주제(toy)만으로 보기 모형을 만듭니다.
+// 또 저장소의 모든 주제 자료 파일(topics/*/*/map.json)이 쓰는 장소 종류·출처 id·attrs 열쇠·run 앞부분의 낱말이 플랫폼 Go 코드의 글자 상수로
+// 나오지 않습니다(코드 검토 지적 4). 플랫폼이 스스로 정한 상수(줌·띠 상태 이름)는 빼고 봅니다. 그래서 그 상수와 같은 글(예: process)로
+// 주제를 가르는 코드는 이 시험이 잡지 못합니다.
 func TestPlatformDoesNotKnowTopics(t *testing.T) {
+	vocab := topicVocabulary(t)
+	reserved, lits := platformLiterals(t)
+	for lit, where := range lits {
+		if vocab[lit] && !reserved[lit] {
+			t.Errorf("%s: 플랫폼 코드에 주제 자료 파일의 낱말 %q", where, lit)
+		}
+	}
+
 	out, err := exec.Command("go", "list", "-deps", ".", "../../../cmd/atlas-map").Output()
 	if err != nil {
 		t.Fatal(err)
@@ -553,5 +608,318 @@ func TestWriteHTMLEmbedsViewOnly(t *testing.T) {
 	}
 	if !reflect.DeepEqual(back.Title, v.Title) || len(back.Routes) != len(v.Routes) {
 		t.Error("품은 보기 모형이 원래와 다름")
+	}
+}
+
+// TestNatureFollowsThePath 함수는 마디와 칸 길이의 성격이 거쳐 온 길을 따르는지 봅니다(고친 규칙 6, 코드 검토 지적 1).
+//
+// Given io 칸(순간) 아래 시스템 콜이 추정 근거(guess)로, 커널 나무가 다시 추정 근거로 붙은 경로에서, When 보기 모형을 만들면,
+// Then 관찰 출처인 커널 마디(sleepfn, tiny)도 추정이고, io 칸의 머문 시간은 가장 긴 마디(syscall)의 길이이며 그 성격이 추정입니다.
+func TestNatureFollowsThePath(t *testing.T) {
+	st := toyView(t).Routes[0].Steps[4]
+	for _, n := range st.Tree {
+		if n.Parent >= 0 && n.Nature != atlas.Inferred {
+			t.Errorf("마디 %s 성격 %s, 기대 inferred(추정 연결 아래)", n.Name, n.Nature)
+		}
+	}
+	if st.DurNS != 15 || st.DurNature != atlas.Inferred {
+		t.Errorf("io 칸 머문 시간 %d(%s), 기대 15(inferred)", st.DurNS, st.DurNature)
+	}
+}
+
+// TestStepDwellPrefersItsOwnSpan 함수는 칸에 구간이 있으면 그 구간을 머문 시간으로 쓰는지 봅니다(코드 검토 지적 2).
+//
+// Given io 칸이 40~42의 구간을 갖고 그 아래 시스템 콜이 15만큼 걸린 경로에서, When 보기 모형을 만들면,
+// Then io 칸의 머문 시간은 더 긴 마디가 아니라 칸의 구간 2이고, 그 성격은 칸의 성격입니다.
+func TestStepDwellPrefersItsOwnSpan(t *testing.T) {
+	r := toyRun("s1/a", true, 0)
+	for i := range r.Events {
+		if r.Events[i].Name == "io" {
+			r.Events[i].EndNS = atlas.Ptr(int64(42))
+		}
+	}
+	v, err := Build(MemStore{"toy/s1/a": r}, toySpec(), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := v.Routes[0].Steps[4]
+	if st.DurNS != 2 || st.DurNature != st.Nature {
+		t.Errorf("io 칸 머문 시간 %d(%s), 기대 2(%s)", st.DurNS, st.DurNature, st.Nature)
+	}
+}
+
+// TestTimeDivergenceNamesTheLargestDifference 함수는 구조가 같은 두 나무의 갈림이 길 위에서 시간 차가 가장 큰 마디인지 봅니다(코드 검토 지적 3).
+//
+// Given 구조가 같고 mid의 길이만 5 다른 a·d와, 모든 것이 같은 a·e에서, When 보기 모형을 만들면,
+// Then a·d의 갈림은 time:mid(차 5)이고 잎(sleepfn, 차 0)이 아니며, a·e는 갈림 없음(none)입니다.
+func TestTimeDivergenceNamesTheLargestDifference(t *testing.T) {
+	d := toyRun("s1/d", true, 0)
+	for i := range d.Events {
+		if d.Events[i].Name == "mid" {
+			d.Events[i].DurNS = atlas.Ptr(int64(18))
+		}
+	}
+	v, err := Build(MemStore{"toy/s1/a": toyRun("s1/a", true, 0), "toy/s1/d": d, "toy/s1/e": toyRun("s1/e", true, 0)}, toySpec(), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]Divergence{}
+	for _, dv := range v.Routes[0].Divergence {
+		got[v.Routes[dv.Other].Run] = dv
+	}
+	if g := got["toy/s1/d"]; g.Kind != "time" || g.Name != "mid" || g.DiffNS != 5 {
+		t.Errorf("a·d 갈림 %+v, 기대 time:mid 차 5", g)
+	}
+	if g := got["toy/s1/e"]; g.Kind != "none" {
+		t.Errorf("a·e 갈림 %+v, 기대 none", g)
+	}
+}
+
+// TestMissingIdentityIsAnError 함수는 정체로 고른 attrs가 없는 run을 빈 정체로 묶지 않고 멈추는지 봅니다(코드 검토 지적 11).
+//
+// Given 정체 열쇠 rec.q가 없는 run에서, When 보기 모형을 만들면, Then rec.q를 이름 대는 오류로 멈춥니다.
+func TestMissingIdentityIsAnError(t *testing.T) {
+	r := toyRun("s1/a", true, 0)
+	delete(r.Attrs["rec"], "q")
+	if _, err := Build(MemStore{"toy/s1/a": r}, toySpec(), "."); err == nil || !strings.Contains(err.Error(), "rec.q") {
+		t.Fatalf("오류 %v, 기대 rec.q가 없음", err)
+	}
+}
+
+// TestSystemStepsMergeSameZones 함수는 시스템 줌이 지난 구역 집합이 같은 잇단 칸만 합치는지 봅니다(코드 검토 지적 5).
+//
+// Given 칸이 cl, sv, sv, sv(접힌 칸 포함), 디스크·서버·경계·커널을 지나는 io 차례인 경로에서, When 보기 모형을 만들면,
+// Then 시스템 칸은 [cl] 0–0, [sv] 1–3, [dk sv bd kn] 4–4 셋이고, 둘째 칸의 잎은 합친 칸들의 잎의 합집합입니다.
+func TestSystemStepsMergeSameZones(t *testing.T) {
+	r := toyView(t).Routes[0]
+	var got []string
+	for _, s := range r.System {
+		got = append(got, fmt.Sprint(s.Zones, s.Steps))
+	}
+	if fmt.Sprint(got) != "[[cl] [0 0] [sv] [1 3] [dk sv bd kn] [4 4]]" {
+		t.Errorf("시스템 칸 %v", got)
+	}
+	var cl [][]int
+	for _, st := range r.Steps {
+		cl = append(cl, st.Leaves)
+	}
+	if want := RangeLeaves(cl, 1, 3); !reflect.DeepEqual(r.System[1].Leaves, want) {
+		t.Errorf("시스템 칸 잎 %v, 기대 %v", r.System[1].Leaves, want)
+	}
+}
+
+// TestIncomingLinkAddsOnlyItsSource 함수는 들어오는 연결(dir in)이 출발 사건만 붙이고 더 따라가지 않는지 봅니다(코드 검토 지적 5).
+//
+// Given io로 들어오는 call 연결의 출발 사건 caller와 그 parent 자식 inner가 있고 장면이 call을 dir in으로 펼칠 때,
+// When 보기 모형을 만들면, Then io 칸의 나무에 caller는 있고 inner는 없습니다.
+func TestIncomingLinkAddsOnlyItsSource(t *testing.T) {
+	r := toyRun("s1/a", true, 0)
+	var io, proc int
+	for _, e := range r.Events {
+		if e.Name == "io" {
+			io, proc = e.ID, *e.Target
+		}
+	}
+	caller := len(r.Events)
+	r.Events = append(r.Events, atlas.Event{ID: caller, Place: proc, Kind: atlas.Instant, Name: "caller", Source: "rec"})
+	r.Events = append(r.Events, atlas.Event{ID: caller + 1, Place: proc, Kind: atlas.Instant, Name: "inner", Parent: atlas.Ptr(caller), Source: "rec"})
+	r.Links = append(r.Links, atlas.Link{ID: len(r.Links), Src: caller, Dst: io, Kind: "call", Basis: "rec"})
+	spec := toySpec()
+	spec.Scenes[0].Expand = append(spec.Scenes[0].Expand, Expand{Link: "call", Dir: "in"})
+	v, err := Build(MemStore{"toy/s1/a": r}, spec, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]bool{}
+	for _, n := range v.Routes[0].Steps[4].Tree {
+		names[n.Name] = true
+	}
+	if !names["caller"] || names["inner"] {
+		t.Errorf("io 나무 %v, 기대 caller 있음·inner 없음", names)
+	}
+}
+
+// TestOrderOnlyRouteKeepsIDOrder 함수는 시계가 없는 출처만으로 된 경로가 id 차례의 「순서만 기록」 칸이 되는지 봅니다(고친 규칙 2).
+//
+// Given 시계 없는 출처 g의 시각 없는 사건 셋(id 차례 c, a, b)만 칸이 되는 장면에서, When 보기 모형을 만들면,
+// Then 경로는 OrderOnly이고 칸 차례는 c, a, b이며 시계가 비어 있습니다.
+func TestOrderOnlyRouteKeepsIDOrder(t *testing.T) {
+	b := atlas.NewBuilder("toy/o/a", "toy", "toy", "o/a", atlas.Origin{Clock: "", Label: "없음"})
+	b.AddSource(atlas.Source{ID: "g", Tool: "멈춤 기록", Nature: atlas.Observed})
+	proc := b.Place(atlas.PlaceSpec{Kind: "process", Name: "42", Source: "g"})
+	for _, n := range []string{"c", "a", "b"} {
+		b.AddEvent(atlas.Event{Place: proc, Kind: atlas.Instant, Name: n, Source: "g"})
+	}
+	spec := toySpec()
+	sc := &spec.Scenes[0]
+	sc.Root, sc.Columns, sc.Fold = nil, nil, nil
+	sc.Steps = atlas.Selector{Sources: []string{"g"}}
+	sc.Identity, sc.Name = Identity{RunField: "scenario"}, Identity{RunField: "name"}
+	v, err := Build(MemStore{"toy/o/a": b.Run()}, spec, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := v.Routes[0]
+	var names []string
+	for _, s := range r.Steps {
+		names = append(names, s.Name)
+	}
+	if !r.OrderOnly || fmt.Sprint(names) != "[c a b]" || r.Clock != "" {
+		t.Errorf("순서만 %v 칸 %v 시계 %q", r.OrderOnly, names, r.Clock)
+	}
+}
+
+// topicVocabulary 함수는 저장소의 모든 주제 자료 파일이 장소 종류·출처·attrs 열쇠·run 앞부분 자리에 쓴 낱말("."과 "/"로 나눈 조각)을 모읍니다.
+func topicVocabulary(t *testing.T) map[string]bool {
+	t.Helper()
+	files, err := filepath.Glob("../../../topics/*/*/map.json")
+	if err != nil || len(files) == 0 {
+		t.Fatalf("주제 자료 파일을 못 찾음: %v", err)
+	}
+	keys := map[string]bool{"kinds": true, "sources": true, "attr": true, "event_named_kinds": true, "untimed_text": true, "runs": true, "run_attr": true, "root_attr": true, "typed": true, "stage": true}
+	vocab := map[string]bool{}
+	var walk func(v any, key string)
+	walk = func(v any, key string) {
+		switch x := v.(type) {
+		case map[string]any:
+			for k, c := range x {
+				walk(c, k)
+			}
+		case []any:
+			for _, c := range x {
+				walk(c, key)
+			}
+		case string:
+			if keys[key] {
+				for _, w := range strings.FieldsFunc(x, func(r rune) bool { return r == '.' || r == '/' }) {
+					vocab[w] = true
+				}
+			}
+		}
+	}
+	for _, f := range files {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var v any
+		if err := json.Unmarshal(b, &v); err != nil {
+			t.Fatalf("%s: %v", f, err)
+		}
+		walk(v, "")
+	}
+	return vocab
+}
+
+// platformLiterals 함수는 플랫폼 Go 파일(시험 제외)의 글자 상수를 모읍니다. 구조체 꼬리표는 빼고, 이름 있는 const 선언의 값은 reserved로 따로 돌려줍니다.
+func platformLiterals(t *testing.T) (reserved map[string]bool, lits map[string]string) {
+	t.Helper()
+	reserved, lits = map[string]bool{}, map[string]string{}
+	files, _ := filepath.Glob("*.go")
+	files = append(files, "../../../cmd/atlas-map/main.go")
+	fset := token.NewFileSet()
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, f, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tags := map[*ast.BasicLit]bool{}
+		ast.Inspect(file, func(n ast.Node) bool {
+			switch x := n.(type) {
+			case *ast.Field:
+				if x.Tag != nil {
+					tags[x.Tag] = true
+				}
+			case *ast.GenDecl:
+				if x.Tok == token.CONST {
+					for _, sp := range x.Specs {
+						for _, v := range sp.(*ast.ValueSpec).Values {
+							if bl, ok := v.(*ast.BasicLit); ok && bl.Kind == token.STRING {
+								s, _ := strconv.Unquote(bl.Value)
+								reserved[s] = true
+							}
+						}
+					}
+				}
+			case *ast.BasicLit:
+				if x.Kind == token.STRING && !tags[x] {
+					s, _ := strconv.Unquote(x.Value)
+					lits[s] = fset.Position(x.Pos()).String()
+				}
+			}
+			return true
+		})
+	}
+	return reserved, lits
+}
+
+// TestViaBasisWeakensSteps 함수는 뿌리에서 칸까지 거친 연결 근거가 칸의 성격에 들어가는지 봅니다(고친 규칙 6, 코드 검토 지적 1의 c).
+//
+// Given 뿌리 req에서 칸 사건마다 해석기 근거(dec, 도출)의 contains 연결이 있고 장면이 그 연결로만 칸을 고를 때, When 보기 모형을 만들면,
+// Then 관찰 출처의 칸도 모두 「규칙으로 셈」(derived) 이하입니다.
+func TestViaBasisWeakensSteps(t *testing.T) {
+	r := toyRun("s1/a", true, 0)
+	root := -1
+	for _, e := range r.Events {
+		if e.Name == "req" {
+			root = e.ID
+		}
+	}
+	for _, e := range r.Events {
+		if e.Source == "rec" && e.StartNS != nil {
+			r.Links = append(r.Links, atlas.Link{ID: len(r.Links), Src: root, Dst: e.ID, Kind: "contains", Basis: "dec"})
+		}
+	}
+	spec := toySpec()
+	spec.Scenes[0].Via = []string{"contains"}
+	v, err := Build(MemStore{"toy/s1/a": r}, spec, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, st := range v.Routes[0].Steps {
+		if st.Nature == atlas.Observed {
+			t.Errorf("칸 %s 성격 observed, 기대 derived 이하(도출 연결로 고른 칸)", st.Name)
+		}
+	}
+}
+
+// TestFoldedDescentCountsRecorded 함수는 접힌 칸의 하강 가운데 아래가 기록된 수를 따로 세는지 봅니다(코드 검토 지적 9).
+//
+// Given 접힌 칸(touch ×2)의 두 사건이 각각 시스템 콜로 내려가고 그 가운데 하나만 커널 나무를 가진 경로에서, When 보기 모형을 만들면,
+// Then 그 칸의 하강은 지면 마디 2개 가운데 1개 기록(state events, count 2, recorded 1)입니다.
+func TestFoldedDescentCountsRecorded(t *testing.T) {
+	r := toyRun("s1/a", true, 0)
+	var touches []int
+	kernelRoot := -1
+	for _, e := range r.Events {
+		switch {
+		case e.Name == "touch" && len(touches) < 2:
+			touches = append(touches, e.ID)
+		case e.Name == "entry":
+			kernelRoot = e.ID
+		}
+	}
+	proc := r.Events[0].Place
+	for k, id := range touches {
+		sys := len(r.Events)
+		r.Events = append(r.Events, atlas.Event{ID: sys, Place: proc, Kind: atlas.Span, Name: "syscall", DurNS: atlas.Ptr(int64(2)), Source: "sys"})
+		r.Links = append(r.Links, atlas.Link{ID: len(r.Links), Src: id, Dst: sys, Kind: "syscall", Basis: "guess"})
+		if k == 0 {
+			child := len(r.Events)
+			r.Events = append(r.Events, atlas.Event{ID: child, Place: r.Events[kernelRoot].Place, Kind: atlas.Span, Name: "entry", DurNS: atlas.Ptr(int64(1)), Source: "kt",
+				Attrs: atlas.Attrs{"kt": {"layer": "L1"}}})
+			r.Links = append(r.Links, atlas.Link{ID: len(r.Links), Src: sys, Dst: child, Kind: "kernel", Basis: "guess"})
+		}
+	}
+	v, err := Build(MemStore{"toy/s1/a": r}, toySpec(), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := v.Routes[0].Steps[1].Descent
+	if d == nil || d.State != StateEvents || d.Count != 2 || d.Recorded != 1 {
+		t.Errorf("접힌 칸 하강 %+v, 기대 events·count 2·recorded 1", d)
 	}
 }

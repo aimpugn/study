@@ -320,16 +320,20 @@ func buildRoutes(spec *Spec, sc *SceneSpec, r *atlas.Run) ([]built, error) {
 	return out, nil
 }
 
-// reach 함수는 뿌리에서 kinds 연결을 따라 닿는 사건의 집합입니다(뿌리는 빼고).
-func reach(x *index, root int, kinds []string) map[int]bool {
-	seen := map[int]bool{}
+// reach 함수는 뿌리에서 kinds 연결을 따라 닿는 사건마다, 처음 닿은 길에서 거친 연결 근거의 가장 약한 성격을 돌려줍니다(뿌리는 빼고).
+//
+// 칸이 뿌리에서 도출·추정 연결로 닿았다면 그 칸의 성격도 그만큼 약합니다(고친 규칙 6의 「거쳐 온 연결 근거」).
+func reach(x *index, root int, kinds []string) map[int]string {
+	seen := map[int]string{}
+	path := map[int]string{root: ""}
 	queue := []int{root}
 	for len(queue) > 0 {
 		id := queue[0]
 		queue = queue[1:]
 		for _, l := range x.out[id] {
-			if contains(kinds, l.Kind) && !seen[l.Dst] {
-				seen[l.Dst] = true
+			if _, ok := seen[l.Dst]; contains(kinds, l.Kind) && !ok {
+				n := weaker(weaker(path[id], x.nature[l.Basis]), atlas.Observed)
+				seen[l.Dst], path[l.Dst] = n, n
 				queue = append(queue, l.Dst)
 			}
 		}
@@ -341,7 +345,7 @@ func reach(x *index, root int, kinds []string) map[int]bool {
 func buildRoute(sc *SceneSpec, x *index, root *atlas.Event) (*built, error) {
 	r := x.r
 	// 칸이 될 사건을 고릅니다. Via가 있으면 뿌리에서 그 연결을 따라 닿는 사건만 후보입니다.
-	var allowed map[int]bool
+	var allowed map[int]string
 	if len(sc.Via) > 0 && root != nil {
 		allowed = reach(x, root.ID, sc.Via)
 	}
@@ -353,7 +357,7 @@ func buildRoute(sc *SceneSpec, x *index, root *atlas.Event) (*built, error) {
 	}
 	var picked []*atlas.Event
 	for _, row := range atlas.Select(r, sc.Steps) {
-		if skip[row.Event] || (allowed != nil && !allowed[row.Event]) {
+		if _, ok := allowed[row.Event]; skip[row.Event] || (allowed != nil && !ok) {
 			continue
 		}
 		picked = append(picked, x.events[row.Event])
@@ -401,8 +405,13 @@ func buildRoute(sc *SceneSpec, x *index, root *atlas.Event) (*built, error) {
 	} else {
 		rt.ID = r.ID
 	}
-	rt.identity = identityOf(sc.Identity, x, root)
-	rt.Name = identityOf(sc.Name, x, root)
+	var err error
+	if rt.identity, err = identityOf(sc.Identity, x, root); err != nil {
+		return nil, fmt.Errorf("정체: %w", err)
+	}
+	if rt.Name, err = identityOf(sc.Name, x, root); err != nil {
+		return nil, fmt.Errorf("경로 이름: %w", err)
+	}
 	if sc.Typed != "" {
 		if t, ok := attrValue(r.Attrs, sc.Typed); ok {
 			rt.Typed = t
@@ -439,13 +448,14 @@ func buildRoute(sc *SceneSpec, x *index, root *atlas.Event) (*built, error) {
 	}
 	inTree := map[int]bool{}
 	for i, g := range groups {
-		st, err := makeStep(sc, x, g, rt.Clock)
+		st, err := makeStep(sc, x, g, rt.Clock, allowed)
 		if err != nil {
 			return nil, err
 		}
 		st.Index, st.Column = i, column(g[0])
 		if len(g) > 1 {
-			st.Fold, st.Name = len(g), sc.Fold.Label
+			src, _, _ := strings.Cut(sc.Fold.Attr, ".")
+			st.Fold, st.Name, st.FoldNature = len(g), sc.Fold.Label, x.nature[src]
 		}
 		for _, n := range st.Tree {
 			inTree[n.Event] = true
@@ -480,8 +490,13 @@ func buildRoute(sc *SceneSpec, x *index, root *atlas.Event) (*built, error) {
 			continue
 		}
 		b := x.eventBand(e)
-		l := Loose{Event: id, Name: e.Name, Band: b.band, Nature: weaker(x.nature[e.Source], b.nature)}
-		l.Text, _ = attrValue(e.Attrs, e.Source+".text")
+		l := Loose{Event: id, Name: e.Name, Band: b.band, Nature: weaker(weaker(x.nature[e.Source], b.nature), allowed[id])}
+		for _, k := range x.spec.UntimedText {
+			if t, ok := attrValue(e.Attrs, k); ok {
+				l.Text = t
+				break
+			}
+		}
 		rt.Untimed = append(rt.Untimed, l)
 	}
 	sort.Slice(rt.Untimed, func(i, j int) bool { return rt.Untimed[i].Event < rt.Untimed[j].Event })
@@ -526,8 +541,10 @@ func columnsOf(sc *SceneSpec, x *index, rt *built) []Column {
 	return cols
 }
 
-// identityOf 함수는 정체 규칙대로 값을 이어 붙입니다. 값이 없는 칸은 빈 글로 둡니다.
-func identityOf(id Identity, x *index, root *atlas.Event) string {
+// identityOf 함수는 정체 규칙대로 값을 이어 붙입니다.
+//
+// 고른 attrs 열쇠가 run이나 뿌리에 없으면 오류입니다. 빈 값으로 두면 정체가 없는 run끼리 한 후보 무리로 묶여 다른 요청을 후보로 보이기 때문입니다(X1).
+func identityOf(id Identity, x *index, root *atlas.Event) (string, error) {
 	var parts []string
 	switch id.RunField {
 	case "scene":
@@ -545,7 +562,10 @@ func identityOf(id Identity, x *index, root *atlas.Event) string {
 		parts = append(parts, s)
 	}
 	if id.RunAttr != "" {
-		v, _ := attrValue(x.r.Attrs, id.RunAttr)
+		v, ok := attrValue(x.r.Attrs, id.RunAttr)
+		if !ok {
+			return "", fmt.Errorf("run %s에 %s가 없음", x.r.ID, id.RunAttr)
+		}
 		parts = append(parts, v)
 	}
 	if root != nil {
@@ -553,15 +573,20 @@ func identityOf(id Identity, x *index, root *atlas.Event) string {
 			parts = append(parts, x.places[root.Place].Name)
 		}
 		if id.RootAttr != "" {
-			v, _ := attrValue(root.Attrs, id.RootAttr)
+			v, ok := attrValue(root.Attrs, id.RootAttr)
+			if !ok {
+				return "", fmt.Errorf("run %s의 뿌리 사건 %d에 %s가 없음", x.r.ID, root.ID, id.RootAttr)
+			}
 			parts = append(parts, v)
 		}
 	}
-	return strings.Join(parts, " · ")
+	return strings.Join(parts, " · "), nil
 }
 
 // makeStep 함수는 사건 하나(접으면 여럿)로 칸 하나를 만들고, 그 칸을 펼친 함수 줌 나무, 잎 집합, 띠 상태, 하강을 셈합니다.
-func makeStep(sc *SceneSpec, x *index, evs []*atlas.Event, clock string) (Step, error) {
+//
+// via는 뿌리에서 칸의 사건까지 거친 연결 근거의 성격이고(장면에 Via가 없으면 nil), 칸과 그 나무의 성격에 들어갑니다.
+func makeStep(sc *SceneSpec, x *index, evs []*atlas.Event, clock string, via map[int]string) (Step, error) {
 	e := evs[0]
 	b := x.eventBand(e)
 	if b.band == "" {
@@ -589,7 +614,7 @@ func makeStep(sc *SceneSpec, x *index, evs []*atlas.Event, clock string) (Step, 
 	for _, ev := range evs {
 		st.Events = append(st.Events, ev.ID)
 		st.Count += ev.Count
-		st.Nature = weaker(st.Nature, weaker(x.nature[ev.Source], x.eventBand(ev).nature))
+		st.Nature = weaker(st.Nature, weaker(weaker(x.nature[ev.Source], x.eventBand(ev).nature), via[ev.ID]))
 		if ev.StartNS != nil && (st.T0 == nil || *ev.StartNS < *st.T0) {
 			st.T0 = atlas.Ptr(*ev.StartNS)
 		}
@@ -603,7 +628,7 @@ func makeStep(sc *SceneSpec, x *index, evs []*atlas.Event, clock string) (Step, 
 	}
 	st.Attrs = attrViews(x, e)
 
-	tree, err := buildTree(sc, x, evs, clock)
+	tree, err := buildTree(sc, x, evs, clock, via)
 	if err != nil {
 		return st, err
 	}
@@ -617,13 +642,17 @@ func makeStep(sc *SceneSpec, x *index, evs []*atlas.Event, clock string) (Step, 
 	st.Leaves = sortedIDs(leaves)
 	st.Bands = bandStates(x, tree, clock)
 
-	// 머문 시간은 칸의 구간, 없으면 펼친 나무에서 가장 긴 마디의 길이입니다.
+	// 머문 시간은 칸의 구간입니다. 칸이 순간(구간 0)일 때만 펼친 나무에서 가장 긴 마디의 길이를 쓰고, 그 길이의 성격은 그 마디의 성격입니다.
+	// 구간이 있는데 더 긴 마디를 쓰면 다른 시계·다른 뜻의 창(예: 다음 질의까지의 위쪽 경계)이 칸의 길이로 보입니다.
+	st.DurNature = st.Nature
 	if st.T0 != nil && st.T1 != nil {
 		st.DurNS = *st.T1 - *st.T0
 	}
-	for _, n := range tree {
-		if n.DurNS != nil && *n.DurNS > st.DurNS {
-			st.DurNS = *n.DurNS
+	if st.DurNS == 0 {
+		for _, n := range tree {
+			if n.DurNS != nil && *n.DurNS > st.DurNS {
+				st.DurNS, st.DurNature = *n.DurNS, n.Nature
+			}
 		}
 	}
 	st.SleepNS = sleepTime(tree)
@@ -675,11 +704,12 @@ func attrViews(x *index, e *atlas.Event) []AttrView {
 //
 // 나가는 연결과 parent 자식은 끝까지 따라가고, 들어오는 연결(dir in)은 그 출발 사건만 붙입니다. 한 사건은 나무에 한 번만 나옵니다.
 // 마디의 가로 차례는 나무 차례라 시각을 견주지 않습니다. 그래서 칸과 시계가 다른 시각 있는 마디에는 OtherClock 표지를 붙입니다.
-func buildTree(sc *SceneSpec, x *index, roots []*atlas.Event, clock string) ([]Node, error) {
+// 마디의 성격은 자기 출처, 띠를 정한 열쇠의 출처, 그리고 뿌리에서 이 마디까지 온 길(조상들의 출처와 거친 연결 근거, 칸까지의 via)의 가장 약한 것입니다.
+func buildTree(sc *SceneSpec, x *index, roots []*atlas.Event, clock string, via map[int]string) ([]Node, error) {
 	var tree []Node
 	seen := map[int]bool{}
-	var add func(e *atlas.Event, parent, depth int, via, linkNature string, follow bool) error
-	add = func(e *atlas.Event, parent, depth int, via, linkNature string, follow bool) error {
+	var add func(e *atlas.Event, parent, depth int, link, path string, follow bool) error
+	add = func(e *atlas.Event, parent, depth int, link, path string, follow bool) error {
 		if seen[e.ID] {
 			return nil
 		}
@@ -689,10 +719,9 @@ func buildTree(sc *SceneSpec, x *index, roots []*atlas.Event, clock string) ([]N
 			return fmt.Errorf("사건 %d(%s)이 띠 규칙에 맞지 않음", e.ID, e.Name)
 		}
 		p := x.places[e.Place]
-		n := Node{Event: e.ID, Name: p.Name, Band: b.band, Depth: depth, Parent: parent, Via: via, Key: p.Key,
-			Nature: weaker(weaker(x.nature[e.Source], linkNature), b.nature), T0: e.StartNS}
-		switch p.Kind {
-		case "process", "connection", "lane", "client", "session", "site", "role", "app":
+		n := Node{Event: e.ID, Name: p.Name, Band: b.band, Depth: depth, Parent: parent, Via: link, Key: p.Key,
+			Nature: weaker(weaker(x.nature[e.Source], path), b.nature), T0: e.StartNS}
+		if contains(x.spec.EventNamedKinds, p.Kind) {
 			n.Name = e.Name
 		}
 		if p.Loc != nil {
@@ -711,9 +740,10 @@ func buildTree(sc *SceneSpec, x *index, roots []*atlas.Event, clock string) ([]N
 		if !follow {
 			return nil
 		}
-		// 자식: parent 자식, 그다음 자료 파일의 연결 차례로, 각각 상대 사건의 id 차례입니다.
+		// 자식: parent 자식, 그다음 자료 파일의 연결 차례로, 각각 상대 사건의 id 차례입니다. 자식의 길은 이 마디의 길과 출처, 거친 연결 근거입니다.
+		kidPath := weaker(path, x.nature[e.Source])
 		for _, k := range x.kids[e.ID] {
-			if err := add(x.events[k], me, depth+1, "parent", "", true); err != nil {
+			if err := add(x.events[k], me, depth+1, "parent", kidPath, true); err != nil {
 				return err
 			}
 		}
@@ -721,7 +751,7 @@ func buildTree(sc *SceneSpec, x *index, roots []*atlas.Event, clock string) ([]N
 			if ex.Dir == "in" {
 				for _, l := range x.in[e.ID] {
 					if l.Kind == ex.Link {
-						if err := add(x.events[l.Src], me, depth+1, l.Kind, x.nature[l.Basis], false); err != nil {
+						if err := add(x.events[l.Src], me, depth+1, l.Kind, weaker(kidPath, x.nature[l.Basis]), false); err != nil {
 							return err
 						}
 					}
@@ -730,7 +760,7 @@ func buildTree(sc *SceneSpec, x *index, roots []*atlas.Event, clock string) ([]N
 			}
 			for _, l := range x.out[e.ID] {
 				if l.Kind == ex.Link {
-					if err := add(x.events[l.Dst], me, depth+1, l.Kind, x.nature[l.Basis], true); err != nil {
+					if err := add(x.events[l.Dst], me, depth+1, l.Kind, weaker(kidPath, x.nature[l.Basis]), true); err != nil {
 						return err
 					}
 				}
@@ -739,7 +769,7 @@ func buildTree(sc *SceneSpec, x *index, roots []*atlas.Event, clock string) ([]N
 		return nil
 	}
 	for _, e := range roots {
-		if err := add(e, -1, 0, "", "", true); err != nil {
+		if err := add(e, -1, 0, "", via[e.ID], true); err != nil {
 			return nil, err
 		}
 	}
@@ -875,6 +905,7 @@ func descentOf(spec *Spec, tree []Node) *Descent {
 		for j := i + 1; j < len(tree); j++ {
 			if isDescendant(tree, j, i) && order[tree[j].Band] > gi {
 				d.State = StateEvents
+				d.Recorded++
 				d.Nature = weaker(d.Nature, tree[j].Nature)
 				break
 			}
@@ -1035,10 +1066,10 @@ func systemSteps(spec *Spec, steps []Step) []SysStep {
 			last.Steps[1] = i
 			last.Leaves = union(last.Leaves, s.Leaves)
 			last.DurNS += s.DurNS
-			last.Nature = weaker(last.Nature, s.Nature)
+			last.Nature = weaker(last.Nature, weaker(s.Nature, s.DurNature))
 			continue
 		}
-		out = append(out, SysStep{Index: len(out), Zones: zs, Steps: [2]int{i, i}, Leaves: append([]int{}, s.Leaves...), DurNS: s.DurNS, Nature: s.Nature})
+		out = append(out, SysStep{Index: len(out), Zones: zs, Steps: [2]int{i, i}, Leaves: append([]int{}, s.Leaves...), DurNS: s.DurNS, Nature: weaker(s.Nature, s.DurNature)})
 		prevKey = key
 	}
 	return out
@@ -1093,8 +1124,8 @@ func diverge(a, b *Route, other int) Divergence {
 			continue
 		}
 		kind, node, diff := walkTrees(a.Steps[i].Tree, b.Steps[i].Tree)
-		if kind == "time" && a.Steps[i].Tree[node].Parent < 0 {
-			// 뿌리만 견준 시간 차(펼칠 것이 없는 칸)는 갈림이 아닙니다.
+		if kind == "" {
+			// 구조가 같고 뿌리 아래 마디의 시간 차가 모두 0이면 갈림이 아닙니다(뿌리의 차는 칸의 머문 시간으로 이미 보임).
 			continue
 		}
 		if stepDiff := abs(a.Steps[i].DurNS - b.Steps[i].DurNS); stepDiff > bestDiff[kind] {
@@ -1115,7 +1146,9 @@ func diverge(a, b *Route, other int) Divergence {
 	return d
 }
 
-// walkTrees 함수는 두 나무를 뿌리 목록부터 같이 걸어 갈림의 종류(tree 또는 time), a 나무의 마디 번호, 그 마디의 머문 시간 차를 돌려줍니다.
+// walkTrees 함수는 두 나무를 뿌리 목록부터 같이 걸어 갈림의 종류(tree, unrecorded, time), a 나무의 마디 번호, 그 마디의 머문 시간 차를 돌려줍니다.
+//
+// 잎까지 구조가 같으면 걸어 내려간 길에서 시간 차가 가장 큰 뿌리 아래 마디가 time 갈림입니다. 그 차가 0이면 종류는 빈 글(갈림 없음)입니다.
 func walkTrees(ta, tb []Node) (string, int, int64) {
 	kidsOf := func(t []Node, i int) []int {
 		var out []int
@@ -1138,7 +1171,13 @@ func walkTrees(ta, tb []Node) (string, int, int64) {
 		return true
 	}
 	i, j := -1, -1
+	best, bestDiff := -1, int64(0)
 	for {
+		if i >= 0 && ta[i].Parent >= 0 {
+			if d := abs(nodeDur(ta[i]) - nodeDur(tb[j])); d > bestDiff {
+				best, bestDiff = i, d
+			}
+		}
 		ka, kb := kidsOf(ta, i), kidsOf(tb, j)
 		if (len(ka) == 0) != (len(kb) == 0) && i >= 0 {
 			// 한쪽만 그 아래가 있으면 실행이 갈린 것인지 기록 범위가 다른 것인지 가를 수 없습니다(X1). 따로 표시합니다.
@@ -1151,7 +1190,10 @@ func walkTrees(ta, tb []Node) (string, int, int64) {
 			return "tree", i, abs(nodeDur(ta[i]) - nodeDur(tb[j]))
 		}
 		if len(ka) == 0 {
-			return "time", i, abs(nodeDur(ta[i]) - nodeDur(tb[j]))
+			if best < 0 {
+				return "", i, 0
+			}
+			return "time", best, bestDiff
 		}
 		k := 0
 		for m := range ka {
