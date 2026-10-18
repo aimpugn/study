@@ -209,6 +209,9 @@ func (v *view) tree(branches any) ([]any, []any, error) {
 		}
 
 		// 스택: [마디, 숨은 칸(안쪽부터), 부모 메서드 안의 부른 줄]. 뿌리는 부른 줄이 없어 site 0이고 숨은 칸이 나머지 전부입니다.
+		if len(e.Stack) == 0 || e.Parent != nil && len(e.Stack) < 2 {
+			return nil, nil, fmt.Errorf("트리 마디 %d의 스택 %d칸으로는 마디와 부른 줄을 가를 수 없음", e.ID, len(e.Stack))
+		}
 		hidden := e.Stack[1:]
 		m["parent"], m["site"] = -1, 0
 		if e.Parent != nil {

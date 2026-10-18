@@ -124,6 +124,12 @@ type borrowRef struct {
 	thread string
 }
 
+// wireRange 값은 연결 하나의 clock.wire 원소입니다: (컨테이너 − 맥) 구간 [lo, hi](ns)와 맞댄 메시지 수 n.
+type wireRange struct {
+	lo, hi int64
+	n      int
+}
+
 // loader 값은 기록 한 벌을 조립하는 동안의 상태입니다.
 type loader struct {
 	*load.Loader
@@ -140,6 +146,7 @@ type loader struct {
 	throws      map[int64][]int     // main 스레드 예외의 시각 → 예외 사건
 	parks       map[[2]int64][]int  // main 스레드 잠듦의 [시작, 끝] → 잠듦 사건
 	borrows     []borrowRef
+	clockWire   map[int]wireRange                 // 연결 번호 → clock.wire의 (컨테이너 − 맥) 구간과 메시지 수
 	node        map[int]int                       // 트리 마디 id → 마디 사건
 	waits       map[string]map[int]map[string]any // 연결 이름 → seq → view.waits의 원소
 	zero        int                               // 0인 시각의 수(rel(0) = 0이 기준 순간과 값 없음을 섞음, decode/spring.go 408~411)
@@ -182,7 +189,7 @@ func Import(key string, v map[string]any, version string) (Result, error) {
 			atlas.Origin{Clock: clockMac, Label: "txlab이 Spring 시나리오를 시작한 순간(spring.json의 startNs, 맥 시계)"}), version),
 		thread: map[string]int{}, conn: map[string]int{}, proc: map[string]int{}, msgs: map[string][][2]int{}, reqs: map[string][]int{},
 		done: map[string][]int64{}, cps: map[int]int{}, cpCapture: map[int64][]int{}, blCapture: map[int64][]int{}, throws: map[int64][]int{},
-		parks: map[[2]int64][]int{}, node: map[int]int{}, waits: map[string]map[int]map[string]any{},
+		parks: map[[2]int64][]int{}, node: map[int]int{}, waits: map[string]map[int]map[string]any{}, clockWire: map[int]wireRange{},
 	}
 
 	// 머리(출처, 시계, run attrs)를 먼저, 그다음 장소와 JFR, 앱 쪽 순간, 연결 위, 서버, 해석기의 트리와 효과 차례로 옮깁니다.
@@ -204,7 +211,7 @@ func Import(key string, v map[string]any, version string) (Result, error) {
 		func() error { return l.indexWaits(view["waits"]) },
 		func() error { return l.requests(conns) },
 		func() error { return l.captures(v["captures"]) },
-		func() error { return l.transactions(v["transactions"]) },
+		func() error { return l.transactions(v["transactions"], conns) },
 		func() error { return l.borrowsOf(v["borrows"]) },
 		func() error { return l.tree(view["tree"]) },
 		func() error { return l.binding(view["binding"]) },
@@ -253,14 +260,14 @@ func (l *loader) micros(v any, where string) (int64, error) {
 func (l *loader) header(v, view map[string]any) error {
 	for _, s := range []atlas.Source{
 		{ID: srcTxlab, Tool: "txlab Spring 지휘(spring.json: 멈춤 자리, 예외 알림, 접속의 받음·닫음, 막힘 관찰)", Clock: clockMac, Nature: atlas.Observed},
-		{ID: srcObserve, Tool: "txlab 관찰기(steps.json의 관찰, 관찰용 접속의 strace로 해석기가 정한 읽기 구간과 끝)", Clock: clockCont, Nature: atlas.Observed},
+		{ID: srcObserve, Tool: "txlab 관찰기(steps.json의 관찰: 관찰한 시각과 읽은 값)", Clock: clockCont, Nature: atlas.Observed},
 		{ID: srcWireMac, Tool: "맥 쪽 중계기 wire-mac-<n>.jsonl(txlab/wire.go)", Clock: clockMac, Nature: atlas.Observed},
 		{ID: srcWireCnt, Tool: "컨테이너 쪽 중계기 wire-<n>.jsonl(해석 결과에는 시각만 남음)", Clock: clockCont, Nature: atlas.Observed},
 		{ID: srcRec, Tool: "함수 기록기·uprobe(해석기 decode/spring.go·scenario.go가 읽음)", Clock: clockCont, Nature: atlas.Observed},
 		{ID: srcJFR, Tool: "JFR spring.jfr(jdk.MethodTrace, jdk.JavaExceptionThrow, jdk.ThreadPark, decode/spring_jfr.go가 읽음)", Clock: clockJFR, Nature: atlas.Observed},
 		{ID: srcSpring, Tool: "해석기 decode/spring*.go(짝과 묶음의 규칙, 해석기의 기록 요약)", Nature: atlas.Derived},
 		{ID: srcMac, Tool: "해석기 decode/spring.go의 요청 묶음(splitRequests)과 트랜잭션(deriveTxs)", Clock: clockMac, Nature: atlas.Derived},
-		{ID: srcCont, Tool: "해석기 decode/spring_tree.go의 서버 기다림(serverWaits)", Clock: clockCont, Nature: atlas.Derived},
+		{ID: srcCont, Tool: "해석기의 컨테이너 시계 값: 서버 창(두 ReadyForQuery 입구 사이, decode/spring.go 516~535), 서버 기다림(spring_tree.go serverWaits), 관찰의 읽기 구간(scenario_check.go captureReads)과 관찰용 접속이 마지막 답을 보낸 순간(spring.go captureSpans)", Clock: clockCont, Nature: atlas.Derived},
 		{ID: srcTree, Tool: "해석기 decode/spring_tree.go의 호출 트리(buildCallTree)와 효과(annotateTree)", Clock: clockJFR, Nature: atlas.Derived},
 		{ID: srcGuess, Tool: "해석기의 짐작: 100 ms 창으로 붙인 빌림의 연결(spring_jfr.go borrows), 그 위의 연결 묶임·슬롯·묶임 효과(bindingReplay), 맥 시각을 JFR 구간에 견준 wire 효과", Clock: clockJFR, Nature: atlas.Inferred},
 		{ID: srcCompare, Tool: "해석기 decode/spring_compare.go(14벌을 견준 갈림)", Nature: atlas.Derived},
@@ -304,6 +311,18 @@ func (l *loader) header(v, view map[string]any) error {
 		if a > b {
 			return fmt.Errorf("%s: 차이 구간이 빔(lo > hi)", where)
 		}
+		conn, err := load.Integer(w["conn"], where+".conn")
+		if err != nil {
+			return err
+		}
+		n, err := load.Integer(w["n"], where+".n")
+		if err != nil {
+			return err
+		}
+		if _, dup := l.clockWire[conn]; dup {
+			return fmt.Errorf("%s: 연결 %d의 구간이 둘", where, conn)
+		}
+		l.clockWire[conn] = wireRange{a, b, n}
 		lo, hi = min(lo, a), max(hi, b)
 	}
 	l.B.AddClock(atlas.Clock{ID: clockMac, PrecisionNS: 1000,
@@ -413,10 +432,10 @@ func (l *loader) places(conns []any) error {
 			return err
 		}
 		id := l.Event(atlas.Event{Place: l.conn[name], Kind: atlas.Span, Name: nameConn, StartNS: &t0, EndNS: &t1, Source: srcTxlab}, "$.conns[]")
+		// startup(접속 인증의 차례)과 lastMac·lastCont(두 중계기의 마지막 메시지 종류)는 메시지에서 다시 셉니다(코드 검토 지적 4). 두 중계기가
+		// 메시지를 같은 순번·종류로 잘랐어야 적재하므로(clock.wire의 same, header) 컨테이너 쪽의 마지막 종류는 맥 쪽과 같습니다.
 		l.B.EventAttrs(id, srcWireMac, "params", c["params"])
-		for _, k := range []string{"startup", "lastMac", "lastCont", "join"} {
-			l.B.EventAttrs(id, srcSpring, k, c[k])
-		}
+		l.B.EventAttrs(id, srcSpring, "join", c["join"])
 		if e, ok := c["bridgeErr"]; ok {
 			l.B.EventAttrs(id, srcTxlab, "bridgeErr", e)
 		}
@@ -507,10 +526,6 @@ func (l *loader) java(v any) error {
 	if err != nil {
 		return err
 	}
-	// 구간의 장소(스레드 → 메서드 → 서술자)를 먼저 모두 세웁니다. 부른 쪽 프레임(caller)이 같은 메서드를 가리킬 때 그 메서드 장소가
-	// 관찰(JFR 구간)의 것으로 남게 하려는 것입니다.
-	type spanPlace struct{ place, thread int }
-	at := make([]spanPlace, len(spans))
 	for i, raw := range spans {
 		where := fmt.Sprintf("$.java.spans[%d]", i)
 		s, err := load.Object(raw, where)
@@ -525,11 +540,7 @@ func (l *loader) java(v any) error {
 			return err
 		}
 		th := l.threadPlace(names[2], srcJFR, "$.java.spans[].thread")
-		at[i] = spanPlace{l.descriptor(th, names[0], names[1], srcJFR, "$.java.spans[].fn", "$.java.spans[].desc"), th}
-	}
-	for i, raw := range spans {
-		where := fmt.Sprintf("$.java.spans[%d]", i)
-		s := raw.(map[string]any)
+		place := l.descriptor(th, names[0], names[1], srcJFR, "$.java.spans[].fn", "$.java.spans[].desc")
 		t0, err := l.micros(s["t0"], where+".t0")
 		if err != nil {
 			return err
@@ -538,25 +549,24 @@ func (l *loader) java(v any) error {
 		if err != nil {
 			return err
 		}
-		// 스택은 [구간의 서술자, 부른 쪽 프레임]입니다. caller는 JFR 스택의 0번 칸(spring_jfr.go 265~267)이고, 트리 마디가 없는 구간에서는
-		// 이것이 유일한 호출 사슬 기록입니다(결정 검토 지적 4). 표시 파일이 caller를 도출로 표시해 그 프레임 장소는 해석기 출처입니다.
+		// 스택은 [구간의 서술자, 부른 쪽 프레임]입니다. caller는 JFR 스택의 0번 칸(spring_jfr.go 265~267)을 글로 옮긴 관찰이고, 트리 마디가
+		// 없는 구간에서는 이것이 유일한 호출 사슬 기록입니다(결정 검토 지적 4, 코드 검토 지적 7로 대응표의 출처를 관찰로 고침).
 		caller, err := load.Text(s["caller"], where+".caller")
 		if err != nil {
 			return err
 		}
 		var stack []int
 		if caller != "" {
-			f, err := l.frame(at[i].thread, caller, srcSpring, "$.java.spans[].caller")
+			f, err := l.frame(th, caller, srcJFR, "$.java.spans[].caller")
 			if err != nil {
 				return fmt.Errorf("%s.caller: %w", where, err)
 			}
-			stack = []int{at[i].place, f}
+			stack = []int{place, f}
 		}
-		id := l.Event(atlas.Event{Place: at[i].place, Kind: atlas.Span, Name: s["fn"].(string), StartNS: &t0, EndNS: &t1, Stack: stack, Source: srcJFR}, "$.java.spans[]")
-		for _, k := range []string{"depth", "twice"} {
-			if val, ok := s[k]; ok {
-				l.B.EventAttrs(id, srcSpring, k, val)
-			}
+		// depth(같은 스레드에서 이 호출을 감싼 기록된 호출의 수)는 스레드와 시각만으로 내보내기가 다시 셉니다(코드 검토 지적 1).
+		id := l.Event(atlas.Event{Place: place, Kind: atlas.Span, Name: names[0], StartNS: &t0, EndNS: &t1, Stack: stack, Source: srcJFR}, "$.java.spans[]")
+		if val, ok := s["twice"]; ok {
+			l.B.EventAttrs(id, srcSpring, "twice", val)
 		}
 	}
 
@@ -835,6 +845,42 @@ func (l *loader) wire(conns []any) error {
 			l.Link(mac, cnt, "message", srcSpring, WirePair)
 			l.msgs[name] = append(l.msgs[name], [2]int{mac, cnt})
 		}
+		n, err := load.Integer(c["conn"], fmt.Sprintf("$.conns[%d].conn", i))
+		if err != nil {
+			return err
+		}
+		if err := l.checkWireClock(n, name); err != nil {
+			return fmt.Errorf("$.conns[%d]: %w", i, err)
+		}
+	}
+	if len(l.clockWire) != len(conns) {
+		return fmt.Errorf("$.clock.wire %d개, 연결 %d개", len(l.clockWire), len(conns))
+	}
+	return nil
+}
+
+// checkWireClock 메서드는 연결 n의 clock.wire 원소가 그 연결의 메시지 짝에서 해석기처럼 다시 센 구간과 같은지 봅니다(decode/spring.go 204~220).
+//
+// (컨테이너 − 맥) 차이는 앱 → 서버(F)에서 차이 + 지연, 서버 → 앱(B)에서 차이 − 지연이라 구간은 [B의 (tc − t) 최댓값, F의 최솟값]입니다.
+// run의 container → mac 관계는 이 구간들로 만드므로, 같지 않으면 그 관계를 믿을 수 없어 멈춥니다(코드 검토 지적 10).
+func (l *loader) checkWireClock(n int, name string) error {
+	w, ok := l.clockWire[n]
+	if !ok {
+		return fmt.Errorf("연결 %d의 clock.wire가 없음", n)
+	}
+	r := l.B.Run()
+	lo, hi := int64(math.MinInt64), int64(math.MaxInt64)
+	for _, m := range l.msgs[name] {
+		mac, cnt := r.Events[m[0]], r.Events[m[1]]
+		d := *cnt.StartNS - *mac.StartNS
+		if mac.From != nil {
+			lo = max(lo, d)
+		} else {
+			hi = min(hi, d)
+		}
+	}
+	if w.n != len(l.msgs[name]) || w.lo != lo || w.hi != hi {
+		return fmt.Errorf("clock.wire(n %d, %d~%d ns)가 메시지에서 다시 센 구간(n %d, %d~%d ns)과 다름", w.n, w.lo, w.hi, len(l.msgs[name]), lo, hi)
 	}
 	return nil
 }
@@ -975,6 +1021,9 @@ func (l *loader) requests(conns []any) error {
 		if len(groups) != len(list) {
 			return fmt.Errorf("$.conns[%d]: 요청 %d개, 메시지에서 다시 센 요청 %d개", i, len(list), len(groups))
 		}
+		if err := checkJoin(c, list, fmt.Sprintf("$.conns[%d]", i)); err != nil {
+			return err
+		}
 
 		// 함수 이름의 경로는 이 백엔드의 모든 창의 스택 칸에서 모은 뒤에 스택을 옮깁니다(load.Loader.Callee).
 		for _, qr := range list {
@@ -1043,7 +1092,32 @@ func (l *loader) requests(conns []any) error {
 	return nil
 }
 
-// server 메서드는 서버 창 하나를 백엔드의 기록기 구간으로 옮기고, 창 안의 서버 사건·스냅숏·줄 판정과 그 요청의 기다림을 품게 합니다.
+// checkJoin 함수는 서버 창이 있는 연결에서 함수 기록의 ReadyForQuery 입구 수와 연결 위 Z 수(join)가 같은지 봅니다.
+//
+// 해석기는 두 수가 같을 때만 k번째 입구를 k번째 Z와 차례로 짝지어 창을 만듭니다(decode/spring.go 516~519). 짝이 규칙으로 정해지는(도출)
+// 까닭은 원격 출력의 ReadyForQuery 호출 하나가 Z 메시지를 정확히 하나 보내고(PostgreSQL src/backend/tcop/dest.c ReadyForQuery) 한 연결의
+// 메시지 차례가 유지되기 때문이고, 두 수가 같다는 것이 그 전제입니다(코드 검토 지적 11). 다르면 짝을 믿을 수 없어 멈춥니다.
+func checkJoin(c map[string]any, requests []any, where string) error {
+	windows := 0
+	for _, q := range requests {
+		if _, ok := q.(map[string]any)["server"]; ok {
+			windows++
+		}
+	}
+	if windows == 0 {
+		return nil
+	}
+	join, err := load.List(c["join"], where+".join")
+	if err != nil || len(join) != 2 {
+		return fmt.Errorf("%s.join이 수 둘의 목록이 아님", where)
+	}
+	if join[0] != join[1] {
+		return fmt.Errorf("%s: 서버 창 %d개가 있는데 ReadyForQuery 입구 %v개와 Z %v개가 달라 차례 짝을 믿을 수 없음", where, windows, join[0], join[1])
+	}
+	return nil
+}
+
+// server 메서드는 서버 창 하나를 백엔드의 해석기 구간으로 옮기고, 창 안의 서버 사건·스냅숏·줄 판정과 그 요청의 기다림을 품게 합니다.
 func (l *loader) server(req int, name string, proc, seq int, raw any, where string) error {
 	s, err := load.Object(raw, where)
 	if err != nil {
@@ -1061,11 +1135,12 @@ func (l *loader) server(req int, name string, proc, seq int, raw any, where stri
 		return err
 	}
 	// 창은 두 ReadyForQuery 입구 사이를 요청 하나로 보는 해석기의 규칙이 만든 것이라 해석기 출처입니다(결정 검토 지적 1).
-	// 창 안에서 기록기가 센 카탈로그 스냅숏의 수는 관찰이라, 그 수를 담은 기록기의 sample을 창이 품게 합니다.
+	// 창 안의 카탈로그 스냅숏 잡기는 기록기가 본 호출이라 기록기의 sample(시각 미기록)로 두고 창이 품게 합니다. 그 수는 해석기가
+	// GetSnapshotData 가운데 대상이 CatalogSnapshotData인 것을 기호로 가려 센 값이라 해석기의 값입니다(scenario.go 812~822, 코드 검토 지적 3b).
 	win := l.Event(atlas.Event{Place: proc, Kind: atlas.Span, Name: nameServer, StartNS: &t0, EndNS: &t1, Source: srcCont}, "$.conns[].requests[].server.t0")
 	l.Link(req, win, nameServer, srcSpring, ServerWindow)
 	cat := l.Event(atlas.Event{Place: proc, Kind: atlas.Sample, Name: nameCatalog, Source: srcRec}, "$.conns[].requests[].server")
-	l.B.EventAttrs(cat, srcRec, "catalogSnapshots", s["catalogSnapshots"])
+	l.B.EventAttrs(cat, srcSpring, "catalogSnapshots", s["catalogSnapshots"])
 	l.Link(win, cat, "contains", srcSpring, RequestWindow)
 	if l.Once("unrecorded:catalog") {
 		l.B.AddUnrecorded(atlas.Unrecorded{Source: srcRec, Field: "catalogSnapshots.start_ns", Note: "서버 창 안에서 카탈로그 스냅숏(CatalogSnapshotData)을 잡은 횟수만 남았습니다(decode/scenario.go 820~821)"})
@@ -1147,10 +1222,47 @@ func (l *loader) serverEvent(win, proc int, raw any, where string) error {
 		kind, end = atlas.Span, &t1
 	}
 	id := l.Event(atlas.Event{Place: place, Kind: kind, Name: name, StartNS: &t0, EndNS: end, Stack: stack, Source: srcRec}, group)
-	if f, ok := e["f"]; ok {
-		l.B.EventAttrs(id, srcRec, "f", f)
+	if err := l.serverFields(id, name, stack, e, where); err != nil {
+		return err
 	}
 	l.Link(win, id, "contains", srcSpring, RequestWindow)
+	return nil
+}
+
+// serverFieldKeys 는 서버 사건의 나머지 칸 f에 올 수 있는 열쇠입니다(재고 조사의 표시 파일, decode/scenario.go의 txEvent.F).
+var serverFieldKeys = []string{"at", "bit", "blk", "buf", "created", "ctid", "gran", "level", "lsn", "mode", "nsub", "off", "oper", "rel", "result", "sxact", "tup", "txid", "type", "xid", "xmax", "xmin"}
+
+// serverFields 메서드는 서버 사건의 나머지 칸 f를 칸마다 attrs의 "f.<칸>" 열쇠로 둡니다.
+//
+// hint·ereport의 f.at(부른 줄)은 코드 자리라 저장하지 않고 스택(안쪽부터) 1번 칸에서 다시 셉니다. 해석기는 그 값을 스택과 따로
+// 셈하지만(scenario.go 908·1012) 같은 자리입니다(C14 16/16, 코드 검토 지적 2). f를 통째로 두면 그 아래의 코드 자리가 attrs에 숨어 나눕니다.
+// 모르는 열쇠가 있거나, hint·ereport에 at이 없거나 스택 1번 칸과 다르거나, 다른 사건에 at이 있으면 멈춥니다.
+func (l *loader) serverFields(id int, kind string, stack []int, e map[string]any, where string) error {
+	f := map[string]any{}
+	if raw, ok := e["f"]; ok {
+		var err error
+		if f, err = load.Object(raw, where+".f"); err != nil {
+			return err
+		}
+		if err := load.Keys(f, where+".f", serverFieldKeys...); err != nil {
+			return err
+		}
+	}
+	at, hasAt := f["at"]
+	if wantAt := kind == "hint" || kind == "ereport"; wantAt != hasAt {
+		return fmt.Errorf("%s: %s 사건의 f.at 있음 %v(hint·ereport에만 있어야 함)", where, kind, hasAt)
+	}
+	if hasAt {
+		st := load.StackOf(l.B.Run().Places, stack)
+		if len(st) < 2 || st[len(st)-2].(map[string]any)["at"] != at {
+			return fmt.Errorf("%s: f.at %v가 스택 1번 칸의 자리가 아님", where, at)
+		}
+	}
+	for _, k := range serverFieldKeys {
+		if val, ok := f[k]; ok && k != "at" {
+			l.B.EventAttrs(id, srcRec, "f."+k, val)
+		}
+	}
 	return nil
 }
 
@@ -1324,8 +1436,9 @@ func (l *loader) wait(win, proc int, w map[string]any) error {
 	return nil
 }
 
-// captures 메서드는 관찰을 txlab 장소의 sample로, 부분마다 실제로 읽은 구간을 그 자식 구간으로, 관찰용 접속이 마지막 답을 보낸 span[1]을
-// 해석기의 순간으로 옮깁니다. 관찰마다 같은 시각(tCapture)의 멈춤 자리나 막힘 관찰이 정확히 하나여야 하고 그것과 same 연결입니다. 겹친 메시지는 컨테이너 쪽
+// captures 메서드는 관찰을 txlab 장소의 sample로, 부분마다 읽은 구간을 해석기 구간으로(관찰에서 contains), 관찰용 접속이 마지막 답을 보낸
+// span[1]을 해석기의 순간으로(관찰에서 end) 옮깁니다. 읽기 구간은 그 질의를 받은 때부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의
+// 시작)까지로 해석기가 정한 위쪽 경계라 해석기 출처입니다(decode/scenario_check.go 395~433, 코드 검토 지적 3a). 관찰마다 같은 시각(tCapture)의 멈춤 자리나 막힘 관찰이 정확히 하나여야 하고 그것과 same 연결입니다. 겹친 메시지는 컨테이너 쪽
 // 메시지 사건과 overlap 연결입니다.
 func (l *loader) captures(v any) error {
 	caps, err := load.List(v, "$.captures")
@@ -1396,13 +1509,17 @@ func (l *loader) captures(v any) error {
 				}
 				end = nil
 			}
-			l.Event(atlas.Event{Place: l.client, Kind: atlas.Span, Name: p, Parent: &id, StartNS: &a, EndNS: end, Source: srcObserve}, "$.captures[].reads."+p)
+			read := l.Event(atlas.Event{Place: l.client, Kind: atlas.Span, Name: p, StartNS: &a, EndNS: end, Source: srcCont}, "$.captures[].reads."+p)
+			l.Link(id, read, "contains", srcSpring, "$.captures[].reads")
 		}
 
 		// span[1]은 해석기가 관찰용 접속의 strace에서 고른 값(마지막 부분의 답을 보낸 sendto, decode/spring.go 772~803)이라 관찰의 끝이
 		// 아니라 해석기의 순간으로 두고 관찰에서 end 연결로 잇습니다(결정 검토 지적 2).
 		endID := l.Event(atlas.Event{Place: l.client, Kind: atlas.Instant, Name: nameCaptureEnd, StartNS: &s1, Source: srcCont}, "$.captures[].span")
 		l.Link(id, endID, "end", srcSpring, "$.captures[].span")
+		if l.Once("unrecorded:observer") {
+			l.B.AddUnrecorded(atlas.Unrecorded{Source: srcCont, Field: "capture.place", Note: "관찰용 접속의 백엔드 pid가 해석 결과에 없어, 그 접속이 한 일(읽기 구간, 마지막 답을 보낸 순간)을 관찰과 같은 지휘 장소(txlab)에 둡니다(코드 검토 지적 12)"})
+		}
 
 		// 같은 시각에 찍었다고 txlab이 적은 멈춤 자리나 막힘 관찰 하나와 잇습니다. afterStep은 그 짝으로 다시 셉니다.
 		cps, bls := l.cpCapture[t], l.blCapture[t]
@@ -1465,12 +1582,79 @@ func (l *loader) findMessage(o any) ([2]int, error) {
 	return found[0], nil
 }
 
+// txRule 값은 해석기의 트랜잭션 규칙(deriveTxs)으로 요청에서 다시 센 트랜잭션 하나입니다.
+type txRule struct {
+	conn, first, last int
+	t0, t1            int64
+	end               string
+}
+
+// deriveTxs 함수는 연결마다 요청의 ReadyForQuery 상태에서 트랜잭션을 해석기처럼 다시 셉니다(decode/spring.go 311~338).
+//
+// 접속 인증(seq 0)은 빼고, 상태가 I가 아닌 요청에서 시작해 상태가 I로 돌아온 요청에서 끝납니다. t0는 첫 요청의 sent, t1은 끝 요청의
+// done, end는 끝 요청의 마지막 태그(없으면 빈 글)입니다. conns는 원본의 연결 목록이고, 요청의 seq가 차례와 같은지는 requests가 이미 봤습니다.
+// 시각을 읽지 못하면 오류를 돌려줍니다.
+func deriveTxs(conns []any) ([]txRule, error) {
+	var out []txRule
+	for i, raw := range conns {
+		c := raw.(map[string]any)
+		n, err := load.Integer(c["conn"], fmt.Sprintf("$.conns[%d].conn", i))
+		if err != nil {
+			return nil, err
+		}
+		reqs, err := load.List(c["requests"], fmt.Sprintf("$.conns[%d].requests", i))
+		if err != nil {
+			return nil, err
+		}
+		var cur *txRule
+		for k, qr := range reqs {
+			if k == 0 {
+				continue
+			}
+			where := fmt.Sprintf("$.conns[%d].requests[%d]", i, k)
+			q := qr.(map[string]any)
+			status, _ := q["status"].(string)
+			if cur == nil && status != "I" {
+				t0, err := load.Micros(q["sent"], where+".sent")
+				if err != nil {
+					return nil, err
+				}
+				cur = &txRule{conn: n, first: k, t0: t0}
+			}
+			if cur != nil && status == "I" {
+				t1, err := load.Micros(q["done"], where+".done")
+				if err != nil {
+					return nil, err
+				}
+				cur.last, cur.t1 = k, t1
+				if tags, _ := q["tags"].([]any); len(tags) > 0 {
+					cur.end, _ = tags[len(tags)-1].(string)
+				}
+				out = append(out, *cur)
+				cur = nil
+			}
+		}
+	}
+	return out, nil
+}
+
 // transactions 메서드는 트랜잭션을 연결 장소의 해석기 구간으로 옮기고, 품은 요청마다 contains, 끝난 뒤 첫 앱 메시지와 next 연결을 둡니다.
-// next는 해석기처럼 마지막 요청의 done보다 늦은 첫 F 메시지입니다(decode/spring.go 326~332). 그런 메시지가 없으면 멈춥니다.
-func (l *loader) transactions(v any) error {
+//
+// 원본의 트랜잭션 목록은 요청에서 해석기 규칙(deriveTxs)으로 다시 센 목록과 차례와 conn·first·last·t0·t1·end까지 같아야 합니다. 저장하는 것은
+// 구간과 품은 요청뿐이라, 다르면 원본의 first·last로 만든 구조를 다시 읽는 것만으로는 잡히지 않기 때문입니다(코드 검토 지적 4). end는
+// 내보내기가 끝 요청의 태그에서 다시 셉니다. next는 해석기처럼 마지막 요청의 done보다 늦은 첫 F 메시지입니다(decode/spring.go 326~332).
+// 그런 메시지가 없으면 멈춥니다.
+func (l *loader) transactions(v any, conns []any) error {
 	list, err := load.List(v, "$.transactions")
 	if err != nil {
 		return err
+	}
+	rule, err := deriveTxs(conns)
+	if err != nil {
+		return err
+	}
+	if len(rule) != len(list) {
+		return fmt.Errorf("$.transactions: %d개, 요청에서 다시 센 트랜잭션 %d개", len(list), len(rule))
 	}
 	for i, raw := range list {
 		where := fmt.Sprintf("$.transactions[%d]", i)
@@ -1509,8 +1693,10 @@ func (l *loader) transactions(v any) error {
 		if err != nil {
 			return err
 		}
+		if got, want := (txRule{n, first, last, t0, t1, fmt.Sprint(x["end"])}), rule[i]; got != want {
+			return fmt.Errorf("%s: 트랜잭션 %+v가 요청에서 다시 센 %+v와 다름", where, got, want)
+		}
 		id := l.Event(atlas.Event{Place: place, Kind: atlas.Span, Name: nameTx, StartNS: &t0, EndNS: &t1, Source: srcMac}, "$.transactions[]")
-		l.B.EventAttrs(id, srcMac, "end", x["end"])
 		for s := first; s <= last; s++ {
 			l.Link(id, l.reqs[name][s], "contains", srcSpring, "$.transactions[].first")
 		}

@@ -273,8 +273,10 @@ func (l *loader) effects(node, place int, n map[string]any, where string) error 
 			l.Link(node, t[0], "throw", srcSpring, "$.view.tree[].effects[]")
 		}
 	}
+	// 시각 없는 효과는 출처가 둘입니다: 종류 효과는 해석기의 트리 출처, 묶임 효과는 추정 출처의 사건입니다(코드 검토 지적 6).
 	if l.Once("unrecorded:effects") {
-		l.B.AddUnrecorded(atlas.Unrecorded{Source: srcTree, Field: "effect.start_ns", Note: "autocommit·validate·rollbackOnly·return·suspend·resume 효과는 따로 시각이 없고 그 마디의 구간 안의 일입니다"})
+		l.B.AddUnrecorded(atlas.Unrecorded{Source: srcTree, Field: "effect.start_ns", Note: "autocommit·validate·rollbackOnly 효과는 따로 시각이 없고 그 마디의 구간 안의 일입니다"})
+		l.B.AddUnrecorded(atlas.Unrecorded{Source: srcGuess, Field: "effect.start_ns", Note: "return·suspend·resume 효과(연결 묶임의 변화)는 따로 시각이 없고 그 마디의 구간 안의 일입니다"})
 	}
 	return nil
 }

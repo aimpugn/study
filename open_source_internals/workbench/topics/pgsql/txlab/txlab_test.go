@@ -69,7 +69,8 @@ func loadAll(t *testing.T) []loaded {
 	return out
 }
 
-// TestRoundTripRebuildsEveryRun 은 적재 결과를 파일 꼴로 쓰고 다시 읽어 되돌린 기록이 원본과 깊이 같은지 확인합니다(검사 1).
+// TestRoundTripRebuildsEveryRun 함수는 적재 결과를 파일 꼴로 쓰고 다시 읽어 되돌린 기록이 원본과 깊이 같은지 확인합니다(검사 1). 연결 표의 차례만
+// 뒤집은 사본도 같아야 합니다.
 func TestRoundTripRebuildsEveryRun(t *testing.T) {
 	for _, l := range loadAll(t) {
 		// Given: 적재 결과를 형식의 JSON으로 쓴 것
@@ -90,6 +91,22 @@ func TestRoundTripRebuildsEveryRun(t *testing.T) {
 
 		// Then: 원본과 차이가 없다
 		assertSame(t, l.key, l.raw, got)
+
+		// Then: 연결 표의 차례만 뒤집은 사본도 같게 되돌아온다(형식은 연결 표의 차례에 뜻을 두지 않음, Spring 코드 검토 지적 8)
+		for i, j := 0, len(back.Links)-1; i < j; i, j = i+1, j-1 {
+			back.Links[i], back.Links[j] = back.Links[j], back.Links[i]
+		}
+		for i := range back.Links {
+			back.Links[i].ID = i
+		}
+		if errs := atlas.Validate(back); len(errs) != 0 {
+			t.Fatalf("%s: 연결 차례를 뒤집은 사본의 형식 검사 %v", l.key, errs[0])
+		}
+		got, err = Export(back)
+		if err != nil {
+			t.Fatalf("%s: 연결 차례를 뒤집은 사본: %v", l.key, err)
+		}
+		assertSame(t, l.key+"(연결 차례 뒤집음)", l.raw, got)
 	}
 }
 
@@ -112,7 +129,7 @@ func assertSame(t *testing.T, name string, want, got any) {
 	}
 }
 
-// TestImportedRunsPassFormatAndProvenanceChecks 는 44벌이 형식 검사, 구조 숨김 검사, 출처 성격 검사를 모두 통과하는지 확인합니다(검사 2·3·4).
+// TestImportedRunsPassFormatAndProvenanceChecks 함수는 44벌이 형식 검사, 구조 숨김 검사, 출처 성격 검사를 모두 통과하는지 확인합니다(검사 2·3·4).
 func TestImportedRunsPassFormatAndProvenanceChecks(t *testing.T) {
 	// Given: 트랜잭션 실험의 판정 기준(표시 파일과 대응표)과 추정 목록
 	rs, err := roles.Load("tx")
@@ -173,7 +190,7 @@ func linkOf(t *testing.T, r *atlas.Run, kind, src string) int {
 	return 0
 }
 
-// TestRoundTripCatchesBrokenStructure 는 구조 칸을 하나씩 망가뜨린 적재에서 되돌린 기록이 원본과 달라지는지 확인합니다.
+// TestRoundTripCatchesBrokenStructure 함수는 구조 칸을 하나씩 망가뜨린 적재에서 되돌린 기록이 원본과 달라지는지 확인합니다.
 // 되돌림 비교가 연결과 장소로 되살리는 값(afterKill, walWrittenT, by, 세션의 pid)을 실제로 보는지 판별력을 봅니다.
 func TestRoundTripCatchesBrokenStructure(t *testing.T) {
 	// Given: kill과 힌트 변화가 있는 기록
@@ -247,7 +264,7 @@ func TestRoundTripCatchesBrokenStructure(t *testing.T) {
 	}
 }
 
-// TestChecksCatchHiddenStructureAndWrongNature 는 구조를 attrs에 숨기거나 출처 성격을 바꾼 적재를 검사 3·4가 잡는지 확인합니다.
+// TestChecksCatchHiddenStructureAndWrongNature 함수는 구조를 attrs에 숨기거나 출처 성격을 바꾼 적재를 검사 3·4가 잡는지 확인합니다.
 func TestChecksCatchHiddenStructureAndWrongNature(t *testing.T) {
 	// Given: 판정 기준과 힌트 변화가 있는 기록의 사본
 	rs, err := roles.Load("tx")
@@ -300,7 +317,7 @@ func TestChecksCatchHiddenStructureAndWrongNature(t *testing.T) {
 	}
 }
 
-// TestTopicBlindFactsMatchOriginalScreens 는 주제의 선택 규칙(facts.json)만으로 플랫폼이 뽑은 단계·메시지·기다림·관찰·kill·멈춤·힌트 변화가
+// TestTopicBlindFactsMatchOriginalScreens 함수는 주제의 선택 규칙(facts.json)만으로 플랫폼이 뽑은 단계·메시지·기다림·관찰·kill·멈춤·힌트 변화가
 // 원본 화면 데이터에서 바로 센 줄과 차례까지 같은지 확인합니다(검사 5). 출처 성격도 함께 견줘 추정이 관측으로 나오지 않는지 봅니다.
 func TestTopicBlindFactsMatchOriginalScreens(t *testing.T) {
 	// Given: 주제의 선택 규칙
@@ -441,7 +458,7 @@ func originalFacts(t *testing.T, run map[string]any) map[string][]string {
 	return out
 }
 
-// TestChromeExportHasNoCrossingSpans 는 적재 결과를 Chrome 형식으로 옮겼을 때 같은 시계·같은 장소의 구간이 서로 어긋나 겹치지 않는지 확인합니다(검사 2).
+// TestChromeExportHasNoCrossingSpans 함수는 적재 결과를 Chrome 형식으로 옮겼을 때 같은 시계·같은 장소의 구간이 서로 어긋나 겹치지 않는지 확인합니다(검사 2).
 // 어긋난 구간은 Perfetto가 넘침 줄로 따로 그립니다. 포개진 구간(요청 안의 교착 검사, 잠금 프레임 안의 잠듦 등) 하나를
 // 어긋나게 만들면 검사가 그 구간을 잡아야 합니다(검사가 볼 것이 실제로 있었는지). 여정은 장소마다 시각 있는 구간이 하나뿐이고
 // gdb 기록은 시각이 없어, 이 검사가 볼 것이 있는 적재는 이 패키지뿐입니다.
@@ -501,7 +518,7 @@ func nestedPair(r *atlas.Run) (outer, inner int, ok bool) {
 	return 0, 0, false
 }
 
-// TestImportRejectsWalLinkThatDoesNotMatch 는 kill의 walWrittenT가 가리키는 쓰기가 pg_wal 파일이 아니거나, 그 쓰기가 닿은 위치가
+// TestImportRejectsWalLinkThatDoesNotMatch 함수는 kill의 walWrittenT가 가리키는 쓰기가 pg_wal 파일이 아니거나, 그 쓰기가 닿은 위치가
 // walWritten과 다르면 적재기가 멈추는지 확인합니다. 끝 시각만 우연히 같은 다른 쓰기에 wal 연결을 붙이지 않기 위해서입니다.
 func TestImportRejectsWalLinkThatDoesNotMatch(t *testing.T) {
 	// Given: walWrittenT가 있는 kill과 끝이 그 시각인 쓰기를 고르는 함수(원본을 화면 파일에서 새로 읽음)

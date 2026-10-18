@@ -27,7 +27,7 @@ func sampleRun() *Run {
 	return b.Run()
 }
 
-// TestValidateAcceptsWellFormedRun 는 규칙을 지켜 조립한 run이 형식 검사를 통과하는지 확인합니다.
+// TestValidateAcceptsWellFormedRun 함수는 규칙을 지켜 조립한 run이 형식 검사를 통과하는지 확인합니다.
 func TestValidateAcceptsWellFormedRun(t *testing.T) {
 	// Given: 형식 규칙을 지켜 조립한 run
 	r := sampleRun()
@@ -41,7 +41,7 @@ func TestValidateAcceptsWellFormedRun(t *testing.T) {
 	}
 }
 
-// TestValidateCatchesEachBrokenRule 는 형식 규칙을 하나씩 어긴 run마다 그 규칙의 지적이 나오는지 확인합니다. 검사가 실제로 결함을 가려내는지 보는 시험입니다.
+// TestValidateCatchesEachBrokenRule 함수는 형식 규칙을 하나씩 어긴 run마다 그 규칙의 지적이 나오는지 확인합니다. 검사가 실제로 결함을 가려내는지 보는 시험입니다.
 func TestValidateCatchesEachBrokenRule(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -87,7 +87,7 @@ func TestValidateCatchesEachBrokenRule(t *testing.T) {
 	}
 }
 
-// TestWriteReadRoundTripKeepsNumbersAsWritten 는 쓰고 다시 읽은 run에서 attrs의 숫자가 글자 그대로 남는지 확인합니다.
+// TestWriteReadRoundTripKeepsNumbersAsWritten 함수는 쓰고 다시 읽은 run에서 attrs의 숫자가 글자 그대로 남는지 확인합니다.
 func TestWriteReadRoundTripKeepsNumbersAsWritten(t *testing.T) {
 	// Given: attrs에 json.Number가 있는 run
 	r := sampleRun()
@@ -111,7 +111,7 @@ func TestWriteReadRoundTripKeepsNumbersAsWritten(t *testing.T) {
 	}
 }
 
-// TestReadRejectsUnknownField 는 형식에 없는 칸을 조용히 버리지 않고 오류로 내는지 확인합니다.
+// TestReadRejectsUnknownField 함수는 형식에 없는 칸을 조용히 버리지 않고 오류로 내는지 확인합니다.
 func TestReadRejectsUnknownField(t *testing.T) {
 	// Given: 형식에 없는 칸이 든 JSON
 	in := `{"id":"x","surprise":1}`
@@ -125,7 +125,7 @@ func TestReadRejectsUnknownField(t *testing.T) {
 	}
 }
 
-// TestStaticPlaceKeyIgnoresDynamicParent 는 같은 함수가 다른 프로세스 아래에 있어도 같은 key를 받는지 확인합니다.
+// TestStaticPlaceKeyIgnoresDynamicParent 함수는 같은 함수가 다른 프로세스 아래에 있어도 같은 key를 받는지 확인합니다.
 func TestStaticPlaceKeyIgnoresDynamicParent(t *testing.T) {
 	// Given: 서로 다른 프로세스 아래의 같은 함수
 	b := NewBuilder("r", "t", "s", "a", Origin{})
@@ -146,7 +146,7 @@ func TestStaticPlaceKeyIgnoresDynamicParent(t *testing.T) {
 	}
 }
 
-// TestDiffComparesNumbersByValueAndTypesStrictly 는 깊은 비교가 숫자는 값으로, 타입은 엄격하게 견주는지 확인합니다.
+// TestDiffComparesNumbersByValueAndTypesStrictly 함수는 깊은 비교가 숫자는 값으로, 타입은 엄격하게 견주는지 확인합니다.
 func TestDiffComparesNumbersByValueAndTypesStrictly(t *testing.T) {
 	// Given: 글자는 다르지만 값이 같은 숫자, 타입만 다른 식별자, 한쪽에만 있는 키
 	a := map[string]any{"t": json.Number("56"), "conn": json.Number("1"), "only": true}
@@ -162,7 +162,7 @@ func TestDiffComparesNumbersByValueAndTypesStrictly(t *testing.T) {
 	}
 }
 
-// TestMicrosToNanosRoundTrips 는 원본 마이크로초를 나노초로 옮겼다 되돌리면 같은 float64가 되는지 확인합니다.
+// TestMicrosToNanosRoundTrips 함수는 원본 마이크로초를 나노초로 옮겼다 되돌리면 같은 float64가 되는지 확인합니다.
 func TestMicrosToNanosRoundTrips(t *testing.T) {
 	for _, s := range []string{"0", "95.172", "4479425.793", "4456776", "-3.5"} {
 		// Given: 원본의 마이크로초 글
@@ -182,7 +182,7 @@ func TestMicrosToNanosRoundTrips(t *testing.T) {
 	}
 }
 
-// TestMicrosToNanosRefusesSubNanosecond 는 나노초보다 촘촘한 값을 조용히 버리지 않고 오류로 내는지 확인합니다.
+// TestMicrosToNanosRefusesSubNanosecond 함수는 나노초보다 촘촘한 값을 조용히 버리지 않고 오류로 내는지 확인합니다.
 func TestMicrosToNanosRefusesSubNanosecond(t *testing.T) {
 	// Given: 나노초보다 촘촘한 마이크로초
 	n := json.Number("1.0004")
@@ -196,7 +196,7 @@ func TestMicrosToNanosRefusesSubNanosecond(t *testing.T) {
 	}
 }
 
-// TestCompareStartRespectsClockRelation 는 시계가 다른 두 사건의 순서를 관계 범위가 허락할 때만 내는지 확인합니다.
+// TestCompareStartRespectsClockRelation 함수는 시계가 다른 두 사건의 순서를 관계 범위가 허락할 때만 내는지 확인합니다.
 func TestCompareStartRespectsClockRelation(t *testing.T) {
 	r := sampleRun()
 	ev := func(src string, ns int64) Event {
@@ -226,7 +226,7 @@ func TestCompareStartRespectsClockRelation(t *testing.T) {
 	}
 }
 
-// TestScanStructureAllowsOnlyListedKeys 는 구조 숨김 검사가 허용 목록 밖의 키(구조 역할, 표시 파일에 없는 조각)를 잡고 예외 부류는 통과시키는지 확인합니다.
+// TestScanStructureAllowsOnlyListedKeys 함수는 구조 숨김 검사가 허용 목록 밖의 키(구조 역할, 표시 파일에 없는 조각)를 잡고 예외 부류는 통과시키는지 확인합니다.
 func TestScanStructureAllowsOnlyListedKeys(t *testing.T) {
 	// Given: 메시지 사건 하나와 그 경로 무리의 판정 기준
 	r := sampleRun()
@@ -278,7 +278,53 @@ func TestScanStructureAllowsOnlyListedKeys(t *testing.T) {
 	}
 }
 
-// TestCheckNatureFollowsMarksAndInferredList 는 출처 성격 검사가 표시 출처와 추정 목록에 어긋난 근거를 잡는지 확인합니다.
+// TestScanStructureWalksIntoValues 함수는 구조 숨김 검사가 허용된 키의 값 안까지 걸어 내려가, 표시 파일에 없는 아래 경로를 잡는지 확인합니다
+// (Spring 코드 검토 지적 5의 세 사례: 그릇에 원본에 없던 열쇠를 더함, 허용된 열쇠 아래에 다른 경로의 목록을 넣음, run attrs 안에 넣음).
+func TestScanStructureWalksIntoValues(t *testing.T) {
+	// Given: 메시지 사건 하나와 run, 그 경로 무리의 판정 기준. f는 칸이 정해진 그릇, params는 동적 열쇠의 그릇, tables는 run attrs의 목록입니다.
+	r := sampleRun()
+	origins := Origins{{"event", 0}: "$.conns[].messages[]", {"run", 0}: "$"}
+	roles := Roles{
+		"$.conns[].messages[].len":        {Role: "값", Prov: "관찰"},
+		"$.conns[].messages[].f":          {Role: "모음", Prov: "관찰"},
+		"$.conns[].messages[].f.code":     {Role: "값", Prov: "관찰"},
+		"$.conns[].messages[].params":     {Role: "모음", Prov: "관찰"},
+		"$.conns[].messages[].params.{*}": {Role: "값", Prov: "관찰"},
+		"$.tables":                        {Role: "모음", Prov: "관찰"},
+		"$.tables[]":                      {Role: "값", Prov: "관찰"},
+		"$.tables[].name":                 {Role: "이름", Prov: "관찰"},
+	}
+	r.Events[0].Attrs["wire"]["f"] = map[string]any{"code": "40001"}
+	r.Events[0].Attrs["wire"]["params"] = map[string]any{"user": "lab", "database": "lab"}
+	r.Attrs = Attrs{"txlab": {"tables": []any{map[string]any{"name": "acct"}}}}
+
+	// When/Then: 값 안의 경로가 모두 표시 파일에 있으면(동적 열쇠는 {*}) 통과한다
+	if errs := ScanStructure(r, origins, roles); len(errs) != 0 {
+		t.Fatalf("통과해야 함: %v", errs)
+	}
+
+	// When/Then: 그릇에 원본에 없던 열쇠(장소를 가리키는 conn)를 더하면 실패한다
+	r.Events[0].Attrs["wire"]["f"].(map[string]any)["conn"] = "C2"
+	if errs := ScanStructure(r, origins, roles); len(errs) != 1 || !strings.Contains(errs[0].Error(), "f.conn가 표시 파일에 없음") {
+		t.Fatalf("그릇에 더한 열쇠를 잡아야 함: %v", errs)
+	}
+	delete(r.Events[0].Attrs["wire"]["f"].(map[string]any), "conn")
+
+	// When/Then: 동적 열쇠 그릇이라도 그 값 안에 다른 경로의 목록(요청)을 넣으면 실패한다
+	r.Events[0].Attrs["wire"]["params"].(map[string]any)["user"] = []any{map[string]any{"seq": 1}}
+	if errs := ScanStructure(r, origins, roles); len(errs) != 1 || !strings.Contains(errs[0].Error(), "params.{*}[]") {
+		t.Fatalf("허용된 열쇠 아래의 목록을 잡아야 함: %v", errs)
+	}
+	r.Events[0].Attrs["wire"]["params"].(map[string]any)["user"] = "lab"
+
+	// When/Then: run attrs의 목록 원소에 다른 경로(연결)를 넣어도 실패한다
+	r.Attrs["txlab"]["tables"].([]any)[0].(map[string]any)["conns"] = []any{}
+	if errs := ScanStructure(r, origins, roles); len(errs) != 1 || !strings.Contains(errs[0].Error(), "$.tables[].conns") {
+		t.Fatalf("run attrs 안의 조각을 잡아야 함: %v", errs)
+	}
+}
+
+// TestCheckNatureFollowsMarksAndInferredList 함수는 출처 성격 검사가 표시 출처와 추정 목록에 어긋난 근거를 잡는지 확인합니다.
 func TestCheckNatureFollowsMarksAndInferredList(t *testing.T) {
 	// Given: 사건 넷과 장소 셋의 경로 무리, 표시 출처
 	r := sampleRun()
@@ -336,7 +382,7 @@ func TestCheckNatureFollowsMarksAndInferredList(t *testing.T) {
 	}
 }
 
-// TestCrossingSpansFindsOnlyMisnestedPairs 는 같은 장소에서 어긋나 겹치는 구간만 찾고 바르게 포개진 구간은 내지 않는지 확인합니다.
+// TestCrossingSpansFindsOnlyMisnestedPairs 함수는 같은 장소에서 어긋나 겹치는 구간만 찾고 바르게 포개진 구간은 내지 않는지 확인합니다.
 func TestCrossingSpansFindsOnlyMisnestedPairs(t *testing.T) {
 	// Given: 같은 장소에 바르게 포개진 구간 둘(sampleRun)과, 어긋나 겹치는 구간 하나
 	r := sampleRun()
@@ -352,7 +398,7 @@ func TestCrossingSpansFindsOnlyMisnestedPairs(t *testing.T) {
 	}
 }
 
-// TestChromeExportSeparatesClocksAndSkipsUntimed 는 Chrome 내보내기가 시계마다 묶음을 나누고 시각 없는 사건을 세어 빼는지 확인합니다.
+// TestChromeExportSeparatesClocksAndSkipsUntimed 함수는 Chrome 내보내기가 시계마다 묶음을 나누고 시각 없는 사건을 세어 빼는지 확인합니다.
 func TestChromeExportSeparatesClocksAndSkipsUntimed(t *testing.T) {
 	// Given: 두 시계의 사건과 시각 없는 사건 하나
 	r := sampleRun()
@@ -375,7 +421,7 @@ func TestChromeExportSeparatesClocksAndSkipsUntimed(t *testing.T) {
 	}
 }
 
-// TestSelectReturnsStructureAndNature 는 재추출이 구조 칸과 고른 값, 출처 성격을 함께 내는지 확인합니다.
+// TestSelectReturnsStructureAndNature 함수는 재추출이 구조 칸과 고른 값, 출처 성격을 함께 내는지 확인합니다.
 func TestSelectReturnsStructureAndNature(t *testing.T) {
 	// Given: 출처가 다른 사건들
 	r := sampleRun()
@@ -405,7 +451,7 @@ func TestSelectReturnsStructureAndNature(t *testing.T) {
 	}
 }
 
-// TestExtractFollowsOneRuleKind 는 재추출 규칙이 종류 하나(고르기·설명·연결)만 쓸 때 그 결과를 내고, 둘을 쓰거나 아무것도 쓰지 않으면 거부하는지 확인합니다.
+// TestExtractFollowsOneRuleKind 함수는 재추출 규칙이 종류 하나(고르기·설명·연결)만 쓸 때 그 결과를 내고, 둘을 쓰거나 아무것도 쓰지 않으면 거부하는지 확인합니다.
 func TestExtractFollowsOneRuleKind(t *testing.T) {
 	// Given: 설명 하나가 있는 기록과 규칙 셋
 	r := sampleRun()

@@ -453,7 +453,9 @@ func (l *loader) request(step int, stepEnd int64, sessName string, raw any, wher
 	}
 	id := l.Event(atlas.Event{Place: backend, Kind: atlas.Span, Name: nameRequest, StartNS: &t0, EndNS: end, Source: srcRec}, "$.steps[].requests[]")
 	l.B.EventAttrs(id, srcRec, "sql", r["sql"])
-	l.B.EventAttrs(id, srcRec, "catalogSnapshots", r["catalogSnapshots"])
+	// 카탈로그 스냅숏 수는 해석기가 요청 안의 GetSnapshotData 가운데 대상이 CatalogSnapshotData인 것을 기호로 가려 센 값이라
+	// 해석기의 값입니다(decode/scenario.go 812~822, Spring 코드 검토 지적 3b).
+	l.B.EventAttrs(id, srcTx, "catalogSnapshots", r["catalogSnapshots"])
 	l.Link(step, id, "contains", srcTx, RequestWindow)
 
 	// 받은 메시지는 세션에서 백엔드로(from), 보낸 메시지는 백엔드에서 세션으로(target) 갑니다. out의 null은 보낸 메시지가 없다는 뜻입니다.
@@ -970,8 +972,10 @@ func (l *loader) pauses(v any) error {
 	return nil
 }
 
-// captures 메서드는 관찰을 txlab의 sample로, 부분마다 실제로 읽은 구간을 그 자식 구간으로 옮깁니다.
+// captures 메서드는 관찰을 txlab의 sample로, 부분마다 읽은 구간을 해석기 구간으로 옮기고 관찰에서 contains 연결로 잇습니다.
 //
+// 읽기 구간은 그 질의를 받은 때부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작)까지로 해석기가 정한 위쪽 경계라
+// 해석기 출처입니다(decode/scenario_check.go 395~433, Spring 코드 검토 지적 3a). 출처가 관찰과 달라 자식이 아니라 연결입니다.
 // 해석기는 끝을 모르는 마지막 관찰의 마지막 부분을 끝이 시작과 같게 두었으므로(scenario.go 560행), 그 부분은 끝을 비웁니다.
 func (l *loader) captures(v any) error {
 	caps, err := load.List(v, "$.captures")
@@ -1026,7 +1030,8 @@ func (l *loader) captures(v any) error {
 				}
 				end = nil
 			}
-			l.Event(atlas.Event{Place: l.client, Kind: atlas.Span, Name: p, Parent: &id, StartNS: &a, EndNS: end, Source: srcTxlab}, "$.captures[].reads."+p)
+			read := l.Event(atlas.Event{Place: l.client, Kind: atlas.Span, Name: p, StartNS: &a, EndNS: end, Source: srcTx}, "$.captures[].reads."+p)
+			l.Link(id, read, "contains", srcTx, "$.captures[].reads")
 		}
 
 		// afterStep 0은 첫 단계 앞의 관찰이라 이을 단계가 없습니다. afterKill 관찰은 kill 앞 마지막 단계와 그 kill 둘에 잇습니다.

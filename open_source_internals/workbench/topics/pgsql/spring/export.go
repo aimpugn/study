@@ -11,31 +11,22 @@ import (
 	"study/open_source_internals/workbench/topics/pgsql/load"
 )
 
-// view 값은 되돌리기에 쓰는 run의 색인입니다. 연결은 종류마다 출발·도착 사건으로 찾고, 자식은 id 차례입니다.
+// view 값은 되돌리기에 쓰는 run의 색인입니다. 연결은 종류마다 출발·도착 사건으로 찾고(상대 사건의 id 차례, load.LinkIndex), 자식은 id 차례입니다.
 type view struct {
 	r        *atlas.Run
 	out, in  map[int]map[string][]int
 	children map[int][]int
-	connOf   map[int]string // 백엔드 프로세스 장소 → 연결 이름
-	seqOf    map[int]int    // 요청 사건 → 그 연결 안의 seq
-	treeID   map[int]int    // 트리 마디 사건 → 마디 id
+	connOf   map[int]string         // 백엔드 프로세스 장소 → 연결 이름
+	seqOf    map[int]int            // 요청 사건 → 그 연결 안의 seq
+	treeID   map[int]int            // 트리 마디 사건 → 마디 id
+	reqOut   map[int]map[string]any // 요청 사건 → 되살린 요청
 }
 
 // newView 함수는 run에서 연결과 부모의 색인을 만들고, 메시지의 백엔드 쪽 끝으로 연결과 백엔드의 짝을 셉니다.
 // 연결 하나의 메시지가 두 백엔드를 가리키거나 백엔드 하나가 두 연결의 것이면 오류입니다.
 func newView(r *atlas.Run) (*view, error) {
-	v := &view{r: r, out: map[int]map[string][]int{}, in: map[int]map[string][]int{}, children: map[int][]int{},
-		connOf: map[int]string{}, seqOf: map[int]int{}, treeID: map[int]int{}}
-	for _, l := range r.Links {
-		if v.out[l.Src] == nil {
-			v.out[l.Src] = map[string][]int{}
-		}
-		if v.in[l.Dst] == nil {
-			v.in[l.Dst] = map[string][]int{}
-		}
-		v.out[l.Src][l.Kind] = append(v.out[l.Src][l.Kind], l.Dst)
-		v.in[l.Dst][l.Kind] = append(v.in[l.Dst][l.Kind], l.Src)
-	}
+	v := &view{r: r, children: map[int][]int{}, connOf: map[int]string{}, seqOf: map[int]int{}, treeID: map[int]int{}, reqOut: map[int]map[string]any{}}
+	v.out, v.in = load.LinkIndex(r)
 	pidOf := map[string]int{}
 	for _, e := range r.Events {
 		if e.Parent != nil {
@@ -84,8 +75,13 @@ func (v *view) copyAttrs(out map[string]any, e atlas.Event, src string, keys ...
 	}
 }
 
-// micros 함수는 사건 시각을 원본의 마이크로초로 씁니다.
-func micros(ns *int64) any { return atlas.NanosToMicros(*ns) }
+// micros 함수는 사건 시각을 원본의 마이크로초로 씁니다. 시각이 비면 되살릴 수 없어 panic하고, Export가 그것을 오류로 돌려줍니다.
+func micros(ns *int64) any {
+	if ns == nil {
+		panic("되살리는 데 필요한 사건 시각이 비어 있음")
+	}
+	return atlas.NanosToMicros(*ns)
+}
 
 // placeName 메서드는 장소 id의 이름을 돌려줍니다. id가 nil이면 빈 글입니다.
 func (v *view) placeName(id *int) string {
@@ -167,8 +163,19 @@ func (v *view) message(id int) (map[string]any, error) {
 // Export 함수는 Import가 만든 run에서 기록 한 벌(RUNS의 값 하나)을 다시 만듭니다.
 //
 // run 밖의 것은 읽지 않습니다. 해석기가 다른 칸에서 셈한 칸은 해석기와 같은 규칙으로 다시 셉니다. 사건을 가를 수 없거나 되살리는 데
-// 필요한 값이 없으면 오류를 돌려줍니다.
-func Export(r *atlas.Run) (map[string]any, error) {
+// 필요한 값이 없으면 오류를 돌려줍니다. 형식 검사는 통과하지만 적재기가 만들지 않는 꼴(끝이 빈 구간, 빈 스택 등)을 만나 되살리다 멈추면
+// 그것도 오류로 돌려줍니다(코드 검토 지적 9).
+func Export(r *atlas.Run) (out map[string]any, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			out, err = nil, fmt.Errorf("되살리다 멈춤(적재기가 만들지 않는 꼴의 run): %v", p)
+		}
+	}()
+	return export(r)
+}
+
+// export 함수는 Export의 본문입니다.
+func export(r *atlas.Run) (map[string]any, error) {
 	v, err := newView(r)
 	if err != nil {
 		return nil, err
@@ -278,7 +285,7 @@ func (v *view) conns(get func(src, name string) []atlas.Event) ([]any, error) {
 		}
 		c := map[string]any{"conn": n, "name": p.Name, "accept": micros(lf.StartNS), "close": micros(lf.EndNS)}
 		v.copyAttrs(c, lf, srcWireMac, "params")
-		v.copyAttrs(c, lf, srcSpring, "startup", "lastMac", "lastCont", "join")
+		v.copyAttrs(c, lf, srcSpring, "join")
 		v.copyAttrs(c, lf, srcTxlab, "bridgeErr")
 		ms := msgs[p.ID]
 		if len(ms) == 0 {
@@ -302,6 +309,8 @@ func (v *view) conns(get func(src, name string) []atlas.Event) ([]any, error) {
 			}
 		}
 		c["messages"] = messages
+		// 두 중계기는 같은 순번·종류로 잘랐으므로(적재 조건) 마지막 메시지의 종류가 같습니다.
+		c["startup"], c["lastMac"], c["lastCont"] = startupOf(ms), ms[len(ms)-1].Name, ms[len(ms)-1].Name
 		c["thread"] = v.threadAt(firstQ)
 		requests := make([]any, 0, len(reqs[p.ID]))
 		for k, q := range reqs[p.ID] {
@@ -310,12 +319,36 @@ func (v *view) conns(get func(src, name string) []atlas.Event) ([]any, error) {
 			if err != nil {
 				return nil, err
 			}
+			v.reqOut[q.ID] = req
 			requests = append(requests, req)
 		}
 		c["requests"] = requests
 		out = append(out, c)
 	}
 	return out, nil
+}
+
+// startupOf 함수는 연결의 접속 인증 차례(startup)를 해석기처럼 셉니다(decode/spring.go 495~509): 첫 ReadyForQuery까지의 맥 쪽 메시지
+// 가운데 ssl·sslreply·startup·R·K·Z를 종류로 적고, sslreply와 Z는 상태(text)를, 그 밖은 인증 방식(f.auth)을 괄호에 붙입니다(빈 괄호는 뺌).
+// 그런 메시지가 없으면 nil(원본의 null)입니다.
+func startupOf(ms []atlas.Event) []any {
+	var out []any
+	for _, m := range ms {
+		switch m.Name {
+		case "ssl", "sslreply", "startup", "R", "K", "Z":
+			step := m.Name
+			if m.Name == "sslreply" || m.Name == "Z" {
+				step += "(" + fmt.Sprint(m.Attrs[srcWireMac]["text"]) + ")"
+			} else if a, ok := m.Attrs[srcWireMac]["f.auth"]; ok {
+				step += "(" + fmt.Sprint(a) + ")"
+			}
+			out = append(out, strings.TrimSuffix(step, "()"))
+		}
+		if m.Name == "Z" {
+			break
+		}
+	}
+	return out
 }
 
 // threadAt 메서드는 연결을 연 스레드를 해석기처럼 셉니다: 첫 Q의 맥 시각을 감싼 QueryExecutorImpl.execute JFR 구간 가운데 구간 차례로
@@ -426,7 +459,7 @@ func (v *view) request(e atlas.Event, seq int) (map[string]any, error) {
 	return q, nil
 }
 
-// window 메서드는 서버 창 하나를 되살립니다. 품은 것은 연결 차례로 가릅니다: 기록기의 sample은 카탈로그 스냅숏의 수, 이름이 check면
+// window 메서드는 서버 창 하나를 되살립니다. 품은 것은 연결 차례로 가릅니다: 기록기의 sample은 카탈로그 스냅숏 잡기(수는 해석기 값), 이름이 check면
 // 줄 판정, curcid가 있으면 스냅숏, 해석기의 기다림은 view.waits라 빼고, 나머지는 사건입니다. sql은 요청의 sql을 "; "로 이은 것이고,
 // in·out은 해석기가 Spring 창에 채우지 않아 늘 null입니다(적재기가 null이 아니면 멈춤).
 func (v *view) window(w atlas.Event, sql string) (map[string]any, error) {
@@ -438,7 +471,7 @@ func (v *view) window(w atlas.Event, sql string) (map[string]any, error) {
 		switch {
 		case m.Source == srcCont:
 		case m.Kind == atlas.Sample && m.Name == nameCatalog:
-			v.copyAttrs(s, m, srcRec, "catalogSnapshots")
+			v.copyAttrs(s, m, srcSpring, "catalogSnapshots")
 		case m.Name == nameCheck:
 			c, err := v.check(m)
 			if err != nil {
@@ -457,12 +490,37 @@ func (v *view) window(w atlas.Event, sql string) (map[string]any, error) {
 			if m.Stack != nil {
 				ev["stack"] = load.StackOf(v.r.Places, m.Stack)
 			}
-			v.copyAttrs(ev, m, srcRec, "f")
+			f, err := v.serverFields(m)
+			if err != nil {
+				return nil, err
+			}
+			if len(f) > 0 {
+				ev["f"] = f
+			}
 			events = append(events, ev)
 		}
 	}
 	s["events"], s["snapshots"], s["checks"] = events, snaps, checks
 	return s, nil
+}
+
+// serverFields 메서드는 서버 사건의 나머지 칸 f를 "f.<칸>" attrs에서 되살립니다. hint·ereport의 at(부른 줄)은 스택(안쪽부터) 1번 칸의
+// 코드 자리입니다(적재기가 같은지 확인함). 그 칸이 없으면 오류입니다.
+func (v *view) serverFields(m atlas.Event) (map[string]any, error) {
+	f := map[string]any{}
+	for k, val := range m.Attrs[srcRec] {
+		if name, ok := strings.CutPrefix(k, "f."); ok {
+			f[name] = val
+		}
+	}
+	if m.Name == "hint" || m.Name == "ereport" {
+		st := load.StackOf(v.r.Places, m.Stack)
+		if len(st) < 2 {
+			return nil, fmt.Errorf("%s 사건 %d의 스택에 부른 줄이 없음", m.Name, m.ID)
+		}
+		f["at"] = st[len(st)-2].(map[string]any)["at"]
+	}
+	return f, nil
 }
 
 // check 메서드는 줄 판정 하나와 그 자식(줄, 판정 경로와 경로 안의 호출)을 되살립니다. 경로 사건이 없으면 path는 null입니다.
@@ -476,14 +534,25 @@ func (v *view) check(m atlas.Event) (map[string]any, error) {
 		k := v.r.Events[id]
 		switch k.Name {
 		case nameLine:
-			lines = append(lines, v.call(k))
+			c, err := v.call(k)
+			if err != nil {
+				return nil, err
+			}
+			lines = append(lines, c)
 		case namePath:
-			p := v.call(k)
+			p, err := v.call(k)
+			if err != nil {
+				return nil, err
+			}
 			v.copyAttrs(p, k, srcRec, "arg", "ret")
 			if kids := v.children[id]; len(kids) > 0 {
 				inner := []any{}
 				for _, j := range kids {
-					inner = append(inner, v.call(v.r.Events[j]))
+					c, err := v.call(v.r.Events[j])
+					if err != nil {
+						return nil, err
+					}
+					inner = append(inner, c)
 				}
 				p["inner"] = inner
 			}
@@ -501,12 +570,16 @@ func (v *view) check(m atlas.Event) (map[string]any, error) {
 	return c, nil
 }
 
-// call 메서드는 줄 판정 안의 호출 하나를 되살립니다. fn은 장소(부른 함수), at은 스택 1번(부른 줄)입니다.
-func (v *view) call(k atlas.Event) map[string]any {
-	return map[string]any{"fn": v.r.Places[k.Place].Name, "at": load.LocText(v.r.Places[k.Stack[1]].Loc)}
+// call 메서드는 줄 판정 안의 호출 하나를 되살립니다. fn은 장소(부른 함수), at은 스택 1번(부른 줄)입니다. 스택이 짧으면 오류입니다.
+func (v *view) call(k atlas.Event) (map[string]any, error) {
+	if len(k.Stack) < 2 {
+		return nil, fmt.Errorf("줄 판정 안의 호출 %d의 스택에 부른 줄이 없음", k.ID)
+	}
+	return map[string]any{"fn": v.r.Places[k.Place].Name, "at": load.LocText(v.r.Places[k.Stack[1]].Loc)}, nil
 }
 
-// transactions 메서드는 트랜잭션을 되살립니다. first·last는 품은 요청의 seq, xids·clog는 품은 요청의 서버 창 사건, next는 연결한 메시지에서 셉니다.
+// transactions 메서드는 트랜잭션을 되살립니다. first·last는 품은 요청의 seq, end는 끝 요청의 마지막 태그(없으면 빈 글), xids·clog는 품은 요청의
+// 서버 창 사건, next는 연결한 메시지에서 셉니다(decode/spring.go 311~338).
 func (v *view) transactions(evs []atlas.Event) ([]any, error) {
 	out := []any{}
 	for _, e := range evs {
@@ -525,8 +598,10 @@ func (v *view) transactions(evs []atlas.Event) ([]any, error) {
 		order := append([]int{}, reqs...)
 		sort.SliceStable(order, func(a, b int) bool { return v.seqOf[order[a]] < v.seqOf[order[b]] })
 		sort.Ints(seqs)
-		x := map[string]any{"conn": n, "first": seqs[0], "last": seqs[len(seqs)-1], "t0": micros(e.StartNS), "t1": micros(e.EndNS)}
-		v.copyAttrs(x, e, srcMac, "end")
+		x := map[string]any{"conn": n, "first": seqs[0], "last": seqs[len(seqs)-1], "t0": micros(e.StartNS), "t1": micros(e.EndNS), "end": ""}
+		if tags, _ := v.reqOut[order[len(order)-1]]["tags"].([]any); len(tags) > 0 {
+			x["end"] = tags[len(tags)-1]
+		}
 		xids, clog := []any{}, []any{}
 		for _, q := range order {
 			for _, w := range v.out[q][nameServer] {
@@ -536,14 +611,14 @@ func (v *view) transactions(evs []atlas.Event) ([]any, error) {
 					if m.Source != srcRec || m.Name == nameCheck {
 						continue
 					}
-					f, _ := m.Attrs[srcRec]["f"].(map[string]any)
+					f := m.Attrs[srcRec]
 					switch m.Name {
 					case "assign_xid":
-						level = f["level"]
+						level = f["f.level"]
 					case "xid":
-						xids = append(xids, map[string]any{"xid": f["xid"], "level": level, "t": micros(m.StartNS)})
+						xids = append(xids, map[string]any{"xid": f["f.xid"], "level": level, "t": micros(m.StartNS)})
 					case "commit_clog", "abort_clog":
-						clog = append(clog, map[string]any{"kind": m.Name, "xid": f["xid"], "nsub": f["nsub"], "t": micros(m.StartNS)})
+						clog = append(clog, map[string]any{"kind": m.Name, "xid": f["f.xid"], "nsub": f["f.nsub"], "t": micros(m.StartNS)})
 					}
 				}
 			}
@@ -614,8 +689,7 @@ func (v *view) blocked(evs []atlas.Event) ([]any, error) {
 }
 
 // captures 메서드는 관찰을 되살립니다. afterStep은 same 연결로 들어온 멈춤 자리의 n(막힘 관찰이면 그 after), span은 [시작, end 연결이
-// 가리키는 해석기 순간],
-// reads는 자식 구간(끝이 비면 시작과 같음), overlap은 연결한 메시지입니다.
+// 가리키는 해석기 순간], reads는 contains로 품은 해석기 구간(끝이 비면 시작과 같음), overlap은 연결한 메시지입니다.
 func (v *view) captures(evs []atlas.Event) ([]any, error) {
 	out := []any{}
 	for _, e := range evs {
@@ -644,7 +718,7 @@ func (v *view) captures(evs []atlas.Event) ([]any, error) {
 			return nil, fmt.Errorf("관찰 %d의 same 짝 %d가 멈춤 자리도 막힘 관찰도 아님", e.ID, src.ID)
 		}
 		reads := map[string]any{}
-		for _, id := range v.children[e.ID] {
+		for _, id := range v.out[e.ID]["contains"] {
 			k := v.r.Events[id]
 			end := k.EndNS
 			if end == nil {
@@ -672,8 +746,12 @@ func (v *view) captures(evs []atlas.Event) ([]any, error) {
 }
 
 // java 메서드는 JFR 구간·예외·잠듦과 해석기의 JFR 요약(run attrs)을 되살립니다. 구간은 서술자 장소, 잠듦은 프레임 장소에 놓인 사건입니다.
+//
+// 구간의 depth는 해석기처럼 셉니다(decode/spring_jfr.go 325~341): 스레드마다 구간을 사건 차례(원본 spans의 차례, 시작 오름·끝 내림)로 보며,
+// 시작보다 먼저 끝난 열린 호출을 닫고 남은 열린 호출의 수를 깊이로 씁니다.
 func (v *view) java() (map[string]any, error) {
 	spans, throws, parks := []any{}, []any{}, []any{}
+	open := map[int][]int64{} // 스레드 장소 → 열린 호출의 끝(ns)
 	for _, e := range v.r.Events {
 		if e.Source != srcJFR {
 			continue
@@ -690,7 +768,13 @@ func (v *view) java() (map[string]any, error) {
 			if len(e.Stack) > 1 {
 				s["caller"] = v.ref(e.Stack[1])
 			}
-			v.copyAttrs(s, e, srcSpring, "depth", "twice")
+			st := open[th.ID]
+			for len(st) > 0 && st[len(st)-1] < *e.StartNS {
+				st = st[:len(st)-1]
+			}
+			s["depth"] = len(st)
+			open[th.ID] = append(st, *e.EndNS)
+			v.copyAttrs(s, e, srcSpring, "twice")
 			spans = append(spans, s)
 		case e.Name == nameThrow:
 			t := map[string]any{"t": micros(e.StartNS), "thread": th.Name, "at": v.refs(e.Stack)}

@@ -59,7 +59,7 @@ func loadAll(t *testing.T) []loaded {
 	return out
 }
 
-// TestRoundTripRebuildsEveryTraceByte 는 적재 결과를 파일로 쓰고 다시 읽어 되돌린 글이 원문과 글자까지 같은지 확인합니다(검사 1).
+// TestRoundTripRebuildsEveryTraceByte 함수는 적재 결과를 파일로 쓰고 다시 읽어 되돌린 글이 원문과 글자까지 같은지 확인합니다(검사 1).
 func TestRoundTripRebuildsEveryTraceByte(t *testing.T) {
 	for _, l := range loadAll(t) {
 		// Given: 적재 결과를 형식의 JSON으로 쓴 것
@@ -91,7 +91,7 @@ func TestRoundTripRebuildsEveryTraceByte(t *testing.T) {
 	}
 }
 
-// TestImportedRunsPassFormatAndProvenanceChecks 는 여덟 기록이 형식 검사, 구조 숨김 검사, 출처 성격 검사를 모두 통과하고
+// TestImportedRunsPassFormatAndProvenanceChecks 함수는 여덟 기록이 형식 검사, 구조 숨김 검사, 출처 성격 검사를 모두 통과하고
 // 감시 목록을 아는 둘만 완전한 관찰 범위를 갖는지 확인합니다(검사 2·3·4).
 func TestImportedRunsPassFormatAndProvenanceChecks(t *testing.T) {
 	// Given: 여덟 기록과 E-05의 판정 기준(표시 파일과 대응표)
@@ -121,7 +121,7 @@ func TestImportedRunsPassFormatAndProvenanceChecks(t *testing.T) {
 	}
 }
 
-// TestChecksCatchHiddenStructureAndWrongNature 는 적재 결과를 일부러 망가뜨리면 구조 숨김 검사와 출처 성격 검사가 실패하는지 확인합니다(변이 시험).
+// TestChecksCatchHiddenStructureAndWrongNature 함수는 적재 결과를 일부러 망가뜨리면 구조 숨김 검사와 출처 성격 검사가 실패하는지 확인합니다(변이 시험).
 func TestChecksCatchHiddenStructureAndWrongNature(t *testing.T) {
 	rs, err := roles.Load("e05")
 	if err != nil {
@@ -170,7 +170,7 @@ func TestChecksCatchHiddenStructureAndWrongNature(t *testing.T) {
 	}
 }
 
-// TestTopicBlindFactsMatchOriginalParser 는 주제의 선택 규칙(facts.json)만으로 플랫폼이 뽑은 사실이,
+// TestTopicBlindFactsMatchOriginalParser 함수는 주제의 선택 규칙(facts.json)만으로 플랫폼이 뽑은 사실이,
 // 원래 화면이 쓰는 파서(internal/trace)로 원문을 읽은 값과 같은지 확인합니다(검사 5).
 func TestTopicBlindFactsMatchOriginalParser(t *testing.T) {
 	// Given: 주제의 선택 규칙
@@ -264,7 +264,7 @@ func TestTopicBlindFactsMatchOriginalParser(t *testing.T) {
 	}
 }
 
-// TestImportRejectsMalformedTraces 는 형식에 맞지 않는 기록을 조용히 옮기지 않고 거부하는지 확인합니다.
+// TestImportRejectsMalformedTraces 함수는 형식에 맞지 않는 기록을 조용히 옮기지 않고 거부하는지 확인합니다.
 func TestImportRejectsMalformedTraces(t *testing.T) {
 	ok := "STOP 1 f a.c:1\nBT 0 f a.c:1\nEND f=1\n--- psql\n1\n"
 	// Given: 올바른 기록은 통과한다

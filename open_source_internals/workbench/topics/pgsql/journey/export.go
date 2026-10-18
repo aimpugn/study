@@ -9,7 +9,7 @@ import (
 	"study/open_source_internals/workbench/topics/pgsql/load"
 )
 
-// view 값은 되돌리기에 쓰는 run의 색인입니다. 연결은 종류마다 출발·도착 사건으로 찾습니다.
+// view 값은 되돌리기에 쓰는 run의 색인입니다. 연결은 종류마다 출발·도착 사건으로 찾습니다(상대 사건의 id 차례, load.LinkIndex).
 type view struct {
 	r        *atlas.Run
 	out, in  map[int]map[string][]int
@@ -18,17 +18,8 @@ type view struct {
 
 // newView 함수는 run에서 연결과 부모의 색인을 만듭니다. 차례는 id 차례(기록 차례)입니다.
 func newView(r *atlas.Run) *view {
-	v := &view{r: r, out: map[int]map[string][]int{}, in: map[int]map[string][]int{}, children: map[int][]int{}}
-	for _, l := range r.Links {
-		if v.out[l.Src] == nil {
-			v.out[l.Src] = map[string][]int{}
-		}
-		if v.in[l.Dst] == nil {
-			v.in[l.Dst] = map[string][]int{}
-		}
-		v.out[l.Src][l.Kind] = append(v.out[l.Src][l.Kind], l.Dst)
-		v.in[l.Dst][l.Kind] = append(v.in[l.Dst][l.Kind], l.Src)
-	}
+	v := &view{r: r, children: map[int][]int{}}
+	v.out, v.in = load.LinkIndex(r)
 	for _, e := range r.Events {
 		if e.Parent != nil {
 			v.children[*e.Parent] = append(v.children[*e.Parent], e.ID)

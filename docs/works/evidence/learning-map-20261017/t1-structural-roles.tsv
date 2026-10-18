@@ -106,17 +106,17 @@ tx	$.captures[].pages.acct[].block	장소	관찰	X2	X2 데이터 대상의 이�
 tx	$.captures[].pages.acct[].ctid	장소	관찰	X2	X2 데이터 대상의 이름
 tx	$.captures[].pages.acct[].lp	장소	관찰	X2	X2 데이터 대상의 이름
 tx	$.captures[].pages.acct[].values.id	장소	관찰	X2	X2 행 값
-tx	$.captures[].reads	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 그릇
-tx	$.captures[].reads.activity	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-tx	$.captures[].reads.activity[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-tx	$.captures[].reads.locks	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-tx	$.captures[].reads.locks[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-tx	$.captures[].reads.pages	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-tx	$.captures[].reads.pages[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-tx	$.captures[].reads.running	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-tx	$.captures[].reads.running[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-tx	$.captures[].reads.xacts	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-tx	$.captures[].reads.xacts[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+tx	$.captures[].reads	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 그릇 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+tx	$.captures[].reads.activity	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+tx	$.captures[].reads.activity[]	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+tx	$.captures[].reads.locks	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+tx	$.captures[].reads.locks[]	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+tx	$.captures[].reads.pages	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+tx	$.captures[].reads.pages[]	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+tx	$.captures[].reads.running	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+tx	$.captures[].reads.running[]	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+tx	$.captures[].reads.xacts	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+tx	$.captures[].reads.xacts[]	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
 tx	$.captures[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
 tx	$.captures[].locks[].page	장소	관찰	X2	X2 데이터 대상의 이름
 tx	$.captures[].locks[].pid	장소	관찰	X3	X3 관찰 안의 행
@@ -262,17 +262,17 @@ e03	$.captures[].pages.acct[].ctid	장소	관찰	X2	X2 데이터 대상의 이�
 e03	$.captures[].pages.acct[].values.id	장소	관찰	X2	X2 행 값
 e03	$.captures[].activity[].pid	장소	관찰	X3	X3 관찰 안의 행
 e03	$.captures[].activity[].xid	장소	관찰	X2	X2 데이터 대상의 이름
-e03	$.captures[].reads	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 그릇
-e03	$.captures[].reads.activity	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-e03	$.captures[].reads.activity[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-e03	$.captures[].reads.locks	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-e03	$.captures[].reads.locks[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-e03	$.captures[].reads.pages	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-e03	$.captures[].reads.pages[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-e03	$.captures[].reads.running	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-e03	$.captures[].reads.running[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-e03	$.captures[].reads.xacts	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
-e03	$.captures[].reads.xacts[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+e03	$.captures[].reads	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 그릇 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+e03	$.captures[].reads.activity	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+e03	$.captures[].reads.activity[]	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+e03	$.captures[].reads.locks	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+e03	$.captures[].reads.locks[]	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+e03	$.captures[].reads.pages	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+e03	$.captures[].reads.pages[]	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+e03	$.captures[].reads.running	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+e03	$.captures[].reads.running[]	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+e03	$.captures[].reads.xacts	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
+e03	$.captures[].reads.xacts[]	시각	도출	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간 / 출처 고침(표시 관찰 → 도출): M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, 다음 질의 302). Spring 코드 검토 지적 3a
 e03	$.captures[].span	시각	도출	row	M span[1] = 해석기 출처(spring-cont)의 순간 하나(관찰용 접속이 마지막 부분의 답을 보낸 sendto, spring.go 772~803 captureSpans)이고 관찰 → 그 순간의 end 연결. span[0]은 관찰 t와 같아 다시 셈(C5 74/74). 관찰 sample은 끝을 두지 않음(읽기 구간 370개 가운데 60개가 span[1]보다 늦게 끝남)
 e03	$.captures[].span[]	시각	도출	start_ns	M span[1]은 그 해석기 순간의 시각, span[0]은 다시 셈
 e03	$.captures[].visible.acct[].ctid	장소	도출	X2	X2 데이터 대상의 이름
@@ -343,7 +343,7 @@ e03	$.conns[].requests[].server.checks[].stack[].fn	장소	관찰	stack	S1 스�
 e03	$.conns[].requests[].server.checks[].stack[].at	장소	관찰	stack	S1 스택 칸 = 프레임 장소
 e03	$.conns[].requests[].server.events[].f.rel	장소	관찰	X2	X2 데이터 대상의 이름
 e03	$.conns[].requests[].server.events[].t1	시각	관찰	end_ns	T1 사건 끝
-e03	$.conns[].requests[].server.events[].f.at	장소	관찰	X2	X2 기록기 칸 f 안의 값(메모 6의 X2. 규칙 순서 탓에 JFR 스택 규칙이 먼저 맞았음). 같은 위치가 스택 1번 칸에 구조로 있음(C14 16/16)
+e03	$.conns[].requests[].server.events[].f.at	장소	관찰	recompute	M 다시 셈: hint·ereport 사건의 부른 줄 = 스택(안쪽부터) 1번 칸의 코드 자리(해석기는 scenario.go 908·1012에서 따로 셈하지만 16/16 같음, C14). 코드 자리는 장소라 X2(데이터 대상의 이름)가 아님. 그래서 f를 통째로 두지 않고 f.<칸>으로 나눔(코드 검토 지적 2)
 e03	$.conns[].requests[].server.events[].f.tup	장소	관찰	X2	X2 데이터 대상의 이름
 e03	$.conns[].requests[].server.events[].f.xid	장소	관찰	X2	X2 데이터 대상의 이름
 e03	$.conns[].requests[].server.events[].f.buf	장소	관찰	X2	X2 데이터 대상의 이름
@@ -357,8 +357,8 @@ e03	$.java.spans[].desc	장소	관찰	place	M 구간의 장소 = 서술자 장�
 e03	$.java.spans[].thread	장소	관찰	place	M 메서드 장소의 부모 = 스레드 장소(앱 장소 아래)
 e03	$.java.spans[].t0	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
 e03	$.java.spans[].t1	시각	관찰	end_ns	T1 사건 끝
-e03	$.java.spans[].caller	연결	도출	stack	M 구간 스택 1번 = JFR 스택 0번 칸(부른 쪽, spring_jfr.go 265~267)의 프레임(메서드 아래). 트리 마디가 없는 구간 258개(장면 밖 main 238, 다른 스레드 20)에서는 이것이 유일한 호출 사슬 기록이고, 1,592개 모두 비지 않음
-e03	$.java.spans[].depth	연결	도출	X5	X5 해석기가 셈한 값: 같은 스레드에서 이 호출을 감싼 기록된 호출의 수(spring_jfr.go 325~341). 트리의 깊이와 뜻이 달라(트리 마디가 있는 1,334개 가운데 750개가 다름) 구조 칸이 대신하지 않고 다른 칸에서 다시 세지 않음
+e03	$.java.spans[].caller	연결	관찰	stack	M 구간 스택 1번 = JFR 스택 0번 칸(부른 쪽, spring_jfr.go 265~267)의 프레임(메서드 아래). 트리 마디가 없는 구간 258개(장면 밖 main 238, 다른 스레드 20)에서는 이것이 유일한 호출 사슬 기록이고, 1,592개 모두 비지 않음 / 출처 고침(표시 도출 → 관찰): M caller는 JFR 스택의 0번 칸(decode/spring_jfr.go 265~267)을 해석기가 'fn:줄' 글로 옮긴 것이라 관찰. Spring 결정 검토 지적 4, 코드 검토 지적 7
+e03	$.java.spans[].depth	연결	도출	recompute	M 다시 셈: 같은 스레드의 구간을 (t0 오름, t1 내림) 차례로 놓고 아직 끝나지 않은 호출의 수(spring_jfr.go 325~341, 구간의 스레드·시작·끝만 씀, C27 1,592/1,592). 첫 판의 X5는 트리 깊이로 다시 셀 수 없다는 것만 보았고(1,334개 가운데 750개가 다름) JFR 구간 자체로 셀 수 있는지는 보지 않았음(코드 검토 지적 1)
 e03	$.java.throws[]	사건	관찰	row	R1 행을 만드는 목록의 원소
 e03	$.java.throws[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
 e03	$.java.throws[].thread	장소	관찰	place	M 예외 사건의 장소(at[0] 프레임)에서 메서드를 거쳐 올라간 스레드 장소

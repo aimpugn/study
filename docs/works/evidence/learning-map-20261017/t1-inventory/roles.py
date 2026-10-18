@@ -3,7 +3,7 @@
 Usage: python3 -I roles.py marks_e05.txt e05 marks_c3.txt c3 ... > ../t1-structural-roles.tsv
 
 Every mark line whose role is 장소, 연결, 시각 or 사건 becomes one row: the input, the key path,
-the mark's role and provenance, a decision, and the rule that made it. A decision is either a
+the mark's role and provenance (or the fixed provenance from PROV_FIXES), a decision, and the rule that made it. A decision is either a
 structural column of the common format (the row then belongs to the anti-stuffing scan) or an
 exception class from the T1 design memo, section 6 (the key may stay inside attrs). Paths that no
 rule settles get 'TBD'; they must be decided by hand before that input's importer is written.
@@ -134,7 +134,7 @@ _E03 = {
     "$.conns[].messages[].dir": ("from/target", "M F면 target이, B면 from이 그 연결의 백엔드 프로세스 장소. 사건 이름은 type"),
     "$.conns[].messages[].name": ("X2", "X2 준비 문장 이름(Parse·Bind의 name, 값은 S_1뿐 38행). 실행 위치가 아닌 데이터 대상"),
     "$.conns[].requests[].seq": ("recompute", "M 다시 셈: 그 연결의 요청 차례(0은 접속 인증, C10c 166/166). 요청 사건은 contains로 품은 메시지에서 모든 칸을 다시 세어 attrs가 없음"),
-    "$.conns[].requests[].server.events[].f.at": ("X2", "X2 기록기 칸 f 안의 값(메모 6의 X2. 규칙 순서 탓에 JFR 스택 규칙이 먼저 맞았음). 같은 위치가 스택 1번 칸에 구조로 있음(C14 16/16)"),
+    "$.conns[].requests[].server.events[].f.at": ("recompute", "M 다시 셈: hint·ereport 사건의 부른 줄 = 스택(안쪽부터) 1번 칸의 코드 자리(해석기는 scenario.go 908·1012에서 따로 셈하지만 16/16 같음, C14). 코드 자리는 장소라 X2(데이터 대상의 이름)가 아님. 그래서 f를 통째로 두지 않고 f.<칸>으로 나눔(코드 검토 지적 2)"),
     "$.conns[].requests[].server.checks[].table": ("X2", "X2 데이터 대상(표)의 이름"),
     "$.conns[].requests[].server.checks[].path": ("recompute", "M 다시 셈: 판정 경로 사건(이름 path)이 없으면 null. 빈 목록은 원본에 없음"),
     "$.conns[].requests[].server.checks[].path[]": ("row", "R1 판정 경로의 호출 하나 = 줄 판정 사건의 자식 instant(이름 path, 시각 미기록)"),
@@ -241,7 +241,7 @@ _E03.update({
     "$.conns[].messages[].f.pid": ("recompute", "M 다시 셈: B·K 메시지의 from(백엔드 프로세스 장소)의 이름(C9f 24/24). 기록기 칸 f의 X2 규칙이 연결 위 메시지의 f(wireText, spring.go 222~249)에 잘못 맞았음. f의 나머지 칸은 f.auth·f.code·f.severity·f.where 열쇠로 나눠 둠"),
     # 지적 4: caller는 해석기가 붙인 관계가 아니라 관찰한 JFR 스택의 0번 칸이고, 트리 마디가 없는 구간 258개에서는 유일한 호출 사슬 기록.
     "$.java.spans[].caller": ("stack", "M 구간 스택 1번 = JFR 스택 0번 칸(부른 쪽, spring_jfr.go 265~267)의 프레임(메서드 아래). 트리 마디가 없는 구간 258개(장면 밖 main 238, 다른 스레드 20)에서는 이것이 유일한 호출 사슬 기록이고, 1,592개 모두 비지 않음"),
-    "$.java.spans[].depth": ("X5", "X5 해석기가 셈한 값: 같은 스레드에서 이 호출을 감싼 기록된 호출의 수(spring_jfr.go 325~341). 트리의 깊이와 뜻이 달라(트리 마디가 있는 1,334개 가운데 750개가 다름) 구조 칸이 대신하지 않고 다른 칸에서 다시 세지 않음"),
+    "$.java.spans[].depth": ("recompute", "M 다시 셈: 같은 스레드의 구간을 (t0 오름, t1 내림) 차례로 놓고 아직 끝나지 않은 호출의 수(spring_jfr.go 325~341, 구간의 스레드·시작·끝만 씀, C27 1,592/1,592). 첫 판의 X5는 트리 깊이로 다시 셀 수 없다는 것만 보았고(1,334개 가운데 750개가 다름) JFR 구간 자체로 셀 수 있는지는 보지 않았음(코드 검토 지적 1)"),
 })
 OVERRIDES.update({("e03", p): d for p, d in _E03.items()})
 
@@ -269,9 +269,6 @@ RULES = [
     (None, r"\.view\.waits\[\]\.seq$", "X1", "X1 원래 번호(기다림의 요청 번호)"),
     # Cross-run comparisons produced by the decoder (class X4).
     (None, r"\.view\.(branches|compared)", "X4", "X4 교차 기록 비교"),
-    # A count the decoder computed onto observed JFR spans that no other field rebuilds (X5). The caller frame
-    # is not here: it is the observed JFR stack, so the e03 override puts it on the span stack.
-    (None, r"\.java\.spans\[\]\.depth$", "X5", "X5 관찰 구간에 해석기가 셈해 붙인 값"),
     # Durations, settings and clock offsets are values, not event times (class X6).
     (None, r"\.(idleMs|self|durs\[\]|maxDeviationUs|medianOffsetUs|lo|hi|.*Ms|durUs)$", "X6", "X6 길이·설정·시계 차"),
     # Event times.
@@ -294,6 +291,23 @@ RULES = [
     (None, r"\.sessions(\.\{\*\})?$", "place", "P3 세션"),
     (None, r"\.conns\[\]$", "place", "P3 연결"),
 ]
+
+
+# Provenance fixes, keyed by (input, path): the mark file's 출처 was set before the format was designed, and a review
+# showed it wrong for these paths. The table then carries the fixed 출처 (the Go loader topics/pgsql/roles reads it, so
+# check 4 expects it), and the rule column keeps the mark's value and the reason. Each value is (fixed 출처, reason).
+_READS = ("M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 "
+          "받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님"
+          "(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, "
+          "다음 질의 302). Spring 코드 검토 지적 3a")
+PROV_FIXES = {}
+for _inp in ("tx", "e03"):
+    PROV_FIXES[(_inp, "$.captures[].reads")] = ("도출", _READS)
+    for _part in ("activity", "locks", "pages", "running", "xacts"):
+        PROV_FIXES[(_inp, "$.captures[].reads." + _part)] = ("도출", _READS)
+        PROV_FIXES[(_inp, "$.captures[].reads." + _part + "[]")] = ("도출", _READS)
+PROV_FIXES[("e03", "$.java.spans[].caller")] = ("관찰", "M caller는 JFR 스택의 0번 칸(decode/spring_jfr.go 265~267)을 해석기가 "
+                                                "'fn:줄' 글로 옮긴 것이라 관찰. Spring 결정 검토 지적 4, 코드 검토 지적 7")
 
 
 def classify(inp, path):
@@ -322,6 +336,10 @@ def main(args):
             if role not in ROLES:
                 continue
             dec, rule = classify(inp, path)
+            if (inp, path) in PROV_FIXES:
+                fixed, why = PROV_FIXES[(inp, path)]
+                rule = f"{rule} / 출처 고침(표시 {prov} → {fixed}): {why}"
+                prov = fixed
             print(f"{inp}\t{path}\t{role}\t{prov}\t{dec}\t{rule}")
 
 

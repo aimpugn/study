@@ -426,6 +426,14 @@ def main(path):
         # C13b JFR 구간은 (t0 오름, t1 내림)으로 정렬돼 있음(buildSpringJava 326-331): id 차례 = spans 차례
         sp = java["spans"]
         count("C13b", all((sp[i]["t0"], -sp[i]["t1"]) <= (sp[i + 1]["t0"], -sp[i + 1]["t1"]) for i in range(len(sp) - 1)))
+        # C27 depth = 스레드마다 spans 차례로 보며 시작보다 먼저 끝난 열린 호출을 닫고 남은 열린 호출의 수(spring_jfr.go 325-341)
+        open_ = collections.defaultdict(list)
+        for s in sp:
+            st = open_[s["thread"]]
+            while st and st[-1] < s["t0"]:
+                st.pop()
+            count("C27", s["depth"] == len(st))
+            st.append(s["t1"])
 
         # C14 서버 사건의 f.at = 스택(안쪽부터) 1번 칸의 위치
         for c in conns:

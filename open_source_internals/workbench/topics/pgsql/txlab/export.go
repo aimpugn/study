@@ -8,7 +8,7 @@ import (
 	"study/open_source_internals/workbench/topics/pgsql/load"
 )
 
-// view 값은 되돌리기에 쓰는 run의 색인입니다. 연결은 종류마다 출발·도착 사건으로 찾고, 자식은 id 차례입니다.
+// view 값은 되돌리기에 쓰는 run의 색인입니다. 연결은 종류마다 출발·도착 사건으로 찾고(상대 사건의 id 차례, load.LinkIndex), 자식은 id 차례입니다.
 type view struct {
 	r        *atlas.Run
 	out, in  map[int]map[string][]int
@@ -20,17 +20,8 @@ type view struct {
 // newView 함수는 run에서 연결과 부모의 색인을 만들고, 단계 contains 요청으로 세션과 백엔드의 짝을 셉니다.
 // 세션 하나에 백엔드가 둘이거나 백엔드 하나에 세션이 둘이면 오류입니다.
 func newView(r *atlas.Run) (*view, error) {
-	v := &view{r: r, out: map[int]map[string][]int{}, in: map[int]map[string][]int{}, children: map[int][]int{}, owner: map[int]string{}, pidOf: map[string]int{}}
-	for _, l := range r.Links {
-		if v.out[l.Src] == nil {
-			v.out[l.Src] = map[string][]int{}
-		}
-		if v.in[l.Dst] == nil {
-			v.in[l.Dst] = map[string][]int{}
-		}
-		v.out[l.Src][l.Kind] = append(v.out[l.Src][l.Kind], l.Dst)
-		v.in[l.Dst][l.Kind] = append(v.in[l.Dst][l.Kind], l.Src)
-	}
+	v := &view{r: r, children: map[int][]int{}, owner: map[int]string{}, pidOf: map[string]int{}}
+	v.out, v.in = load.LinkIndex(r)
 	for _, e := range r.Events {
 		if e.Parent != nil {
 			v.children[*e.Parent] = append(v.children[*e.Parent], e.ID)
@@ -222,7 +213,8 @@ func (v *view) step(e atlas.Event) (map[string]any, error) {
 // 요청이 품은 것은 연결 차례대로 가릅니다: from·target이 있으면 메시지, 이름이 check면 줄 판정, curcid가 있으면 스냅숏, 나머지는 사건입니다.
 func (v *view) request(e atlas.Event, stepEnd int64) (map[string]any, error) {
 	q := map[string]any{"t0": micros(e.StartNS)}
-	v.copyAttrs(q, e, srcRec, "sql", "catalogSnapshots")
+	v.copyAttrs(q, e, srcRec, "sql")
+	v.copyAttrs(q, e, srcTx, "catalogSnapshots")
 	if e.EndNS == nil {
 		q["t1"], q["aborted"] = atlas.NanosToMicros(stepEnd), true
 	} else {
@@ -345,7 +337,7 @@ func (v *view) capture(e atlas.Event) (map[string]any, error) {
 	}
 	v.copyAttrs(c, e, srcTxlab, "activity", "locks", "pages", "running", "xacts", "wal")
 	reads := map[string]any{}
-	for _, id := range v.children[e.ID] {
+	for _, id := range v.out[e.ID]["contains"] {
 		k := v.r.Events[id]
 		end := k.EndNS
 		if end == nil {

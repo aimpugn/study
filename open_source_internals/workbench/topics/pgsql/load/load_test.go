@@ -80,3 +80,26 @@ func TestStackReversesAndFindsPathOfUnknownLines(t *testing.T) {
 		t.Fatal("경로가 둘이면 오류여야 함")
 	}
 }
+
+// TestLinkIndexOrdersByOtherEventID 함수는 연결 색인의 목록이 연결 표의 차례가 아니라 상대 사건의 id 차례인지 확인합니다.
+func TestLinkIndexOrdersByOtherEventID(t *testing.T) {
+	// Given: 사건 0에서 3·1·2로 가는 contains 연결이 그 차례로 적힌 run
+	r := &atlas.Run{Links: []atlas.Link{
+		{ID: 0, Src: 0, Dst: 3, Kind: "contains"}, {ID: 1, Src: 0, Dst: 1, Kind: "contains"},
+		{ID: 2, Src: 0, Dst: 2, Kind: "contains"}, {ID: 3, Src: 2, Dst: 1, Kind: "next"},
+	}}
+
+	// When: 색인하면
+	out, in := LinkIndex(r)
+
+	// Then: 나가는 목록은 도착 id 차례, 들어오는 목록은 출발 id 차례이고 종류마다 나뉜다
+	if got := out[0]["contains"]; len(got) != 3 || got[0] != 1 || got[1] != 2 || got[2] != 3 {
+		t.Fatalf("out[0].contains = %v, 기대 [1 2 3]", got)
+	}
+	if got := in[1]["contains"]; len(got) != 1 || got[0] != 0 {
+		t.Fatalf("in[1].contains = %v", got)
+	}
+	if got := in[1]["next"]; len(got) != 1 || got[0] != 2 {
+		t.Fatalf("in[1].next = %v", got)
+	}
+}

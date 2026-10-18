@@ -67,7 +67,8 @@ func loadAll(t *testing.T) []loaded {
 	return out
 }
 
-// TestRoundTripRebuildsBothScreens 는 적재 결과를 파일로 쓰고 다시 읽어 되돌린 질의가 concept-4와 concept-3의 원본과 깊이 같은지 확인합니다(검사 1).
+// TestRoundTripRebuildsBothScreens 함수는 적재 결과를 파일로 쓰고 다시 읽어 되돌린 질의가 concept-4와 concept-3의 원본과 깊이 같은지 확인합니다(검사 1).
+// 연결 표의 차례만 뒤집은 사본도 같아야 합니다.
 func TestRoundTripRebuildsBothScreens(t *testing.T) {
 	for _, l := range loadAll(t) {
 		// Given: 적재 결과를 형식의 JSON으로 쓴 것
@@ -98,6 +99,27 @@ func TestRoundTripRebuildsBothScreens(t *testing.T) {
 		if hasC3 {
 			assertSame(t, l.key+"(concept-3)", l.c3, c3)
 		}
+
+		// Then: 연결 표의 차례만 뒤집은 사본도 같게 되돌아온다(형식은 연결 표의 차례에 뜻을 두지 않음, Spring 코드 검토 지적 8)
+		for i, j := 0, len(back.Links)-1; i < j; i, j = i+1, j-1 {
+			back.Links[i], back.Links[j] = back.Links[j], back.Links[i]
+		}
+		for i := range back.Links {
+			back.Links[i].ID = i
+		}
+		if errs := atlas.Validate(back); len(errs) != 0 {
+			t.Fatalf("%s: 연결 차례를 뒤집은 사본의 형식 검사 %v", l.key, errs[0])
+		}
+		if q, err = ExportC4(back); err != nil {
+			t.Fatalf("%s: 연결 차례를 뒤집은 사본: %v", l.key, err)
+		}
+		assertSame(t, l.key+"(연결 차례 뒤집음)", l.q, q)
+		if c3, _, err = ExportC3(back); err != nil {
+			t.Fatalf("%s: 연결 차례를 뒤집은 사본: %v", l.key, err)
+		}
+		if hasC3 {
+			assertSame(t, l.key+"(concept-3, 연결 차례 뒤집음)", l.c3, c3)
+		}
 	}
 }
 
@@ -120,7 +142,7 @@ func assertSame(t *testing.T, name string, want, got any) {
 	}
 }
 
-// TestImportedRunsPassFormatAndProvenanceChecks 는 질의 11개가 형식 검사, 구조 숨김 검사, 출처 성격 검사를 모두 통과하는지 확인합니다(검사 2·3·4).
+// TestImportedRunsPassFormatAndProvenanceChecks 함수는 질의 11개가 형식 검사, 구조 숨김 검사, 출처 성격 검사를 모두 통과하는지 확인합니다(검사 2·3·4).
 func TestImportedRunsPassFormatAndProvenanceChecks(t *testing.T) {
 	// Given: concept-4와 concept-3의 판정 기준(두 표시 파일과 대응표)을 합친 것
 	rs, err := roles.Load("c4")
@@ -162,7 +184,7 @@ func TestImportedRunsPassFormatAndProvenanceChecks(t *testing.T) {
 	}
 }
 
-// TestTopicBlindFactsMatchOriginalScreens 는 주제의 선택 규칙(facts.json)만으로 플랫폼이 뽑은 이동·메시지·단계·시스템 콜·커널 마디가
+// TestTopicBlindFactsMatchOriginalScreens 함수는 주제의 선택 규칙(facts.json)만으로 플랫폼이 뽑은 이동·메시지·단계·시스템 콜·커널 마디가
 // 원본 화면 데이터에서 바로 센 값과 차례까지 같은지 확인합니다(검사 5).
 func TestTopicBlindFactsMatchOriginalScreens(t *testing.T) {
 	// Given: 주제의 선택 규칙

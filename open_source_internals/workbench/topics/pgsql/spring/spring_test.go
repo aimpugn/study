@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"reflect"
 	"sort"
@@ -108,7 +109,7 @@ func differs(t *testing.T, want, got any) []string {
 	return atlas.Diff("$", w, g)
 }
 
-// TestRoundTripRebuildsEveryRun 은 적재 결과를 파일 꼴로 쓰고 다시 읽어 되돌린 기록이 따로 읽은 원본과 깊이 같은지 확인합니다(검사 1).
+// TestRoundTripRebuildsEveryRun 함수는 적재 결과를 파일 꼴로 쓰고 다시 읽어 되돌린 기록이 따로 읽은 원본과 깊이 같은지 확인합니다(검사 1).
 func TestRoundTripRebuildsEveryRun(t *testing.T) {
 	for _, l := range loadAll(t) {
 		// Given: 적재 결과를 형식의 JSON으로 쓰고 다시 읽은 것
@@ -127,7 +128,7 @@ func TestRoundTripRebuildsEveryRun(t *testing.T) {
 	}
 }
 
-// TestImportedRunsPassFormatAndProvenanceChecks 는 14벌이 형식 검사, 구조 숨김 검사, 출처 성격 검사를 모두 통과하는지 확인합니다(검사 2·3·4).
+// TestImportedRunsPassFormatAndProvenanceChecks 함수는 14벌이 형식 검사, 구조 숨김 검사, 출처 성격 검사를 모두 통과하는지 확인합니다(검사 2·3·4).
 func TestImportedRunsPassFormatAndProvenanceChecks(t *testing.T) {
 	// Given: Spring의 판정 기준(표시 파일과 대응표)과 추정 목록
 	rs, err := roles.Load("e03")
@@ -174,9 +175,9 @@ func eventOf(t *testing.T, r *atlas.Run, src, name string, skip int) int {
 	return 0
 }
 
-// TestRoundTripCatchesBrokenStructure 는 구조 칸을 하나씩 망가뜨린 적재에서 되돌린 기록이 원본과 달라지거나 되돌리기가 실패하는지 확인합니다.
+// TestRoundTripCatchesBrokenStructure 함수는 구조 칸을 하나씩 망가뜨린 적재에서 되돌린 기록이 원본과 달라지거나 되돌리기가 실패하는지 확인합니다.
 // 되돌림 비교가 연결과 장소로 다시 세는 값(tCapture·afterStep, 연결의 pid, 요청의 칸, wire 효과, 묶임의 by, next, 겹친 메시지, 트리 부모,
-// 빌린 연결, 창이 품은 사건)을 실제로 보는지 판별력을 봅니다.
+// 빌린 연결, 창이 품은 서버 사건, 관찰이 품은 읽기 구간)을 실제로 보는지 판별력을 봅니다.
 func TestRoundTripCatchesBrokenStructure(t *testing.T) {
 	// Given: 연결이 둘이고 기다림·묶임이 있는 기록과, 겹친 메시지가 있는 기록
 	all := loadAll(t)
@@ -220,9 +221,23 @@ func TestRoundTripCatchesBrokenStructure(t *testing.T) {
 			}
 		}},
 		{"빌린 연결을 지움", row, func(r *atlas.Run) { r.Events[eventOf(t, r, srcGuess, nameBorrow, 0)].Target = nil }},
-		{"창이 품은 사건을 다른 창으로", row, func(r *atlas.Run) {
-			i := linkOf(t, r, "contains", srcCont)
-			r.Links[i].Src = eventOf(t, r, srcCont, nameServer, 3)
+		{"창이 품은 서버 사건을 다른 창으로", row, func(r *atlas.Run) {
+			// 창의 첫 contains는 카탈로그 sample이라, 기록기의 서버 사건(sample이 아닌 것)을 품은 연결을 고르고 다른 창으로 옮깁니다.
+			for i, l := range r.Links {
+				if d := r.Events[l.Dst]; l.Kind == "contains" && r.Events[l.Src].Name == nameServer && d.Source == srcRec && d.Kind != atlas.Sample {
+					for k := 0; ; k++ {
+						if w := eventOf(t, r, srcCont, nameServer, k); w != l.Src {
+							r.Links[i].Src = w
+							return
+						}
+					}
+				}
+			}
+			t.Fatal("서버 창이 품은 서버 사건이 없음")
+		}},
+		{"관찰이 품은 읽기 구간을 다음 관찰로", row, func(r *atlas.Run) {
+			i := linkOf(t, r, "contains", srcObserve)
+			r.Links[i].Src = eventOf(t, r, srcObserve, nameCapture, 1)
 		}},
 		{"관찰의 끝을 다른 관찰의 끝으로", row, func(r *atlas.Run) { r.Links[linkOf(t, r, "end", "")].Dst = eventOf(t, r, srcCont, nameCaptureEnd, 1) }},
 		{"JFR 구간의 부른 쪽 프레임을 지움", row, func(r *atlas.Run) {
@@ -247,7 +262,7 @@ func TestRoundTripCatchesBrokenStructure(t *testing.T) {
 	}
 }
 
-// TestChecksCatchHiddenStructureAndWrongNature 는 구조를 attrs에 숨기거나 출처 성격을 바꾼 적재를 검사 3·4가 잡는지 확인합니다.
+// TestChecksCatchHiddenStructureAndWrongNature 함수는 구조를 attrs에 숨기거나 출처 성격을 바꾼 적재를 검사 3·4가 잡는지 확인합니다.
 func TestChecksCatchHiddenStructureAndWrongNature(t *testing.T) {
 	// Given: 판정 기준과 연결이 둘인 기록
 	rs, err := roles.Load("e03")
@@ -354,7 +369,7 @@ func springRules(t *testing.T) []atlas.FactRule {
 // factNames 는 화면이 보이는 사실 가운데 재추출로 견주는 것입니다(설계 메모 9의 검사 5, 브리프의 Spring 목록).
 var factNames = []string{"요청", "트리 마디", "메시지", "기다림", "서버 기다림", "막힘 관찰", "JFR 잠듦", "결과 값"}
 
-// TestTopicBlindFactsMatchOriginalScreens 는 주제의 선택 규칙(facts.json)만으로 플랫폼이 뽑은 요청·트리 마디·메시지·기다림·막힘 관찰·
+// TestTopicBlindFactsMatchOriginalScreens 함수는 주제의 선택 규칙(facts.json)만으로 플랫폼이 뽑은 요청·트리 마디·메시지·기다림·막힘 관찰·
 // JFR 잠듦·결과 값이 원본 화면 데이터에서 바로 센 줄과 차례까지 같은지 확인합니다(검사 5). 출처 성격도 함께 견줘 추정이 관측으로 나오지 않는지 봅니다.
 func TestTopicBlindFactsMatchOriginalScreens(t *testing.T) {
 	// Given: 주제의 선택 규칙
@@ -378,7 +393,7 @@ func TestTopicBlindFactsMatchOriginalScreens(t *testing.T) {
 	}
 }
 
-// TestBroadenedFactRuleIsCaught 는 재추출 규칙을 넓히면(트리 마디 규칙에서 종류 조건을 빼 해석기 효과의 순간까지 고름) 원본과 달라지는지
+// TestBroadenedFactRuleIsCaught 함수는 재추출 규칙을 넓히면(트리 마디 규칙에서 종류 조건을 빼 해석기 효과의 순간까지 고름) 원본과 달라지는지
 // 확인합니다. 재추출 비교가 규칙의 범위를 실제로 판정하는지 봅니다.
 func TestBroadenedFactRuleIsCaught(t *testing.T) {
 	// Given: 트리 마디 규칙의 kinds를 뺀 규칙
@@ -506,7 +521,7 @@ func originalFacts(t *testing.T, run map[string]any) map[string][]string {
 	return out
 }
 
-// TestChromeExportHasNoCrossingSpansPerClock 는 적재 결과를 Chrome 형식으로 옮겼을 때 시계마다 같은 장소의 구간이 서로 어긋나 겹치지 않는지
+// TestChromeExportHasNoCrossingSpansPerClock 함수는 적재 결과를 Chrome 형식으로 옮겼을 때 시계마다 같은 장소의 구간이 서로 어긋나 겹치지 않는지
 // 확인합니다(검사 2). 시계 셋(mac, container, jfr)마다 포개진 구간 하나를 어긋나게 만들면 검사가 그 구간을 잡아야 합니다(볼 것이 실제로 있었는지).
 func TestChromeExportHasNoCrossingSpansPerClock(t *testing.T) {
 	// Given: 기록 14벌
@@ -579,29 +594,30 @@ func nestedPair(r *atlas.Run, clock string) (outer, inner int, ok bool) {
 	return 0, 0, false
 }
 
-// TestImportRejectsShapesItCannotRebuild 는 규칙으로 되살릴 수 없는 꼴이나 다시 세는 칸이 규칙과 다른 원본을 적재기가 받지 않는지 확인합니다.
-// 마지막 둘은 적재기가 끝에 하는 되돌림 대조(내보낸 기록 = 원본)가 다시 세는 칸의 어긋남을 잡는지 봅니다.
+// TestImportRejectsShapesItCannotRebuild 함수는 규칙으로 되살릴 수 없는 꼴이나 다시 세는 칸이 규칙과 다른 원본을 적재기가 받지 않는지 확인합니다.
+// "되돌림 대조"가 붙은 것은 적재기가 끝에 하는 대조(내보낸 기록 = 원본)가 다시 세는 칸의 어긋남을 잡는지 봅니다. want가 있으면 그 까닭으로
+// 멈춰야 합니다(다른 검사가 우연히 멈춘 것이 아님).
 func TestImportRejectsShapesItCannotRebuild(t *testing.T) {
 	cases := []struct {
-		name, key string
-		mutate    func(run map[string]any)
+		name, key, want string
+		mutate          func(run map[string]any)
 	}{
-		{"끝이 맥 시계인 기다림(오류 없이 끝남)", "5-requires-new-same-row/a", func(run map[string]any) {
+		{"끝이 맥 시계인 기다림(오류 없이 끝남)", "5-requires-new-same-row/a", "", func(run map[string]any) {
 			view := run["view"].(map[string]any)
 			view["waits"].([]any)[0].(map[string]any)["end"] = "done"
 		}},
-		{"기다린 백엔드가 둘인 막힘 관찰", "5-requires-new-same-row/a", func(run map[string]any) {
+		{"기다린 백엔드가 둘인 막힘 관찰", "5-requires-new-same-row/a", "", func(run map[string]any) {
 			run["blocked"].([]any)[0].(map[string]any)["waiters"] = []any{"C1", "C2"}
 		}},
-		{"맞는 길이 없는 갈림", "5-nested/a", func(run map[string]any) {
+		{"맞는 길이 없는 갈림", "5-nested/a", "", func(run map[string]any) {
 			view := run["view"].(map[string]any)
 			n := view["tree"].([]any)[0].(map[string]any)
 			view["branches"].(map[string]any)[n["fn"].(string)+n["desc"].(string)].(map[string]any)["alts"] = []any{}
 		}},
-		{"관찰 시각이 아닌 span[0]", "5-nested/a", func(run map[string]any) {
+		{"관찰 시각이 아닌 span[0]", "5-nested/a", "", func(run map[string]any) {
 			run["captures"].([]any)[0].(map[string]any)["span"].([]any)[0] = json.Number("1")
 		}},
-		{"어느 메시지와도 같지 않은 겹친 메시지", "5-requires-new-pool1/a", func(run map[string]any) {
+		{"어느 메시지와도 같지 않은 겹친 메시지", "5-requires-new-pool1/a", "", func(run map[string]any) {
 			for _, c := range run["captures"].([]any) {
 				if o := c.(map[string]any)["overlap"].([]any); len(o) > 0 {
 					o[0].(map[string]any)["len"] = json.Number("99999")
@@ -609,7 +625,7 @@ func TestImportRejectsShapesItCannotRebuild(t *testing.T) {
 				}
 			}
 		}},
-		{"효과의 차례가 바뀐 마디", "5-requires-new-pool1/a", func(run map[string]any) {
+		{"효과의 차례가 바뀐 마디", "5-requires-new-pool1/a", "", func(run map[string]any) {
 			for _, n := range run["view"].(map[string]any)["tree"].([]any) {
 				if e := n.(map[string]any)["effects"].([]any); len(e) == 2 {
 					e[0], e[1] = e[1], e[0]
@@ -617,11 +633,11 @@ func TestImportRejectsShapesItCannotRebuild(t *testing.T) {
 				}
 			}
 		}},
-		{"null이 아닌 서버 창의 in", "5-nested/a", func(run map[string]any) {
+		{"null이 아닌 서버 창의 in", "5-nested/a", "", func(run map[string]any) {
 			q := run["conns"].([]any)[0].(map[string]any)["requests"].([]any)[1].(map[string]any)
 			q["server"].(map[string]any)["in"] = []any{map[string]any{"type": "Q", "len": json.Number("5")}}
 		}},
-		{"BackendKeyData가 아닌 메시지의 f.pid", "5-nested/a", func(run map[string]any) {
+		{"BackendKeyData가 아닌 메시지의 f.pid", "5-nested/a", "", func(run map[string]any) {
 			for _, m := range run["conns"].([]any)[0].(map[string]any)["messages"].([]any) {
 				if mm := m.(map[string]any); mm["type"] == "R" {
 					mm["f"].(map[string]any)["pid"] = "1"
@@ -629,20 +645,74 @@ func TestImportRejectsShapesItCannotRebuild(t *testing.T) {
 				}
 			}
 		}},
-		{"규칙과 다른 요청의 보낸 시각", "5-nested/a", func(run map[string]any) {
+		{"규칙과 다른 요청의 보낸 시각", "5-nested/a", "", func(run map[string]any) {
 			q := run["conns"].([]any)[0].(map[string]any)["requests"].([]any)[1].(map[string]any)
 			q["sent"] = json.Number("1")
 		}},
-		{"규칙과 다른 연결을 연 스레드(되돌림 대조)", "5-nested/a", func(run map[string]any) {
+		{"규칙과 다른 연결을 연 스레드(되돌림 대조)", "5-nested/a", "", func(run map[string]any) {
 			run["conns"].([]any)[0].(map[string]any)["thread"] = "nobody"
 		}},
-		{"규칙과 다른 떼어 둔 연결(되돌림 대조)", "5-requires-new-same-row/a", func(run map[string]any) {
+		{"규칙과 다른 떼어 둔 연결(되돌림 대조)", "5-requires-new-same-row/a", "", func(run map[string]any) {
 			for _, b := range run["view"].(map[string]any)["binding"].([]any)[1:] {
 				if h := b.(map[string]any)["held"].([]any); len(h) > 0 {
 					b.(map[string]any)["held"] = []any{}
 					return
 				}
 			}
+		}},
+		{"규칙과 다른 JFR 구간의 depth(되돌림 대조)", "5-nested/a", "되돌린 기록이 원본과 다름", func(run map[string]any) {
+			s := run["java"].(map[string]any)["spans"].([]any)[0].(map[string]any)
+			s["depth"] = json.Number("7")
+		}},
+		{"스택 1번 칸이 아닌 hint의 f.at", "5-requires-new-same-row/a", "스택 1번 칸의 자리가 아님", func(run map[string]any) {
+			serverEvents(run, func(e map[string]any) bool {
+				if e["kind"] != "hint" {
+					return false
+				}
+				e["f"].(map[string]any)["at"] = "src/x.c:1"
+				return true
+			})
+		}},
+		{"서버 사건 f의 모르는 열쇠", "5-requires-new-same-row/a", "모르는 열쇠", func(run map[string]any) {
+			serverEvents(run, func(e map[string]any) bool {
+				f, ok := e["f"].(map[string]any)
+				if ok {
+					f["conn"] = "C2"
+				}
+				return ok
+			})
+		}},
+		{"hint·ereport가 아닌 서버 사건의 f.at", "5-requires-new-same-row/a", "hint·ereport에만", func(run map[string]any) {
+			serverEvents(run, func(e map[string]any) bool {
+				f, ok := e["f"].(map[string]any)
+				if ok && e["kind"] == "lock" {
+					f["at"] = "src/x.c:1"
+					return true
+				}
+				return false
+			})
+		}},
+		{"규칙과 다른 트랜잭션의 first", "5-nested/a", "요청에서 다시 센", func(run map[string]any) {
+			x := run["transactions"].([]any)[0].(map[string]any)
+			x["first"] = json.Number(fmt.Sprint(mustInt(t, x["first"]) + 1))
+		}},
+		{"규칙과 다른 트랜잭션의 end", "5-nested/a", "요청에서 다시 센", func(run map[string]any) {
+			run["transactions"].([]any)[0].(map[string]any)["end"] = "ROLLBACK"
+		}},
+		{"규칙과 다른 접속 인증 차례(되돌림 대조)", "5-nested/a", "되돌린 기록이 원본과 다름", func(run map[string]any) {
+			run["conns"].([]any)[0].(map[string]any)["startup"].([]any)[0] = "ssl(N)"
+		}},
+		{"규칙과 다른 마지막 맥 쪽 메시지(되돌림 대조)", "5-nested/a", "되돌린 기록이 원본과 다름", func(run map[string]any) {
+			run["conns"].([]any)[0].(map[string]any)["lastMac"] = "Q"
+		}},
+		{"메시지 짝과 다른 연결의 시계 구간", "5-nested/a", "다시 센 구간", func(run map[string]any) {
+			run["clock"].(map[string]any)["wire"].([]any)[0].(map[string]any)["lo"] = json.Number("-1")
+		}},
+		{"규칙과 다른 컨테이너 쪽 마지막 메시지(되돌림 대조)", "5-nested/a", "되돌린 기록이 원본과 다름", func(run map[string]any) {
+			run["conns"].([]any)[0].(map[string]any)["lastCont"] = "Q"
+		}},
+		{"ReadyForQuery 입구 수와 Z 수가 다른 연결", "5-nested/a", "차례 짝을 믿을 수 없음", func(run map[string]any) {
+			run["conns"].([]any)[0].(map[string]any)["join"] = []any{json.Number("3"), json.Number("4")}
 		}},
 	}
 	for _, c := range cases {
@@ -657,9 +727,172 @@ func TestImportRejectsShapesItCannotRebuild(t *testing.T) {
 		// When: 적재하면
 		_, err := Import(c.key, run, version)
 
-		// Then: 적재기가 멈춘다
-		if err == nil {
+		// Then: 적재기가 멈춘다(want가 있으면 그 까닭으로)
+		switch {
+		case err == nil:
 			t.Errorf("%s: %s 적재가 통과함", c.name, c.key)
+		case c.want != "" && !strings.Contains(err.Error(), c.want):
+			t.Errorf("%s: 다른 까닭으로 멈춤: %v", c.name, err)
+		}
+	}
+}
+
+// serverEvents 함수는 원본의 서버 창 사건마다 f를 부르고, f가 참을 돌려주면 멈춥니다. 한 번도 참이 아니면 시험을 멈춥니다.
+func serverEvents(run map[string]any, f func(e map[string]any) bool) {
+	for _, c := range run["conns"].([]any) {
+		for _, q := range c.(map[string]any)["requests"].([]any) {
+			s, _ := q.(map[string]any)["server"].(map[string]any)
+			evs, _ := s["events"].([]any)
+			for _, e := range evs {
+				if f(e.(map[string]any)) {
+					return
+				}
+			}
+		}
+	}
+	panic("고칠 서버 사건이 없음")
+}
+
+// mustInt 함수는 원본의 수 하나를 정수로 읽습니다. 수가 아니면 시험을 멈춥니다.
+func mustInt(t *testing.T, v any) int {
+	t.Helper()
+	n, err := strconv.Atoi(fmt.Sprint(v))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+// TestExportReturnsErrorsInsteadOfPanicking 함수는 형식 검사를 통과하지만 적재기가 만들지 않는 꼴(끝이 빈 빌림·서버 창, 스택이 빈 트리 뿌리)의
+// run에서 Export가 panic하지 않고 오류를 돌려주는지 확인합니다(코드 검토 지적 9).
+func TestExportReturnsErrorsInsteadOfPanicking(t *testing.T) {
+	// Given: 빌림·서버 창·트리가 있는 기록
+	l := find(t, loadAll(t), "5-requires-new-same-row/a")
+	cases := []struct {
+		name   string
+		mutate func(r *atlas.Run)
+	}{
+		{"빌림의 끝을 비움", func(r *atlas.Run) { r.Events[eventOf(t, r, srcGuess, nameBorrow, 0)].EndNS = nil }},
+		{"서버 창의 끝을 비움", func(r *atlas.Run) { r.Events[eventOf(t, r, srcCont, nameServer, 0)].EndNS = nil }},
+		{"트리 뿌리의 스택을 비움", func(r *atlas.Run) {
+			for i, e := range r.Events {
+				if e.Source == srcTree && e.Kind == atlas.Span && e.Parent == nil {
+					r.Events[i].Stack = nil
+					return
+				}
+			}
+		}},
+	}
+	for _, c := range cases {
+		r := copyRun(t, l.result.Run)
+		c.mutate(r)
+
+		// When: 되돌리면
+		var err error
+		func() {
+			defer func() {
+				if p := recover(); p != nil {
+					t.Errorf("%s: panic %v", c.name, p)
+				}
+			}()
+			_, err = Export(r)
+		}()
+
+		// Then: 오류를 돌려준다
+		if err == nil {
+			t.Errorf("%s: 오류 없이 되돌아옴", c.name)
+		}
+	}
+}
+
+// TestExportIgnoresLinkTableOrder 함수는 연결 표의 차례만 뒤집은 run(사건·장소·연결의 내용은 같음)도 원본과 같게 되돌아오는지 확인합니다.
+// 형식은 연결 표의 차례에 뜻을 두지 않으므로 내보내기가 그 차례에 기대면 안 됩니다(코드 검토 지적 8).
+func TestExportIgnoresLinkTableOrder(t *testing.T) {
+	for _, l := range loadAll(t) {
+		// Given: 연결 표를 거꾸로 놓고 id를 다시 매긴 사본(형식 검사는 통과)
+		r := copyRun(t, l.result.Run)
+		for i, j := 0, len(r.Links)-1; i < j; i, j = i+1, j-1 {
+			r.Links[i], r.Links[j] = r.Links[j], r.Links[i]
+		}
+		for i := range r.Links {
+			r.Links[i].ID = i
+		}
+		if errs := atlas.Validate(r); len(errs) != 0 {
+			t.Fatalf("%s: 형식 검사 %v", l.key, errs[0])
+		}
+
+		// When: 되돌리면
+		got, err := Export(r)
+		if err != nil {
+			t.Fatalf("%s: %v", l.key, err)
+		}
+
+		// Then: 원본과 같다
+		if d := differs(t, l.raw, got); len(d) != 0 {
+			t.Fatalf("%s: 연결 차례만 뒤집었는데 다름 %v", l.key, d[:min(3, len(d))])
+		}
+	}
+}
+
+// relationFromMessages 함수는 run의 메시지 짝(맥 쪽 → 컨테이너 쪽 message 연결)에서 container → mac 관계를 다시 셉니다: 연결 장소마다
+// [B의 (tc − t) 최댓값, F의 최솟값]이고 run의 관계는 그 구간들을 모두 덮는 범위입니다(decode/spring.go 204~220, 메모 3).
+func relationFromMessages(r *atlas.Run) (lo, hi int64) {
+	type span struct{ lo, hi int64 }
+	per := map[int]*span{}
+	for _, l := range r.Links {
+		if l.Kind != "message" {
+			continue
+		}
+		mac, cnt := r.Events[l.Src], r.Events[l.Dst]
+		s := per[mac.Place]
+		if s == nil {
+			s = &span{math.MinInt64, math.MaxInt64}
+			per[mac.Place] = s
+		}
+		d := *cnt.StartNS - *mac.StartNS
+		if mac.From != nil {
+			s.lo = max(s.lo, d)
+		} else {
+			s.hi = min(s.hi, d)
+		}
+	}
+	lo, hi = math.MaxInt64, math.MinInt64
+	for _, s := range per {
+		lo, hi = min(lo, s.lo), max(hi, s.hi)
+	}
+	return lo, hi
+}
+
+// TestClockRelationIsRecountedFromMessages 함수는 run의 container → mac 관계가 그 run의 메시지 짝에서 다시 센 범위와 같은지 확인합니다
+// (코드 검토 지적 10). 관계의 부호를 뒤집거나 크기를 1000분의 1로 줄인 사본은 달라야 합니다. 차이가 0에 가까운 기록이 많아 메시지의 방향만
+// 보는 시험(F를 컨테이너 쪽이 먼저 읽지 않음)으로는 두 변이를 잡지 못했으므로 값 자체를 견줍니다.
+func TestClockRelationIsRecountedFromMessages(t *testing.T) {
+	relation := func(r *atlas.Run) *atlas.ClockRelation {
+		for i := range r.Clocks {
+			if r.Clocks[i].ID == clockCont {
+				return r.Clocks[i].Relation
+			}
+		}
+		t.Fatal("컨테이너 시계가 없음")
+		return nil
+	}
+	for _, l := range loadAll(t) {
+		// When/Then: 적재한 관계는 메시지에서 다시 센 범위와 같다
+		lo, hi := relationFromMessages(l.result.Run)
+		if c := relation(l.result.Run); c.LoNS != lo || c.HiNS != hi {
+			t.Errorf("%s: 관계 %d~%d ns, 메시지에서 %d~%d ns", l.key, c.LoNS, c.HiNS, lo, hi)
+		}
+
+		// When/Then: 관계를 망가뜨린 사본은 다시 센 범위와 다르다
+		for name, f := range map[string]func(c *atlas.ClockRelation){
+			"부호를 뒤집음":      func(c *atlas.ClockRelation) { c.LoNS, c.HiNS = -c.HiNS, -c.LoNS },
+			"1000분의 1로 줄임": func(c *atlas.ClockRelation) { c.LoNS, c.HiNS = c.LoNS/1000, c.HiNS/1000 },
+		} {
+			r := copyRun(t, l.result.Run)
+			f(relation(r))
+			if c := relation(r); c.LoNS == lo && c.HiNS == hi {
+				t.Errorf("%s: 관계를 %s 사본을 못 가림", l.key, name)
+			}
 		}
 	}
 }

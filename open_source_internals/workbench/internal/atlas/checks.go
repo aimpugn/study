@@ -39,6 +39,9 @@ var structuralRoles = map[string]bool{"장소": true, "연결": true, "시각": 
 // 역할이 구조인데 예외가 아니거나, Roles에 없는 키면 어긴 것입니다. 경로 무리가 없는 행의 attrs도 어긴 것입니다.
 // 키의 역할이 구조가 아니어도 그 아래 경로(뒤에 "."이나 "["가 이어지는 경로)에 예외 아닌 구조 역할이 있으면 어긴 것입니다.
 // 모음 키에 목록을 통째로 두면 그 안의 장소·사건이 attrs에 숨기 때문입니다.
+// 값이 객체나 목록이면 그 안을 걸어 내려가며 실제로 있는 아래 경로(객체의 열쇠는 ".열쇠", 동적 열쇠로 표시된 객체는 ".{*}", 목록의 원소는
+// "[]")마다 같은 판정을 합니다. 표시 파일에 없는 아래 경로도 어긴 것입니다. 원본에 없던 열쇠나 다른 경로의 조각을 허용된 열쇠 아래에
+// 넣으면 표시 파일의 경로로는 보이지 않기 때문입니다(Spring 코드 검토 지적 5).
 func ScanStructure(r *Run, origins Origins, roles Roles) []error {
 	var errs []error
 	// hidden 함수는 경로 path 아래에서 예외 아닌 구조 역할을 받은 경로를 하나 돌려줍니다. 없으면 빈 문자열입니다.
@@ -53,6 +56,34 @@ func ScanStructure(r *Run, origins Origins, roles Roles) []error {
 			}
 		}
 		return ""
+	}
+	// walk 함수는 경로 path에 놓인 값 val의 안을 걸어 내려가며, 실제로 있는 아래 경로가 모두 표시 파일에 있는지 봅니다. 그 아래의 구조
+	// 역할은 hidden이 이미 보았으므로(표시 파일의 아래 경로 전부) 여기서는 표시 파일에 없는 경로만 찾습니다.
+	var walk func(ref RecordRef, label, path string, val any)
+	walk = func(ref RecordRef, label, path string, val any) {
+		next := func(sub string, v any) {
+			if _, ok := roles[sub]; !ok {
+				errs = append(errs, fmt.Errorf("%s %d: %s 안의 경로 %s가 표시 파일에 없음", ref.Table, ref.ID, label, sub))
+				return
+			}
+			walk(ref, label, sub, v)
+		}
+		switch v := val.(type) {
+		case map[string]any:
+			dyn := path + ".{*}"
+			_, isDyn := roles[dyn]
+			for _, k := range sortedKeys(v) {
+				if isDyn {
+					next(dyn, v[k])
+				} else {
+					next(path+"."+k, v[k])
+				}
+			}
+		case []any:
+			for _, e := range v {
+				next(path+"[]", e)
+			}
+		}
 	}
 	check := func(ref RecordRef, a Attrs) {
 		if len(a) == 0 {
@@ -75,7 +106,9 @@ func ScanStructure(r *Run, origins Origins, roles Roles) []error {
 				default:
 					if q := hidden(path); q != "" {
 						errs = append(errs, fmt.Errorf("%s %d: attrs[%s].%s 아래의 %s는 역할 %s(결정 %s)라 구조 칸에 있어야 함", ref.Table, ref.ID, src, k, q, roles[q].Role, roles[q].Decision))
+						continue
 					}
+					walk(ref, "attrs["+src+"]."+k, path, a[src][k])
 				}
 			}
 		}

@@ -25,7 +25,8 @@ var markFile = map[string]string{
 
 // Load 함수는 입력 하나(e05·c3·c4·tx·e03)의 판정 기준을 읽습니다.
 //
-// 표시 파일의 모든 경로에 역할과 출처를 넣고, 대응표에 있는 경로에는 결정을 더합니다. 대응표에 아직 TBD가 남은
+// 표시 파일의 모든 경로에 역할과 출처를 넣고, 대응표에 있는 경로에는 결정을 더합니다. 대응표의 출처 칸은 표시 파일의 출처이거나,
+// 검토가 틀렸다고 보인 경로에서 생성기(roles.py의 PROV_FIXES)가 고친 출처라(까닭은 규칙 칸) 대응표의 것을 씁니다. 대응표에 아직 TBD가 남은
 // 경로는 결정이 비어 있어, 그 키가 attrs에 있으면 구조 숨김 검사가 실패합니다(정하기 전에는 통과할 수 없음).
 // 저장소 뿌리를 찾지 못하거나 파일 형식이 틀리면 오류를 돌려줍니다.
 func Load(input string) (atlas.Roles, error) {
@@ -65,6 +66,7 @@ func Load(input string) (atlas.Roles, error) {
 		if !ok {
 			return fmt.Errorf("대응표의 %s %s가 표시 파일에 없음", f[0], f[1])
 		}
+		r.Prov = f[3]
 		if f[4] != "TBD" {
 			r.Decision = f[4]
 		}
