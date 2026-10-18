@@ -2,7 +2,7 @@
 
 2026-10-18 19:22~19:26 KST, 로컬 세션. 클라우드 세션이 Spring 14벌을 옮긴 일곱 커밋(`34838fc39..e690a11ee`)을 Claude가 아닌 모델에게 보인 검토입니다. 처분은 WORK 문서의 「Spring 바깥 검토와 처분」에 있습니다.
 
-- 검토자: Codex `gpt-6-luna`(reasoning high, `--ignore-user-config --ephemeral`, 샌드박스 `read-only`, `approval_policy=never`). 셸 별칭(`codex --yolo`)을 피하려고 `command codex exec`로 불렀습니다. 같은 날 대조 시험에서 이 부름은 쓰기를 막았습니다("Operation not permitted").
+- 검토자: Codex `gpt-6-luna`(reasoning high, `--ignore-user-config --ephemeral`, 샌드박스 `read-only`, `approval_policy=never`). 셸 별칭(`codex --yolo`)을 피하려고 `command codex exec`로 불렀습니다. 같은 날 대조 시험에서 이 부름의 세션은 읽기 전용으로 안내받아 쓰기 명령을 부르지 않았고(파일이 생기지 않음), 같은 정책의 seatbelt는 OS가 쓰기를 막았습니다. 별칭으로 부른 세션은 쓰기를 실제로 실행했습니다.
 - 이벤트 기록: 명령 실행 104번, 파일 변경 0번. 사용량은 입력 1,356,768 토큰(캐시 1,202,816), 출력 24,728 토큰.
 - 검토한 checkout: 이 브랜치(`learning-map-t1`)를 둔 로컬 worktree입니다. 답의 링크가 그 임시 경로를 가리키지만, 같은 파일이 이 저장소의 같은 상대 경로에 있습니다.
 
