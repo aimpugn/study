@@ -755,6 +755,59 @@ T2가 재는 질의는 셋이다. Q1 함수 X를 지난 실행 목록, Q2 두 �
 
 결정이 바뀐 것은 1·2·3·5·7·8·9·10·11(규칙)이고 모두 검토자의 제안대로 고쳤다. 요구를 낮춘 것은 없다(T4 통과 칸은 그대로). 재검토는 코드 검토(지시서 7번)가 이 고친 규칙을 기준으로 함께 본다.
 
+#### 구현과 시험(2026-10-18)
+
+구현은 커밋 5749d73이다. 플랫폼 쪽은 [`internal/atlas/mapview/`](../../open_source_internals/workbench/internal/atlas/mapview/)(자료 파일 읽기 `spec.go`, 읽는 자리 `store.go`의 `Store`·`DirStore`·`MemStore`, 보기 모형 `view.go`·`build.go`, 범위 정본 `ranges.go`, 정적 파일 쓰기 `write.go`, 화면 `screen/`)와 명령 [`cmd/atlas-map`](../../open_source_internals/workbench/cmd/atlas-map/main.go)이고, 주제 쪽은 자료 파일 [`topics/pgsql/atlasmap/map.json`](../../open_source_internals/workbench/topics/pgsql/atlasmap/map.json) 하나다. 시계가 다른 사건의 앞뒤를 견주려고 `internal/atlas/clock.go`에 `Offset`을 더했다. 화면은 공통 형식 폴더만 읽고(`DirStore`), 77벌에서 경로 21개·후보 무리 12개를 1.1 MB 정적 HTML 한 장으로 낸다. 만드는 명령과 화면 조작은 workbench README의 「학습 지도 화면(공통 형식 위)」에 적었다.
+
+시험은 Go 시험 함수 17개(플랫폼 `mapview_test.go` 13, 주제 `map_test.go` 4, 하위 사례까지 22번 실행)이고 모두 Given/When/Then 주석을 단다. 플랫폼 시험은 가짜 주제 자료(띠·구역·규칙을 시험 안에서 만든 것)로 돌고, 주제 시험은 77벌을 형식으로 되읽은 run에서 시안의 사실(INSERT 경로, ×10·×14 접기, 후보와 갈림, Spring 경로가 커널 위에서 끝남)을 본다. 경계 시험(고친 규칙 11)은 `go list -deps`에 `topics/`가 없음과 플랫폼 폴더에 주제 이름 글자가 없음을 보고, 실제로 주석의 `pgsql` 두 군데를 잡아 고쳤다.
+
+시험의 가름 힘은 변이로 봤다. 아래 열네 변이를 하나씩 넣고 `go test ./internal/atlas/mapview/`를 돌려 모두 실패했다(스크립트는 세션 임시 폴더에 두었고 표가 그 출력이다). 처음 돌렸을 때 「정체에서 시나리오 무시」와 「열을 넘어 접음」 두 변이가 살아남아 `TestCandidatesAndDivergence`의 시나리오 s2 사례와 `TestFoldStopsAtColumn`을 더했다.
+
+| 지시서가 고른 판정 | 변이 | 잡은 시험 |
+| --- | --- | --- |
+| 범위 정규화 | 바깥쪽 맞춤 → 안쪽 맞춤(일부만 덮은 칸 뺌) | NormalizeAndRelate, RangeFixtureIsCurrent |
+| 범위 정규화 | 흐린 칸까지 넣음(`lo` 무시) | NormalizeAndRelate, RangeFixtureIsCurrent |
+| 범위 판정 | 같은 자리에서 줌을 안 봄 | NormalizeAndRelate, RangeFixtureIsCurrent |
+| 범위 판정 | 포함과 안에 듦을 뒤바꿈 | NormalizeAndRelate, RangeFixtureIsCurrent |
+| 후보 고르기 | 정체에서 시나리오를 뺌 | CandidatesAndDivergence |
+| 빗금 판정 | partial 관찰 범위도 봤고 0번 | WatchedNeedsCompleteObservedCoverage |
+| 빗금 판정 | 관찰 범위 출처의 성격을 안 봄 | WatchedNeedsCompleteObservedCoverage |
+| 빗금 판정 | 하강 아래 사건을 안 봄(늘 빗금) | DescentAndHatch |
+| 줌(띠) 배정 | 대체 규칙을 이름 규칙보다 먼저 | DescentAndHatch, BandRulesPrecedenceAndInferredBand |
+| 추정 표시 | 연결 근거의 성격을 안 봄 | DescentAndHatch |
+| 추정 표시 | 띠를 정한 attrs 열쇠의 성격을 안 봄 | BandRulesPrecedenceAndInferredBand |
+| 접기 | 처리 단계 열을 넘어 접음 | FoldStopsAtColumn |
+| 잎 집합 | 중간 마디까지 잎에 넣음 | LensAndLeaves |
+| 렌즈 | 문턱을 무시 | LensAndLeaves |
+
+화면 검사는 플랫폼 폴더의 [`check-map.mjs`](../../open_source_internals/workbench/internal/atlas/mapview/screen/check-map.mjs)로 넓혔다. 첫째로 Go 정본이 쓴 대조표 `testdata/ranges.json`(경계 사례와 씨앗 고정 무작위 표본 509건)을 브라우저 쪽 `range.js`로 다시 셈해 모두 같은지 보고, 둘째로 headless Chromium에서 후보 카드, 줌, 출발·도착, 범위 드래그(바깥쪽 맞춤, 흐린 칸 제외, 같은 자리 재선택), 해설 서랍, 재생, 커널 띠, 빗금과 봤고 0번, 테마, 조작 기록을 조작해 상태를 읽는다. 가름 힘: `range.js`의 바깥쪽 맞춤을 안쪽으로 바꾸면 `normalize [9,9,0,4]: null ≠ Go [0,0]`, 같은 잎·줌만 다름을 같은 자리로 바꾸면 `same ≠ Go same_leaves`, `map.js`에서 고를 수 있는 첫 칸 `lo`를 0으로 바꾸면 「흐린 칸이 범위에 들어감」으로 실패했다(세 변이 모두 이 세션에서 실행). 기존 `topics/pgsql/check-screens.mjs`(검사 6)도 통과한다.
+
+관문: `go test ./... -count=1` 통과, `golangci-lint run ./internal/... ./topics/... ./cmd/...` 0 issues, check-screens·check-map 통과. `./...` 전체의 lint는 이 작업 전부터 있던 `design/feasibility/fulltrace`의 godoclint 37건이 남아 있다(이 작업이 만든 것 아님, 범위 밖).
+
+#### 화면 확인(2026-10-18)
+
+`check-map.mjs <화면> <사진 폴더>`가 headless Chromium 1440×900, 어두운 테마로 기본 경로(여정 INSERT 1차, `kernel_insert`)의 세 줌을 찍고 `browser.close()`로 닫는다. 사진과 시안(`t3-merged/screen-l{1,2,3}-dark.png`)을 왼쪽 시안·오른쪽 v1으로 나란히 붙인 그림이 [`t4-screens/side-{system,process,function}.png`](evidence/learning-map-20261017/t4-screens/)이고, 지면 아래를 기록하지 않은 Spring 경로의 함수 줌(빗금과 봤고 0번)이 `screen-ended-function.png`다.
+
+의도한 차이(설계 메모와 고친 규칙이 정한 것):
+
+1. 접기가 ×25 하나가 아니라 ×10·×14 둘이다(고친 규칙 3, 열을 넘어 접지 않음).
+2. 지면을 건너는 하강선이 실선이 아니라 점선이다. 여정의 시스템 콜 짝은 추정(`kernel-guess`)이라 고친 규칙 6이 점선과 ≈를 요구한다.
+3. 시작 화면의 해설이 접혀 있고 「공급자 설정 없음」 자리만 있다(고친 규칙 10, 해설 층은 T5). 시안의 v1·v2 해설 카드는 없다.
+4. 잠드는 시간 몫이 시안의 79%가 아니라 `schedule` 전체(51.28 ms 가운데 약 99%)로 셈된다. 형식의 마디 시간을 그대로 쓴 결과다.
+5. 함수 줌의 마디는 렌즈 문턱(뿌리 길이의 5%) 이상만 이름이 보이고 나머지는 「+n」으로 접힌다(고친 규칙 7).
+6. 갈림 표지가 「kernel_insert2와 갈림 · 45.5 ms」처럼 규칙으로 센 값으로 붙는다(고친 규칙 9). 시안은 손으로 고른 `btrfs_sync_log` 한 자리였다.
+
+고칠 차이(v1이 시안보다 못한 것, 아직 고치지 않음):
+
+1. 시스템 줌이 정거장 13개를 상자로 늘어놓고 경로 줄이 같은 정거장 사이를 여러 번 오가 서로 엉킨다. 시안은 구역(psql, 백엔드, 공유 메모리, 커널, 디스크) 안의 정거장을 번호 점으로 잇는 한 줄이었다. 같은 정거장 쌍의 왕복을 한 줄과 횟수로 합치고 구역 안 배치를 정해야 한다.
+2. 함수 줌의 마디 이름이 비스듬히 겹쳐 읽기 어렵다. 시안은 층 띠마다 가로로 늘어선 나무였다. 층 안에서 마디를 시간 축으로 펴고 이름 자리를 겹치지 않게 골라야 한다.
+3. 비교 겹침(갈림 표지의 「비교」 단추)이 없다(단추는 꺼둠). 고른 칸의 관계선도 아직 없다(합의: 고를 때만 관계선).
+4. 전체 지도(미니맵)가 구역 상자만 있고 지금 보는 자리 표시가 거칠다.
+5. 좁은 띠에서 띠 이름과 상태 글(「봤고 0번」, 「기록 없음(빗금)」)이 겹친다(`screen-ended-function.png`의 연결 C2, 커널·디스크 띠).
+6. Spring 경로의 JFR·와이어 마디가 「백엔드 함수」 띠에 놓이고 이름이 `R`, `S` 같은 프로토콜 글자 하나다. 주제 자료 파일의 띠 규칙과 이름 규칙을 손봐야 한다.
+
+이 여섯은 v1의 T4 통과 칸(그림 먼저·경로 한 줄·패널 고정·깊이·친 SQL·추정 표시)을 깨지는 않지만 시안이 보인 읽기 쉬움에 못 미친다. 참가자 시험 전에 1·2·5를 고치는 것이 좋고, 3·4·6은 시험 결과를 보고 정한다.
+
 ## 체크리스트
 
 상태: **FROZEN**(2026-10-17, 독립 검토 1회와 처분 뒤. 아래 「검토와 처분」). 사용자 요구는 바닥선이며 지우거나 약화하지 않는다. 이 체크리스트는 이 계획 문서가 요구를 빠짐없이 담았는지 보는 것이고, 결과물이 맞게 조립됐는지는 각 T의 판정이 본다. 「기준」 칸은 run의 assembly check가 가리킬 완료 기준이다. “실행 커널”은 사용자의 전역 실행 기준(myai의 「객관적 탁월함을 위한 전역 실행 커널」)이다.

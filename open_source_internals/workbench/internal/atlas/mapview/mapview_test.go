@@ -167,6 +167,8 @@ func TestFoldStopsAtColumn(t *testing.T) {
 }
 
 // TestUntimedEventsAreNotSteps 함수는 시각 없는 사건이 칸이 되지 않는지(고친 규칙 2) 봅니다. 뿌리 규칙이 run 전체를 고르는 장면이라 목록에도 들지 않습니다.
+//
+// Given 칸 출처의 사건 가운데 시각 없는 untimed가 낀 가짜 주제 run에서, When 보기 모형을 만들면, Then 어느 칸의 이름도 untimed가 아닙니다.
 func TestUntimedEventsAreNotSteps(t *testing.T) {
 	for _, s := range toyView(t).Routes[0].Steps {
 		if s.Name == "untimed" {
@@ -176,6 +178,8 @@ func TestUntimedEventsAreNotSteps(t *testing.T) {
 }
 
 // TestStepsOnTwoClocksAreRejected 함수는 칸의 차례를 정하는 사건이 두 시계에 걸치면 보기 모형을 만들지 않는지 봅니다(고친 규칙 2).
+//
+// Given work 사건만 다른 시계(other)의 출처로 옮기고 칸 출처에 두 출처를 다 넣은 장면에서, When 보기 모형을 만들면, Then 「두 시계」 오류로 거절합니다.
 func TestStepsOnTwoClocksAreRejected(t *testing.T) {
 	r := toyRun("s1/a", true, 0)
 	r.Clocks = append(r.Clocks, atlas.Clock{ID: "other", PrecisionNS: 1})
@@ -350,6 +354,8 @@ func TestCandidatesAndDivergence(t *testing.T) {
 }
 
 // TestNormalizeAndRelate 함수는 범위 규칙(「범위 해설의 규칙」 1~5, 고친 규칙 8)을 반례로 봅니다.
+//
+// Given 0~39를 열 칸씩 덮는 칸 넷과 잎 집합 사례들에서, When 드래그 구간을 맞추고 두 범위를 견주면, Then 사례마다 적은 [first, last]와 관계가 나옵니다.
 func TestNormalizeAndRelate(t *testing.T) {
 	cells := []Cell{{0, 9}, {10, 19}, {20, 29}, {30, 39}}
 	for _, c := range []struct {
@@ -460,6 +466,8 @@ func buildFixture() fixture {
 }
 
 // TestRangeFixtureIsCurrent 함수는 커밋된 대조표가 지금 Go 정본의 답과 같은지 봅니다. 다르면 -update로 다시 쓰고 check-map.mjs를 돌립니다.
+//
+// Given 경계 사례와 씨앗 고정 무작위 표본으로 지금 정본이 셈한 대조표에서, When 커밋된 testdata/ranges.json과 견주면, Then 바이트까지 같습니다.
 func TestRangeFixtureIsCurrent(t *testing.T) {
 	got, err := json.MarshalIndent(buildFixture(), "", " ")
 	if err != nil {
@@ -485,7 +493,8 @@ func TestRangeFixtureIsCurrent(t *testing.T) {
 
 // TestPlatformDoesNotKnowTopics 함수는 플랫폼과 주제의 경계(고친 규칙 11, T6의 판정)를 봅니다.
 //
-// 이 패키지와 명령의 의존에 topics/가 없고, 플랫폼 폴더의 파일에 주제 이름 글자가 없으며, 위 시험들이 가짜 주제(toy)만으로 보기 모형을 만듭니다.
+// Given 이 패키지와 명령 cmd/atlas-map, 플랫폼 폴더의 시험 아닌 파일에서, When 의존 목록과 파일 글을 보면,
+// Then 의존에 topics/가 없고 주제 이름 글자가 없습니다. 위 시험들은 가짜 주제(toy)만으로 보기 모형을 만듭니다.
 func TestPlatformDoesNotKnowTopics(t *testing.T) {
 	out, err := exec.Command("go", "list", "-deps", ".", "../../../cmd/atlas-map").Output()
 	if err != nil {
@@ -518,6 +527,8 @@ func TestPlatformDoesNotKnowTopics(t *testing.T) {
 }
 
 // TestWriteHTMLEmbedsViewOnly 함수는 화면 파일이 보기 모형을 한 번 품고 자리 표시를 모두 채우는지, 글 속의 "</"가 스크립트를 닫지 못하는지 봅니다.
+//
+// Given 제목에 "</script>"를 넣은 가짜 주제 보기 모형에서, When 화면 파일을 쓰면, Then 자리 표시가 남지 않고 </script>는 3개뿐이며 품은 JSON을 되읽으면 제목이 같습니다.
 func TestWriteHTMLEmbedsViewOnly(t *testing.T) {
 	v := toyView(t)
 	v.Title = "닫기 시도 </script>"
