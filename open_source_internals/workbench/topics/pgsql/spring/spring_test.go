@@ -711,6 +711,9 @@ func TestImportRejectsShapesItCannotRebuild(t *testing.T) {
 		{"규칙과 다른 컨테이너 쪽 마지막 메시지(되돌림 대조)", "5-nested/a", "되돌린 기록이 원본과 다름", func(run map[string]any) {
 			run["conns"].([]any)[0].(map[string]any)["lastCont"] = "Q"
 		}},
+		{"요청 수와 다른 join의 Z 수", "5-nested/a", "요청 수", func(run map[string]any) {
+			run["conns"].([]any)[0].(map[string]any)["join"] = []any{json.Number("3"), json.Number("3")}
+		}},
 		{"ReadyForQuery 입구 수와 Z 수가 다른 연결", "5-nested/a", "차례 짝을 믿을 수 없음", func(run map[string]any) {
 			run["conns"].([]any)[0].(map[string]any)["join"] = []any{json.Number("3"), json.Number("4")}
 		}},

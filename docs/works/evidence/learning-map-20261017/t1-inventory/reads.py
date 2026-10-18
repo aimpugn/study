@@ -8,8 +8,10 @@ recvfrom of its query to the next query the observation connection received, or 
 when no query follows, or to its own start in the last capture. So the end is an upper bound chosen by that rule,
 not an event of the read. For every screen this prints, per kind of end, how many read intervals end there:
 "next-capture" (end == the next capture's t), "same" (end == start, which must be the last capture), and
-"query" (some other time, which must be before the next capture's t). The last line of each screen says whether
-every end fits one of the three kinds; the exit code is 1 if any does not.
+"query" (some other time, which must be before the next capture's t). The script sees only these times: that a
+"query" end is when the next query arrived follows from the decoder rule above, since that time is not stored
+anywhere else in the record. The last part of each line says how many ends fit none of the three kinds; the exit
+code is 1 if any does not.
 """
 import collections
 import json
@@ -57,7 +59,7 @@ def main(paths):
     for path in paths:
         kinds, bad = classify(load(path))
         total = sum(kinds.values())
-        print("%s\t읽기 구간 %d: 다음 관찰의 시작 %d, 끝이 시작과 같음(마지막 관찰) %d, 그 밖(다음 질의를 받은 때) %d\t규칙 밖 %d"
+        print("%s\t읽기 구간 %d: 다음 관찰의 시작 %d, 끝이 시작과 같음(마지막 관찰) %d, 다음 관찰의 시작보다 이름(규칙상 다음 질의를 받은 때) %d\t규칙 밖 %d"
               % (path.rsplit("/", 1)[-1], total, kinds["next-capture"], kinds["same"], kinds["query"], bad))
         failed += bad
     return 1 if failed else 0

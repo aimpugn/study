@@ -298,8 +298,9 @@ RULES = [
 # check 4 expects it), and the rule column keeps the mark's value and the reason. Each value is (fixed 출처, reason).
 _READS = ("M 읽기 구간은 해석기 captureReads(decode/scenario_check.go 395~433)가 그 질의를 받은 recvfrom부터 관찰용 접속이 다음 질의를 "
           "받은 때(없으면 다음 관찰의 시작, 마지막 관찰이면 시작)까지로 정한 위쪽 경계라 도출. 끝은 그 읽기의 사건이 아님"
-          "(t1-inventory/reads.py: tx 1,708개는 마지막 관찰 44, 그 밖은 모두 다음 질의를 받은 때. e03 370개는 다음 관찰의 시작 54, 마지막 14, "
-          "다음 질의 302). Spring 코드 검토 지적 3a")
+          "(t1-inventory/reads.py가 센 것: tx 1,708개는 끝이 시작과 같은 마지막 관찰 44, 그 밖 1,664개는 끝이 다음 관찰의 시작보다 이름. "
+          "e03 370개는 끝이 다음 관찰의 시작과 같음 54, 마지막 관찰 14, 그보다 이름 302. 이른 끝이 다음 질의를 받은 때라는 것은 해석기 규칙에서 "
+          "나온 결론이고 그 시각은 기록에 따로 없음). Spring 코드 검토 지적 3a, 재검토 N4")
 PROV_FIXES = {}
 for _inp in ("tx", "e03"):
     PROV_FIXES[(_inp, "$.captures[].reads")] = ("도출", _READS)
@@ -325,6 +326,7 @@ def classify(inp, path):
 def main(args):
     """Print the table for the (mark file, input name) pairs in args, one row per structural-role mark line."""
     print("input\tpath\trole\tprov\tdecision\trule")
+    used = set()
     for i in range(0, len(args), 2):
         f, inp = args[i], args[i + 1]
         for line in open(f, encoding="utf-8"):
@@ -340,7 +342,13 @@ def main(args):
                 fixed, why = PROV_FIXES[(inp, path)]
                 rule = f"{rule} / 출처 고침(표시 {prov} → {fixed}): {why}"
                 prov = fixed
+                used.add((inp, path))
             print(f"{inp}\t{path}\t{role}\t{prov}\t{dec}\t{rule}")
+    # A fix that matches no row (a typo in the path, or a path the marks dropped) would silently do nothing.
+    inputs = {args[i + 1] for i in range(0, len(args), 2)}
+    unused = sorted(k for k in PROV_FIXES if k[0] in inputs and k not in used)
+    if unused:
+        sys.exit(f"PROV_FIXES의 경로 {unused}가 표의 어느 행에도 쓰이지 않음")
 
 
 if __name__ == "__main__":

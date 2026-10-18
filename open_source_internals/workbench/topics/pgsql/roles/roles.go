@@ -66,6 +66,10 @@ func Load(input string) (atlas.Roles, error) {
 		if !ok {
 			return fmt.Errorf("대응표의 %s %s가 표시 파일에 없음", f[0], f[1])
 		}
+		// 표시 파일과 다른 출처는 생성기가 까닭과 함께 고친 행에서만 받습니다. 표를 손으로 고쳐 검사 4의 기대를 바꾸는 길을 막습니다(Spring 재검토 N2).
+		if f[3] != r.Prov && !strings.Contains(f[5], fmt.Sprintf("출처 고침(표시 %s → %s)", r.Prov, f[3])) {
+			return fmt.Errorf("대응표의 %s %s: 출처 %s가 표시 파일의 %s와 다른데 생성기의 고침 표시가 없음", f[0], f[1], f[3], r.Prov)
+		}
 		r.Prov = f[3]
 		if f[4] != "TBD" {
 			r.Decision = f[4]

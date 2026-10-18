@@ -2,6 +2,7 @@ package atlas
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 )
@@ -82,6 +83,13 @@ func ScanStructure(r *Run, origins Origins, roles Roles) []error {
 		case []any:
 			for _, e := range v {
 				next(path+"[]", e)
+			}
+		default:
+			// JSON으로 읽은 값의 그릇은 위 둘뿐입니다. 적재기가 Go 타입이 정해진 그릇(map[string]string, []map[string]any 등)을 넣으면
+			// 안을 걸을 수 없어 숨은 경로를 놓치므로 실패로 봅니다(Spring 재검토 N1).
+			switch reflect.ValueOf(val).Kind() {
+			case reflect.Map, reflect.Slice, reflect.Array, reflect.Struct, reflect.Pointer, reflect.Interface:
+				errs = append(errs, fmt.Errorf("%s %d: %s 안의 경로 %s의 값이 걸을 수 없는 그릇(%T)", ref.Table, ref.ID, label, path, val))
 			}
 		}
 	}

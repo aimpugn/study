@@ -322,6 +322,13 @@ func TestScanStructureWalksIntoValues(t *testing.T) {
 	if errs := ScanStructure(r, origins, roles); len(errs) != 1 || !strings.Contains(errs[0].Error(), "$.tables[].conns") {
 		t.Fatalf("run attrs 안의 조각을 잡아야 함: %v", errs)
 	}
+	delete(r.Attrs["txlab"]["tables"].([]any)[0].(map[string]any), "conns")
+
+	// When/Then: Go 타입이 정해진 그릇은 안을 걸을 수 없어 실패한다(Spring 재검토 N1: 같은 내용을 map[string]any로 넣으면 위처럼 잡힘)
+	r.Events[0].Attrs["wire"]["f"] = map[string]string{"conn": "C2"}
+	if errs := ScanStructure(r, origins, roles); len(errs) != 1 || !strings.Contains(errs[0].Error(), "걸을 수 없는 그릇") {
+		t.Fatalf("타입이 정해진 그릇을 잡아야 함: %v", errs)
+	}
 }
 
 // TestCheckNatureFollowsMarksAndInferredList 함수는 출처 성격 검사가 표시 출처와 추정 목록에 어긋난 근거를 잡는지 확인합니다.

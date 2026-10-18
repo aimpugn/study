@@ -1092,7 +1092,8 @@ func (l *loader) requests(conns []any) error {
 	return nil
 }
 
-// checkJoin 함수는 서버 창이 있는 연결에서 함수 기록의 ReadyForQuery 입구 수와 연결 위 Z 수(join)가 같은지 봅니다.
+// checkJoin 함수는 서버 창이 있는 연결에서 함수 기록의 ReadyForQuery 입구 수와 연결 위 Z 수(join)가 같은지 봅니다. Z 수는 해석기가 답이 온
+// 요청마다 하나씩 센 것이라(splitRequests의 zc) 그 연결의 요청 수와 같아야 합니다(Spring 재검토 N3).
 //
 // 해석기는 두 수가 같을 때만 k번째 입구를 k번째 Z와 차례로 짝지어 창을 만듭니다(decode/spring.go 516~519). 짝이 규칙으로 정해지는(도출)
 // 까닭은 원격 출력의 ReadyForQuery 호출 하나가 Z 메시지를 정확히 하나 보내고(PostgreSQL src/backend/tcop/dest.c ReadyForQuery) 한 연결의
@@ -1113,6 +1114,9 @@ func checkJoin(c map[string]any, requests []any, where string) error {
 	}
 	if join[0] != join[1] {
 		return fmt.Errorf("%s: 서버 창 %d개가 있는데 ReadyForQuery 입구 %v개와 Z %v개가 달라 차례 짝을 믿을 수 없음", where, windows, join[0], join[1])
+	}
+	if z, err := load.Integer(join[1], where+".join[1]"); err != nil || z != len(requests) {
+		return fmt.Errorf("%s: join의 Z 수 %v가 요청 수 %d와 다름", where, join[1], len(requests))
 	}
 	return nil
 }
