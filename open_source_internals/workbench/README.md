@@ -27,6 +27,7 @@
 - [안전 경계](#안전-경계)
 - [실패 응답 읽기](#실패-응답-읽기)
 - [추적을 끊을 때의 함정 네 가지](#추적을-끊을-때의-함정-네-가지)
+- [학습 지도 화면(공통 형식 위)](#학습-지도-화면공통-형식-위)
 - [검증](#검증)
 - [한계와 다시 열 조건](#한계와-다시-열-조건)
 - [근거](#근거)
@@ -206,6 +207,21 @@ Go의 `exec.CommandContext`는 시간 한도가 지나면 직접 띄운 프로�
 처음 설계는 실행 전에도 정리했습니다. 앞선 실행이 남긴 psql이 다음 실행의 표시 파일에 함께 깨어나 출력을 섞는 것을 막기 위해서였습니다. 그런데 작업대의 잠금은 이 서버의 실행만 보므로, 터미널에서 직접 실행한 `run-trace.sh`를 실행 전 정리가 끝내 버렸습니다(2번에 적은 재시작 가운데 23:10의 것이 이 충돌에서 일어났습니다). 이제 작업대는 실행 전에는 확인만 하고 다른 추적이 있으면 409로 거부하며, 정리는 자기 실행이 실패하거나 시간 한도를 넘거나 취소됐을 때만 합니다.
 
 이 네 가지를 고친 뒤, 10초 한도로 gdb가 붙은 뒤의 시간 초과와 캐시를 데우는 중의 시간 초과를 각각 실제로 일으켰습니다. 두 경우 모두 504로 끝났고, 컨테이너에 gdb와 세션 psql이 남지 않았고, 바로 뒤의 정상 실행이 27단계와 `2|b` 두 줄을 돌려줬고, 서버 기록에는 다시 시작이나 사고 줄이 없었습니다.
+
+## 학습 지도 화면(공통 형식 위)
+
+학습 지도 화면은 여러 주제의 실행 기록을 공통 형식(atlas v0)으로 옮긴 뒤, 요청 하나의 길을 시스템 → 프로세스 안 → 함수·커널 세 줌으로 따라가게 하는 정적 화면입니다. 설계와 판정 기준은 [학습 지도 WORK 문서](../../docs/works/WORK_20261017_LEARNING_MAP_PLATFORM.md)의 「T4 지도 화면 v1」에 있습니다.
+
+화면 코드는 플랫폼(`internal/atlas/mapview/`, 명령 `cmd/atlas-map/`)에만 있고, 주제는 자료 파일 하나(pgsql은 `topics/pgsql/atlasmap/map.json`)로 띠·구역·경로·후보·접기 규칙을 넘깁니다. 화면은 공통 형식 폴더만 읽고, 해설 공급자는 부르지 않습니다(해설 층은 T5).
+
+```bash
+cd open_source_internals/workbench
+go run ./topics/pgsql/cmd/pgsql-atlas -out /tmp/atlas          # 기록 77벌을 공통 형식으로
+go run ./cmd/atlas-map -in /tmp/atlas -spec topics/pgsql/atlasmap/map.json -out /tmp/atlas/map.html
+node internal/atlas/mapview/screen/check-map.mjs /tmp/atlas/map.html   # 범위 대조와 화면 조작 검사(playwright 필요)
+```
+
+`/tmp/atlas/map.html`을 브라우저로 열면 됩니다(서버 없이 `file://`). 조작: 줌 막대나 빵부스러기로 줌, 왼쪽 후보 카드로 같은 요청의 다른 기록 고르기, 칸을 누르고 오른쪽 「출발로」·「도착으로」, 지도 위 줄을 드래그해 범위 고르기, ▶로 재생, 「조작 기록」으로 조작 기록 내려받기. 시험은 `go test ./internal/atlas/mapview ./topics/pgsql/atlasmap`이고, 범위 규칙을 고치면 `go test ./internal/atlas/mapview -run Fixture -update`로 대조표를 다시 쓴 뒤 화면 검사를 돌립니다.
 
 ## 검증
 

@@ -58,6 +58,16 @@ func clockOf(r *Run, e Event) string {
 	return s.Clock
 }
 
+// Offset 함수는 시계 a의 시각에서 시계 b의 시각을 뺀 차이의 범위 [lo, hi]를 돌려줍니다. 같은 시계면 [0, 0]이고, 관계를 모르면 세 번째 값이 false입니다.
+//
+// 화면이 다른 시계의 사건을 '같은 시간대에 있었을 수 있음'으로 견줄 때 씁니다(T4 고친 규칙 5).
+func Offset(r *Run, a, b string) (int64, int64, bool) {
+	if a == b && a != "" {
+		return 0, 0, true
+	}
+	return offset(r, a, b)
+}
+
 // offset 함수는 시계 a의 시각에서 시계 b의 시각을 뺀 차이의 범위를 돌려줍니다. 관계를 모르면 세 번째 값이 false입니다.
 func offset(r *Run, a, b string) (int64, int64, bool) {
 	// a가 b를 기준으로 적힌 관계면 그대로 씁니다.

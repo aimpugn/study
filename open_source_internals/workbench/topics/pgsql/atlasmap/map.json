@@ -1,0 +1,965 @@
+{
+ "title": "학습 지도 · pgsql",
+ "default": "journey/kernel_insert",
+ "zones": [
+  {
+   "id": "app",
+   "name": "앱 JVM",
+   "x": 1,
+   "y": 6,
+   "w": 15,
+   "h": 30
+  },
+  {
+   "id": "client",
+   "name": "클라이언트",
+   "x": 1,
+   "y": 40,
+   "w": 15,
+   "h": 24
+  },
+  {
+   "id": "wire",
+   "name": "연결",
+   "x": 18,
+   "y": 6,
+   "w": 8,
+   "h": 58
+  },
+  {
+   "id": "local",
+   "name": "백엔드 프로세스",
+   "x": 28,
+   "y": 6,
+   "w": 34,
+   "h": 58
+  },
+  {
+   "id": "shared",
+   "name": "공유 메모리",
+   "x": 64,
+   "y": 6,
+   "w": 18,
+   "h": 58
+  },
+  {
+   "id": "proc",
+   "name": "다른 서버 프로세스",
+   "x": 84,
+   "y": 6,
+   "w": 15,
+   "h": 58
+  },
+  {
+   "id": "boundary",
+   "name": "시스템 콜 경계",
+   "x": 1,
+   "y": 67,
+   "w": 98,
+   "h": 6
+  },
+  {
+   "id": "kernel",
+   "name": "커널",
+   "x": 1,
+   "y": 76,
+   "w": 53,
+   "h": 22
+  },
+  {
+   "id": "disk",
+   "name": "디스크",
+   "x": 56,
+   "y": 76,
+   "w": 26,
+   "h": 22
+  },
+  {
+   "id": "host",
+   "name": "호스트 macOS",
+   "x": 84,
+   "y": 76,
+   "w": 15,
+   "h": 22
+  }
+ ],
+ "bands": [
+  {
+   "id": "app_main",
+   "name": "앱 코드",
+   "zoom": "process",
+   "zone": "app",
+   "match": [
+    {
+     "ancestor": {
+      "kinds": [
+       "method"
+      ],
+      "name_prefix": [
+       "lab."
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "app_tx",
+   "name": "Spring 트랜잭션",
+   "zoom": "process",
+   "zone": "app",
+   "match": [
+    {
+     "fallback": true,
+     "ancestor": {
+      "kinds": [
+       "method"
+      ],
+      "name_prefix": [
+       "org.springframework."
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "app_jdbc",
+   "name": "JdbcTemplate",
+   "zoom": "process",
+   "zone": "app",
+   "match": [
+    {
+     "ancestor": {
+      "kinds": [
+       "method"
+      ],
+      "name_prefix": [
+       "org.springframework.jdbc.core."
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "app_pool",
+   "name": "HikariCP",
+   "zoom": "process",
+   "zone": "app",
+   "match": [
+    {
+     "ancestor": {
+      "kinds": [
+       "method"
+      ],
+      "name_prefix": [
+       "com.zaxxer.hikari."
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "app_driver",
+   "name": "pgjdbc",
+   "zoom": "process",
+   "zone": "app",
+   "match": [
+    {
+     "ancestor": {
+      "kinds": [
+       "method"
+      ],
+      "name_prefix": [
+       "org.postgresql."
+      ]
+     }
+    },
+    {
+     "fallback": true,
+     "ancestor": {
+      "kinds": [
+       "app"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "client",
+   "name": "psql·세션",
+   "zoom": "process",
+   "zone": "client",
+   "match": [
+    {
+     "place": {
+      "kinds": [
+       "lane"
+      ],
+      "names": [
+       "client"
+      ]
+     }
+    },
+    {
+     "place": {
+      "kinds": [
+       "session",
+       "client"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "conn1",
+   "name": "연결 C1",
+   "zoom": "process",
+   "zone": "wire",
+   "match": [
+    {
+     "place": {
+      "kinds": [
+       "connection"
+      ],
+      "names": [
+       "C1"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "conn2",
+   "name": "연결 C2",
+   "zoom": "process",
+   "zone": "wire",
+   "match": [
+    {
+     "place": {
+      "kinds": [
+       "connection"
+      ],
+      "names": [
+       "C2"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "comm",
+   "name": "통신 버퍼",
+   "zoom": "process",
+   "zone": "local",
+   "match": [
+    {
+     "place": {
+      "kinds": [
+       "lane"
+      ],
+      "names": [
+       "comm_buffer"
+      ]
+     }
+    },
+    {
+     "sources": [
+      "strace"
+     ],
+     "attr": "strace.len"
+    }
+   ]
+  },
+  {
+   "id": "backend",
+   "name": "백엔드 함수",
+   "zoom": "process",
+   "zone": "local",
+   "match": [
+    {
+     "place": {
+      "kinds": [
+       "lane"
+      ],
+      "names": [
+       "backend",
+       "work_mem"
+      ]
+     }
+    },
+    {
+     "fallback": true,
+     "ancestor": {
+      "kinds": [
+       "process"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "shared_buffer",
+   "name": "공유 버퍼",
+   "zoom": "process",
+   "zone": "shared",
+   "match": [
+    {
+     "place": {
+      "kinds": [
+       "lane"
+      ],
+      "names": [
+       "shared_buffer"
+      ]
+     }
+    },
+    {
+     "sources": [
+      "recorder",
+      "tx-hint"
+     ],
+     "names": [
+      "check",
+      "line",
+      "path",
+      "inner",
+      "update_check",
+      "tuple_lock",
+      "hint",
+      "hint_fpi",
+      "hint_change"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wal_buffer",
+   "name": "WAL 버퍼",
+   "zoom": "process",
+   "zone": "shared",
+   "match": [
+    {
+     "place": {
+      "kinds": [
+       "lane"
+      ],
+      "names": [
+       "wal_buffer"
+      ]
+     }
+    },
+    {
+     "sources": [
+      "recorder"
+     ],
+     "names": [
+      "wal_flush",
+      "async_lsn"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "txn",
+   "name": "락·트랜잭션 표",
+   "zoom": "process",
+   "zone": "shared",
+   "match": [
+    {
+     "place": {
+      "kinds": [
+       "lane"
+      ],
+      "names": [
+       "lock_table",
+       "proc_array",
+       "clog",
+       "sinval",
+       "txn"
+      ]
+     }
+    },
+    {
+     "sources": [
+      "recorder"
+     ],
+     "names": [
+      "lock",
+      "CurrentSnapshotData",
+      "CatalogSnapshotData",
+      "xid",
+      "commit_clog",
+      "abort_clog",
+      "multixact",
+      "pred_lock",
+      "conflict_in",
+      "conflict_target",
+      "rw_conflict",
+      "deadlock_check",
+      "ssi_precommit",
+      "xact_wait",
+      "proc_sleep",
+      "wake"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "other_proc",
+   "name": "다른 서버 프로세스",
+   "zoom": "process",
+   "zone": "proc",
+   "match": [
+    {
+     "place": {
+      "kinds": [
+       "lane"
+      ],
+      "names": [
+       "io_worker"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ground",
+   "name": "시스템 콜 경계",
+   "zoom": "process",
+   "zone": "boundary",
+   "ground": true,
+   "match": [
+    {
+     "sources": [
+      "strace"
+     ],
+     "names": [
+      "syscall",
+      "io",
+      "sleep_syscall",
+      "kill"
+     ]
+    },
+    {
+     "sources": [
+      "journey",
+      "journey-c3"
+     ],
+     "names": [
+      "syscall"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "kernel",
+   "name": "커널",
+   "zoom": "process",
+   "zone": "kernel",
+   "match": [
+    {
+     "fallback": true,
+     "sources": [
+      "ftrace"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "k_entry",
+   "name": "시스템 콜 입구",
+   "zoom": "function",
+   "zone": "kernel",
+   "under": "kernel",
+   "match": [
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "journey.layer",
+     "values": [
+      "시스템 콜 입구"
+     ]
+    },
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "kernel-guess.layer",
+     "values": [
+      "시스템 콜 입구"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "k_vfs",
+   "name": "VFS",
+   "zoom": "function",
+   "zone": "kernel",
+   "under": "kernel",
+   "match": [
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "journey.layer",
+     "values": [
+      "VFS"
+     ]
+    },
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "kernel-guess.layer",
+     "values": [
+      "VFS"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "k_ovl",
+   "name": "overlayfs",
+   "zoom": "function",
+   "zone": "kernel",
+   "under": "kernel",
+   "match": [
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "journey.layer",
+     "values": [
+      "overlayfs"
+     ]
+    },
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "kernel-guess.layer",
+     "values": [
+      "overlayfs"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "k_btrfs",
+   "name": "btrfs",
+   "zoom": "function",
+   "zone": "kernel",
+   "under": "kernel",
+   "match": [
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "journey.layer",
+     "values": [
+      "btrfs"
+     ]
+    },
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "kernel-guess.layer",
+     "values": [
+      "btrfs"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "k_lock",
+   "name": "락",
+   "zoom": "function",
+   "zone": "kernel",
+   "under": "kernel",
+   "match": [
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "journey.layer",
+     "values": [
+      "락"
+     ]
+    },
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "kernel-guess.layer",
+     "values": [
+      "락"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "k_sched",
+   "name": "잠들고 깨기",
+   "zoom": "function",
+   "zone": "kernel",
+   "under": "kernel",
+   "match": [
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "journey.layer",
+     "values": [
+      "잠들고 깨기"
+     ]
+    },
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "kernel-guess.layer",
+     "values": [
+      "잠들고 깨기"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "k_mm",
+   "name": "페이지 캐시·메모리",
+   "zoom": "function",
+   "zone": "kernel",
+   "under": "kernel",
+   "match": [
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "journey.layer",
+     "values": [
+      "페이지 캐시·메모리"
+     ]
+    },
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "kernel-guess.layer",
+     "values": [
+      "페이지 캐시·메모리"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "k_blk",
+   "name": "블록 계층",
+   "zoom": "function",
+   "zone": "kernel",
+   "under": "kernel",
+   "match": [
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "journey.layer",
+     "values": [
+      "블록 계층"
+     ]
+    },
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "kernel-guess.layer",
+     "values": [
+      "블록 계층"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "k_virtio",
+   "name": "virtio 디스크",
+   "zoom": "function",
+   "zone": "kernel",
+   "under": "kernel",
+   "match": [
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "journey.layer",
+     "values": [
+      "virtio 디스크"
+     ]
+    },
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "kernel-guess.layer",
+     "values": [
+      "virtio 디스크"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "k_perm",
+   "name": "권한 검사",
+   "zoom": "function",
+   "zone": "kernel",
+   "under": "kernel",
+   "match": [
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "journey.layer",
+     "values": [
+      "권한 검사"
+     ]
+    },
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "kernel-guess.layer",
+     "values": [
+      "권한 검사"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "k_other",
+   "name": "기타",
+   "zoom": "function",
+   "zone": "kernel",
+   "under": "kernel",
+   "match": [
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "journey.layer",
+     "values": [
+      "기타"
+     ]
+    },
+    {
+     "sources": [
+      "ftrace"
+     ],
+     "attr": "kernel-guess.layer",
+     "values": [
+      "기타"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "disk",
+   "name": "디스크",
+   "zoom": "process",
+   "zone": "disk",
+   "match": [
+    {
+     "place": {
+      "kinds": [
+       "lane"
+      ],
+      "names": [
+       "data_files",
+       "wal_files",
+       "clog_files"
+      ]
+     }
+    },
+    {
+     "place": {
+      "kinds": [
+       "file"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "host",
+   "name": "호스트 macOS",
+   "zoom": "process",
+   "zone": "host",
+   "match": []
+  }
+ ],
+ "sleep": [
+  "schedule"
+ ],
+ "fixed": [
+  {
+   "key": "",
+   "kind": "bands",
+   "file": "../fixed.json",
+   "path": [
+    "design/concept-4.html",
+    "KLAYER_ROLE"
+   ]
+  },
+  {
+   "key": "",
+   "kind": "names",
+   "file": "../fixed.json",
+   "path": [
+    "design/concept-4.html",
+    "KWAIT"
+   ]
+  }
+ ],
+ "scenes": [
+  {
+   "id": "journey",
+   "label": "요청의 여정",
+   "runs": [
+    "journey/"
+   ],
+   "home": "backend",
+   "root": {
+    "sources": [
+     "journey"
+    ],
+    "kinds": [
+     "span"
+    ]
+   },
+   "steps": {
+    "sources": [
+     "rec"
+    ],
+    "require": [
+     "journey.n"
+    ]
+   },
+   "expand": [
+    {
+     "link": "syscall"
+    },
+    {
+     "link": "kernel"
+    },
+    {
+     "link": "contains"
+    }
+   ],
+   "fold": {
+    "attr": "journey.catalog",
+    "label": "카탈로그 조회"
+   },
+   "columns": {
+    "attr": "journey.stage",
+    "starts": {
+     "sources": [
+      "journey"
+     ],
+     "kinds": [
+      "instant"
+     ]
+    }
+   },
+   "lens": {
+    "min_share": 0.003
+   },
+   "identity": {
+    "run_attr": "rec.data.query"
+   },
+   "name": {
+    "run_attr": "topic.label"
+   },
+   "typed": "topic.typed"
+  },
+  {
+   "id": "tx",
+   "label": "트랜잭션 실험",
+   "runs": [
+    "tx/1-rc-read/"
+   ],
+   "home": "backend",
+   "root": {
+    "sources": [
+     "txlab"
+    ],
+    "names": [
+     "step"
+    ]
+   },
+   "via": [
+    "contains"
+   ],
+   "steps": {
+    "sources": [
+     "recorder",
+     "strace",
+     "tx-hint"
+    ]
+   },
+   "skip": {
+    "names": [
+     "exec_simple_query"
+    ]
+   },
+   "lens": {
+    "min_share": 0.003
+   },
+   "identity": {
+    "run_field": "scenario",
+    "root_place": true,
+    "root_attr": "txlab.sql"
+   },
+   "name": {
+    "root_place": true,
+    "root_attr": "txlab.sql"
+   },
+   "typed": "txlab.sql"
+  },
+  {
+   "id": "spring",
+   "label": "Spring 전파",
+   "runs": [
+    "spring/5-required/"
+   ],
+   "home": "app_driver",
+   "steps": {
+    "sources": [
+     "spring-mac"
+    ],
+    "names": [
+     "request"
+    ]
+   },
+   "expand": [
+    {
+     "link": "contains"
+    },
+    {
+     "link": "server"
+    },
+    {
+     "link": "wire",
+     "dir": "in"
+    }
+   ],
+   "lens": {
+    "min_share": 0.003
+   },
+   "identity": {
+    "run_field": "scenario"
+   },
+   "name": {
+    "run_field": "scenario"
+   }
+  }
+ ]
+}

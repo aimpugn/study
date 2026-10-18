@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>학습 지도</title>
+<style>/*CSS*/</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">학습 지도</div>
+  <label class="scene">장면 <select id="group"></select></label>
+  <div class="typed" id="typed" title="실제 클라이언트 입력"></div>
+  <div class="spacer"></div>
+  <div class="provider" title="정적 화면은 해설 공급자를 부르지 않습니다(T5에서 붙임)">공급자 설정 없음</div>
+  <button id="theme" class="ghost" title="밝은·어두운 테마">테마</button>
+  <button id="oplog" class="ghost" title="조작 기록(JSON)을 내려받습니다">조작 기록</button>
+</header>
+<main class="frame">
+  <aside class="left">
+    <section class="card">
+      <h2>길 찾기</h2>
+      <div class="ends">
+        <div class="end"><span class="flag start">출발</span><span id="startName"></span></div>
+        <button id="swap" class="ghost" title="출발과 도착 바꾸기">⇅</button>
+        <div class="end"><span class="flag end">도착</span><span id="endName"></span></div>
+      </div>
+      <div class="row">
+        <select id="placePick" title="장소로 고르기: 그 장소를 지난 칸들"><option value="">장소로 고르기…</option></select>
+        <button id="resetEnds" class="ghost">처음~끝</button>
+      </div>
+      <div id="visits" class="visits"></div>
+    </section>
+    <section class="card">
+      <h2>경로 후보 <small>같은 요청의 다른 기록</small></h2>
+      <div id="cands"></div>
+    </section>
+    <section class="card grow">
+      <h2>단계별 안내 <small id="guideZoom"></small></h2>
+      <div id="guide" class="guide"></div>
+      <div id="untimed" class="untimed"></div>
+    </section>
+  </aside>
+  <section class="center">
+    <div class="bar">
+      <button id="back" class="ghost" title="줌 이동 기록에서 뒤로">←</button>
+      <nav id="crumbs" class="crumbs"></nav>
+      <div class="spacer"></div>
+      <div class="replay">
+        <button id="first" class="ghost" title="처음 칸">⏮</button>
+        <button id="prev" class="ghost" title="앞 칸">◀</button>
+        <button id="play" class="ghost" title="재생">▶</button>
+        <button id="next" class="ghost" title="다음 칸">▶|</button>
+      </div>
+      <label class="tool"><input type="checkbox" id="lens" checked> 렌즈(짧은 호출 접음)</label>
+      <button id="compare" class="ghost" disabled title="두 후보의 선을 겹쳐 그리기는 다음 판입니다. 갈리는 곳은 표지로 보입니다">비교 끔</button>
+    </div>
+    <div class="brackets" id="brackets" title="드래그해서 범위 고르기, 클릭은 칸 하나"></div>
+    <div class="canvas" id="canvas"></div>
+    <section class="drawer" id="drawer">
+      <header id="drawerHead"><span class="tab">해설</span><span id="drawerSummary"></span><span class="spacer"></span><button id="drawerToggle" class="ghost">펼치기</button></header>
+      <div class="drawerBody" id="drawerBody"></div>
+    </section>
+  </section>
+  <aside class="right">
+    <div class="zoombar" id="zoombar">
+      <button data-zoom="system">시스템</button>
+      <button data-zoom="process">프로세스 안</button>
+      <button data-zoom="function">함수·커널</button>
+    </div>
+    <section class="card" id="legendCard">
+      <h2>읽는 법 <button id="legendToggle" class="ghost tiny">접기</button></h2>
+      <div id="legend" class="legend"></div>
+    </section>
+    <section class="card grow" id="detailCard">
+      <h2>고른 칸</h2>
+      <div id="detail" class="detail"></div>
+    </section>
+    <section class="card minimap" id="minimapCard">
+      <h2>전체 지도</h2>
+      <div id="minimap"></div>
+    </section>
+  </aside>
+</main>
+<script id="atlas-data" type="application/json">/*DATA*/</script>
+<script>/*RANGE*/</script>
+<script>/*MAP*/</script>
+</body>
+</html>
