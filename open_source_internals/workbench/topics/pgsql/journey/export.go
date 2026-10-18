@@ -31,7 +31,8 @@ func newView(r *atlas.Run) *view {
 // ExportC4 함수는 Import가 만든 run에서 concept-4의 질의 하나({key, label, typed, x, data, procs, procsGuess})를 다시 만듭니다.
 //
 // run 밖의 것은 읽지 않습니다. 되살리는 데 필요한 사건·장소·값이 없으면 오류를 돌려줍니다.
-func ExportC4(r *atlas.Run) (map[string]any, error) {
+func ExportC4(r *atlas.Run) (out map[string]any, err error) {
+	defer recoverExport(&out, &err)
 	v := newView(r)
 	q := map[string]any{}
 	for _, k := range []string{"key", "label", "typed", "x"} {
@@ -70,12 +71,20 @@ func ExportC4(r *atlas.Run) (map[string]any, error) {
 }
 
 // ExportC3 함수는 같은 run에서 concept-3의 해석 결과(질의 하나)를 다시 만듭니다. concept-3 출처가 없으면 두 번째 값이 false입니다.
-func ExportC3(r *atlas.Run) (map[string]any, bool, error) {
+func ExportC3(r *atlas.Run) (data map[string]any, found bool, err error) {
 	if _, ok := r.SourceByID(c3.journey); !ok {
 		return nil, false, nil
 	}
-	data, err := newView(r).data(c3)
+	defer recoverExport(&data, &err)
+	data, err = newView(r).data(c3)
 	return data, true, err
+}
+
+// recoverExport 함수는 적재기가 만들지 않는 꼴의 run(빈 시각 등)에서 되살리다 멈추면 panic 대신 오류를 돌려주게 합니다(앞선 적재기 코드 검토 지적 10, Spring과 같음).
+func recoverExport(out *map[string]any, err *error) {
+	if p := recover(); p != nil {
+		*out, *err = nil, fmt.Errorf("되살리다 멈춤(적재기가 만들지 않는 꼴의 run): %v", p)
+	}
 }
 
 // data 메서드는 한 판의 해석 결과({endUs, hops, pid, query, src, stages}와 concept-4의 kernelPid·ksrc)를 되살립니다.
@@ -147,6 +156,9 @@ func (v *view) hop(d decoder, e atlas.Event, backend int) (map[string]any, error
 	if val, ok := e.Attrs[d.rec]["bytes"]; ok {
 		h["bytes"] = val
 	}
+	if val, ok := e.Attrs[d.journey]["bytes"]; ok {
+		h["bytes"] = val
+	}
 
 	// 출발·도착이 파일 장소면 그 부모 칸이 from·to이고 파일 이름이 files입니다.
 	for _, end := range []struct {
@@ -177,8 +189,13 @@ func (v *view) hop(d decoder, e atlas.Event, backend int) (map[string]any, error
 		h["stack"] = stack
 	}
 
-	// 메시지: cont는 들어오는 continues 연결, cut은 나가는 continues 연결이 있거나 그런 메시지의 사본인 것입니다.
-	if ms := v.out[e.ID]["contains"]; len(ms) > 0 {
+	// 메시지: 수신·송신은 contains로 품은 메시지이고, 버퍼 쓰기는 copy 연결이 가리키는 송신 메시지의 사본입니다.
+	// cont는 들어오는 continues 연결, cut은 나가는 continues 연결이 있는 것입니다(사본은 그 송신 메시지의 cut을 따름).
+	ms := v.out[e.ID]["contains"]
+	if len(ms) == 0 {
+		ms = v.out[e.ID]["copy"]
+	}
+	if len(ms) > 0 {
 		msgs := []any{}
 		for _, id := range ms {
 			m := r.Events[id]
@@ -186,14 +203,10 @@ func (v *view) hop(d decoder, e atlas.Event, backend int) (map[string]any, error
 			if t, ok := m.Attrs[d.rec]["text"]; ok {
 				msg["text"] = t
 			}
-			cut := len(v.out[id]["continues"]) > 0
-			for _, orig := range v.in[id]["copy"] {
-				cut = cut || len(v.out[orig]["continues"]) > 0
-			}
-			if cut {
+			if len(v.out[id]["continues"]) > 0 {
 				msg["cut"] = true
 			}
-			if len(v.in[id]["continues"]) > 0 {
+			if len(v.in[id]["continues"]) > 0 && len(v.out[e.ID]["contains"]) > 0 {
 				msg["cont"] = true
 			}
 			msgs = append(msgs, msg)
@@ -224,8 +237,10 @@ func (v *view) kernelNode(id int) map[string]any {
 	if p.Kind == "frame" {
 		n["at"] = load.LocText(p.Loc)
 	}
-	for k, val := range e.Attrs["journey"] {
-		n[k] = val
+	for _, src := range []string{"journey", srcKGuess} {
+		for k, val := range e.Attrs[src] {
+			n[k] = val
+		}
 	}
 	if kids := v.children[id]; len(kids) > 0 {
 		list := []any{}

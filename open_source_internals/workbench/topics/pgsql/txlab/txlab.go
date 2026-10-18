@@ -69,6 +69,7 @@ const (
 	namePath    = "path"
 	nameInner   = "inner"
 	nameHint    = "hint_change"
+	nameBlocked = "blocked"
 )
 
 // straceKinds 는 요청 안 사건 가운데 strace가 남긴 종류이고(scenario.go 529~535행), serverStrace 는 서버 사건 가운데
@@ -102,6 +103,7 @@ type loader struct {
 	killAt  map[int]int          // kill 사건 → beforeStep
 	writes  map[int64][]walWrite // 끝 시각 → pg_wal 쓰기 사건
 	xipNull int
+	outNull []int // 보낸 메시지(out)가 null인 요청 사건
 }
 
 // ReadRuns 함수는 트랜잭션 실험 화면(concept-5~8.html)에 박힌 RUNS literal(기록 열쇠 → 해석 결과)을 읽습니다.
@@ -402,10 +404,27 @@ func (l *loader) steps(steps []any) error {
 		}
 		id := l.Event(atlas.Event{Place: sess, Kind: atlas.Span, Name: nameStep, StartNS: &t0, EndNS: &t1, Source: srcTxlab}, "$.steps[]")
 		l.step[n] = id
-		for _, k := range []string{"n", "sql", "output", "blocked"} {
+		for _, k := range []string{"n", "sql", "output"} {
 			if val, ok := s[k]; ok {
 				l.B.EventAttrs(id, srcTxlab, k, val)
 			}
+		}
+		// blocked는 관찰용 접속이 그 세션의 락 기다림을 처음 본 시각이라(txlab/run.go 24·433) txlab 장소의 순간이고 target은 그 세션의 백엔드입니다.
+		// 단계와는 blocked 연결로 잇습니다(앞선 적재기 코드 검토 지적 7, Spring의 막힘 관찰과 같은 자리).
+		if bv, ok := s["blocked"]; ok {
+			bt, err := load.Micros(bv, where+".blocked")
+			if err != nil {
+				return err
+			}
+			if bt < t0 || bt > t1 {
+				return fmt.Errorf("%s.blocked가 단계 구간 밖", where)
+			}
+			backend, ok := l.proc[l.backend[name]]
+			if !ok {
+				return fmt.Errorf("%s: 세션 %s의 백엔드가 프로세스 표에 없음", where, name)
+			}
+			b := l.Event(atlas.Event{Place: l.client, Target: &backend, Kind: atlas.Instant, Name: nameBlocked, StartNS: &bt, Source: srcTxlab}, "$.steps[].blocked")
+			l.Link(id, b, "blocked", srcTxlab, "$.steps[].blocked")
 		}
 		if val, ok := s["check"]; ok {
 			l.B.EventAttrs(id, srcTx, "check", val)
@@ -468,6 +487,11 @@ func (l *loader) request(step int, stepEnd int64, sessName string, raw any, wher
 		if err := l.message(id, backend, &sess, nil, m, fmt.Sprintf("%s.in[%d]", where, k), "$.steps[].requests[].in[]"); err != nil {
 			return err
 		}
+	}
+	// out이 null이면 해석기가 요청 창 끝 + 5 ms 안의 sendto에서 보낸 메시지를 찾지 못했다는 뜻이지 보내지 않았다는 뜻이 아닙니다
+	// (scenario.go 520~527, 65개 모두 단계의 output이 있어 응답은 있었음). 그래서 보낸 메시지를 미기록으로 두고 요청마다 ambiguity note를 남깁니다(앞선 적재기 코드 검토 지적 4).
+	if r["out"] == nil {
+		l.outNull = append(l.outNull, id)
 	}
 	if r["out"] != nil {
 		out, err := load.List(r["out"], where+".out")
@@ -566,13 +590,118 @@ func (l *loader) requestEvent(req int, pid string, raw any, where string) error 
 	if err != nil {
 		return err
 	}
-	id := l.Event(atlas.Event{Place: place, Kind: kind, Name: name, StartNS: t0, EndNS: t1, Stack: stack, Source: src}, group)
-	if f, ok := e["f"]; ok {
-		l.B.EventAttrs(id, src, "f", f)
-		l.noteWrite(id, name == "io", f, t1)
+	ev := atlas.Event{Place: place, Kind: kind, Name: name, StartNS: t0, EndNS: t1, Stack: stack, Source: src}
+	var fields map[string]any
+	if fv, ok := e["f"]; ok {
+		if fields, err = l.requestFields(&ev, pid, e, fv, where); err != nil {
+			return err
+		}
+	}
+	id := l.Event(ev, group)
+	if fields != nil {
+		for _, k := range sortedKeys(fields) {
+			l.B.EventAttrs(id, src, "f."+k, fields[k])
+		}
+		l.noteWrite(id, name == "io", fields, t1)
 	}
 	l.Link(req, id, "contains", srcTx, RequestWindow)
 	return nil
+}
+
+// requestFieldKeys 는 요청 사건의 나머지 칸 f에 올 수 있는 열쇠입니다(표시 파일 marks_tx.txt, 해석기 decode/scenario.go의 txEvent.F).
+var requestFieldKeys = []string{"args", "async", "at", "bit", "blk", "buf", "call", "created", "ctid", "durUs", "file", "flagged", "flags", "gran",
+	"id", "len", "lsn", "lsn0", "lsn1", "mode", "off", "oper", "rel", "result", "ret", "rflags", "rpid", "rxid", "st1", "st2", "status", "sxact",
+	"table", "tup", "txid", "type", "wait", "wflags", "who", "wpid", "wxid", "xid", "xid1", "xid2", "xmax", "xmin"}
+
+// requestFields 메서드는 요청 사건의 나머지 칸 f를 칸마다 나눠 attrs에 둘 값을 돌려주고, 장소인 칸은 사건의 구조 칸으로 옮깁니다.
+//
+// 다시 세는 칸은 저장하지 않고 원본과 같은지만 봅니다(앞선 적재기 코드 검토 지적 1·3): hint·ereport의 at은 스택 1번 칸의 자리,
+// rw_conflict의 wpid는 사건이 일어난 백엔드, durUs는 (t1 − t) ns를 1000으로 나눈 몫(해석기의 int64 나눗셈)입니다.
+// 장소인 칸은 target으로 둡니다: wake의 who(깨운 프로세스), rw_conflict의 rpid(읽은 쪽 프로세스), kill의 args 앞의 pid(신호를 받은 프로세스).
+// kill의 args는 strace가 적은 인자 글이라 그대로 두되, 그 앞의 pid가 target과 같은지 봅니다. 모르는 열쇠나 규칙과 다른 값이면 멈춥니다.
+func (l *loader) requestFields(ev *atlas.Event, pid string, e map[string]any, fv any, where string) (map[string]any, error) {
+	f, err := load.Object(fv, where+".f")
+	if err != nil {
+		return nil, err
+	}
+	if err := load.Keys(f, where+".f", requestFieldKeys...); err != nil {
+		return nil, err
+	}
+	out := map[string]any{}
+	for k, v := range f {
+		out[k] = v
+	}
+	target := func(key, val string) error {
+		p, ok := l.proc[val]
+		if !ok {
+			return fmt.Errorf("%s.f.%s %s가 프로세스 표에 없음", where, key, val)
+		}
+		ev.Target = &p
+		return nil
+	}
+	if at, ok := f["at"]; ok {
+		st, _ := e["stack"].([]any)
+		if (ev.Name != "hint" && ev.Name != "ereport") || len(st) < 2 || st[len(st)-2].(map[string]any)["at"] != at {
+			return nil, fmt.Errorf("%s: %s 사건의 f.at %v가 스택 1번 칸의 자리가 아님", where, ev.Name, at)
+		}
+		delete(out, "at")
+	}
+	if v, ok := f["who"]; ok {
+		if ev.Name != "wake" {
+			return nil, fmt.Errorf("%s: %s 사건에 f.who", where, ev.Name)
+		}
+		if err := target("who", fmt.Sprint(v)); err != nil {
+			return nil, err
+		}
+		delete(out, "who")
+	}
+	if v, ok := f["rpid"]; ok {
+		if ev.Name != "rw_conflict" || fmt.Sprint(f["wpid"]) != pid {
+			return nil, fmt.Errorf("%s: %s 사건의 wpid %v가 사건의 백엔드 %s가 아님", where, ev.Name, f["wpid"], pid)
+		}
+		if err := target("rpid", fmt.Sprint(v)); err != nil {
+			return nil, err
+		}
+		delete(out, "rpid")
+		delete(out, "wpid")
+	}
+	if v, ok := f["args"]; ok {
+		head, _, _ := strings.Cut(fmt.Sprint(v), ",")
+		if ev.Name != "kill" {
+			return nil, fmt.Errorf("%s: %s 사건에 f.args", where, ev.Name)
+		}
+		if err := target("args", strings.TrimSpace(head)); err != nil {
+			return nil, err
+		}
+	}
+	if v, ok := f["durUs"]; ok {
+		if err := checkDur(ev, v, where); err != nil {
+			return nil, err
+		}
+		delete(out, "durUs")
+	}
+	return out, nil
+}
+
+// checkDur 함수는 durUs가 사건의 (끝 − 시작) ns를 1000으로 나눈 몫과 같은지 봅니다(scenario.go 533·535, scenario_server.go 557).
+func checkDur(ev *atlas.Event, v any, where string) error {
+	if ev.StartNS == nil || ev.EndNS == nil {
+		return fmt.Errorf("%s: f.durUs가 있는데 시작이나 끝이 없음", where)
+	}
+	if got := fmt.Sprint((*ev.EndNS - *ev.StartNS) / 1000); got != fmt.Sprint(v) {
+		return fmt.Errorf("%s: f.durUs %v, (t1 − t)/1000 = %s", where, v, got)
+	}
+	return nil
+}
+
+// sortedKeys 함수는 맵의 열쇠를 차례로 돌려줍니다.
+func sortedKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // walWrite 값은 pg_wal 쓰기 사건 하나와 그 쓰기가 닿은 WAL 위치(lsn1, 해석기가 쓴 범위의 끝)입니다.
@@ -583,9 +712,8 @@ type walWrite struct {
 
 // noteWrite 메서드는 pg_wal 파일에 쓴 사건(pwrite64·pwritev)을 끝 시각으로 적어 둡니다. kill의 walWrittenT가 이 끝 시각과
 // 맞는 것을 찾습니다. 해석기(walExtentBefore)처럼 pg_wal 아래 파일에 쓴 것만 셉니다.
-func (l *loader) noteWrite(id int, isIO bool, f any, end *int64) {
-	m, ok := f.(map[string]any)
-	if !ok || !isIO || end == nil {
+func (l *loader) noteWrite(id int, isIO bool, m map[string]any, end *int64) {
+	if !isIO || end == nil {
 		return
 	}
 	call, _ := m["call"].(string)
@@ -808,8 +936,26 @@ func (l *loader) serverEvents(v any) error {
 		if err != nil {
 			return err
 		}
-		id := l.Event(atlas.Event{Place: place, Kind: kind, Name: name, StartNS: t0, EndNS: t1, Stack: stack, Source: src}, "$.server.events[]")
-		l.B.EventAttrs(id, src, "f", fields)
+		ev := atlas.Event{Place: place, Kind: kind, Name: name, StartNS: t0, EndNS: t1, Stack: stack, Source: src}
+		// signal의 to는 신호를 받은 프로세스라 target이고 그 장소의 이름으로 다시 셉니다. durUs는 (t1 − t)에서 다시 셉니다(앞선 적재기 코드 검토 지적 2·3).
+		if to, ok := fields["to"]; ok {
+			p, ok := l.proc[fmt.Sprint(to)]
+			if name != "signal" || !ok {
+				return fmt.Errorf("%s: %s 사건의 f.to %v가 프로세스 표의 pid가 아님", where, name, to)
+			}
+			ev.Target = &p
+			delete(fields, "to")
+		}
+		if d, ok := fields["durUs"]; ok {
+			if err := checkDur(&ev, d, where); err != nil {
+				return err
+			}
+			delete(fields, "durUs")
+		}
+		id := l.Event(ev, "$.server.events[]")
+		for _, k := range sortedKeys(fields) {
+			l.B.EventAttrs(id, src, "f."+k, fields[k])
+		}
 		l.noteWrite(id, name == "wal_io", fields, t1)
 	}
 	return nil
@@ -1160,6 +1306,15 @@ func (l *loader) hints(v any) error {
 
 // notes 메서드는 원본이 뜻을 가르지 못하는 꼴을 run의 ambiguity note로 남깁니다(설계 메모 4).
 func (l *loader) notes() {
+	if len(l.outNull) > 0 {
+		l.Source(atlas.Source{ID: srcNote, Tool: "pgsql 주제의 트랜잭션 실험 적재기(topics/pgsql/txlab)", Nature: atlas.Human})
+		l.B.AddUnrecorded(atlas.Unrecorded{Source: srcStrace, Field: "message.out",
+			Note: fmt.Sprintf("요청 %d개는 해석기가 요청 창 끝 + 5 ms 안의 sendto에서 보낸 메시지를 찾지 못해 보낸 메시지가 없습니다(decode/scenario.go 520~527). 보내지 않았다는 뜻이 아닙니다", len(l.outNull))})
+		for _, id := range l.outNull {
+			l.B.AddNote(atlas.Note{Scope: atlas.Scope{Kind: "event", ID: atlas.Ptr(id)}, Kind: "ambiguity", Source: srcNote,
+				Text: "이 요청의 보낸 메시지(out)는 null입니다. 해석기는 요청 창 끝 + 5 ms 안의 sendto만 보므로, 응답을 창 밖에서 보냈거나 strace가 놓친 것과 보내지 않은 것을 원본이 가르지 않습니다. 단계의 output이 있으면 txlab은 응답을 받았습니다."})
+		}
+	}
 	if l.xipNull == 0 {
 		return
 	}

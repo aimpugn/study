@@ -71,10 +71,13 @@ P = {
   ('T9', r'^\$\.steps\[\]\.requests\[\]\.(t0|t1)$', '시각', '도출'),
   ('T10', r'^\$\.steps\[\]\.requests\[\]\.(in|out)(\[\])?$', '사건', '관찰'),
   ('T11', r'^\$\.steps\[\]\.requests\[\]\.checks\[\]\.visible$', '값', '도출'),
-  ('T12', r'^\$\.steps\[\]\.(output|blocked)(\[\])?$', '값', '관찰'),
+  ('T12', r'^\$\.steps\[\]\.output(\[\])?$', '값', '관찰'),
+  # 2026-10-18 T1 importer code review finding 7: blocked is the time the watcher first saw the session wait for a lock
+  # (txlab/run.go 24, 433), the same observation e03 marks as 사건/시각. It was '값' with output here.
+  ('T12b', r'^\$\.steps\[\]\.blocked$', '시각', '관찰'),
   ('T13', r'^\$\.steps\[\]\.n$', '연결', '관찰'),
   ('T14', r'^\$\.(title|scenario)$', '값', '관찰'),
-  ('T15', r'^\$\.steps\[\]\.requests\[\]\.events\[\]\.f\.\{\*\}$', '값', '관찰'),
+  # T15 (f.{*} as one '값' line) was removed on 2026-10-18 with keytree.py --fixed: the keys are listed and take the generic rules.
   ('T16', r'^\$\.server\.events\[\]\.f\.clock$', '출처', '도출'),
  ],
  'c3': [

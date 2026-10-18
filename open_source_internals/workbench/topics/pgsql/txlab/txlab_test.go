@@ -344,7 +344,7 @@ func TestTopicBlindFactsMatchOriginalScreens(t *testing.T) {
 
 		// Then: 원본에서 바로 센 줄과 같다
 		want := originalFacts(t, l.raw)
-		for _, fact := range []string{"단계", "메시지", "기다림", "관찰", "kill", "멈춤", "힌트 변화"} {
+		for _, fact := range []string{"단계", "막힘 관찰", "메시지", "기다림", "관찰", "kill", "멈춤", "힌트 변화"} {
 			if !reflect.DeepEqual(got[fact], want[fact]) {
 				for i := range min(len(got[fact]), len(want[fact])) {
 					if got[fact][i] != want[fact][i] {
@@ -416,7 +416,10 @@ func originalFacts(t *testing.T, run map[string]any) map[string][]string {
 	for _, raw := range run["steps"].([]any) {
 		s := raw.(map[string]any)
 		sess := s["session"].(string)
-		add("단계", fmt.Sprintf("observed|step|session %s|→|%s~%s|span|%s", sess, us(s["t0"]), us(s["t1"]), attrs(s, "n", "sql", "output", "blocked")))
+		add("단계", fmt.Sprintf("observed|step|session %s|→|%s~%s|span|%s", sess, us(s["t0"]), us(s["t1"]), attrs(s, "n", "sql", "output")))
+		if b, ok := s["blocked"]; ok {
+			add("막힘 관찰", fmt.Sprintf("observed|blocked|client txlab|→process %s|%s~-|instant|", pidOf[sess], us(b)))
+		}
 		for _, rq := range s["requests"].([]any) {
 			q := rq.(map[string]any)
 			proc := "process " + pidOf[sess]
@@ -601,4 +604,207 @@ func writeEndingAt(run map[string]any, at any) map[string]any {
 		}
 	}
 	return nil
+}
+
+// freshRuns 함수는 화면 파일 넷에서 기록을 새로 읽어 열쇠마다 돌려줍니다. 변이 시험이 한 벌을 고쳐도 다른 시험에 번지지 않게 부를 때마다 새로 읽습니다.
+func freshRuns(t *testing.T) map[string]map[string]any {
+	t.Helper()
+	out := map[string]map[string]any{}
+	for _, name := range screens {
+		b, err := os.ReadFile(designDir + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		runs, err := ReadRuns(string(b))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for k, v := range runs {
+			out[k] = v.(map[string]any)
+		}
+	}
+	return out
+}
+
+// firstEvent 함수는 기록들 가운데 열쇠 차례로 처음 만나는 요청 사건(kind가 같고 f가 있는 것)과 그 기록의 열쇠를 돌려줍니다. 서버 사건이면 server가 참입니다.
+func firstEvent(t *testing.T, runs map[string]map[string]any, kind string, server bool) (string, map[string]any) {
+	t.Helper()
+	keys := make([]string, 0, len(runs))
+	for k := range runs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		run := runs[k]
+		var evs []any
+		if server {
+			evs, _ = run["server"].(map[string]any)["events"].([]any)
+		} else {
+			for _, s := range run["steps"].([]any) {
+				for _, q := range s.(map[string]any)["requests"].([]any) {
+					list, _ := q.(map[string]any)["events"].([]any)
+					evs = append(evs, list...)
+				}
+			}
+		}
+		for _, e := range evs {
+			if m := e.(map[string]any); m["kind"] == kind && m["f"] != nil {
+				return k, m
+			}
+		}
+	}
+	t.Fatalf("%s 사건이 없음", kind)
+	return "", nil
+}
+
+// TestImportRejectsFieldsThatDisagree 함수는 나머지 칸 f를 나눈 뒤 다시 세는 칸과 장소인 칸이 원본과 어긋나면 적재기가 멈추는지 봅니다(앞선 적재기 코드 검토 지적 1·2·3·7).
+//
+// 검토자가 보인 사례는 고치기 전에는 모두 적재·되돌림·검사 2~4를 통과했습니다.
+func TestImportRejectsFieldsThatDisagree(t *testing.T) {
+	for _, c := range []struct {
+		name   string
+		kind   string
+		server bool
+		mutate func(e map[string]any)
+	}{
+		{"hint의 f.at을 스택과 다른 자리로", "hint", false, func(e map[string]any) { e["f"].(map[string]any)["at"] = "src/x.c:1" }},
+		{"ereport의 f.at을 스택과 다른 자리로", "ereport", false, func(e map[string]any) { e["f"].(map[string]any)["at"] = "src/x.c:1" }},
+		{"wake의 f.who를 없는 pid로", "wake", false, func(e map[string]any) { e["f"].(map[string]any)["who"] = "99999" }},
+		{"f에 모르는 열쇠 conn", "lock", false, func(e map[string]any) { e["f"].(map[string]any)["conn"] = "C2" }},
+		{"rw_conflict의 wpid를 다른 프로세스로", "rw_conflict", false, func(e map[string]any) {
+			f := e["f"].(map[string]any)
+			f["wpid"] = f["rpid"]
+		}},
+		{"kill의 args pid를 없는 pid로", "kill", false, func(e map[string]any) { e["f"].(map[string]any)["args"] = "99999, SIGURG" }},
+		{"요청 io의 durUs를 다른 값으로", "io", false, func(e map[string]any) { e["f"].(map[string]any)["durUs"] = "999" }},
+		{"sleep_syscall의 durUs를 다른 값으로", "sleep_syscall", false, func(e map[string]any) { e["f"].(map[string]any)["durUs"] = "1" }},
+		{"서버 signal의 f.to를 없는 pid로", "signal", true, func(e map[string]any) { e["f"].(map[string]any)["to"] = "99999" }},
+		{"서버 wal_io의 durUs를 다른 값으로", "wal_io", true, func(e map[string]any) { e["f"].(map[string]any)["durUs"] = "999" }},
+	} {
+		// Given: 원본을 새로 읽고 그 종류의 첫 사건을 고르면
+		runs := freshRuns(t)
+		key, e := firstEvent(t, runs, c.kind, c.server)
+		if _, err := Import(key, runs[key], version); err != nil {
+			t.Fatalf("%s: 고치지 않은 원본은 적재되어야 함: %v", key, err)
+		}
+
+		// When: 한 칸을 고쳐 적재하면
+		c.mutate(e)
+		_, err := Import(key, runs[key], version)
+
+		// Then: 적재기가 멈춘다
+		if err == nil {
+			t.Errorf("%s: %s 적재가 통과함", c.name, key)
+		}
+	}
+
+	// 막힘 관찰을 단계 구간 밖으로 옮겨도 멈춥니다.
+	runs := freshRuns(t)
+	for k, run := range runs {
+		for _, s := range run["steps"].([]any) {
+			if m := s.(map[string]any); m["blocked"] != nil {
+				m["blocked"] = json.Number("-1")
+				if _, err := Import(k, run, version); err == nil {
+					t.Errorf("%s: 단계 밖의 blocked 적재가 통과함", k)
+				}
+				return
+			}
+		}
+	}
+	t.Fatal("blocked가 있는 단계가 없음")
+}
+
+// TestExportReturnsErrorsInsteadOfPanicking 함수는 형식 검사를 통과하지만 적재기가 만들지 않는 꼴의 run에서 Export가 panic 대신 오류를 돌려주는지 봅니다(앞선 적재기 코드 검토 지적 10).
+func TestExportReturnsErrorsInsteadOfPanicking(t *testing.T) {
+	for _, c := range []struct {
+		name   string
+		mutate func(r *atlas.Run)
+	}{
+		{"단계 구간의 끝을 비움", func(r *atlas.Run) {
+			for i, e := range r.Events {
+				if e.Name == nameStep {
+					r.Events[i].EndNS = nil
+					return
+				}
+			}
+		}},
+		{"서버 wal_io의 끝을 비움", func(r *atlas.Run) {
+			for i, e := range r.Events {
+				if e.Name == "wal_io" {
+					r.Events[i].EndNS = nil
+					return
+				}
+			}
+		}},
+	} {
+		// Given: 고치지 않은 첫 벌의 적재 결과에서
+		l := loadAll(t)[0]
+		c.mutate(l.result.Run)
+
+		// When: 되돌리면
+		_, err := Export(l.result.Run)
+
+		// Then: panic이 아니라 오류다
+		if err == nil {
+			t.Errorf("%s: 오류가 아님", c.name)
+		}
+	}
+}
+
+// TestServerLogClockRelationMatchesErrorLines 함수는 serverlog 시계의 관계(recorder보다 늦지 않고 1 ms 안쪽으로 이름)를 기록의 짝으로 다시 셉니다(앞선 적재기 코드 검토 지적 14).
+//
+// 오류로 끝난 요청의 ereport와 같은 pid의 ERROR 로그 줄을 차례로 짝지으면, 차이(로그 − 기록기)가 관계 범위 안이어야 합니다. 부호를 뒤집은 관계는 이 짝과 모순됩니다.
+func TestServerLogClockRelationMatchesErrorLines(t *testing.T) {
+	pairs := 0
+	for _, l := range loadAll(t) {
+		r := l.result.Run
+		// Given: 관계 범위와, 프로세스마다 ereport와 ERROR 로그 줄의 시각
+		c, ok := r.ClockByID(clockLog)
+		if !ok {
+			continue
+		}
+		if c.Relation == nil || !c.Relation.Known || c.Relation.To != clockRec {
+			t.Fatalf("%s: serverlog 관계 %+v", l.key, c.Relation)
+		}
+		procOf := func(place int) int {
+			for p := place; ; {
+				pl := r.Places[p]
+				if pl.Kind == "process" || pl.Parent == nil {
+					return p
+				}
+				p = *pl.Parent
+			}
+		}
+		ereports, logs := map[int][]int64{}, map[int][]int64{}
+		for _, e := range r.Events {
+			switch {
+			case e.Name == "ereport" && e.StartNS != nil:
+				p := procOf(e.Place)
+				ereports[p] = append(ereports[p], *e.StartNS)
+			case e.Source == srcLog && e.StartNS != nil && e.Attrs[srcLog]["f.level"] == "ERROR":
+				p := procOf(e.Place)
+				logs[p] = append(logs[p], *e.StartNS)
+			}
+		}
+
+		// When: 프로세스마다 차례로 짝지어 차이를 보면
+		for p, es := range ereports {
+			ls := logs[p]
+			if len(ls) != len(es) {
+				t.Fatalf("%s: 프로세스 %d의 ereport %d개, ERROR 로그 %d개", l.key, p, len(es), len(ls))
+			}
+			sort.Slice(es, func(i, j int) bool { return es[i] < es[j] })
+			sort.Slice(ls, func(i, j int) bool { return ls[i] < ls[j] })
+			for i := range es {
+				// Then: 로그 − 기록기가 관계 범위 [lo, hi] 안이다
+				if d := ls[i] - es[i]; d < c.Relation.LoNS || d > c.Relation.HiNS {
+					t.Errorf("%s: 차이 %d ns가 관계 [%d, %d] 밖", l.key, d, c.Relation.LoNS, c.Relation.HiNS)
+				}
+				pairs++
+			}
+		}
+	}
+	if pairs != 12 {
+		t.Errorf("짝 %d개, 기대 12(오류로 끝난 요청)", pairs)
+	}
 }

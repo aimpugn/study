@@ -20,7 +20,34 @@ const (
 	MessageCopy = "topic:message-copy"
 	SyscallPair = "topic:syscall-pair"
 	KernelPair  = "topic:kernel-pair"
+	// MergedSyscall 은 합친 이동(count ≥ 2)의 시스템 콜 길이 합입니다. 해석기가 이동을 합치며 더한 값이라(decode/journey.go 716~721) 해석기 출처의 group입니다.
+	MergedSyscall = "rule:merged-syscall"
 )
+
+// kernelGuessKeys 는 커널 마디 가운데 해석기가 이름으로 찾은 후보와 물려받은 층이라 추정 출처(kernel-guess)의 열쇠에 두는 값입니다.
+// calls는 이름으로 찾은 후보(decode/kernel.go 22), callsOf는 그 좁히기(478), guess는 층을 부모에게서 물려받았다는 표시입니다(앞선 적재기 코드 검토 지적 5).
+var kernelGuessKeys = []string{"calls", "callsOf", "guess"}
+
+// InferredGroups 함수는 질의 하나(q)의 추정 목록(설계 메모 7)에 든 경로 무리를 돌려줍니다. 실행 명령과 시험이 같은 목록을 씁니다.
+//
+// 순서와 인자로 맞춘 메시지·시스템 콜·커널 짝, 커널 마디의 calls·callsOf·guess, procsGuess인 역할표입니다.
+func InferredGroups(q map[string]any) map[string]bool {
+	out := map[string]bool{MessageCopy: true, SyscallPair: true, KernelPair: true}
+	for _, g := range []string{kernelGroup(0), kernelGroup(1), kernelGroup(2)} {
+		for _, k := range kernelGuessKeys {
+			out[g+"."+k] = true
+		}
+	}
+	if q["procsGuess"] == true {
+		if procs, ok := q["procs"].(map[string]any); ok {
+			for role := range procs {
+				out["$.procs."+role] = true
+				out["$.procs."+role+"[]"] = true
+			}
+		}
+	}
+	return out
+}
 
 // decoder 값은 한 판의 해석기에 매인 출처 id와 원본 경로입니다. concept-4와 concept-3은 같은 기록을 다른 판으로 풀었습니다.
 type decoder struct {
@@ -44,7 +71,13 @@ const (
 	srcTopic  = "topic"
 	srcKsrc   = "ksrc"
 	srcNote   = "pgsql-topic"
+	// srcKGuess 는 커널 마디에 해석기가 이름으로 찾아 붙인 값(호출 후보, 정의 줄, 물려받은 층)의 출처입니다.
+	srcKGuess = "kernel-guess"
 )
+
+// kernelVersion 은 커널 장소의 key에 넣는 소스 판입니다. 해석기가 발췌한 커널 소스의 판이고(ksrc 출처, concept-4.html 546행),
+// PostgreSQL의 판(sourceRoot)을 넣지 않습니다(앞선 적재기 코드 검토 지적 12).
+const kernelVersion = "Linux v7.2.9"
 
 // clockRecv 는 그 질의를 받은 순간(recv.Ns)부터 센 시계입니다(decode/journey.go 579·885행).
 const clockRecv = "recv"
@@ -194,6 +227,9 @@ func (l *loader) query(d decoder, data map[string]any) error {
 	if !ok {
 		return fmt.Errorf("%s.hops가 목록이 아님", d.pre)
 	}
+	if err := checkStages(d, data); err != nil {
+		return err
+	}
 	if err := l.hops(d, hops, string(pid), kproc); err != nil {
 		return err
 	}
@@ -202,6 +238,53 @@ func (l *loader) query(d decoder, data map[string]any) error {
 		return fmt.Errorf("%s.stages가 목록이 아님", d.pre)
 	}
 	return l.stages(d, stages, backend)
+}
+
+// checkStages 함수는 이동의 stage가 '이동의 t0 이하에서 시작한 마지막 처리 단계'와 같은지 봅니다(앞선 적재기 코드 검토 지적 11).
+//
+// stage는 그 관계를 해석기가 적은 사본이라, 두 칸이 어긋난 원본을 받지 않으려는 것입니다. 단계는 시작 차례로 놓여 있어야 합니다.
+func checkStages(d decoder, data map[string]any) error {
+	stages, _ := data["stages"].([]any)
+	type st struct {
+		name string
+		t0   int64
+	}
+	var list []st
+	for i, raw := range stages {
+		m, ok := raw.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s.stages[%d]가 객체가 아님", d.pre, i)
+		}
+		t0, err := load.Micros(m["t0"], fmt.Sprintf("%s.stages[%d].t0", d.pre, i))
+		if err != nil {
+			return err
+		}
+		if len(list) > 0 && t0 < list[len(list)-1].t0 {
+			return fmt.Errorf("%s.stages[%d]가 시작 차례가 아님", d.pre, i)
+		}
+		list = append(list, st{fmt.Sprint(m["name"]), t0})
+	}
+	hops, _ := data["hops"].([]any)
+	for i, raw := range hops {
+		h, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		t0, err := load.Micros(h["t0"], fmt.Sprintf("%s.hops[%d].t0", d.pre, i))
+		if err != nil {
+			return err
+		}
+		want := ""
+		for _, s := range list {
+			if s.t0 <= t0 {
+				want = s.name
+			}
+		}
+		if fmt.Sprint(h["stage"]) != want {
+			return fmt.Errorf("%s.hops[%d].stage %v가 t0 이하의 마지막 단계 %q와 다름", d.pre, i, h["stage"], want)
+		}
+	}
+	return nil
 }
 
 // decoderTool 함수는 해석기 출처의 도구 설명을 돌려줍니다.
@@ -218,7 +301,7 @@ var hopKeys = []string{"n", "pid", "stage", "proc", "from", "to", "kind", "count
 // hops 메서드는 이동을 차례로 옮깁니다. 메시지의 사본 짝과 잘린 메시지의 이어짐은 해석기의 규칙(journey.go 670~693, 338~368행)을 그대로 따라 셉니다.
 func (l *loader) hops(d decoder, hops []any, queryPid string, kproc int) error {
 	var (
-		pending    []int     // 아직 송신과 짝짓지 못한 버퍼 쓰기 메시지
+		pending    []int     // 아직 송신과 짝짓지 못한 버퍼 쓰기 메시지를 가진 이동(메시지마다 하나)
 		pendingMsg []msgFact // 그 메시지의 내용
 		cut        = -1      // 다음 송신에서 이어져야 할 잘린 송신 메시지
 		nullStack  int
@@ -351,7 +434,12 @@ func (l *loader) hops(d decoder, hops []any, queryPid string, kproc int) error {
 			l.B.EventAttrs(hop, d.journey, "catalog", v)
 		}
 		if v, ok := h["bytes"]; ok {
-			l.B.EventAttrs(hop, d.rec, "bytes", v)
+			// 합친 이동의 bytes는 해석기가 더한 합이라 해석기의 값입니다(앞선 적재기 코드 검토 지적 8).
+			if count > 1 {
+				l.B.EventAttrs(hop, d.journey, "bytes", v)
+			} else {
+				l.B.EventAttrs(hop, d.rec, "bytes", v)
+			}
 		}
 
 		// 메시지: 수신·송신의 메시지는 그 이동의 바이트를 나눈 것이고, 버퍼 쓰기의 메시지는 뒤따른 송신의 사본입니다.
@@ -370,24 +458,27 @@ func (l *loader) hops(d decoder, hops []any, queryPid string, kproc int) error {
 			}
 			for k, mraw := range msgs {
 				mwhere := fmt.Sprintf("%s.msgs[%d]", where, k)
+				// 버퍼 쓰기의 메시지는 기록기가 본 것이 아니라 해석기가 뒤따른 송신의 메시지를 차례로 붙인 사본이라 사건으로 두지 않습니다.
+				// 송신 메시지와 짝지은 뒤 이 이동에서 그 메시지로 가는 copy 연결(추정) 하나로 둡니다(앞선 적재기 코드 검토 지적 6).
+				if bufferWrite {
+					fact, err := parseMessage(mraw, mwhere)
+					if err != nil {
+						return err
+					}
+					if fact.cont {
+						return fmt.Errorf("%s: 버퍼 쓰기 메시지에 cont", mwhere)
+					}
+					pending, pendingMsg = append(pending, hop), append(pendingMsg, fact)
+					continue
+				}
 				m, fact, err := l.message(d, mraw, mwhere, ev)
 				if err != nil {
 					return err
 				}
-				basis, group := d.rec, d.pre+".hops[].msgs"
-				if bufferWrite {
-					basis, group = d.pair, MessageCopy
-					l.Source(atlas.Source{ID: d.pair, Tool: d.journey + " 해석기가 차례로 맞춘 짝", Nature: atlas.Inferred})
-				}
-				link := l.B.AddLink(hop, m, "contains", basis)
-				l.Origins[atlas.RecordRef{Table: "link", ID: link}] = group
+				link := l.B.AddLink(hop, m, "contains", d.rec)
+				l.Origins[atlas.RecordRef{Table: "link", ID: link}] = d.pre + ".hops[].msgs"
 
 				switch {
-				case bufferWrite:
-					if fact.cont {
-						return fmt.Errorf("%s: 버퍼 쓰기 메시지에 cont", mwhere)
-					}
-					pending, pendingMsg = append(pending, m), append(pendingMsg, fact)
 				case send:
 					// 앞 송신에서 이어진 나머지는 앞 송신의 잘린 메시지에서 오는 continues 연결입니다(첫 메시지에만 올 수 있음).
 					if fact.cont {
@@ -426,7 +517,8 @@ func (l *loader) hops(d decoder, hops []any, queryPid string, kproc int) error {
 					if pendingMsg[j] != freshMsg[j] {
 						return fmt.Errorf("%s: 사본 %d의 내용이 송신 메시지와 다름", where, j)
 					}
-					link := l.B.AddLink(fresh[j], pending[j], "copy", d.pair)
+					l.Source(atlas.Source{ID: d.pair, Tool: d.journey + " 해석기가 순서와 인자로 맞춘 짝", Nature: atlas.Inferred})
+					link := l.B.AddLink(pending[j], fresh[j], "copy", d.pair)
 					l.Origins[atlas.RecordRef{Table: "link", ID: link}] = MessageCopy
 				}
 			}
@@ -455,41 +547,52 @@ type msgFact struct {
 	hasText, cut, cont bool
 }
 
-// message 메서드는 메시지 하나를 사건으로 옮깁니다. 장소와 출발·도착은 그 이동의 것을 그대로 씁니다.
-func (l *loader) message(d decoder, raw any, where string, hop atlas.Event) (int, msgFact, error) {
+// parseMessage 함수는 메시지 하나의 칸을 확인하고 그 내용을 돌려줍니다. 모르는 열쇠나 틀린 타입이면 오류입니다.
+func parseMessage(raw any, where string) (msgFact, error) {
 	m, err := load.Object(raw, where)
 	if err != nil {
-		return 0, msgFact{}, err
+		return msgFact{}, err
 	}
 	if err := load.Keys(m, where, "type", "len", "text", "cut", "cont"); err != nil {
-		return 0, msgFact{}, err
+		return msgFact{}, err
 	}
 	typ, ok := m["type"].(string)
 	if !ok {
-		return 0, msgFact{}, fmt.Errorf("%s.type이 글이 아님", where)
+		return msgFact{}, fmt.Errorf("%s.type이 글이 아님", where)
 	}
 	length, ok := m["len"].(json.Number)
 	if !ok {
-		return 0, msgFact{}, fmt.Errorf("%s.len이 수가 아님", where)
+		return msgFact{}, fmt.Errorf("%s.len이 수가 아님", where)
 	}
 	f := msgFact{typ: typ, length: string(length)}
 	for _, flag := range []string{"cut", "cont"} {
 		if v, ok := m[flag]; ok && v != true {
-			return 0, msgFact{}, fmt.Errorf("%s.%s가 true가 아님", where, flag)
+			return msgFact{}, fmt.Errorf("%s.%s가 true가 아님", where, flag)
 		}
 	}
 	_, f.cut = m["cut"]
 	_, f.cont = m["cont"]
-	id := l.B.AddEvent(atlas.Event{Place: hop.Place, From: hop.From, Target: hop.Target, Kind: atlas.Instant, Name: typ, Source: d.rec})
-	l.Origins[atlas.RecordRef{Table: "event", ID: id}] = d.pre + ".hops[].msgs[]"
-	l.B.EventAttrs(id, d.rec, "len", length)
 	if t, ok := m["text"]; ok {
 		s, ok := t.(string)
 		if !ok {
-			return 0, msgFact{}, fmt.Errorf("%s.text가 글이 아님", where)
+			return msgFact{}, fmt.Errorf("%s.text가 글이 아님", where)
 		}
 		f.text, f.hasText = s, true
-		l.B.EventAttrs(id, d.rec, "text", s)
+	}
+	return f, nil
+}
+
+// message 메서드는 메시지 하나를 사건으로 옮깁니다. 장소와 출발·도착은 그 이동의 것을 그대로 씁니다.
+func (l *loader) message(d decoder, raw any, where string, hop atlas.Event) (int, msgFact, error) {
+	f, err := parseMessage(raw, where)
+	if err != nil {
+		return 0, msgFact{}, err
+	}
+	id := l.B.AddEvent(atlas.Event{Place: hop.Place, From: hop.From, Target: hop.Target, Kind: atlas.Instant, Name: f.typ, Source: d.rec})
+	l.Origins[atlas.RecordRef{Table: "event", ID: id}] = d.pre + ".hops[].msgs[]"
+	l.B.EventAttrs(id, d.rec, "len", json.Number(f.length))
+	if f.hasText {
+		l.B.EventAttrs(id, d.rec, "text", f.text)
 	}
 	return id, f, nil
 }
@@ -514,8 +617,18 @@ func (l *loader) syscall(d decoder, h map[string]any, where string, hop, place, 
 		l.B.AddUnrecorded(atlas.Unrecorded{Source: srcStrace, Field: "start_ns", Note: "해석기가 시스템 콜의 길이(sysUs)만 남겼습니다"})
 		l.B.AddUnrecorded(atlas.Unrecorded{Source: srcStrace, Field: "name", Note: "해석기가 시스템 콜 이름을 남기지 않았습니다"})
 	}
-	sys := l.B.AddEvent(atlas.Event{Place: place, Kind: atlas.Span, Name: "syscall", DurNS: &dur, Source: srcStrace})
-	l.Origins[atlas.RecordRef{Table: "event", ID: sys}] = d.pre + ".hops[].sysUs"
+	// 합친 이동(count ≥ 2)의 sysUs는 해석기가 시스템 콜 여럿의 길이를 더한 값이라(decode/journey.go 716~721) 관찰 한 번이 아니라
+	// 해석기 출처의 group(count = 이동의 count)입니다(앞선 적재기 코드 검토 지적 8).
+	count, err := load.Integer(h["count"], where+".count")
+	if err != nil {
+		return err
+	}
+	ev, group := atlas.Event{Place: place, Kind: atlas.Span, Name: "syscall", DurNS: &dur, Count: 1, Source: srcStrace}, d.pre+".hops[].sysUs"
+	if count > 1 {
+		ev.Kind, ev.Count, ev.Source, group = atlas.Group, count, d.journey, MergedSyscall
+	}
+	sys := l.B.AddEvent(ev)
+	l.Origins[atlas.RecordRef{Table: "event", ID: sys}] = group
 	link := l.B.AddLink(hop, sys, "syscall", d.pair)
 	l.Origins[atlas.RecordRef{Table: "link", ID: link}] = SyscallPair
 	if !hasKernel {
@@ -528,6 +641,10 @@ func (l *loader) syscall(d decoder, h map[string]any, where string, hop, place, 
 	if l.Once("unrecorded:ftrace") {
 		l.B.AddUnrecorded(atlas.Unrecorded{Source: srcFtrace, Field: "start_ns", Note: "커널 마디는 그 함수에서 보낸 시간(us, 잠든 시간 포함)만 남았습니다"})
 	}
+	// 커널 장소의 key에는 커널의 판을 넣습니다(앞선 적재기 코드 검토 지적 12).
+	pgVersion := l.Version
+	l.Version = kernelVersion
+	defer func() { l.Version = pgVersion }()
 	for k, r := range roots {
 		root, err := l.kernel(r, fmt.Sprintf("%s.kernel[%d]", where, k), nil, 0, kproc)
 		if err != nil {
@@ -565,13 +682,16 @@ func (l *loader) kernel(raw any, where string, parent *int, level, kproc int) (i
 		return 0, fmt.Errorf("%s.fn이 글이 아님", where)
 	}
 	// at이 있으면 커널 함수 아래 프레임이, 없으면(층을 물려받은 짐작 마디 등) 커널 함수가 장소입니다.
+	// at은 ftrace가 아니라 해석기가 함수 이름으로 커널 소스 색인에서 찾은 정의 줄이라(decode/kernel.go 260~274), 그 위치를 가진
+	// 함수·프레임 장소는 추정 출처입니다(앞선 적재기 코드 검토 지적 9). 위치 없는 함수 장소는 ftrace가 본 이름이라 관찰입니다.
 	var place int
 	if at, ok := n["at"]; ok {
 		s, ok := at.(string)
 		if !ok {
 			return 0, fmt.Errorf("%s.at이 글이 아님", where)
 		}
-		if place, err = l.Frame(kproc, fn, s, srcFtrace, group+".fn", group+".at"); err != nil {
+		l.Source(atlas.Source{ID: srcKGuess, Tool: "journey 해석기가 커널 마디에 이름으로 찾아 붙인 값(정의 줄, 호출 후보, 물려받은 층, decode/kernel.go)", Nature: atlas.Inferred})
+		if place, err = l.Frame(kproc, fn, s, srcKGuess, group+".at", group+".at"); err != nil {
 			return 0, fmt.Errorf("%s: %w", where, err)
 		}
 	} else {
@@ -583,10 +703,20 @@ func (l *loader) kernel(raw any, where string, parent *int, level, kproc int) (i
 	}
 	id := l.B.AddEvent(atlas.Event{Place: place, Kind: atlas.Span, Name: fn, DurNS: &dur, Parent: parent, Source: srcFtrace})
 	l.Origins[atlas.RecordRef{Table: "event", ID: id}] = group
+	// 이름으로 찾은 호출 후보와 물려받은 층의 표시는 추정 열쇠에, 층과 숨은 호출 수는 해석기 열쇠에 둡니다. guess인 마디의 층은 부모에게서
+	// 물려받은 짐작이라 그 층도 추정 열쇠에 둡니다(앞선 적재기 코드 검토 지적 5).
+	guessed := n["guess"] == true
 	for _, k := range []string{"layer", "calls", "callsOf", "hidden", "guess"} {
-		if v, ok := n[k]; ok {
-			l.B.EventAttrs(id, "journey", k, v)
+		v, ok := n[k]
+		if !ok {
+			continue
 		}
+		src := "journey"
+		if k == "calls" || k == "callsOf" || k == "guess" || (k == "layer" && guessed) {
+			src = srcKGuess
+			l.Source(atlas.Source{ID: srcKGuess, Tool: "journey 해석기가 커널 마디에 이름으로 찾아 붙인 값(정의 줄, 호출 후보, 물려받은 층, decode/kernel.go)", Nature: atlas.Inferred})
+		}
+		l.B.EventAttrs(id, src, k, v)
 	}
 	if kv, ok := n["kids"]; ok {
 		kids, ok := kv.([]any)

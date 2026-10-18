@@ -2,6 +2,7 @@ package atlas
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -79,14 +80,25 @@ func Select(r *Run, s Selector) []Row {
 // Count 함수는 조건에 맞는 사건의 수를 돌려줍니다. group은 묶은 횟수(count)가 아니라 한 행으로 셉니다.
 func Count(r *Run, s Selector) int { return len(Select(r, s)) }
 
-// Linked 함수는 kind가 같은 연결의 양 끝 사건을 연결 차례로 돌려줍니다. 근거의 성격도 함께 냅니다.
+// Linked 함수는 kind가 같은 연결의 양 끝 사건을 출발 사건의 id, 같으면 도착 사건의 id 차례로 돌려줍니다. 근거의 성격도 함께 냅니다.
+//
+// 연결 표의 차례에는 뜻이 없어(형식 규칙 7) 사건의 id 차례로 놓습니다(앞선 적재기 코드 검토 지적 13).
 func Linked(r *Run, kind string) [][2]Row {
 	var out [][2]Row
 	all := Select(r, Selector{})
+	links := make([]Link, 0, len(r.Links))
 	for _, l := range r.Links {
-		if l.Kind != kind {
-			continue
+		if l.Kind == kind {
+			links = append(links, l)
 		}
+	}
+	sort.Slice(links, func(i, j int) bool {
+		if links[i].Src != links[j].Src {
+			return links[i].Src < links[j].Src
+		}
+		return links[i].Dst < links[j].Dst
+	})
+	for _, l := range links {
 		a, b := all[l.Src], all[l.Dst]
 		basis, _ := r.SourceByID(l.Basis)
 		a.Nature, b.Nature = basis.Nature, basis.Nature

@@ -10,13 +10,16 @@
     {"fact": "메시지", "select": {"sources": ["rec"], "require": ["rec.len"], "attrs": ["rec.len"]}},
     {"fact": "단계", "select": {"sources": ["journey"], "kinds": ["instant"]}},
     {"fact": "시스템 콜", "select": {"sources": ["strace"]}},
+    {"fact": "합친 시스템 콜", "select": {"sources": ["journey"], "names": ["syscall"]}},
+    {"fact": "메시지 사본", "linked": "copy"},
     {"fact": "커널 마디", "select": {"sources": ["ftrace"]}},
     {"fact": "이동(concept-3)", "select": {"sources": ["rec-c3"], "require": ["journey-c3.n"], "attrs": ["journey-c3.stage", "rec-c3.bytes"]}},
     {"fact": "메시지(concept-3)", "select": {"sources": ["rec-c3"], "require": ["rec-c3.len"], "attrs": ["rec-c3.len"]}},
     {"fact": "단계(concept-3)", "select": {"sources": ["journey-c3"], "kinds": ["instant"]}}
   ],
   "tx": [
-    {"fact": "단계", "select": {"sources": ["txlab"], "names": ["step"], "attrs": ["txlab.n", "txlab.sql", "txlab.output", "txlab.blocked"]}},
+    {"fact": "단계", "select": {"sources": ["txlab"], "names": ["step"], "attrs": ["txlab.n", "txlab.sql", "txlab.output"]}},
+    {"fact": "막힘 관찰", "select": {"sources": ["txlab"], "names": ["blocked"]}},
     {"fact": "메시지", "select": {"sources": ["strace"], "require": ["strace.len"], "attrs": ["strace.len"]}},
     {"fact": "기다림", "select": {"sources": ["recorder"], "names": ["proc_sleep"]}},
     {"fact": "관찰", "select": {"sources": ["txlab"], "names": ["capture"], "attrs": ["txlab.pages"]}},

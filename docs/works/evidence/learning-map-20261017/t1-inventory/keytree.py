@@ -44,6 +44,10 @@ def find_dynamic(path, v, keysets):
             find_dynamic(path + '[]', x, keysets)
 
 args = [a for a in sys.argv[1:] if not a.startswith('--')]
+# --fixed=PATH marks an object path whose keys are a fixed set even when there are many of them (2026-10-18, T1 importer code review
+# finding 1: the tx request event field map f has 41 distinct keys over all event kinds, so the >40 rule folded it into {*} and hid
+# the code site f.at and the process ids who, rpid and wpid behind one '값' line).
+FIXED = {a[len('--fixed='):] for a in sys.argv[1:] if a.startswith('--fixed=')}
 docs = []
 for p in args:
     with open(p) as f:
@@ -63,6 +67,8 @@ for _ in range(6):
     for d in docs: fd('$', d)
     new = set(dynamic)
     for p, ks in keysets.items():
+        if p in FIXED:
+            continue
         if len(ks) > 40 or any(any(c.isdigit() for c in k[:1]) or ':' in k or '/' in k or '.' in k or ' ' in k for k in ks):
             new.add(p)
     if new == dynamic: break

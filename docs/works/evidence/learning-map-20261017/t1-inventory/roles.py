@@ -24,11 +24,10 @@ OVERRIDES = {
     ("e05", "$.steps[].values[]"): ("X7", "X7 멈춘 순간 읽은 값 목록(사건이 아니라 값)"),
     ("c3", "$.endUs"): ("end_ns", "M 질의 구간(받은 순간 0부터)의 끝"),
     ("c4", "$.data.endUs"): ("end_ns", "M 질의 구간(받은 순간 0부터)의 끝"),
-    ("c4", "$.data.stages[].caller"): ("stack", "M 단계가 시작한 함수의 부른 쪽 = 스택 둘째 칸"),
     ("c4", "$.data.hops[].msgs[].cut"): ("link", "M 다시 셈: 나가는 continues 연결이 있거나 그런 메시지의 copy 사본이면 참(이 송신의 보이는 바이트 밖으로 이어짐, journey.go 190·219행)"),
     ("c4", "$.data.hops[].msgs[].cont"): ("link", "M 앞 송신의 잘린 메시지에서 오는 continues 연결(journey.go 346행)"),
     ("c4", "$.data.hops[].sysUs"): ("dur_ns", "M strace가 잰 시스템 콜 길이 = strace 출처의 시스템 콜 사건(길이만), 이동과 syscall 연결"),
-    ("c4", "$.data.stages[].caller"): ("stack", "M 스택 0번 = 단계 함수를 부른 쪽 프레임"),
+    ("c4", "$.data.stages[].caller"): ("stack", "M 스택 1번 = 단계 함수를 부른 쪽 프레임(0번은 단계 함수 자신, 설계 메모 2의 2)"),
     ("c4", "$.data.kernelPid"): ("place.parent", "M 커널 마디 장소(커널 함수·프레임)의 프로세스"),
 }
 
@@ -44,7 +43,7 @@ for _inp, _pre in (("c3", "$"), ("c4", "$.data")):
         (_inp, _pre + ".hops[].files"): ("from/target", "M 파일 장소(칸 아래)가 출발 칸이 파일 칸이면 from을, 아니면 target을 좁힘(198행 모두 하나)"),
         (_inp, _pre + ".hops[].files[]"): ("from/target", "M 파일 장소(칸 아래)가 출발 칸이 파일 칸이면 from을, 아니면 target을 좁힘(198행 모두 하나)"),
         (_inp, _pre + ".stages[].fn"): ("place", "M 단계 사건의 장소 = 단계 함수"),
-        (_inp, _pre + ".stages[].at"): ("stack", "M 부른 줄 = 스택 0번 프레임의 위치(concept-3은 caller가 없어 코드 자리)"),
+        (_inp, _pre + ".stages[].at"): ("stack", "M 부른 줄 = 스택 1번 프레임의 위치(concept-3은 caller가 없어 1번이 코드 자리, 0번은 단계 함수 자신)"),
     })
 for _path in ("$.data.hops[].kernel[]", "$.data.hops[].kernel[].kids[]", "$.data.hops[].kernel[].kids[]{2+}"):
     OVERRIDES.update({
@@ -103,6 +102,29 @@ for _path in ("$.steps[].requests[].checks[].lines[]", "$.steps[].requests[].che
         ("tx", _path + ".fn"): ("place", "M 사건의 장소 = 부른 함수(백엔드 프로세스 아래)"),
         ("tx", _path + ".at"): ("stack", "M 부른 줄 = 스택 1번의 코드 자리(함수 이름 없음)"),
     })
+
+# 2026-10-18 앞선 적재기 코드 검토(t1-e04e05-code-review.md) 지적 1·2·3·7로 정한 트랜잭션 실험 행. 표시 파일이 요청 사건의 f를
+# 동적 열쇠 한 줄('값')로 접어 그 안의 코드 자리와 프로세스 id가 보이지 않았고(keytree.py --fixed로 펼침), 서버 사건 f의 행은 '기록기 칸 f 안의
+# 대상 이름'이라는 규칙 글만으로 X2를 받았다(그릇을 attrs에 두는 이상 X2라는 순환 논증, Spring 코드 검토 지적 2와 같은 꼴). 행마다 까닭을 적는다.
+_REQ_F = "$.steps[].requests[].events[].f."
+for _k, _why in (("rel", "다루는 표의 이름"), ("table", "다루는 표의 이름"), ("xid", "다루는 트랜잭션 번호"), ("txid", "다루는 트랜잭션 번호"),
+                 ("xid1", "multixact에 든 트랜잭션 번호"), ("xid2", "multixact에 든 트랜잭션 번호"), ("rxid", "읽은 쪽 트랜잭션 번호"),
+                 ("wxid", "쓴 쪽 트랜잭션 번호"), ("id", "multixact 번호"), ("sxact", "직렬화 트랜잭션의 주소"), ("ctid", "다루는 행의 주소"),
+                 ("tup", "다루는 행의 메모리 주소"), ("off", "다루는 행의 줄 번호(update_check·tuple_lock) 또는 WAL 파일 안의 쓴 위치(io)"),
+                 ("blk", "다루는 블록 번호"), ("buf", "다루는 공유 버퍼 번호")):
+    OVERRIDES[("tx", _REQ_F + _k)] = ("X2", "X2 데이터 대상의 이름: " + _why + "(실행 위치가 아님)")
+OVERRIDES.update({
+    ("tx", _REQ_F + "file"): ("X2", "X2 데이터 대상의 이름: 쓴 파일(pg_wal/…). 실행 위치가 아니라 쓰기가 다루는 대상. 여정은 같은 파일을 칸 아래 file 장소로 둠(이동의 출발·도착이 파일 칸이라). 지도에서 트랜잭션 실험의 파일을 장소로 펼쳐야 하면 X2 정의대로 다시 연다"),
+    ("tx", _REQ_F + "durUs"): ("recompute", "M 다시 셈: 해석기가 같은 시스템 콜의 DurNs로 t = Ns − DurNs, t1 = Ns와 함께 int64 나눗셈으로 쓴 µs(scenario.go 533·535, fmt.Sprint(e.DurNs / 1e3))라 (t1 − t) ns를 1000으로 나눈 몫. 148행"),
+    ("tx", _REQ_F + "at"): ("recompute", "M 다시 셈: hint·ereport의 부른 줄 = 스택(안쪽부터) 1번 칸의 코드 자리(28/28 같음). Spring 서버 사건 f.at(C14)과 같은 꼴"),
+    ("tx", _REQ_F + "who"): ("target", "M wake 사건의 target = 깨운 프로세스(16행 모두 프로세스 표의 pid)"),
+    ("tx", _REQ_F + "rpid"): ("target", "M rw_conflict 사건의 target = 읽은 쪽 프로세스(8행 모두 프로세스 표의 pid)"),
+    ("tx", _REQ_F + "wpid"): ("recompute", "M 다시 셈: rw_conflict의 쓴 쪽 = 사건이 일어난 백엔드(사건 장소의 프로세스, 8/8 같음)"),
+    ("tx", "$.steps[].blocked"): ("start_ns", "M 관찰용 접속이 그 세션의 락 기다림을 처음 본 시각(txlab/run.go 24·433) = txlab 장소의 instant(이름 blocked, target은 그 세션의 백엔드), 단계 → 그 사건의 blocked 연결(근거 txlab). Spring의 막힘 관찰과 같은 자리. 18행"),
+    ("tx", "$.server.events[].f.to"): ("target", "M signal 사건의 target = 신호를 받은 프로세스(198행 모두 프로세스 표의 pid). f.to는 그 장소의 이름으로 다시 셈"),
+    ("tx", "$.server.events[].f.file"): ("X2", "X2 데이터 대상의 이름: wal_io가 쓴 파일(pg_wal/…). 요청 사건 f.file과 같은 까닭"),
+    ("tx", "$.server.events[].f.durUs"): ("recompute", "M 다시 셈: (t1 − t) ns를 1000으로 나눈 몫(scenario_server.go 557, fmt.Sprint(e.DurNs / 1e3)). 466행"),
+})
 
 # 2026-10-18 Spring 적재기 앞의 결정(설계 메모 5의 4). 근거와 수는 ../t1-e03-evidence.md이고, 괄호 안의 C·R 번호는 그 수를 다시 세는
 # t1-inventory/e03/count.py의 검사입니다(모두 n/n). 미정 44행과, 규칙이 정했지만 뜻이 맞지 않거나(정규식이 잘못 맞음) 구현하기에 모호한 행을
@@ -307,6 +329,11 @@ for _inp in ("tx", "e03"):
     for _part in ("activity", "locks", "pages", "running", "xacts"):
         PROV_FIXES[(_inp, "$.captures[].reads." + _part)] = ("도출", _READS)
         PROV_FIXES[(_inp, "$.captures[].reads." + _part + "[]")] = ("도출", _READS)
+# 2026-10-18 앞선 적재기 코드 검토 지적 9: ftrace는 줄을 남기지 않는다. 커널 마디의 at은 해석기가 커널 소스 색인에서 함수 이름으로 찾은
+# 정의 위치이고 후보가 여럿이면 부모와 같은 디렉터리의 것이나 첫 후보를 고른다(decode/kernel.go 260~274). 이름으로 찾은 후보라 추정이다.
+for _path in ("$.data.hops[].kernel[]", "$.data.hops[].kernel[].kids[]", "$.data.hops[].kernel[].kids[]{2+}"):
+    PROV_FIXES[("c4", _path + ".at")] = ("도출", "M 커널 마디의 at은 ftrace가 아니라 해석기가 함수 이름으로 커널 소스 색인에서 찾은 정의 줄(kernel.go 260~274, 후보가 여럿이면 고름)이라 "
+                                         "이름으로 찾은 후보(추정). 그 위치를 가진 함수·프레임 장소의 출처는 추정 열쇠 kernel-guess. 지금 129개 함수 가운데 두 위치로 갈린 것은 0. 앞선 적재기 코드 검토 지적 9")
 PROV_FIXES[("e03", "$.java.spans[].caller")] = ("관찰", "M caller는 JFR 스택의 0번 칸(decode/spring_jfr.go 265~267)을 해석기가 "
                                                 "'fn:줄' 글로 옮긴 것이라 관찰. Spring 결정 검토 지적 4, 코드 검토 지적 7")
 

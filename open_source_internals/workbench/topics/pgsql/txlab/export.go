@@ -3,6 +3,7 @@ package txlab
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"study/open_source_internals/workbench/internal/atlas"
 	"study/open_source_internals/workbench/topics/pgsql/load"
@@ -95,7 +96,18 @@ func (v *view) stackOf(stack []int) []any { return load.StackOf(v.r.Places, stac
 // Export 함수는 Import가 만든 run에서 기록 한 벌(RUNS의 값 하나)을 다시 만듭니다.
 //
 // run 밖의 것은 읽지 않습니다. 사건은 출처와 이름, 연결로 가르고, 가를 수 없는 사건이나 되살리는 데 필요한 값이 없으면 오류를 돌려줍니다.
-func Export(r *atlas.Run) (map[string]any, error) {
+func Export(r *atlas.Run) (out map[string]any, err error) {
+	// 적재기가 만들지 않는 꼴의 run(빈 시각, 다른 타입의 값)에서 멈추면 panic 대신 오류로 돌려줍니다(앞선 적재기 코드 검토 지적 10, Spring과 같음).
+	defer func() {
+		if p := recover(); p != nil {
+			out, err = nil, fmt.Errorf("되살리다 멈춤(적재기가 만들지 않는 꼴의 run): %v", p)
+		}
+	}()
+	return export(r)
+}
+
+// export 함수는 Export의 본문입니다.
+func export(r *atlas.Run) (map[string]any, error) {
 	v, err := newView(r)
 	if err != nil {
 		return nil, err
@@ -133,6 +145,8 @@ func Export(r *atlas.Run) (map[string]any, error) {
 		switch {
 		case e.Parent != nil || len(v.in[e.ID]["contains"]) > 0:
 			continue
+		case e.Source == srcTxlab && e.Name == nameBlocked:
+			// 막힘 관찰은 단계가 blocked 연결로 되살립니다.
 		case e.Source == srcTxlab && e.Name == nameStep:
 			list = "steps"
 			item, err = v.step(e)
@@ -194,7 +208,10 @@ func orEmpty(l []any) []any {
 // step 메서드는 단계 하나와 그 요청을 되살립니다.
 func (v *view) step(e atlas.Event) (map[string]any, error) {
 	s := map[string]any{"session": v.r.Places[e.Place].Name, "t0": micros(e.StartNS), "t1": micros(e.EndNS)}
-	v.copyAttrs(s, e, srcTxlab, "n", "sql", "output", "blocked")
+	v.copyAttrs(s, e, srcTxlab, "n", "sql", "output")
+	for _, b := range v.out[e.ID]["blocked"] {
+		s["blocked"] = micros(v.r.Events[b].StartNS)
+	}
 	v.copyAttrs(s, e, srcTx, "check")
 	reqs := []any{}
 	for _, id := range v.requests(e.ID) {
@@ -225,10 +242,11 @@ func (v *view) request(e atlas.Event, stepEnd int64) (map[string]any, error) {
 	for _, id := range v.out[e.ID]["contains"] {
 		m := v.r.Events[id]
 		_, isSnap := v.attr(m, srcRec, "curcid")
+		_, isMsg := v.attr(m, srcStrace, "len")
 		switch {
-		case m.From != nil:
+		case isMsg && m.From != nil:
 			in = append(in, v.message(m))
-		case m.Target != nil:
+		case isMsg && m.Target != nil:
 			out = append(out, v.message(m))
 		case m.Source == srcRec && m.Name == nameCheck:
 			c, err := v.check(m)
@@ -269,8 +287,55 @@ func (v *view) requestEvent(m atlas.Event) map[string]any {
 	if m.Stack != nil {
 		ev["stack"] = v.stackOf(m.Stack)
 	}
-	v.copyAttrs(ev, m, m.Source, "f")
+	f := v.fields(m)
+	if f == nil && (m.Name == "sleep_syscall" || m.Name == "io" || m.Name == "hint" || m.Name == "ereport") {
+		// 다시 세는 칸만 가진 f(sleep_syscall의 durUs, ereport의 at)는 attrs에 남는 칸이 없지만 그릇은 원본에 있습니다.
+		f = map[string]any{}
+	}
+	if f != nil {
+		// 다시 세는 칸(적재기의 requestFields): 부른 줄은 스택 1번 칸, 깨운·읽은 쪽 프로세스는 target, 쓴 쪽은 사건의 백엔드, durUs는 (t1 − t)/1000입니다.
+		if m.Name == "hint" || m.Name == "ereport" {
+			if len(m.Stack) >= 2 {
+				f["at"] = load.LocText(v.r.Places[m.Stack[1]].Loc)
+			}
+		}
+		if m.Target != nil {
+			switch m.Name {
+			case "wake":
+				f["who"] = v.r.Places[*m.Target].Name
+			case "rw_conflict":
+				f["rpid"] = v.r.Places[*m.Target].Name
+				if pid, err := v.processOf(m.Place); err == nil {
+					f["wpid"] = fmt.Sprint(pid)
+				}
+			}
+		}
+		v.durUs(f, m)
+		ev["f"] = f
+	}
 	return ev
+}
+
+// fields 메서드는 사건의 attrs에서 "f.<칸>" 열쇠를 모아 나머지 칸 f를 되살립니다. 그런 열쇠가 없으면 nil입니다.
+func (v *view) fields(m atlas.Event) map[string]any {
+	var f map[string]any
+	for k, val := range m.Attrs[m.Source] {
+		if name, ok := strings.CutPrefix(k, "f."); ok {
+			if f == nil {
+				f = map[string]any{}
+			}
+			f[name] = val
+		}
+	}
+	return f
+}
+
+// durUs 메서드는 시스템 콜 사건의 durUs를 (t1 − t) ns를 1000으로 나눈 몫으로 다시 셉니다. 해석기는 call이나 durUs가 있는 종류에만 적었습니다.
+func (v *view) durUs(f map[string]any, m atlas.Event) {
+	if m.Name != "io" && m.Name != "sleep_syscall" && m.Name != "wal_io" {
+		return
+	}
+	f["durUs"] = fmt.Sprint((*m.EndNS - *m.StartNS) / 1000)
 }
 
 // check 메서드는 줄 판정 하나와 그 자식(줄, 판정 경로와 경로 안의 호출)을 되살립니다. 경로 사건이 없으면 path는 null입니다.
@@ -416,14 +481,14 @@ func (v *view) serverEvent(e atlas.Event) (map[string]any, error) {
 	if e.Stack != nil {
 		ev["stack"] = v.stackOf(e.Stack)
 	}
-	f, ok := v.attr(e, e.Source, "f")
-	if !ok {
-		return nil, fmt.Errorf("서버 사건 %d의 f 없음", e.ID)
+	fields := v.fields(e)
+	if fields == nil {
+		fields = map[string]any{}
 	}
-	fields := map[string]any{}
-	for k, val := range f.(map[string]any) {
-		fields[k] = val
+	if e.Target != nil {
+		fields["to"] = v.r.Places[*e.Target].Name
 	}
+	v.durUs(fields, e)
 	if src, _ := v.r.SourceByID(e.Source); src.Clock == clockShift {
 		fields["clock"] = "ftrace"
 	}

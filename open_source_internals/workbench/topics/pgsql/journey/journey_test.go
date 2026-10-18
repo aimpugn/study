@@ -161,13 +161,7 @@ func TestImportedRunsPassFormatAndProvenanceChecks(t *testing.T) {
 	}
 	for _, l := range loadAll(t) {
 		// 추정 목록(설계 메모 7): 순서와 인자로 맞춘 짝, procsGuess인 역할표
-		inferred := map[string]bool{MessageCopy: true, SyscallPair: true, KernelPair: true}
-		if l.q["procsGuess"] == true {
-			for role := range l.q["procs"].(map[string]any) {
-				inferred["$.procs."+role] = true
-				inferred["$.procs."+role+"[]"] = true
-			}
-		}
+		inferred := InferredGroups(l.q)
 
 		// When: 세 검사를 하면
 		errs := atlas.Validate(l.result.Run)
@@ -207,12 +201,20 @@ func TestTopicBlindFactsMatchOriginalScreens(t *testing.T) {
 			for _, r := range f.Rows {
 				got[f.Fact] = append(got[f.Fact], rowText(r))
 			}
+			for _, p := range f.Pairs {
+				got[f.Fact] = append(got[f.Fact], fmt.Sprintf("%s|%s→%s", p[0].Nature, p[0].Name, p[1].Name))
+			}
 		}
 
 		// Then: 원본에서 바로 센 줄과 같다
 		want := originalFacts(t, l.q["data"].(map[string]any), "")
 		if l.c3 != nil {
 			for k, v := range originalFacts(t, l.c3, "(concept-3)") {
+				if k == "메시지 사본(concept-3)" {
+					// copy 연결은 두 판이 같은 종류라 한 사실로 뽑힙니다(concept-4 이동의 id가 앞).
+					want["메시지 사본"] = append(want["메시지 사본"], v...)
+					continue
+				}
 				want[k] = v
 			}
 		}
@@ -282,17 +284,27 @@ func originalFacts(t *testing.T, data map[string]any, suffix string) map[string]
 		}
 		// 플랫폼의 줄은 attrs 열쇠를 이름순("출처.키")으로 적으므로 journey.stage가 rec.bytes보다 앞입니다.
 		attrs := []string{fmt.Sprintf("stage=%v", h["stage"])}
-		if b, ok := h["bytes"]; ok {
+		if b, ok := h["bytes"]; ok && count == 1 {
 			attrs = append(attrs, fmt.Sprintf("bytes=%v", b))
 		}
 		route := end(h, "from") + "→" + end(h, "to")
 		out["이동"+suffix] = append(out["이동"+suffix], fmt.Sprintf("observed|%s|%d|%s|%s~%s|-|0|%s|%s", h["kind"], count, route, us(h["t0"]), us(h["t1"]), kind, strings.Join(attrs, ",")))
+		// 버퍼 쓰기(백엔드 → 통신 버퍼)의 메시지는 뒤따른 송신 메시지의 사본이라 메시지 사건이 아니라 추정 copy 연결입니다(앞선 적재기 코드 검토 지적 6).
+		bufferWrite := h["proc"] == "backend" && h["from"] == "backend" && h["to"] == "comm_buffer"
 		for _, mraw := range asList(h["msgs"]) {
 			m := mraw.(map[string]any)
+			if bufferWrite {
+				out["메시지 사본"+suffix] = append(out["메시지 사본"+suffix], fmt.Sprintf("inferred|%s→%s", h["kind"], m["type"]))
+				continue
+			}
 			out["메시지"+suffix] = append(out["메시지"+suffix], fmt.Sprintf("observed|%s|1|%s|-~-|-|0|instant|len=%v", m["type"], route, m["len"]))
 		}
 		if s, ok := h["sysUs"]; ok {
-			out["시스템 콜"+suffix] = append(out["시스템 콜"+suffix], fmt.Sprintf("observed|syscall|1|→|-~-|%s|0|span|", us(s)))
+			if count > 1 {
+				out["합친 시스템 콜"+suffix] = append(out["합친 시스템 콜"+suffix], fmt.Sprintf("derived|syscall|%d|→|-~-|%s|0|group|", count, us(s)))
+			} else {
+				out["시스템 콜"+suffix] = append(out["시스템 콜"+suffix], fmt.Sprintf("observed|syscall|1|→|-~-|%s|0|span|", us(s)))
+			}
 		}
 		var walk func(n map[string]any, depth int)
 		walk = func(n map[string]any, depth int) {
@@ -316,4 +328,106 @@ func originalFacts(t *testing.T, data map[string]any, suffix string) map[string]
 func asList(v any) []any {
 	l, _ := v.([]any)
 	return l
+}
+
+// TestKernelGuessesAreInferred 함수는 커널 마디에 해석기가 이름으로 찾아 붙인 값이 추정 열쇠에만 있는지 봅니다(앞선 적재기 코드 검토 지적 5·9).
+//
+// calls·callsOf·guess와 guess인 마디의 층은 kernel-guess(inferred) 열쇠에, 위치(at)를 가진 커널 함수·프레임 장소는 kernel-guess 출처여야 합니다.
+// 검토자가 센 수(calls 316, guess 31, callsOf 30, 합 377)가 그대로 옮겨졌는지도 봅니다.
+func TestKernelGuessesAreInferred(t *testing.T) {
+	counts := map[string]int{}
+	for _, l := range loadAll(t) {
+		// Given: 커널 마디가 있는 run에서
+		r := l.result.Run
+		nature := map[string]string{}
+		for _, s := range r.Sources {
+			nature[s.ID] = s.Nature
+		}
+		for _, e := range r.Events {
+			if e.Source != srcFtrace {
+				continue
+			}
+			// When: 추정 값의 열쇠를 보면
+			for _, k := range kernelGuessKeys {
+				if _, ok := e.Attrs["journey"][k]; ok {
+					t.Errorf("%s 사건 %d: %s가 해석기 열쇠에 있음", l.key, e.ID, k)
+				}
+				if _, ok := e.Attrs[srcKGuess][k]; ok {
+					counts[k]++
+				}
+			}
+			// Then: guess인 마디의 층은 추정 열쇠에 있다
+			if e.Attrs[srcKGuess]["guess"] == true {
+				if _, ok := e.Attrs["journey"]["layer"]; ok {
+					t.Errorf("%s 사건 %d: guess인 마디의 층이 해석기 열쇠에 있음", l.key, e.ID)
+				}
+			}
+		}
+		for _, p := range r.Places {
+			if p.Kind == "frame" && p.Parent != nil && r.Places[*p.Parent].Parent != nil && r.Places[*r.Places[*p.Parent].Parent].Source == srcFtrace && nature[p.Source] != atlas.Inferred {
+				t.Errorf("%s 장소 %d(%s): 위치를 가진 커널 프레임의 출처 %s", l.key, p.ID, p.Name, p.Source)
+			}
+		}
+	}
+	if counts["calls"] != 316 || counts["guess"] != 31 || counts["callsOf"] != 30 {
+		t.Errorf("추정 열쇠의 수 %v, 기대 calls 316, guess 31, callsOf 30", counts)
+	}
+}
+
+// TestImportRejectsStageThatDisagrees 함수는 이동의 stage가 그 시각의 처리 단계와 다른 원본을 적재기가 받지 않는지 봅니다(앞선 적재기 코드 검토 지적 11).
+func TestImportRejectsStageThatDisagrees(t *testing.T) {
+	// Given: 고치지 않은 질의 하나와, 첫 이동의 stage를 다른 단계 이름으로 바꾼 사본
+	l := loadAll(t)[0]
+	data := l.q["data"].(map[string]any)
+	hop := data["hops"].([]any)[0].(map[string]any)
+	hop["stage"] = "커밋"
+
+	// When: 적재하면
+	_, err := Import(l.q, l.c3, version)
+
+	// Then: 멈춘다
+	if err == nil {
+		t.Fatal("stage가 다른 원본의 적재가 통과함")
+	}
+}
+
+// TestExportReturnsErrorsInsteadOfPanicking 함수는 형식 검사를 통과하지만 적재기가 만들지 않는 꼴의 run에서 되돌리기가 panic 대신 오류를 돌려주는지 봅니다(앞선 적재기 코드 검토 지적 10).
+func TestExportReturnsErrorsInsteadOfPanicking(t *testing.T) {
+	for _, c := range []struct {
+		name   string
+		mutate func(r *atlas.Run)
+	}{
+		{"질의 구간의 끝을 비움", func(r *atlas.Run) {
+			for i, e := range r.Events {
+				if e.Name == "query" {
+					r.Events[i].EndNS = nil
+				}
+			}
+		}},
+		{"시스템 콜을 길이 대신 시작으로", func(r *atlas.Run) {
+			for i, e := range r.Events {
+				if e.Source == srcStrace {
+					r.Events[i].StartNS, r.Events[i].DurNS = r.Events[i].DurNS, nil
+					return
+				}
+			}
+		}},
+	} {
+		// Given: 시스템 콜이 있는 run을 고쳐서
+		var l loaded
+		for _, x := range loadAll(t) {
+			if x.key == "kernel_insert" {
+				l = x
+			}
+		}
+		c.mutate(l.result.Run)
+
+		// When: 되돌리면
+		_, err := ExportC4(l.result.Run)
+
+		// Then: panic이 아니라 오류다
+		if err == nil {
+			t.Errorf("%s: 오류가 아님", c.name)
+		}
+	}
 }
