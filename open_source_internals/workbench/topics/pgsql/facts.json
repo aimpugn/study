@@ -23,5 +23,15 @@
     {"fact": "kill", "select": {"sources": ["txlab"], "names": ["kill"], "attrs": ["txlab.walWritten", "txlab.walSynced"]}},
     {"fact": "멈춤", "select": {"sources": ["txlab"], "names": ["pause"]}},
     {"fact": "힌트 변화", "select": {"sources": ["tx-hint"], "attrs": ["tx-hint.bit", "tx-hint.ctid", "tx-hint.table", "tx-hint.via"]}}
+  ],
+  "spring": [
+    {"fact": "요청", "select": {"sources": ["spring-mac"], "names": ["request"]}},
+    {"fact": "트리 마디", "select": {"sources": ["spring-jfr"], "kinds": ["span"], "attrs": ["spring-jfr.label", "spring-jfr.end"]}},
+    {"fact": "메시지", "select": {"sources": ["wire-mac"], "attrs": ["wire-mac.len", "wire-mac.text"]}},
+    {"fact": "기다림", "select": {"sources": ["spring-cont"], "names": ["wait"], "attrs": ["spring-cont.xid", "spring-cont.end"]}},
+    {"fact": "서버 기다림", "select": {"sources": ["recorder"], "names": ["xact_wait"]}},
+    {"fact": "막힘 관찰", "select": {"sources": ["txlab"], "names": ["blocked"]}},
+    {"fact": "JFR 잠듦", "select": {"sources": ["jfr"], "names": ["park"], "attrs": ["spring.under"]}},
+    {"fact": "결과 값", "select": {"sources": ["observe"], "names": ["capture"], "attrs": ["observe.label", "observe.pages", "spring.visible"]}}
   ]
 }

@@ -1,6 +1,6 @@
 // Command pgsql-atlas 는 pgsql 주제의 기존 기록을 공통 형식(atlas v0)으로 옮겨 파일로 씁니다.
 //
-// 지금은 gdb 단계 기록(E-05), 요청의 여정(concept-3·4), 트랜잭션 실험의 기록(concept-5~8)을 옮깁니다. 적재 결과는 다시 만들 수 있어 저장소에 넣지 않고,
+// gdb 단계 기록(E-05), 요청의 여정(concept-3·4), 트랜잭션 실험의 기록(concept-5~8), Spring 전파 실험의 기록(concept-9, E-03)을 옮깁니다. 적재 결과는 다시 만들 수 있어 저장소에 넣지 않고,
 // 기본으로 실습 폴더의 scripts/.lab-tmp/atlas/ 아래에 장면별로 씁니다(설계 메모 10).
 //
 //	cd open_source_internals/workbench && go run ./topics/pgsql/cmd/pgsql-atlas
@@ -18,13 +18,14 @@ import (
 	"study/open_source_internals/workbench/internal/atlas"
 	"study/open_source_internals/workbench/topics/pgsql/gdbtrace"
 	"study/open_source_internals/workbench/topics/pgsql/journey"
+	"study/open_source_internals/workbench/topics/pgsql/spring"
 	"study/open_source_internals/workbench/topics/pgsql/txlab"
 )
 
 // main 함수는 인자를 읽고 옮기기를 돌린 뒤, 실패하면 이유를 표준 오류에 쓰고 종료 코드 1로 끝냅니다.
 func main() {
 	lab := flag.String("lab", "../database/postgresql", "실습 폴더(workbench.json과 evidence/가 있는 곳)")
-	design := flag.String("design", "design", "화면 파일(concept-3~8.html)이 있는 폴더")
+	design := flag.String("design", "design", "화면 파일(concept-3~9)이 있는 폴더")
 	out := flag.String("out", "", "적재 결과를 쓸 폴더(비우면 <lab>/scripts/.lab-tmp/atlas)")
 	flag.Parse()
 	if flag.NArg() != 0 {
@@ -40,7 +41,7 @@ func main() {
 	}
 }
 
-// run 함수는 gdb 기록, 여정 질의, 트랜잭션 기록을 모두 옮기고 형식 검사를 통과한 것만 <out>/<run id>.json으로 씁니다.
+// run 함수는 gdb 기록, 여정 질의, 트랜잭션 기록, Spring 기록을 모두 옮기고 형식 검사를 통과한 것만 <out>/<run id>.json으로 씁니다.
 //
 // 기록 하나라도 적재나 형식 검사에 실패하면 쓰지 않고 그 오류를 돌려줍니다. 반쯤 쓴 결과를 남기지 않기 위해서입니다.
 func run(lab, design, out string) error {
@@ -155,6 +156,34 @@ func run(lab, design, out string) error {
 			if err := add(res.Run); err != nil {
 				return err
 			}
+		}
+	}
+
+	// Spring 전파 실험: concept-9의 RUNS(E-03과 값이 같아 한 번만 옮김, 재고 조사 2.1절)에서 기록 한 벌씩 옮깁니다.
+	html, err := os.ReadFile(filepath.Join(design, "concept-9-spring.html"))
+	if err != nil {
+		return err
+	}
+	springRuns, err := spring.ReadRuns(string(html))
+	if err != nil {
+		return fmt.Errorf("concept-9-spring.html: %w", err)
+	}
+	keys := make([]string, 0, len(springRuns))
+	for k := range springRuns {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		v, ok := springRuns[k].(map[string]any)
+		if !ok {
+			return fmt.Errorf("concept-9-spring.html: RUNS[%q]가 객체가 아님", k)
+		}
+		res, err := spring.Import(k, v, subject.SourceRoot)
+		if err != nil {
+			return err
+		}
+		if err := add(res.Run); err != nil {
+			return err
 		}
 	}
 
