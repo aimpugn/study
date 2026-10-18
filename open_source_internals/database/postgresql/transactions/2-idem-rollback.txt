@@ -1,0 +1,8 @@
+# 2-idem-rollback: 같은 멱등성 키로 두 번 결제하기, 첫 요청이 취소
+setup: CREATE TABLE payment(idem_key text PRIMARY KEY, amount int);
+watch: payment
+S1: BEGIN;
+S1: INSERT INTO payment VALUES ('k1', 100);
+S2: INSERT INTO payment VALUES ('k1', 100);
+S1: ROLLBACK;
+S1: SELECT ctid, xmin, xmax, idem_key, amount FROM payment;

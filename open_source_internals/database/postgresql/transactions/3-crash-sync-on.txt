@@ -1,0 +1,10 @@
+# 3-crash-sync-on: 동기 커밋의 응답을 받은 뒤 서버가 죽으면, 복구가 그 행을 되살리는가
+# kill은 S1의 백엔드에 SIGKILL을 보냅니다. postmaster가 나머지 프로세스를 모두 내리고 복구부터 다시 뜨므로, S2는 그 뒤에 접속합니다.
+setup: CREATE TABLE acct(id int PRIMARY KEY, owner text, balance int);
+setup: INSERT INTO acct VALUES (1, 'kim', 100);
+watch: acct
+S1: INSERT INTO acct VALUES (2, 'lee', 200);
+kill: S1
+S2: SELECT ctid, xmin, xmax, id, owner, balance FROM acct;
+S2: INSERT INTO acct VALUES (3, 'park', 300);
+S2: SELECT ctid, xmin, xmax, id, owner, balance FROM acct;

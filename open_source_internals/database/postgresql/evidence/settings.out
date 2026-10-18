@@ -1,0 +1,11 @@
+$ docker exec pg-lab psql -X -c "SELECT name, setting, unit FROM pg_settings WHERE name IN ('block_size', 'synchronous_commit', 'wal_level', 'wal_segment_size', 'wal_sync_method', 'wal_writer_delay') ORDER BY name;"
+        name        |  setting  | unit 
+--------------------+-----------+------
+ block_size         | 8192      | 
+ synchronous_commit | on        | 
+ wal_level          | replica   | 
+ wal_segment_size   | 16777216  | B
+ wal_sync_method    | fdatasync | 
+ wal_writer_delay   | 200       | ms
+(6 rows)
+

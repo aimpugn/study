@@ -1,0 +1,14 @@
+# 2-lost-update: 둘이 같은 잔액을 읽고, 앱이 계산한 값으로 각자 덮어쓰기
+setup: CREATE TABLE acct(id int PRIMARY KEY, owner text, balance int);
+setup: INSERT INTO acct VALUES (1, 'kim', 100);
+watch: acct
+S1: BEGIN;
+S1: SELECT ctid, xmin, xmax, id, balance FROM acct WHERE owner = 'kim';
+S2: BEGIN;
+S2: SELECT ctid, xmin, xmax, id, balance FROM acct WHERE owner = 'kim';
+# S1은 100에서 30을, S2는 100에서 50을 뺀 값을 앱에서 계산해 씁니다.
+S1: UPDATE acct SET balance = 70 WHERE owner = 'kim';
+S1: COMMIT;
+S2: UPDATE acct SET balance = 50 WHERE owner = 'kim';
+S2: COMMIT;
+S1: SELECT ctid, xmin, xmax, id, balance FROM acct WHERE owner = 'kim';

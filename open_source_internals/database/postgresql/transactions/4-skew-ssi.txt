@@ -1,0 +1,13 @@
+# 4-skew-ssi: 같은 일을 SERIALIZABLE로. 당직 수를 세는 SELECT는 순차 스캔이라 표 전체에 SIRead 락을 잡습니다.
+setup: CREATE TABLE doctors(name text PRIMARY KEY, on_call bool);
+setup: INSERT INTO doctors VALUES ('alice', true), ('bob', true);
+watch: doctors
+S1: BEGIN ISOLATION LEVEL SERIALIZABLE;
+S1: SELECT count(*) FROM doctors WHERE on_call;
+S2: BEGIN ISOLATION LEVEL SERIALIZABLE;
+S2: SELECT count(*) FROM doctors WHERE on_call;
+S1: UPDATE doctors SET on_call = false WHERE name = 'alice';
+S2: UPDATE doctors SET on_call = false WHERE name = 'bob';
+S1: COMMIT;
+S2: COMMIT;
+S1: SELECT ctid, xmin, xmax, name, on_call FROM doctors;

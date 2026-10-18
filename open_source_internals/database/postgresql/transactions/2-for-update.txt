@@ -1,0 +1,16 @@
+# 2-for-update: 읽을 때 FOR UPDATE로 잠그고, 계산한 값으로 쓰기
+setup: CREATE TABLE acct(id int PRIMARY KEY, owner text, balance int);
+setup: INSERT INTO acct VALUES (1, 'kim', 100);
+watch: acct
+S1: BEGIN;
+S1: SELECT ctid, xmin, xmax, id, balance FROM acct WHERE owner = 'kim' FOR UPDATE;
+S2: BEGIN;
+S2: SELECT ctid, xmin, xmax, id, balance FROM acct WHERE owner = 'kim' FOR UPDATE;
+# S2가 기다리는 동안 deadlock_timeout(1초)이 지나 교착 검사가 한 번 돌게 합니다.
+pause: 1500ms
+S1: UPDATE acct SET balance = 70 WHERE owner = 'kim';
+S1: COMMIT;
+# S2는 깨어나 받은 70에서 50을 뺀 값을 씁니다.
+S2: UPDATE acct SET balance = 20 WHERE owner = 'kim';
+S2: COMMIT;
+S1: SELECT ctid, xmin, xmax, id, balance FROM acct WHERE owner = 'kim';

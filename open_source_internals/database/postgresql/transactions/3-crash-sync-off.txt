@@ -1,0 +1,12 @@
+# 3-crash-sync-off: 비동기 커밋의 응답을 받고 WAL writer가 쓰기 전에 서버가 죽으면, 그 행을 잃는가
+# WAL writer의 주기를 10초로 늘려, 커밋에서 kill까지(1초 안팎) WAL writer가 쓰지 않게 합니다. 주기가 그 사이에 걸리면 이 실행은 조건이 깨진 것입니다.
+setup: CREATE TABLE acct(id int PRIMARY KEY, owner text, balance int);
+setup: INSERT INTO acct VALUES (1, 'kim', 100);
+setup: ALTER SYSTEM SET wal_writer_delay = '10s';
+watch: acct
+S1: SET synchronous_commit = off;
+S1: INSERT INTO acct VALUES (2, 'lee', 200);
+kill: S1
+S2: SELECT ctid, xmin, xmax, id, owner, balance FROM acct;
+S2: INSERT INTO acct VALUES (3, 'park', 300);
+S2: SELECT ctid, xmin, xmax, id, owner, balance FROM acct;

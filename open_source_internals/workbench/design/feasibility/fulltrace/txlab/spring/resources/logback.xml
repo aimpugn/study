@@ -1,0 +1,18 @@
+<!-- 실험 5 앱의 로그 설정입니다. 표준 출력은 지휘와의 약속(Lab.java)에만 쓰므로 로그는 표준 오류로 보냅니다.
+     트랜잭션 관리자와 풀은 DEBUG로 두어, 전파 판단("Participating in existing transaction" 등)을 Spring 스스로의 말로도 남깁니다.
+     시각은 마이크로초까지 씁니다(%micros, logback 1.3부터). JFR 메서드 추적이 예외로 지나가는 호출을 남기지 않아(WORK 실험 5),
+     그 빈자리를 이 로그의 시각으로 메우기 때문입니다. -->
+<configuration>
+  <appender name="ERR" class="ch.qos.logback.core.ConsoleAppender">
+    <target>System.err</target>
+    <encoder>
+      <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSS}%micros%d{XXX} [%thread] %-5level %logger - %msg%n</pattern>
+    </encoder>
+  </appender>
+  <logger name="org.springframework.transaction" level="DEBUG"/>
+  <logger name="org.springframework.jdbc.datasource" level="DEBUG"/>
+  <logger name="com.zaxxer.hikari" level="DEBUG"/>
+  <root level="INFO">
+    <appender-ref ref="ERR"/>
+  </root>
+</configuration>

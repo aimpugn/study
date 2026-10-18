@@ -1,0 +1,33 @@
+STOP 1 exec_simple_query src/backend/tcop/postgres.c:1014 query_string=0xaaab0674d8e8 "INSERT INTO t VALUES (4, 'd');"
+STOP 2 ExecInsert src/backend/executor/nodeModifyTable.c:857
+STOP 3 heap_insert src/backend/access/heap/heapam.c:2084 (char *) relation->rd_rel->relname.data=0xffff79df50cc "t"
+STOP 4 XLogInsert src/backend/access/transam/xloginsert.c:479 RmgrTable[rmid].rm_name=0xaaaadc93fc78 "Heap"
+STOP 5 CommitTransaction src/backend/access/transam/xact.c:2230
+STOP 6 RecordTransactionCommit src/backend/access/transam/xact.c:1317
+STOP 7 XLogInsert src/backend/access/transam/xloginsert.c:479 RmgrTable[rmid].rm_name=0xaaaadc93fc10 "Transaction"
+STOP 8 XLogFlush src/backend/access/transam/xlog.c:2784 record=24574792
+STOP 9 XLogWrite src/backend/access/transam/xlog.c:2320
+STOP 10 issue_xlog_fsync src/backend/access/transam/xlog.c:8748 fd=10
+STOP 11 pg_fdatasync src/backend/storage/file/fd.c:484 fd=10
+BT 0 pg_fdatasync src/backend/storage/file/fd.c:484
+BT 1 issue_xlog_fsync src/backend/access/transam/xlog.c:8781
+BT 2 XLogWrite src/backend/access/transam/xlog.c:2550
+BT 3 XLogFlush src/backend/access/transam/xlog.c:2903
+BT 4 RecordTransactionCommit src/backend/access/transam/xact.c:1502
+BT 5 CommitTransaction src/backend/access/transam/xact.c:2365
+BT 6 CommitTransactionCommandInternal src/backend/access/transam/xact.c:3202
+BT 7 CommitTransactionCommand src/backend/access/transam/xact.c:3163
+BT 8 finish_xact_command src/backend/tcop/postgres.c:2833
+BT 9 exec_simple_query src/backend/tcop/postgres.c:1298
+BT 10 PostgresMain src/backend/tcop/postgres.c:4770
+BT 11 BackendMain src/backend/tcop/backend_startup.c:124
+BT 12 postmaster_child_launch src/backend/postmaster/launch_backend.c:290
+BT 13 BackendStartup src/backend/postmaster/postmaster.c:3569
+BT 14 ServerLoop src/backend/postmaster/postmaster.c:1703
+BT 15 PostmasterMain src/backend/postmaster/postmaster.c:1401
+BT 16 main src/backend/main/main.c:227
+STOP 12 ReadyForQuery src/backend/tcop/dest.c:258
+END CommitTransaction=1 ExecInsert=1 ReadyForQuery=1 RecordTransactionCommit=1 XLogFlush=1 XLogInsert=2 XLogWrite=1 exec_simple_query=1 heap_insert=1 issue_xlog_fsync=1 pg_fdatasync=1
+--- psql
+INSERT 0 1
+INSERT 0 1

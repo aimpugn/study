@@ -1,0 +1,10 @@
+# 3-rollback: 넣고 바꾼 뒤 취소하면 페이지에 무엇이 남고, 다음 읽기는 그것을 어떻게 건너뛰는가
+# 결과를 보는 SELECT는 조건 없이 써서 모든 줄을 판정하게 합니다(조건이 기본 키면 인덱스 검색이 HOT 사슬의 줄만 판정함, 실험 2).
+setup: CREATE TABLE acct(id int PRIMARY KEY, owner text, balance int);
+setup: INSERT INTO acct VALUES (1, 'kim', 100);
+watch: acct
+S1: BEGIN;
+S1: INSERT INTO acct VALUES (2, 'lee', 200);
+S1: UPDATE acct SET balance = 50 WHERE owner = 'kim';
+S1: ROLLBACK;
+S2: SELECT ctid, xmin, xmax, id, owner, balance FROM acct;

@@ -1,0 +1,15 @@
+# run-trace.sh와 trace.py가 읽는 감시 목록입니다: "함수<TAB>gdb 식".
+# INSERT 한 문장이 자동 커밋될 때 WAL 기록과 flush가 어디서 일어나는지 봅니다.
+# 함수 이름과 인자 이름은 PostgreSQL 18.6 소스의 함수 서명에서 확인했습니다.
+exec_simple_query	query_string
+ExecInsert
+heap_insert	(char *) relation->rd_rel->relname.data
+XLogInsert	RmgrTable[rmid].rm_name
+CommitTransaction
+RecordTransactionCommit
+# xact.c 1498~1523행: synchronous_commit이 off보다 크면 XLogFlush, 아니면 XLogSetAsyncXactLSN으로 갈라집니다.
+XLogFlush	record
+XLogSetAsyncXactLSN	asyncXactLSN
+XLogWrite
+issue_xlog_fsync	fd
+pg_fdatasync	fd

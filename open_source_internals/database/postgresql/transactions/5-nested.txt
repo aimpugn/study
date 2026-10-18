@@ -1,0 +1,7 @@
+# 5-nested: 안쪽 @Transactional(NESTED)가 실패하면 저장점까지만 되돌아가고 바깥은 커밋된다
+# 앱: Outer.nested → Inner.nestedFails. 바깥은 1번 행을, 안쪽은 2번 행을 고칩니다.
+setup: CREATE TABLE acct(id int PRIMARY KEY, owner text, balance int);
+setup: INSERT INTO acct VALUES (1, 'kim', 100), (2, 'lee', 200);
+watch: acct
+spring: nested
+pool: 2

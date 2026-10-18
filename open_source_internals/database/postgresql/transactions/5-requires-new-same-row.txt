@@ -1,0 +1,7 @@
+# 5-requires-new-same-row: REQUIRES_NEW가 바깥이 잠근 같은 행을 고치면, 둘은 서로를 기다린다(서버는 교착으로 보지 못함)
+# 앱: Outer.requiresNewSameRow → Inner.requiresNewSameRow. 안쪽이 SET LOCAL lock_timeout = '3s'로 기다림을 묶습니다.
+setup: CREATE TABLE acct(id int PRIMARY KEY, owner text, balance int);
+setup: INSERT INTO acct VALUES (1, 'kim', 100), (2, 'lee', 200);
+watch: acct
+spring: requires-new-same-row
+pool: 2

@@ -1,0 +1,21 @@
+$ docker exec -e PGOPTIONS='-c enable_seqscan=off' pg-lab psql -X -c "EXPLAIN SELECT * FROM t WHERE id = 2;"
+                            QUERY PLAN                             
+-------------------------------------------------------------------
+ Index Scan using t_id_idx on t  (cost=0.13..8.15 rows=1 width=36)
+   Index Cond: (id = 2)
+(2 rows)
+
+$ docker exec pg-lab psql -X -c "CREATE EXTENSION IF NOT EXISTS pageinspect;" -c "SELECT root, level FROM bt_metap('t_id_idx');" -c "SELECT itemoffset, ctid, data FROM bt_page_items('t_id_idx', 1);"
+CREATE EXTENSION
+ root | level 
+------+-------
+    1 |     0
+(1 row)
+
+ itemoffset | ctid  |          data           
+------------+-------+-------------------------
+          1 | (0,1) | 01 00 00 00 00 00 00 00
+          2 | (0,2) | 02 00 00 00 00 00 00 00
+          3 | (0,3) | 03 00 00 00 00 00 00 00
+(3 rows)
+

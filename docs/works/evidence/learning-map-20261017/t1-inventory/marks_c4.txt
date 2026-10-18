@@ -1,0 +1,108 @@
+$  n=11  obj:11 len[min=7,max=7,sum=77]  | 모음 | 관찰 | G9
+$.key  n=11  str:11  | 값 | 이름 | C17
+$.label  n=11  str:11  | 값 | 이름 | C17
+$.typed  n=11  str:11  | 값 | 이름 | C17
+$.x  n=11  bool:11  | 값 | 이름 | C17
+$.data  n=11  obj:11 len[min=6,max=8,sum=72]  | 모음 | 관찰 | G9
+$.data.endUs  n=11  int:11  | 시각 | 도출 | C20
+$.data.hops  n=11  list:11 len[min=7,max=341,sum=1087]  | 모음 | 관찰 | G9
+$.data.hops[]  n=1087  obj:1087 len[min=12,max=16,sum=14388]  | 사건 | 관찰 | G8
+$.data.hops[].n  n=1087  int:1087  | 연결 | 도출 | C6
+$.data.hops[].pid  n=1087  int:1087  | 장소 | 관찰 | G4
+$.data.hops[].stage  n=1087  str:1087  | 값 | 도출 | C3
+$.data.hops[].proc  n=1087  str:1087  | 장소 | 도출 | C8
+$.data.hops[].from  n=1087  str:1087  | 장소 | 도출 | C7
+$.data.hops[].to  n=1087  str:1087  | 장소 | 도출 | C7
+$.data.hops[].kind  n=1087  str:1087  | 사건 | 이름 | C2
+$.data.hops[].count  n=1087  int:1087  | 값 | 도출 | C1+G9
+$.data.hops[].bytes  n=171  int:171  | 값 | 관찰 | G9
+$.data.hops[].msgs  n=57  list:57 len[min=1,max=6,sum=84]  | 모음 | 관찰 | G9
+$.data.hops[].msgs[]  n=84  obj:84 len[min=2,max=4,sum=250]  | 사건 | 관찰 | G8
+$.data.hops[].msgs[].type  n=84  str:84  | 사건 | 관찰 | G6
+$.data.hops[].msgs[].len  n=84  int:84  | 값 | 관찰 | G9
+$.data.hops[].msgs[].text  n=79  str:79  | 값 | 관찰 | G9
+$.data.hops[].t0  n=1087  int:180,float:907  | 시각 | 관찰 | G3
+$.data.hops[].t1  n=1087  int:180,float:907  | 시각 | 도출 | C1+G3
+$.data.hops[].stack  n=1087  list:1082,null:5 len[min=3,max=47,sum=26493]  | 장소 | 관찰 | G2
+$.data.hops[].stack[]  n=26493  obj:26493 len[min=2,max=2,sum=52986]  | 장소 | 관찰 | G2
+$.data.hops[].stack[].fn  n=26493  str:26493  | 장소 | 관찰 | G2
+$.data.hops[].stack[].at  n=26493  str:26493  | 장소 | 관찰 | G2
+$.data.hops[].site  n=1087  str:1087  | 장소 | 관찰 | G4
+$.data.hops[].catalog  n=883  bool:883  | 값 | 도출 | C3
+$.data.hops[].files  n=155  list:155 len[min=1,max=1,sum=155]  | 장소 | 관찰 | G4
+$.data.hops[].files[]  n=155  str:155  | 장소 | 관찰 | G4
+$.data.pid  n=11  int:11  | 장소 | 관찰 | G4
+$.data.query  n=11  str:11  | 값 | 관찰 | C19
+$.data.src  n=11  obj:11 len[min=38,max=359,sum=2039] (dynamic keys)  | 발췌 | 관찰 | G1
+$.data.src.{*}  n=2039  obj:2039 len[min=2,max=2,sum=4078]  | 발췌 | 관찰 | G1
+$.data.src.{*}.from  n=2039  int:2039  | 발췌 | 관찰 | G1
+$.data.src.{*}.lines  n=2039  list:2039 len[min=13,max=21,sum=42797]  | 발췌 | 관찰 | G1
+$.data.src.{*}.lines[]  n=42797  str:42797  | 발췌 | 관찰 | G1
+$.data.stages  n=11  list:11 len[min=6,max=7,sum=76]  | 모음 | 관찰 | G9
+$.data.stages[]  n=76  obj:76 len[min=2,max=5,sum=344]  | 사건 | 도출 | C5
+$.data.stages[].name  n=76  str:76  | 이름 | 도출 | C4
+$.data.stages[].t0  n=76  int:11,float:65  | 시각 | 관찰 | G3
+$.data.stages[].fn  n=64  str:64  | 장소 | 관찰 | G4
+$.data.stages[].caller  n=64  str:64  | 장소 | 관찰 | G4
+$.data.stages[].at  n=64  str:64  | 장소 | 관찰 | G4
+$.procs  n=11  obj:11 len[min=7,max=7,sum=77]  | 장소 | 관찰 | C16
+$.procs.io_worker  n=11  list:11 len[min=3,max=3,sum=33]  | 장소 | 관찰 | C16
+$.procs.io_worker[]  n=33  int:33  | 장소 | 관찰 | C16
+$.procs.walwriter  n=11  list:11 len[min=1,max=1,sum=11]  | 장소 | 관찰 | C16
+$.procs.walwriter[]  n=11  int:11  | 장소 | 관찰 | C16
+$.procs.checkpointer  n=11  list:11 len[min=1,max=1,sum=11]  | 장소 | 관찰 | C16
+$.procs.checkpointer[]  n=11  int:11  | 장소 | 관찰 | C16
+$.procs.bgwriter  n=11  list:11 len[min=1,max=1,sum=11]  | 장소 | 관찰 | C16
+$.procs.bgwriter[]  n=11  int:11  | 장소 | 관찰 | C16
+$.procs.autovacuum  n=11  list:11 len[min=1,max=1,sum=11]  | 장소 | 관찰 | C16
+$.procs.autovacuum[]  n=11  int:11  | 장소 | 관찰 | C16
+$.procs.logrep  n=11  list:11 len[min=1,max=1,sum=11]  | 장소 | 관찰 | C16
+$.procs.logrep[]  n=11  int:11  | 장소 | 관찰 | C16
+$.procs.postmaster  n=11  list:11 len[min=1,max=1,sum=11]  | 장소 | 관찰 | C16
+$.procs.postmaster[]  n=11  int:11  | 장소 | 관찰 | C16
+$.procsGuess  n=11  bool:11  | 출처 | 도출 | C15
+$.data.hops[].msgs[].cut  n=2  bool:2  | 연결 | 도출 | C9
+$.data.hops[].msgs[].cont  n=1  bool:1  | 연결 | 도출 | C9
+$.data.hops[].sysUs  n=71  int:71  | 시각 | 관찰 | G3
+$.data.hops[].kernel  n=7  list:7 len[min=1,max=2,sum=8]  | 모음 | 관찰 | C14
+$.data.hops[].kernel[]  n=8  obj:8 len[min=5,max=5,sum=40]  | 사건 | 관찰 | C14
+$.data.hops[].kernel[].fn  n=8  str:8  | 장소 | 관찰 | G4
+$.data.hops[].kernel[].us  n=8  float:8  | 시각 | 관찰 | G3
+$.data.hops[].kernel[].layer  n=8  str:8  | 이름 | 도출 | C12
+$.data.hops[].kernel[].at  n=8  str:8  | 장소 | 관찰 | G4
+$.data.hops[].kernel[].kids  n=8  list:8 len[min=2,max=3,sum=21]  | 연결 | 관찰 | C13
+$.data.hops[].kernel[].kids[]  n=21  obj:21 len[min=4,max=6,sum=110]  | 사건 | 관찰 | C13b
+$.data.hops[].kernel[].kids[].fn  n=21  str:21  | 장소 | 관찰 | G4
+$.data.hops[].kernel[].kids[].us  n=21  float:21  | 시각 | 관찰 | G3
+$.data.hops[].kernel[].kids[].layer  n=21  str:21  | 이름 | 도출 | C12
+$.data.hops[].kernel[].kids[].at  n=21  str:21  | 장소 | 관찰 | G4
+$.data.hops[].kernel[].kids[].calls  n=5  list:5 len[min=1,max=1,sum=5]  | 발췌 | 도출 | C10
+$.data.hops[].kernel[].kids[].calls[]  n=5  list:5 len[min=4,max=4,sum=20]  | 발췌 | 도출 | C10
+$.data.hops[].kernel[].kids[].calls[][]  n=20  obj:20 len[min=3,max=3,sum=60]  | 발췌 | 도출 | C10
+$.data.hops[].kernel[].kids[].calls[][].fn  n=20  str:20  | 발췌 | 도출 | C10
+$.data.hops[].kernel[].kids[].calls[][].at  n=20  str:20  | 발췌 | 도출 | C10
+$.data.hops[].kernel[].kids[].calls[][].text  n=20  str:20  | 발췌 | 도출 | C10
+$.data.hops[].kernel[].kids[].hidden  n=13  int:13  | 출처 | 도출 | C11
+$.data.hops[].kernel[].kids[].kids  n=8  list:8 len[min=1,max=1,sum=8]  | 연결 | 관찰 | C13
+$.data.hops[].kernel[].kids[]{2+}  n=529  obj:529 (merged 16 levels)  | 모음 | 관찰 | C13b
+$.data.hops[].kernel[].kids[]{2+}.fn  n=529  str:529 (merged 16 levels)  | 장소 | 관찰 | G4
+$.data.hops[].kernel[].kids[]{2+}.us  n=529  float:509,int:20 (merged 16 levels)  | 시각 | 관찰 | G3
+$.data.hops[].kernel[].kids[]{2+}.layer  n=529  str:529 (merged 16 levels)  | 이름 | 도출 | C12
+$.data.hops[].kernel[].kids[]{2+}.at  n=498  str:498 (merged 16 levels)  | 장소 | 관찰 | G4
+$.data.hops[].kernel[].kids[]{2+}.calls  n=311  list:311 (merged 16 levels)  | 발췌 | 도출 | C10
+$.data.hops[].kernel[].kids[]{2+}.calls[]  n=366  list:366 (merged 16 levels)  | 발췌 | 도출 | C10
+$.data.hops[].kernel[].kids[]{2+}.calls[][]  n=600  obj:600 (merged 16 levels)  | 발췌 | 도출 | C10
+$.data.hops[].kernel[].kids[]{2+}.calls[][].fn  n=600  str:600 (merged 16 levels)  | 발췌 | 도출 | C10
+$.data.hops[].kernel[].kids[]{2+}.calls[][].at  n=600  str:600 (merged 16 levels)  | 발췌 | 도출 | C10
+$.data.hops[].kernel[].kids[]{2+}.calls[][].text  n=600  str:600 (merged 16 levels)  | 발췌 | 도출 | C10
+$.data.hops[].kernel[].kids[]{2+}.hidden  n=403  int:403 (merged 16 levels)  | 출처 | 도출 | C11
+$.data.hops[].kernel[].kids[]{2+}.kids  n=368  list:368 (merged 15 levels)  | 연결 | 관찰 | C13
+$.data.hops[].kernel[].kids[]{2+}.guess  n=31  bool:31 (merged 8 levels)  | 출처 | 도출 | C11
+$.data.hops[].kernel[].kids[]{2+}.callsOf  n=30  int:30 (merged 2 levels)  | 발췌 | 도출 | C10
+$.data.kernelPid  n=3  int:3  | 장소 | 관찰 | C18
+$.data.ksrc  n=3  obj:3 len[min=227,max=249,sum=708] (dynamic keys)  | 발췌 | 관찰 | G1
+$.data.ksrc.{*}  n=708  obj:708 len[min=2,max=2,sum=1416]  | 발췌 | 관찰 | G1
+$.data.ksrc.{*}.from  n=708  int:708  | 발췌 | 관찰 | G1
+$.data.ksrc.{*}.lines  n=708  list:708 len[min=4,max=160,sum=36813]  | 발췌 | 관찰 | G1
+$.data.ksrc.{*}.lines[]  n=36813  str:36813  | 발췌 | 관찰 | G1
+# role x provenance line counts: {('장소', '관찰'): 34, ('발췌', '도출'): 13, ('발췌', '관찰'): 10, ('모음', '관찰'): 7, ('시각', '관찰'): 6, ('사건', '관찰'): 5, ('값', '이름'): 4, ('값', '관찰'): 4, ('이름', '도출'): 4, ('출처', '도출'): 4, ('연결', '도출'): 3, ('값', '도출'): 3, ('장소', '도출'): 3, ('연결', '관찰'): 3, ('시각', '도출'): 2, ('사건', '이름'): 1, ('사건', '도출'): 1}

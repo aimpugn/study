@@ -1,0 +1,59 @@
+$  n=1  obj:1 len[min=10,max=10,sum=10]  | 모음 | 관찰 | G9
+$.subjectId  n=1  str:1  | 값 | 이름 | X5
+$.subjectTitle  n=1  str:1  | 값 | 이름 | X5
+$.sourceRoot  n=1  str:1  | 값 | 이름 | X5
+$.sourceNotice  n=1  str:1  | 값 | 이름 | X5
+$.lanes  n=1  list:1 len[min=14,max=14,sum=14]  | 이름 | 도출 | X4
+$.lanes[]  n=14  obj:14 len[min=2,max=2,sum=28]  | 이름 | 도출 | X4
+$.lanes[].index  n=14  int:14  | 이름 | 도출 | X4
+$.lanes[].label  n=14  str:14  | 이름 | 도출 | X4
+$.meta  n=1  obj:1 len[min=5,max=5,sum=5]  | 출처 | 이름 | X7
+$.meta.sql  n=1  str:1  | 값 | 도출 | X6
+$.meta.watchId  n=1  str:1  | 출처 | 이름 | X7
+$.meta.watchLabel  n=1  str:1  | 출처 | 이름 | X7
+$.meta.origin  n=1  str:1  | 출처 | 이름 | X7
+$.meta.guide  n=1  str:1  | 출처 | 이름 | X7
+$.steps  n=1  list:1 len[min=27,max=27,sum=27]  | 모음 | 관찰 | G9
+$.steps[]  n=27  obj:27 len[min=2,max=4,sum=65]  | 사건 | 관찰 | G8
+$.steps[].seq  n=27  int:27  | 연결 | 관찰 | X8
+$.steps[].place  n=27  obj:27 len[min=5,max=5,sum=135]  | 장소 | 관찰 | X12
+$.steps[].place.function  n=27  str:27  | 장소 | 관찰 | G4
+$.steps[].place.loc  n=27  obj:27 len[min=2,max=2,sum=54]  | 장소 | 관찰 | X10
+$.steps[].place.loc.path  n=27  str:27  | 장소 | 관찰 | X10
+$.steps[].place.loc.line  n=27  int:27  | 장소 | 관찰 | X10
+$.steps[].place.layer  n=27  str:27  | 이름 | 도출 | X1
+$.steps[].place.lane  n=27  int:27  | 이름 | 도출 | X1
+$.steps[].place.window  n=27  obj:27 len[min=2,max=2,sum=54]  | 발췌 | 도출 | X2
+$.steps[].place.window.defLine  n=27  int:27  | 발췌 | 도출 | X2
+$.steps[].place.window.ranges  n=27  list:27 len[min=1,max=1,sum=27]  | 발췌 | 도출 | X2
+$.steps[].place.window.ranges[]  n=27  obj:27 len[min=2,max=2,sum=54]  | 발췌 | 도출 | X2
+$.steps[].place.window.ranges[].from  n=27  int:27  | 발췌 | 도출 | X2
+$.steps[].place.window.ranges[].to  n=27  int:27  | 발췌 | 도출 | X2
+$.steps[].values  n=10  list:10 len[min=1,max=2,sum=11]  | 모음 | 관찰 | G9
+$.steps[].values[]  n=11  obj:11 len[min=2,max=2,sum=22]  | 사건 | 관찰 | G8
+$.steps[].values[].expr  n=11  str:11  | 값 | 이름 | X11
+$.steps[].values[].text  n=11  str:11  | 값 | 관찰 | G9
+$.steps[].stack  n=1  list:1 len[min=29,max=29,sum=29]  | 장소 | 관찰 | G2
+$.steps[].stack[]  n=29  obj:29 len[min=5,max=5,sum=145]  | 장소 | 관찰 | G2
+$.steps[].stack[].function  n=29  str:29  | 장소 | 관찰 | G4
+$.steps[].stack[].loc  n=29  obj:29 len[min=2,max=2,sum=58]  | 장소 | 관찰 | X10
+$.steps[].stack[].loc.path  n=29  str:29  | 장소 | 관찰 | X10
+$.steps[].stack[].loc.line  n=29  int:29  | 장소 | 관찰 | X10
+$.steps[].stack[].layer  n=29  str:29  | 이름 | 도출 | X1
+$.steps[].stack[].lane  n=29  int:29  | 이름 | 도출 | X1
+$.steps[].stack[].window  n=29  obj:29 len[min=2,max=2,sum=58]  | 발췌 | 도출 | X2
+$.steps[].stack[].window.defLine  n=29  int:29  | 발췌 | 도출 | X2
+$.steps[].stack[].window.ranges  n=29  list:29 len[min=1,max=2,sum=44]  | 발췌 | 도출 | X2
+$.steps[].stack[].window.ranges[]  n=44  obj:44 len[min=2,max=2,sum=88]  | 발췌 | 도출 | X2
+$.steps[].stack[].window.ranges[].from  n=44  int:44  | 발췌 | 도출 | X2
+$.steps[].stack[].window.ranges[].to  n=44  int:44  | 발췌 | 도출 | X2
+$.counts  n=1  list:1 len[min=20,max=20,sum=20]  | 모음 | 관찰 | X9
+$.counts[]  n=20  obj:20 len[min=2,max=2,sum=40]  | 값 | 관찰 | X9
+$.counts[].function  n=20  str:20  | 장소 | 관찰 | X9a
+$.counts[].hits  n=20  int:20  | 값 | 관찰 | X9
+$.output  n=1  list:1 len[min=2,max=2,sum=2]  | 모음 | 관찰 | X13
+$.output[]  n=2  str:2  | 값 | 관찰 | X13
+$.files  n=1  obj:1 len[min=20,max=20,sum=20] (dynamic keys)  | 발췌 | 관찰 | X3
+$.files.{*}  n=20  obj:20 len[min=23,max=187,sum=1576] (dynamic keys)  | 발췌 | 관찰 | X3
+$.files.{*}.{*}  n=1576  str:1576  | 발췌 | 관찰 | X3
+# role x provenance line counts: {('장소', '관찰'): 12, ('발췌', '도출'): 12, ('이름', '도출'): 8, ('모음', '관찰'): 5, ('값', '이름'): 5, ('출처', '이름'): 5, ('값', '관찰'): 4, ('발췌', '관찰'): 3, ('사건', '관찰'): 2, ('값', '도출'): 1, ('연결', '관찰'): 1}

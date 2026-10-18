@@ -1,0 +1,13 @@
+# 4-skew-ssi-row: SERIALIZABLE에서 서로 상대 의사의 행 하나만 기본 키로 읽고 자기 행을 바꾸기. SIRead 락이 행 단위입니다.
+setup: CREATE TABLE doctors(name text PRIMARY KEY, on_call bool);
+setup: INSERT INTO doctors VALUES ('alice', true), ('bob', true);
+watch: doctors
+S1: BEGIN ISOLATION LEVEL SERIALIZABLE;
+S1: SELECT on_call FROM doctors WHERE name = 'bob';
+S2: BEGIN ISOLATION LEVEL SERIALIZABLE;
+S2: SELECT on_call FROM doctors WHERE name = 'alice';
+S1: UPDATE doctors SET on_call = false WHERE name = 'alice';
+S2: UPDATE doctors SET on_call = false WHERE name = 'bob';
+S1: COMMIT;
+S2: COMMIT;
+S1: SELECT ctid, xmin, xmax, name, on_call FROM doctors;

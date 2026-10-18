@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>오픈소스 내부 작업대</title>
+<style>
+/* 배치: 디버거처럼 왼쪽은 실행 흐름(단계와 층), 오른쪽은 멈춘 줄을 강조한 소스. 좁은 화면에서는 위아래로 쌓습니다. */
+:root {
+  --bg: #f3f5f8;
+  --panel: #ffffff;
+  --fg: #1b222b;
+  --muted: #586374;
+  --rule: #dce1e8;
+  --accent: #9a4d00;
+  --current: #fff0c2;
+  --current-edge: #d18a00;
+  --def: #e6edf9;
+  --dot: #7a879a;
+  --path: #b8c2d0;
+  --focus: #2f62b8;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
+  --font-code: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --row: 30px;
+  --lane: 22px;
+  --seq: 36px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101419; --panel: #171c23; --fg: #e2e7ee; --muted: #9ba6b5; --rule: #29313b;
+    --accent: #f2b250; --current: #3b2e10; --current-edge: #e0a033; --def: #1b2740;
+    --dot: #8a98ad; --path: #3a4554; --focus: #7aa6f0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101419; --panel: #171c23; --fg: #e2e7ee; --muted: #9ba6b5; --rule: #29313b;
+  --accent: #f2b250; --current: #3b2e10; --current-edge: #e0a033; --def: #1b2740;
+  --dot: #8a98ad; --path: #3a4554; --focus: #7aa6f0; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.55 var(--font-ui);
+  padding-inline: 16px;
+}
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+code, pre, .code { font-family: var(--font-code); }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+h1 { font-size: 1.15rem; font-weight: 650; }
+h2 { font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+h3 { font-size: 0.85rem; font-weight: 600; margin-block: 14px 6px; }
+.hint { color: var(--muted); font-size: 0.82rem; margin: 4px 0 8px; max-width: 65ch; }
+
+.app { display: flex; flex-direction: column; min-height: 100dvh; padding-block: 12px; gap: 12px; }
+
+/* 위 막대: 제목, 실행 양식, SQL과 단계 이동 */
+.top { display: grid; gap: 10px; }
+.title-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.origin { margin: 0; color: var(--muted); font-size: 0.82rem; }
+.run-form { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: end; }
+.field { display: grid; gap: 3px; font-size: 0.78rem; color: var(--muted); }
+.field.grow { flex: 1 1 260px; min-width: 0; }
+input, select, button { font: inherit; color: var(--fg); }
+input, select {
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; min-width: 0; width: 100%;
+}
+input { font-family: var(--font-code); }
+button {
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 12px; cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--dot); }
+button:disabled { opacity: 0.5; cursor: default; }
+button.primary { background: var(--fg); color: var(--panel); border-color: var(--fg); }
+.examples, .status { flex-basis: 100%; margin: 0; font-size: 0.8rem; color: var(--muted); }
+.examples button { font-family: var(--font-code); font-size: 0.78rem; padding: 2px 8px; margin: 2px 4px 2px 0; }
+.status code { background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: 0 4px; user-select: all; }
+.message { margin: 0; padding: 8px 10px; border: 1px solid var(--current-edge); border-radius: 6px; background: var(--current); }
+
+.summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.sql { font-size: 0.95rem; overflow-wrap: anywhere; min-width: 0; }
+.stepper { display: flex; align-items: center; gap: 8px; }
+.position { font-variant-numeric: tabular-nums; min-width: 9ch; text-align: center; color: var(--muted); }
+
+/* 두 창: 넓은 화면에서는 나란히 두고 각자 스크롤합니다. */
+.main { display: grid; gap: 12px; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); flex: 1; min-height: 0; }
+.pane { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 12px; min-width: 0; min-height: 0; }
+.flow { display: flex; flex-direction: column; }
+.code-pane { display: flex; flex-direction: column; }
+@media (min-width: 900px) {
+  .app { height: 100dvh; }
+  .flow, .code-pane { overflow: hidden; }
+  .steps { flex: 1; min-height: 120px; }
+  .code { flex: 1; min-height: 160px; }
+  .facts { max-height: 34%; overflow: auto; }
+}
+@media (max-width: 899px) {
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .steps { max-height: 46dvh; }
+  .code { max-height: 62dvh; }
+}
+
+/* 세로줄 범례: 번호와 층 이름 */
+.lane-legend { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 0.75rem; color: var(--muted); }
+.lane-legend li { display: flex; gap: 4px; align-items: baseline; }
+.lane-legend b { font-variant-numeric: tabular-nums; color: var(--fg); font-weight: 600; }
+
+/* 단계 목록: 행 높이가 고정이라 뒤의 SVG 경로가 행과 맞습니다. */
+.steps { position: relative; overflow: auto; border-top: 1px solid var(--rule); }
+.steps svg { position: absolute; top: 0; left: 0; pointer-events: none; }
+.steps svg polyline { fill: none; stroke: var(--path); stroke-width: 1.5; }
+.step {
+  position: relative; display: grid; grid-template-columns: var(--seq) var(--track) minmax(0, 1fr); align-items: center;
+  height: var(--row); width: 100%; padding: 0 6px 0 0; border: 0; border-radius: 0; background: transparent; text-align: left;
+}
+.step:hover { background: color-mix(in srgb, var(--def) 60%, transparent); }
+.step[aria-selected="true"] { background: var(--current); box-shadow: inset 3px 0 0 var(--current-edge); }
+.step .seq { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.75rem; text-align: right; padding-right: 6px; }
+.step .track { position: relative; height: 100%; }
+.step .dot {
+  position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--dot);
+}
+.step[aria-selected="true"] .dot { background: var(--accent); width: 12px; height: 12px; margin: -6px 0 0 -6px; }
+.step .name { font-family: var(--font-code); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.extra { margin-top: 10px; font-size: 0.82rem; }
+.extra summary { cursor: pointer; color: var(--muted); }
+.counts td { padding: 1px 10px 1px 0; font-variant-numeric: tabular-nums; }
+.counts td:first-child { font-family: var(--font-code); }
+.output { margin: 0; padding: 8px; background: var(--bg); border-radius: 6px; overflow-x: auto; font-size: 0.8rem; }
+
+/* 소스 창 */
+.code-head { display: grid; gap: 2px; margin-bottom: 8px; }
+.code-head h2 { text-transform: none; letter-spacing: 0; font-size: 1rem; color: var(--fg); font-family: var(--font-code); overflow-wrap: anywhere; }
+.where { margin: 0; font-size: 0.82rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.where code { overflow-wrap: anywhere; }
+.layer { border: 1px solid var(--rule); border-radius: 999px; padding: 0 8px; font-size: 0.75rem; }
+.frame-note { margin: 4px 0 0; font-size: 0.82rem; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.frame-note button { font-size: 0.78rem; padding: 2px 8px; }
+
+.code { overflow: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--bg); font-size: 0.8rem; line-height: 1.5; tab-size: 4; }
+.code .ln { display: grid; grid-template-columns: 5.2em minmax(0, 1fr); white-space: pre; }
+.code .no { color: var(--muted); text-align: right; padding-right: 12px; user-select: none; font-variant-numeric: tabular-nums; border-right: 1px solid var(--rule); }
+.code .tx { padding-left: 10px; padding-right: 12px; }
+.code .ln.def { background: var(--def); }
+.code .ln.current { background: var(--current); box-shadow: inset 3px 0 0 var(--current-edge); }
+.code .ln.current .no { color: var(--accent); font-weight: 700; }
+.code .gap { color: var(--muted); font-family: var(--font-ui); font-size: 0.75rem; padding: 3px 10px 3px 5.2em; border-block: 1px dashed var(--rule); }
+.code .empty { padding: 12px; color: var(--muted); font-family: var(--font-ui); }
+
+.facts { margin-top: 4px; }
+.values { border-collapse: collapse; font-size: 0.8rem; width: 100%; }
+.values td { border-top: 1px solid var(--rule); padding: 4px 8px 4px 0; vertical-align: top; overflow-wrap: anywhere; }
+.values td:first-child { font-family: var(--font-code); color: var(--muted); width: 45%; }
+.values td:last-child { font-family: var(--font-code); }
+.stack { list-style: none; margin: 0; padding: 0; font-size: 0.78rem; }
+.stack button {
+  display: grid; grid-template-columns: 2.4em minmax(0, 1fr); gap: 6px; width: 100%; text-align: left; border: 0; border-top: 1px solid var(--rule);
+  border-radius: 0; padding: 3px 4px; background: transparent;
+}
+.stack button[aria-current="true"] { background: var(--current); }
+.stack .d { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.stack .f { font-family: var(--font-code); overflow-wrap: anywhere; }
+.stack .f small { color: var(--muted); }
+
+.foot { color: var(--muted); font-size: 0.75rem; }
+.foot p { margin: 0; max-width: 100ch; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .step, .code .ln { transition: background-color 120ms ease; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="title-row">
+      <h1 id="title">오픈소스 내부 작업대</h1>
+      <p id="origin" class="origin"></p>
+    </div>
+
+    <form id="run-form" class="run-form" hidden>
+      <label class="field">
+        <span>감시 목록</span>
+        <select id="watch"></select>
+      </label>
+      <label class="field grow">
+        <span>SQL 한 문장</span>
+        <input id="sql" type="text" autocomplete="off" spellcheck="false" maxlength="1000">
+      </label>
+      <button id="run" type="submit" class="primary">실행하고 추적</button>
+      <p id="examples" class="examples"></p>
+      <p class="status">SQL은 두 번 실행됩니다. 첫 번째는 캐시를 데우는 실행이고, 기록은 두 번째 실행의 것입니다. INSERT와 UPDATE는 테이블을 두 번 바꿉니다. 끝에 ';'가 있는 한 문장만 받습니다.</p>
+      <p id="lab-status" class="status" role="status"></p>
+    </form>
+
+    <p id="message" class="message" role="alert" hidden></p>
+
+    <div id="summary" class="summary" hidden>
+      <code id="summary-sql" class="sql"></code>
+      <nav class="stepper" aria-label="단계 이동">
+        <button id="prev" type="button" aria-label="이전 단계">이전</button>
+        <span id="position" class="position" aria-live="polite"></span>
+        <button id="next" type="button" aria-label="다음 단계">다음</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="main" hidden>
+    <section class="pane flow" aria-labelledby="flow-title">
+      <h2 id="flow-title">실행 흐름</h2>
+      <p class="hint">점 하나가 gdb가 멈춘 단계 하나입니다. 가로 위치는 그 함수가 있는 소스 디렉터리의 층입니다. 층 이름은 작업대가 디렉터리를 보고 붙인 분류입니다.</p>
+      <ol id="lane-legend" class="lane-legend"></ol>
+      <div id="steps" class="steps" role="listbox" aria-label="실행 단계" tabindex="0"></div>
+      <details class="extra">
+        <summary>함수별 멈춘 횟수(END 줄)</summary>
+        <p class="hint">한 번도 멈추지 않은 함수는 이 목록에 없습니다. 목록에 없으면 0회입니다.</p>
+        <table id="counts" class="counts"></table>
+      </details>
+      <details class="extra" id="output-box">
+        <summary>psql 출력</summary>
+        <p class="hint">캐시를 데우는 실행과 추적한 실행의 결과가 차례로 나옵니다.</p>
+        <pre id="output" class="output"></pre>
+      </details>
+    </section>
+
+    <section id="code-pane" class="pane code-pane" aria-labelledby="code-title">
+      <div class="code-head">
+        <h2 id="code-title"><span id="fn"></span></h2>
+        <p class="where"><code id="loc"></code> <span id="layer" class="layer"></span></p>
+        <p id="frame-note" class="frame-note" hidden>
+          <span id="frame-text"></span>
+          <button id="frame-back" type="button">멈춘 자리로 돌아가기</button>
+        </p>
+      </div>
+      <div id="code" class="code" tabindex="0" aria-label="소스 코드"></div>
+
+      <div class="facts">
+        <section aria-labelledby="values-title">
+          <h3 id="values-title">멈춘 순간 gdb가 읽은 값</h3>
+          <table id="values" class="values"></table>
+          <p id="no-values" class="hint" hidden>이 단계는 감시 목록에 값을 읽을 식이 없습니다.</p>
+        </section>
+        <section id="stack-box" aria-labelledby="stack-title" hidden>
+          <h3 id="stack-title">호출 스택</h3>
+          <p class="hint">0번 칸이 멈춘 함수이고, 아래로 갈수록 그 함수를 부른 바깥 함수입니다. 칸을 누르면 그 위치의 소스를 봅니다.</p>
+          <ol id="stack" class="stack"></ol>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p id="provenance"></p>
+  </footer>
+</div>
+<script id="bundle" type="application/json">{"subjectId":"postgresql","subjectTitle":"PostgreSQL 18.6","sourceRoot":"/src/postgresql-18.6","sourceNotice":"소스 발췌: PostgreSQL 18.6, 공식 배포 tarball(체크섬 확인)을 빌드한 이미지 pg-internals:18.6의 /src/postgresql-18.6. Portions Copyright (c) 1996-2025, PostgreSQL Global Development Group; Portions Copyright (c) 1994, Regents of the University of California. PostgreSQL License에 따라 사용합니다.","lanes":[{"index":0,"label":"프로세스 시작"},{"index":1,"label":"명령 처리"},{"index":2,"label":"구문 분석"},{"index":3,"label":"실행 계획"},{"index":4,"label":"실행기"},{"index":5,"label":"테이블 접근"},{"index":6,"label":"인덱스 접근"},{"index":7,"label":"결과 전송"},{"index":8,"label":"공통 행 처리"},{"index":9,"label":"트랜잭션과 WAL"},{"index":10,"label":"읽기 스트림"},{"index":11,"label":"버퍼 관리"},{"index":12,"label":"파일과 디스크"},{"index":13,"label":"분류 없음"}],"meta":{"sql":"SELECT * FROM t WHERE id = 2;","watchId":"select","watchLabel":"SELECT 경로(파싱, 계획, 순차 스캔, 버퍼)","origin":"PostgreSQL 18.6 실습의 evidence/select-where-id-2.trace","guide":"../README.md#질문-1-select-한-줄이-지나는-경로"},"steps":[{"seq":1,"place":{"function":"exec_simple_query","loc":{"path":"src/backend/tcop/postgres.c","line":1014},"layer":"명령 처리","lane":1,"window":{"defLine":1012,"ranges":[{"from":1006,"to":1026}]}},"values":[{"expr":"query_string","text":"0xaaaafe32e8e8 \"SELECT * FROM t WHERE id = 2;\""}]},{"seq":2,"place":{"function":"pg_parse_query","loc":{"path":"src/backend/tcop/postgres.c","line":610},"layer":"명령 처리","lane":1,"window":{"defLine":604,"ranges":[{"from":590,"to":622}]}}},{"seq":3,"place":{"function":"raw_parser","loc":{"path":"src/backend/parser/parser.c","line":49},"layer":"구문 분석","lane":2,"window":{"defLine":42,"ranges":[{"from":34,"to":61}]}},"values":[{"expr":"str","text":"0xaaaafe32e8e8 \"SELECT * FROM t WHERE id = 2;\""}]},{"seq":4,"place":{"function":"parse_analyze_fixedparams","loc":{"path":"src/backend/parser/analyze.c","line":109},"layer":"구문 분석","lane":2,"window":{"defLine":105,"ranges":[{"from":93,"to":121}]}},"values":[{"expr":"((Node *) parseTree-\u003estmt)-\u003etype","text":"T_SelectStmt"}]},{"seq":5,"place":{"function":"pg_plan_queries","loc":{"path":"src/backend/tcop/postgres.c","line":974},"layer":"명령 처리","lane":1,"window":{"defLine":971,"ranges":[{"from":962,"to":986}]}}},{"seq":6,"place":{"function":"pg_plan_query","loc":{"path":"src/backend/tcop/postgres.c","line":889},"layer":"명령 처리","lane":1,"window":{"defLine":883,"ranges":[{"from":878,"to":901}]}}},{"seq":7,"place":{"function":"standard_planner","loc":{"path":"src/backend/optimizer/plan/planner.c","line":335},"layer":"실행 계획","lane":3,"window":{"defLine":316,"ranges":[{"from":315,"to":347}]}},"values":[{"expr":"parse-\u003ecommandType","text":"CMD_SELECT"}]},{"seq":8,"place":{"function":"PortalStart","loc":{"path":"src/backend/tcop/pquery.c","line":450},"layer":"명령 처리","lane":1,"window":{"defLine":434,"ranges":[{"from":410,"to":462}]}}},{"seq":9,"place":{"function":"standard_ExecutorStart","loc":{"path":"src/backend/executor/execMain.c","line":168},"layer":"실행기","lane":4,"window":{"defLine":141,"ranges":[{"from":140,"to":180}]}}},{"seq":10,"place":{"function":"PortalRun","loc":{"path":"src/backend/tcop/pquery.c","line":703},"layer":"명령 처리","lane":1,"window":{"defLine":685,"ranges":[{"from":662,"to":715}]}}},{"seq":11,"place":{"function":"standard_ExecutorRun","loc":{"path":"src/backend/executor/execMain.c","line":319},"layer":"실행기","lane":4,"window":{"defLine":307,"ranges":[{"from":306,"to":331}]}},"values":[{"expr":"queryDesc-\u003eplannedstmt-\u003eplanTree-\u003etype","text":"T_SeqScan"}]},{"seq":12,"place":{"function":"ExecutePlan","loc":{"path":"src/backend/executor/execMain.c","line":1667},"layer":"실행기","lane":4,"window":{"defLine":1660,"ranges":[{"from":1650,"to":1679}]}}},{"seq":13,"place":{"function":"ExecSeqScanWithQual","loc":{"path":"src/backend/executor/nodeSeqscan.c","line":132},"layer":"실행기","lane":4,"window":{"defLine":130,"ranges":[{"from":126,"to":144}]}}},{"seq":14,"place":{"function":"heap_getnextslot","loc":{"path":"src/backend/access/heap/heapam.c","line":1390},"layer":"테이블 접근","lane":5,"window":{"defLine":1388,"ranges":[{"from":1387,"to":1402}]}},"values":[{"expr":"(char *) sscan-\u003ers_rd-\u003erd_rel-\u003erelname.data","text":"0xffff93ad50cc \"t\""}]},{"seq":15,"place":{"function":"heap_fetch_next_buffer","loc":{"path":"src/backend/access/heap/heapam.c","line":652},"layer":"테이블 접근","lane":5,"window":{"defLine":647,"ranges":[{"from":640,"to":664}]}}},{"seq":16,"place":{"function":"read_stream_next_buffer","loc":{"path":"src/backend/storage/aio/read_stream.c","line":813},"layer":"읽기 스트림","lane":10,"window":{"defLine":800,"ranges":[{"from":790,"to":825}]}}},{"seq":17,"place":{"function":"StartReadBuffers","loc":{"path":"src/backend/storage/buffer/bufmgr.c","line":1504},"layer":"버퍼 관리","lane":11,"window":{"defLine":1498,"ranges":[{"from":1474,"to":1516}]}}},{"seq":18,"place":{"function":"PinBufferForBlock","loc":{"path":"src/backend/storage/buffer/bufmgr.c","line":1120},"layer":"버퍼 관리","lane":11,"window":{"defLine":1101,"ranges":[{"from":1095,"to":1132}]}},"values":[{"expr":"(char *) rel-\u003erd_rel-\u003erelname.data","text":"0xffff93ad50cc \"t\""},{"expr":"blockNum","text":"0"}],"stack":[{"function":"PinBufferForBlock","loc":{"path":"src/backend/storage/buffer/bufmgr.c","line":1120},"layer":"버퍼 관리","lane":11,"window":{"defLine":1101,"ranges":[{"from":1095,"to":1132}]}},{"function":"StartReadBuffersImpl","loc":{"path":"src/backend/storage/buffer/bufmgr.c","line":1328},"layer":"버퍼 관리","lane":11,"window":{"defLine":1265,"ranges":[{"from":1264,"to":1271},{"from":1316,"to":1340}]}},{"function":"StartReadBuffers","loc":{"path":"src/backend/storage/buffer/bufmgr.c","line":1504},"layer":"버퍼 관리","lane":11,"window":{"defLine":1498,"ranges":[{"from":1474,"to":1516}]}},{"function":"read_stream_start_pending_read","loc":{"path":"src/backend/storage/aio/read_stream.c","line":356},"layer":"읽기 스트림","lane":10,"window":{"defLine":230,"ranges":[{"from":219,"to":231},{"from":344,"to":368}]}},{"function":"read_stream_look_ahead","loc":{"path":"src/backend/storage/aio/read_stream.c","line":514},"layer":"읽기 스트림","lane":10,"window":{"defLine":429,"ranges":[{"from":428,"to":430},{"from":502,"to":526}]}},{"function":"read_stream_next_buffer","loc":{"path":"src/backend/storage/aio/read_stream.c","line":899},"layer":"읽기 스트림","lane":10,"window":{"defLine":800,"ranges":[{"from":790,"to":801},{"from":887,"to":911}]}},{"function":"heap_fetch_next_buffer","loc":{"path":"src/backend/access/heap/heapam.c","line":679},"layer":"테이블 접근","lane":5,"window":{"defLine":647,"ranges":[{"from":640,"to":691}]}},{"function":"heapgettup_pagemode","loc":{"path":"src/backend/access/heap/heapam.c","line":1041},"layer":"테이블 접근","lane":5,"window":{"defLine":1010,"ranges":[{"from":996,"to":1053}]}},{"function":"heap_getnextslot","loc":{"path":"src/backend/access/heap/heapam.c","line":1395},"layer":"테이블 접근","lane":5,"window":{"defLine":1388,"ranges":[{"from":1387,"to":1407}]}},{"function":"table_scan_getnextslot","loc":{"path":"src/include/access/tableam.h","line":1036},"layer":"테이블 접근","lane":5,"window":{"defLine":1020,"ranges":[{"from":1016,"to":1048}]}},{"function":"SeqNext","loc":{"path":"src/backend/executor/nodeSeqscan.c","line":81},"layer":"실행기","lane":4,"window":{"defLine":51,"ranges":[{"from":44,"to":93}]}},{"function":"ExecScanFetch","loc":{"path":"src/include/executor/execScan.h","line":134},"layer":"실행기","lane":4,"window":{"defLine":32,"ranges":[{"from":20,"to":36},{"from":122,"to":146}]}},{"function":"ExecScanExtended","loc":{"path":"src/include/executor/execScan.h","line":195},"layer":"실행기","lane":4,"window":{"defLine":160,"ranges":[{"from":137,"to":166},{"from":183,"to":207}]}},{"function":"ExecSeqScanWithQual","loc":{"path":"src/backend/executor/nodeSeqscan.c","line":138},"layer":"실행기","lane":4,"window":{"defLine":130,"ranges":[{"from":126,"to":150}]}},{"function":"ExecProcNodeFirst","loc":{"path":"src/backend/executor/execProcnode.c","line":469},"layer":"실행기","lane":4,"window":{"defLine":448,"ranges":[{"from":443,"to":481}]}},{"function":"ExecProcNode","loc":{"path":"src/include/executor/executor.h","line":315},"layer":"실행기","lane":4,"window":{"defLine":310,"ranges":[{"from":302,"to":327}]}},{"function":"ExecutePlan","loc":{"path":"src/backend/executor/execMain.c","line":1711},"layer":"실행기","lane":4,"window":{"defLine":1660,"ranges":[{"from":1650,"to":1666},{"from":1699,"to":1723}]}},{"function":"standard_ExecutorRun","loc":{"path":"src/backend/executor/execMain.c","line":366},"layer":"실행기","lane":4,"window":{"defLine":307,"ranges":[{"from":306,"to":309},{"from":354,"to":378}]}},{"function":"ExecutorRun","loc":{"path":"src/backend/executor/execMain.c","line":303},"layer":"실행기","lane":4,"window":{"defLine":297,"ranges":[{"from":266,"to":315}]}},{"function":"PortalRunSelect","loc":{"path":"src/backend/tcop/pquery.c","line":921},"layer":"명령 처리","lane":1,"window":{"defLine":864,"ranges":[{"from":845,"to":868},{"from":909,"to":933}]}},{"function":"PortalRun","loc":{"path":"src/backend/tcop/pquery.c","line":765},"layer":"명령 처리","lane":1,"window":{"defLine":685,"ranges":[{"from":662,"to":688},{"from":753,"to":777}]}},{"function":"exec_simple_query","loc":{"path":"src/backend/tcop/postgres.c","line":1274},"layer":"명령 처리","lane":1,"window":{"defLine":1012,"ranges":[{"from":1006,"to":1013},{"from":1262,"to":1286}]}},{"function":"PostgresMain","loc":{"path":"src/backend/tcop/postgres.c","line":4770},"layer":"명령 처리","lane":1,"window":{"defLine":4188,"ranges":[{"from":4176,"to":4189},{"from":4758,"to":4782}]}},{"function":"BackendMain","loc":{"path":"src/backend/tcop/backend_startup.c","line":124},"layer":"명령 처리","lane":1,"window":{"defLine":76,"ranges":[{"from":69,"to":136}]}},{"function":"postmaster_child_launch","loc":{"path":"src/backend/postmaster/launch_backend.c","line":290},"layer":"프로세스 시작","lane":0,"window":{"defLine":229,"ranges":[{"from":216,"to":232},{"from":278,"to":302}]}},{"function":"BackendStartup","loc":{"path":"src/backend/postmaster/postmaster.c","line":3569},"layer":"프로세스 시작","lane":0,"window":{"defLine":3518,"ranges":[{"from":3509,"to":3519},{"from":3557,"to":3581}]}},{"function":"ServerLoop","loc":{"path":"src/backend/postmaster/postmaster.c","line":1703},"layer":"프로세스 시작","lane":0,"window":{"defLine":1653,"ranges":[{"from":1649,"to":1715}]}},{"function":"PostmasterMain","loc":{"path":"src/backend/postmaster/postmaster.c","line":1401},"layer":"프로세스 시작","lane":0,"window":{"defLine":0,"ranges":[{"from":1389,"to":1413}]}},{"function":"main","loc":{"path":"src/backend/main/main.c","line":227},"layer":"프로세스 시작","lane":0,"window":{"defLine":71,"ranges":[{"from":67,"to":72},{"from":215,"to":239}]}}]},{"seq":19,"place":{"function":"heap_getnextslot","loc":{"path":"src/backend/access/heap/heapam.c","line":1390},"layer":"테이블 접근","lane":5,"window":{"defLine":1388,"ranges":[{"from":1387,"to":1402}]}},"values":[{"expr":"(char *) sscan-\u003ers_rd-\u003erd_rel-\u003erelname.data","text":"0xffff93ad50cc \"t\""}]},{"seq":20,"place":{"function":"printtup","loc":{"path":"src/backend/access/common/printtup.c","line":306},"layer":"결과 전송","lane":7,"window":{"defLine":304,"ranges":[{"from":296,"to":318}]}}},{"seq":21,"place":{"function":"ExecSeqScanWithQual","loc":{"path":"src/backend/executor/nodeSeqscan.c","line":132},"layer":"실행기","lane":4,"window":{"defLine":130,"ranges":[{"from":126,"to":144}]}}},{"seq":22,"place":{"function":"heap_getnextslot","loc":{"path":"src/backend/access/heap/heapam.c","line":1390},"layer":"테이블 접근","lane":5,"window":{"defLine":1388,"ranges":[{"from":1387,"to":1402}]}},"values":[{"expr":"(char *) sscan-\u003ers_rd-\u003erd_rel-\u003erelname.data","text":"0xffff93ad50cc \"t\""}]},{"seq":23,"place":{"function":"heap_getnextslot","loc":{"path":"src/backend/access/heap/heapam.c","line":1390},"layer":"테이블 접근","lane":5,"window":{"defLine":1388,"ranges":[{"from":1387,"to":1402}]}},"values":[{"expr":"(char *) sscan-\u003ers_rd-\u003erd_rel-\u003erelname.data","text":"0xffff93ad50cc \"t\""}]},{"seq":24,"place":{"function":"heap_fetch_next_buffer","loc":{"path":"src/backend/access/heap/heapam.c","line":652},"layer":"테이블 접근","lane":5,"window":{"defLine":647,"ranges":[{"from":640,"to":664}]}}},{"seq":25,"place":{"function":"read_stream_next_buffer","loc":{"path":"src/backend/storage/aio/read_stream.c","line":813},"layer":"읽기 스트림","lane":10,"window":{"defLine":800,"ranges":[{"from":790,"to":825}]}}},{"seq":26,"place":{"function":"read_stream_next_buffer","loc":{"path":"src/backend/storage/aio/read_stream.c","line":813},"layer":"읽기 스트림","lane":10,"window":{"defLine":800,"ranges":[{"from":790,"to":825}]}}},{"seq":27,"place":{"function":"ReadyForQuery","loc":{"path":"src/backend/tcop/dest.c","line":258},"layer":"명령 처리","lane":1,"window":{"defLine":256,"ranges":[{"from":244,"to":270}]}}}],"counts":[{"function":"ExecSeqScanWithQual","hits":2},{"function":"ExecutePlan","hits":1},{"function":"PinBufferForBlock","hits":1},{"function":"PortalRun","hits":1},{"function":"PortalStart","hits":1},{"function":"ReadyForQuery","hits":1},{"function":"StartReadBuffers","hits":1},{"function":"exec_simple_query","hits":1},{"function":"heap_fetch_next_buffer","hits":2},{"function":"heap_getnextslot","hits":4},{"function":"parse_analyze_fixedparams","hits":1},{"function":"pg_parse_query","hits":1},{"function":"pg_plan_queries","hits":1},{"function":"pg_plan_query","hits":1},{"function":"printtup","hits":1},{"function":"raw_parser","hits":1},{"function":"read_stream_next_buffer","hits":3},{"function":"standard_ExecutorRun","hits":1},{"function":"standard_ExecutorStart","hits":1},{"function":"standard_planner","hits":1}],"output":["2|b","2|b"],"files":{"src/backend/access/common/printtup.c":{"296":"/* ----------------","297":" *\t\tprinttup --- send a tuple to the client","298":" *","299":" * Note: if you change this function, see also serializeAnalyzeReceive","300":" * in explain.c, which is meant to replicate the computations done here.","301":" * ----------------","302":" */","303":"static bool","304":"printtup(TupleTableSlot *slot, DestReceiver *self)","305":"{","306":"\tTupleDesc\ttypeinfo = slot-\u003etts_tupleDescriptor;","307":"\tDR_printtup *myState = (DR_printtup *) self;","308":"\tMemoryContext oldcontext;","309":"\tStringInfo\tbuf = \u0026myState-\u003ebuf;","310":"\tint\t\t\tnatts = typeinfo-\u003enatts;","311":"\tint\t\t\ti;","312":"","313":"\t/* Set or update my derived attribute info, if needed */","314":"\tif (myState-\u003eattrinfo != typeinfo || myState-\u003enattrs != natts)","315":"\t\tprinttup_prepare_info(myState, typeinfo, natts);","316":"","317":"\t/* Make sure the tuple is fully deconstructed */","318":"\tslot_getallattrs(slot);"},"src/backend/access/heap/heapam.c":{"1000":" *","1001":" * The internal logic is much the same as heapgettup's too, but there are some","1002":" * differences: we do not take the buffer content lock (that only needs to","1003":" * happen inside heap_prepare_pagescan), and we iterate through just the","1004":" * tuples listed in rs_vistuples[] rather than all tuples on the page.  Notice","1005":" * that lineindex is 0-based, where the corresponding loop variable lineoff in","1006":" * heapgettup is 1-based.","1007":" * ----------------","1008":" */","1009":"static void","1010":"heapgettup_pagemode(HeapScanDesc scan,","1011":"\t\t\t\t\tScanDirection dir,","1012":"\t\t\t\t\tint nkeys,","1013":"\t\t\t\t\tScanKey key)","1014":"{","1015":"\tHeapTuple\ttuple = \u0026(scan-\u003ers_ctup);","1016":"\tPage\t\tpage;","1017":"\tuint32\t\tlineindex;","1018":"\tuint32\t\tlinesleft;","1019":"","1020":"\tif (likely(scan-\u003ers_inited))","1021":"\t{","1022":"\t\t/* continue from previously returned page/tuple */","1023":"\t\tpage = BufferGetPage(scan-\u003ers_cbuf);","1024":"","1025":"\t\tlineindex = scan-\u003ers_cindex + dir;","1026":"\t\tif (ScanDirectionIsForward(dir))","1027":"\t\t\tlinesleft = scan-\u003ers_ntuples - lineindex;","1028":"\t\telse","1029":"\t\t\tlinesleft = scan-\u003ers_cindex;","1030":"\t\t/* lineindex now references the next or previous visible tid */","1031":"","1032":"\t\tgoto continue_page;","1033":"\t}","1034":"","1035":"\t/*","1036":"\t * advance the scan until we find a qualifying tuple or run out of stuff","1037":"\t * to scan","1038":"\t */","1039":"\twhile (true)","1040":"\t{","1041":"\t\theap_fetch_next_buffer(scan, dir);","1042":"","1043":"\t\t/* did we run out of blocks to scan? */","1044":"\t\tif (!BufferIsValid(scan-\u003ers_cbuf))","1045":"\t\t\tbreak;","1046":"","1047":"\t\tAssert(BufferGetBlockNumber(scan-\u003ers_cbuf) == scan-\u003ers_cblock);","1048":"","1049":"\t\t/* prune the page and determine visible tuple offsets */","1050":"\t\theap_prepare_pagescan((TableScanDesc) scan);","1051":"\t\tpage = BufferGetPage(scan-\u003ers_cbuf);","1052":"\t\tlinesleft = scan-\u003ers_ntuples;","1053":"\t\tlineindex = ScanDirectionIsForward(dir) ? 0 : linesleft - 1;","1387":"bool","1388":"heap_getnextslot(TableScanDesc sscan, ScanDirection direction, TupleTableSlot *slot)","1389":"{","1390":"\tHeapScanDesc scan = (HeapScanDesc) sscan;","1391":"","1392":"\t/* Note: no locking manipulations needed */","1393":"","1394":"\tif (sscan-\u003ers_flags \u0026 SO_ALLOW_PAGEMODE)","1395":"\t\theapgettup_pagemode(scan, direction, sscan-\u003ers_nkeys, sscan-\u003ers_key);","1396":"\telse","1397":"\t\theapgettup(scan, direction, sscan-\u003ers_nkeys, sscan-\u003ers_key);","1398":"","1399":"\tif (scan-\u003ers_ctup.t_data == NULL)","1400":"\t{","1401":"\t\tExecClearTuple(slot);","1402":"\t\treturn false;","1403":"\t}","1404":"","1405":"\t/*","1406":"\t * if we get here it means we have a new current scan tuple, so point to","1407":"\t * the proper return buffer and return the tuple.","640":"/*","641":" * heap_fetch_next_buffer - read and pin the next block from MAIN_FORKNUM.","642":" *","643":" * Read the next block of the scan relation from the read stream and save it","644":" * in the scan descriptor.  It is already pinned.","645":" */","646":"static inline void","647":"heap_fetch_next_buffer(HeapScanDesc scan, ScanDirection dir)","648":"{","649":"\tAssert(scan-\u003ers_read_stream);","650":"","651":"\t/* release previous scan buffer, if any */","652":"\tif (BufferIsValid(scan-\u003ers_cbuf))","653":"\t{","654":"\t\tReleaseBuffer(scan-\u003ers_cbuf);","655":"\t\tscan-\u003ers_cbuf = InvalidBuffer;","656":"\t}","657":"","658":"\t/*","659":"\t * Be sure to check for interrupts at least once per page.  Checks at","660":"\t * higher code levels won't be able to stop a seqscan that encounters many","661":"\t * pages' worth of consecutive dead tuples.","662":"\t */","663":"\tCHECK_FOR_INTERRUPTS();","664":"","665":"\t/*","666":"\t * If the scan direction is changing, reset the prefetch block to the","667":"\t * current block. Otherwise, we will incorrectly prefetch the blocks","668":"\t * between the prefetch block and the current block again before","669":"\t * prefetching blocks in the new, correct scan direction.","670":"\t */","671":"\tif (unlikely(scan-\u003ers_dir != dir))","672":"\t{","673":"\t\tscan-\u003ers_prefetch_block = scan-\u003ers_cblock;","674":"\t\tread_stream_reset(scan-\u003ers_read_stream);","675":"\t}","676":"","677":"\tscan-\u003ers_dir = dir;","678":"","679":"\tscan-\u003ers_cbuf = read_stream_next_buffer(scan-\u003ers_read_stream, NULL);","680":"\tif (BufferIsValid(scan-\u003ers_cbuf))","681":"\t\tscan-\u003ers_cblock = BufferGetBlockNumber(scan-\u003ers_cbuf);","682":"}","683":"","684":"/*","685":" * heapgettup_initial_block - return the first BlockNumber to scan","686":" *","687":" * Returns InvalidBlockNumber when there are no blocks to scan.  This can","688":" * occur with empty tables and in parallel scans when parallel workers get all","689":" * of the pages before we can get a chance to get our first page.","690":" */","691":"static pg_noinline BlockNumber","996":"/* ----------------","997":" *\t\theapgettup_pagemode - fetch next heap tuple in page-at-a-time mode","998":" *","999":" *\t\tSame API as heapgettup, but used in page-at-a-time mode"},"src/backend/executor/execMain.c":{"140":"void","141":"standard_ExecutorStart(QueryDesc *queryDesc, int eflags)","142":"{","143":"\tEState\t   *estate;","144":"\tMemoryContext oldcontext;","145":"","146":"\t/* sanity checks: queryDesc must not be started already */","147":"\tAssert(queryDesc != NULL);","148":"\tAssert(queryDesc-\u003eestate == NULL);","149":"","150":"\t/* caller must ensure the query's snapshot is active */","151":"\tAssert(GetActiveSnapshot() == queryDesc-\u003esnapshot);","152":"","153":"\t/*","154":"\t * If the transaction is read-only, we need to check if any writes are","155":"\t * planned to non-temporary tables.  EXPLAIN is considered read-only.","156":"\t *","157":"\t * Don't allow writes in parallel mode.  Supporting UPDATE and DELETE","158":"\t * would require (a) storing the combo CID hash in shared memory, rather","159":"\t * than synchronizing it just once at the start of parallelism, and (b) an","160":"\t * alternative to heap_update()'s reliance on xmax for mutual exclusion.","161":"\t * INSERT may have no such troubles, but we forbid it to simplify the","162":"\t * checks.","163":"\t *","164":"\t * We have lower-level defenses in CommandCounterIncrement and elsewhere","165":"\t * against performing unsafe operations in parallel mode, but this gives a","1650":"/* ----------------------------------------------------------------","1651":" *\t\tExecutePlan","1652":" *","1653":" *\t\tProcesses the query plan until we have retrieved 'numberTuples' tuples,","1654":" *\t\tmoving in the specified direction.","1655":" *","1656":" *\t\tRuns to completion if numberTuples is 0","1657":" * ----------------------------------------------------------------","1658":" */","1659":"static void","166":"\t * more user-friendly error message.","1660":"ExecutePlan(QueryDesc *queryDesc,","1661":"\t\t\tCmdType operation,","1662":"\t\t\tbool sendTuples,","1663":"\t\t\tuint64 numberTuples,","1664":"\t\t\tScanDirection direction,","1665":"\t\t\tDestReceiver *dest)","1666":"{","1667":"\tEState\t   *estate = queryDesc-\u003eestate;","1668":"\tPlanState  *planstate = queryDesc-\u003eplanstate;","1669":"\tbool\t\tuse_parallel_mode;","167":"\t */","1670":"\tTupleTableSlot *slot;","1671":"\tuint64\t\tcurrent_tuple_count;","1672":"","1673":"\t/*","1674":"\t * initialize local variables","1675":"\t */","1676":"\tcurrent_tuple_count = 0;","1677":"","1678":"\t/*","1679":"\t * Set the direction.","168":"\tif ((XactReadOnly || IsInParallelMode()) \u0026\u0026","169":"\t\t!(eflags \u0026 EXEC_FLAG_EXPLAIN_ONLY))","1699":"","170":"\t\tExecCheckXactReadOnly(queryDesc-\u003eplannedstmt);","1700":"\t/*","1701":"\t * Loop until we've processed the proper number of tuples from the plan.","1702":"\t */","1703":"\tfor (;;)","1704":"\t{","1705":"\t\t/* Reset the per-output-tuple exprcontext */","1706":"\t\tResetPerTupleExprContext(estate);","1707":"","1708":"\t\t/*","1709":"\t\t * Execute the plan and obtain a tuple","171":"","1710":"\t\t */","1711":"\t\tslot = ExecProcNode(planstate);","1712":"","1713":"\t\t/*","1714":"\t\t * if the tuple is null, then we assume there is nothing more to","1715":"\t\t * process so we just end the loop...","1716":"\t\t */","1717":"\t\tif (TupIsNull(slot))","1718":"\t\t\tbreak;","1719":"","172":"\t/*","1720":"\t\t/*","1721":"\t\t * If we have a junk filter, then project a new tuple with the junk","1722":"\t\t * removed.","1723":"\t\t *","173":"\t * Build EState, switch into per-query memory context for startup.","174":"\t */","175":"\testate = CreateExecutorState();","176":"\tqueryDesc-\u003eestate = estate;","177":"","178":"\toldcontext = MemoryContextSwitchTo(estate-\u003ees_query_cxt);","179":"","180":"\t/*","266":"/* ----------------------------------------------------------------","267":" *\t\tExecutorRun","268":" *","269":" *\t\tThis is the main routine of the executor module. It accepts","270":" *\t\tthe query descriptor from the traffic cop and executes the","271":" *\t\tquery plan.","272":" *","273":" *\t\tExecutorStart must have been called already.","274":" *","275":" *\t\tIf direction is NoMovementScanDirection then nothing is done","276":" *\t\texcept to start up/shut down the destination.  Otherwise,","277":" *\t\twe retrieve up to 'count' tuples in the specified direction.","278":" *","279":" *\t\tNote: count = 0 is interpreted as no portal limit, i.e., run to","280":" *\t\tcompletion.  Also note that the count limit is only applied to","281":" *\t\tretrieved tuples, not for instance to those inserted/updated/deleted","282":" *\t\tby a ModifyTable plan node.","283":" *","284":" *\t\tThere is no return value, but output tuples (if any) are sent to","285":" *\t\tthe destination receiver specified in the QueryDesc; and the number","286":" *\t\tof tuples processed at the top level can be found in","287":" *\t\testate-\u003ees_processed.  The total number of tuples processed in all","288":" *\t\tthe ExecutorRun calls can be found in estate-\u003ees_total_processed.","289":" *","290":" *\t\tWe provide a function hook variable that lets loadable plugins","291":" *\t\tget control when ExecutorRun is called.  Such a plugin would","292":" *\t\tnormally call standard_ExecutorRun().","293":" *","294":" * ----------------------------------------------------------------","295":" */","296":"void","297":"ExecutorRun(QueryDesc *queryDesc,","298":"\t\t\tScanDirection direction, uint64 count)","299":"{","300":"\tif (ExecutorRun_hook)","301":"\t\t(*ExecutorRun_hook) (queryDesc, direction, count);","302":"\telse","303":"\t\tstandard_ExecutorRun(queryDesc, direction, count);","304":"}","305":"","306":"void","307":"standard_ExecutorRun(QueryDesc *queryDesc,","308":"\t\t\t\t\t ScanDirection direction, uint64 count)","309":"{","310":"\tEState\t   *estate;","311":"\tCmdType\t\toperation;","312":"\tDestReceiver *dest;","313":"\tbool\t\tsendTuples;","314":"\tMemoryContext oldcontext;","315":"","316":"\t/* sanity checks */","317":"\tAssert(queryDesc != NULL);","318":"","319":"\testate = queryDesc-\u003eestate;","320":"","321":"\tAssert(estate != NULL);","322":"\tAssert(!(estate-\u003ees_top_eflags \u0026 EXEC_FLAG_EXPLAIN_ONLY));","323":"","324":"\t/* caller must ensure the query's snapshot is active */","325":"\tAssert(GetActiveSnapshot() == estate-\u003ees_snapshot);","326":"","327":"\t/*","328":"\t * Switch into per-query memory context","329":"\t */","330":"\toldcontext = MemoryContextSwitchTo(estate-\u003ees_query_cxt);","331":"","354":"\t * Run plan, unless direction is NoMovement.","355":"\t *","356":"\t * Note: pquery.c selects NoMovement if a prior call already reached","357":"\t * end-of-data in the user-specified fetch direction.  This is important","358":"\t * because various parts of the executor can misbehave if called again","359":"\t * after reporting EOF.  For example, heapam.c would actually restart a","360":"\t * heapscan and return all its data afresh.  There is also some doubt","361":"\t * about whether a parallel plan would operate properly if an additional,","362":"\t * necessarily non-parallel execution request occurs after completing a","363":"\t * parallel execution.  (That case should work, but it's untested.)","364":"\t */","365":"\tif (!ScanDirectionIsNoMovement(direction))","366":"\t\tExecutePlan(queryDesc,","367":"\t\t\t\t\toperation,","368":"\t\t\t\t\tsendTuples,","369":"\t\t\t\t\tcount,","370":"\t\t\t\t\tdirection,","371":"\t\t\t\t\tdest);","372":"","373":"\t/*","374":"\t * Update es_total_processed to keep track of the number of tuples","375":"\t * processed across multiple ExecutorRun() calls.","376":"\t */","377":"\testate-\u003ees_total_processed += estate-\u003ees_processed;","378":""},"src/backend/executor/execProcnode.c":{"443":"/*","444":" * ExecProcNode wrapper that performs some one-time checks, before calling","445":" * the relevant node method (possibly via an instrumentation wrapper).","446":" */","447":"static TupleTableSlot *","448":"ExecProcNodeFirst(PlanState *node)","449":"{","450":"\t/*","451":"\t * Perform stack depth check during the first execution of the node.  We","452":"\t * only do so the first time round because it turns out to not be cheap on","453":"\t * some common architectures (eg. x86).  This relies on the assumption","454":"\t * that ExecProcNode calls for a given plan node will always be made at","455":"\t * roughly the same stack depth.","456":"\t */","457":"\tcheck_stack_depth();","458":"","459":"\t/*","460":"\t * If instrumentation is required, change the wrapper to one that just","461":"\t * does instrumentation.  Otherwise we can dispense with all wrappers and","462":"\t * have ExecProcNode() directly call the relevant function from now on.","463":"\t */","464":"\tif (node-\u003einstrument)","465":"\t\tnode-\u003eExecProcNode = ExecProcNodeInstr;","466":"\telse","467":"\t\tnode-\u003eExecProcNode = node-\u003eExecProcNodeReal;","468":"","469":"\treturn node-\u003eExecProcNode(node);","470":"}","471":"","472":"","473":"/*","474":" * ExecProcNode wrapper that performs instrumentation calls.  By keeping","475":" * this a separate function, we avoid overhead in the normal case where","476":" * no instrumentation is wanted.","477":" */","478":"static TupleTableSlot *","479":"ExecProcNodeInstr(PlanState *node)","480":"{","481":"\tTupleTableSlot *result;"},"src/backend/executor/nodeSeqscan.c":{"126":"/*","127":" * Variant of ExecSeqScan() but when qual evaluation is required.","128":" */","129":"static TupleTableSlot *","130":"ExecSeqScanWithQual(PlanState *pstate)","131":"{","132":"\tSeqScanState *node = castNode(SeqScanState, pstate);","133":"","134":"\tAssert(pstate-\u003estate-\u003ees_epq_active == NULL);","135":"\tAssert(pstate-\u003equal != NULL);","136":"\tAssert(pstate-\u003eps_ProjInfo == NULL);","137":"","138":"\treturn ExecScanExtended(\u0026node-\u003ess,","139":"\t\t\t\t\t\t\t(ExecScanAccessMtd) SeqNext,","140":"\t\t\t\t\t\t\t(ExecScanRecheckMtd) SeqRecheck,","141":"\t\t\t\t\t\t\tNULL,","142":"\t\t\t\t\t\t\tpstate-\u003equal,","143":"\t\t\t\t\t\t\tNULL);","144":"}","145":"","146":"/*","147":" * Variant of ExecSeqScan() but when projection is required.","148":" */","149":"static TupleTableSlot *","150":"ExecSeqScanWithProject(PlanState *pstate)","44":"/* ----------------------------------------------------------------","45":" *\t\tSeqNext","46":" *","47":" *\t\tThis is a workhorse for ExecSeqScan","48":" * ----------------------------------------------------------------","49":" */","50":"static TupleTableSlot *","51":"SeqNext(SeqScanState *node)","52":"{","53":"\tTableScanDesc scandesc;","54":"\tEState\t   *estate;","55":"\tScanDirection direction;","56":"\tTupleTableSlot *slot;","57":"","58":"\t/*","59":"\t * get information from the estate and scan state","60":"\t */","61":"\tscandesc = node-\u003ess.ss_currentScanDesc;","62":"\testate = node-\u003ess.ps.state;","63":"\tdirection = estate-\u003ees_direction;","64":"\tslot = node-\u003ess.ss_ScanTupleSlot;","65":"","66":"\tif (scandesc == NULL)","67":"\t{","68":"\t\t/*","69":"\t\t * We reach here if the scan is not parallel, or if we're serially","70":"\t\t * executing a scan that was planned to be parallel.","71":"\t\t */","72":"\t\tscandesc = table_beginscan(node-\u003ess.ss_currentRelation,","73":"\t\t\t\t\t\t\t\t   estate-\u003ees_snapshot,","74":"\t\t\t\t\t\t\t\t   0, NULL);","75":"\t\tnode-\u003ess.ss_currentScanDesc = scandesc;","76":"\t}","77":"","78":"\t/*","79":"\t * get the next tuple from the table","80":"\t */","81":"\tif (table_scan_getnextslot(scandesc, direction, slot))","82":"\t\treturn slot;","83":"\treturn NULL;","84":"}","85":"","86":"/*","87":" * SeqRecheck -- access method routine to recheck a tuple in EvalPlanQual","88":" */","89":"static bool","90":"SeqRecheck(SeqScanState *node, TupleTableSlot *slot)","91":"{","92":"\t/*","93":"\t * Note that unlike IndexScan, SeqScan never use keys in heap_beginscan"},"src/backend/main/main.c":{"215":"#else","216":"\t\t\tAssert(false);\t\t/* should never happen */","217":"#endif","218":"\t\t\tbreak;","219":"\t\tcase DISPATCH_DESCRIBE_CONFIG:","220":"\t\t\tGucInfoMain();","221":"\t\t\tbreak;","222":"\t\tcase DISPATCH_SINGLE:","223":"\t\t\tPostgresSingleUserMain(argc, argv,","224":"\t\t\t\t\t\t\t\t   strdup(get_user_name_or_exit(progname)));","225":"\t\t\tbreak;","226":"\t\tcase DISPATCH_POSTMASTER:","227":"\t\t\tPostmasterMain(argc, argv);","228":"\t\t\tbreak;","229":"\t}","230":"","231":"\t/* the functions above should not return */","232":"\tabort();","233":"}","234":"","235":"/*","236":" * Returns the matching DispatchOption value for the given option name.  If no","237":" * match is found, DISPATCH_POSTMASTER is returned.","238":" */","239":"DispatchOption","67":"/*","68":" * Any Postgres server process begins execution here.","69":" */","70":"int","71":"main(int argc, char *argv[])","72":"{"},"src/backend/optimizer/plan/planner.c":{"315":"PlannedStmt *","316":"standard_planner(Query *parse, const char *query_string, int cursorOptions,","317":"\t\t\t\t ParamListInfo boundParams)","318":"{","319":"\tPlannedStmt *result;","320":"\tPlannerGlobal *glob;","321":"\tdouble\t\ttuple_fraction;","322":"\tPlannerInfo *root;","323":"\tRelOptInfo *final_rel;","324":"\tPath\t   *best_path;","325":"\tPlan\t   *top_plan;","326":"\tListCell   *lp,","327":"\t\t\t   *lr;","328":"","329":"\t/*","330":"\t * Set up global state for this planner invocation.  This data is needed","331":"\t * across all levels of sub-Query that might exist in the given command,","332":"\t * so we keep it in a separate struct that's linked to by each per-Query","333":"\t * PlannerInfo.","334":"\t */","335":"\tglob = makeNode(PlannerGlobal);","336":"","337":"\tglob-\u003eboundParams = boundParams;","338":"\tglob-\u003esubplans = NIL;","339":"\tglob-\u003esubpaths = NIL;","340":"\tglob-\u003esubroots = NIL;","341":"\tglob-\u003erewindPlanIDs = NULL;","342":"\tglob-\u003efinalrtable = NIL;","343":"\tglob-\u003eallRelids = NULL;","344":"\tglob-\u003eprunableRelids = NULL;","345":"\tglob-\u003efinalrteperminfos = NIL;","346":"\tglob-\u003efinalrowmarks = NIL;","347":"\tglob-\u003eresultRelations = NIL;"},"src/backend/parser/analyze.c":{"100":" * The result is a Query node.  Optimizable statements require considerable","101":" * transformation, while utility-type statements are simply hung off","102":" * a dummy CMD_UTILITY Query node.","103":" */","104":"Query *","105":"parse_analyze_fixedparams(RawStmt *parseTree, const char *sourceText,","106":"\t\t\t\t\t\t  const Oid *paramTypes, int numParams,","107":"\t\t\t\t\t\t  QueryEnvironment *queryEnv)","108":"{","109":"\tParseState *pstate = make_parsestate(NULL);","110":"\tQuery\t   *query;","111":"\tJumbleState *jstate = NULL;","112":"","113":"\tAssert(sourceText != NULL); /* required as of 8.4 */","114":"","115":"\tpstate-\u003ep_sourcetext = sourceText;","116":"","117":"\tif (numParams \u003e 0)","118":"\t\tsetup_parse_fixed_parameters(pstate, paramTypes, numParams);","119":"","120":"\tpstate-\u003ep_queryEnv = queryEnv;","121":"","93":"/*","94":" * parse_analyze_fixedparams","95":" *\t\tAnalyze a raw parse tree and transform it to Query form.","96":" *","97":" * Optionally, information about $n parameter types can be supplied.","98":" * References to $n indexes not defined by paramTypes[] are disallowed.","99":" *"},"src/backend/parser/parser.c":{"34":"/*","35":" * raw_parser","36":" *\t\tGiven a query in string form, do lexical and grammatical analysis.","37":" *","38":" * Returns a list of raw (un-analyzed) parse trees.  The contents of the","39":" * list have the form required by the specified RawParseMode.","40":" */","41":"List *","42":"raw_parser(const char *str, RawParseMode mode)","43":"{","44":"\tcore_yyscan_t yyscanner;","45":"\tbase_yy_extra_type yyextra;","46":"\tint\t\t\tyyresult;","47":"","48":"\t/* initialize the flex scanner */","49":"\tyyscanner = scanner_init(str, \u0026yyextra.core_yy_extra,","50":"\t\t\t\t\t\t\t \u0026ScanKeywords, ScanKeywordTokens);","51":"","52":"\t/* base_yylex() only needs us to initialize the lookahead token, if any */","53":"\tif (mode == RAW_PARSE_DEFAULT)","54":"\t\tyyextra.have_lookahead = false;","55":"\telse","56":"\t{","57":"\t\t/* this array is indexed by RawParseMode enum */","58":"\t\tstatic const int mode_token[] = {","59":"\t\t\t[RAW_PARSE_DEFAULT] = 0,","60":"\t\t\t[RAW_PARSE_TYPE_NAME] = MODE_TYPE_NAME,","61":"\t\t\t[RAW_PARSE_PLPGSQL_EXPR] = MODE_PLPGSQL_EXPR,"},"src/backend/postmaster/launch_backend.c":{"216":"/*","217":" * Start a new postmaster child process.","218":" *","219":" * The child process will be restored to roughly the same state whether","220":" * EXEC_BACKEND is used or not: it will be attached to shared memory if","221":" * appropriate, and fds and other resources that we've inherited from","222":" * postmaster that are not needed in a child process have been closed.","223":" *","224":" * 'child_slot' is the PMChildFlags array index reserved for the child","225":" * process.  'startup_data' is an optional contiguous chunk of data that is","226":" * passed to the child process.","227":" */","228":"pid_t","229":"postmaster_child_launch(BackendType child_type, int child_slot,","230":"\t\t\t\t\t\tvoid *startup_data, size_t startup_data_len,","231":"\t\t\t\t\t\tClientSocket *client_sock)","232":"{","278":"\t\tMemoryContextSwitchTo(TopMemoryContext);","279":"","280":"\t\tMyPMChildSlot = child_slot;","281":"\t\tif (client_sock)","282":"\t\t{","283":"\t\t\tMyClientSocket = palloc(sizeof(ClientSocket));","284":"\t\t\tmemcpy(MyClientSocket, client_sock, sizeof(ClientSocket));","285":"\t\t}","286":"","287":"\t\t/*","288":"\t\t * Run the appropriate Main function","289":"\t\t */","290":"\t\tchild_process_kinds[child_type].main_fn(startup_data, startup_data_len);","291":"\t\tpg_unreachable();\t\t/* main_fn never returns */","292":"\t}","293":"#endif\t\t\t\t\t\t\t/* EXEC_BACKEND */","294":"\treturn pid;","295":"}","296":"","297":"#ifdef EXEC_BACKEND","298":"#ifndef WIN32","299":"","300":"/*","301":" * internal_forkexec non-win32 implementation","302":" *"},"src/backend/postmaster/postmaster.c":{"1389":"\t\tBgWriterPMChild = StartChildProcess(B_BG_WRITER);","1390":"","1391":"\t/*","1392":"\t * We're ready to rock and roll...","1393":"\t */","1394":"\tStartupPMChild = StartChildProcess(B_STARTUP);","1395":"\tAssert(StartupPMChild != NULL);","1396":"\tStartupStatus = STARTUP_RUNNING;","1397":"","1398":"\t/* Some workers may be scheduled to start now */","1399":"\tmaybe_start_bgworkers();","1400":"","1401":"\tstatus = ServerLoop();","1402":"","1403":"\t/*","1404":"\t * ServerLoop probably shouldn't ever return, but if it does, close down.","1405":"\t */","1406":"\tExitPostmaster(status != STATUS_OK);","1407":"","1408":"\tabort();\t\t\t\t\t/* not reached */","1409":"}","1410":"","1411":"","1412":"/*","1413":" * on_proc_exit callback to close server's listen sockets","1649":"/*","1650":" * Main idle loop of postmaster","1651":" */","1652":"static int","1653":"ServerLoop(void)","1654":"{","1655":"\ttime_t\t\tlast_lockfile_recheck_time,","1656":"\t\t\t\tlast_touch_time;","1657":"\tWaitEvent\tevents[MAXLISTEN];","1658":"\tint\t\t\tnevents;","1659":"","1660":"\tConfigurePostmasterWaitSet(true);","1661":"\tlast_lockfile_recheck_time = last_touch_time = time(NULL);","1662":"","1663":"\tfor (;;)","1664":"\t{","1665":"\t\ttime_t\t\tnow;","1666":"","1667":"\t\tnevents = WaitEventSetWait(pm_wait_set,","1668":"\t\t\t\t\t\t\t\t   DetermineSleepTime(),","1669":"\t\t\t\t\t\t\t\t   events,","1670":"\t\t\t\t\t\t\t\t   lengthof(events),","1671":"\t\t\t\t\t\t\t\t   0 /* postmaster posts no wait_events */ );","1672":"","1673":"\t\t/*","1674":"\t\t * Latch set by signal handler, or new connection pending on any of","1675":"\t\t * our sockets? If the latter, fork a child process to deal with it.","1676":"\t\t */","1677":"\t\tfor (int i = 0; i \u003c nevents; i++)","1678":"\t\t{","1679":"\t\t\tif (events[i].events \u0026 WL_LATCH_SET)","1680":"\t\t\t\tResetLatch(MyLatch);","1681":"","1682":"\t\t\t/*","1683":"\t\t\t * The following requests are handled unconditionally, even if we","1684":"\t\t\t * didn't see WL_LATCH_SET.  This gives high priority to shutdown","1685":"\t\t\t * and reload requests where the latch happens to appear later in","1686":"\t\t\t * events[] or will be reported by a later call to","1687":"\t\t\t * WaitEventSetWait().","1688":"\t\t\t */","1689":"\t\t\tif (pending_pm_shutdown_request)","1690":"\t\t\t\tprocess_pm_shutdown_request();","1691":"\t\t\tif (pending_pm_reload_request)","1692":"\t\t\t\tprocess_pm_reload_request();","1693":"\t\t\tif (pending_pm_child_exit)","1694":"\t\t\t\tprocess_pm_child_exit();","1695":"\t\t\tif (pending_pm_pmsignal)","1696":"\t\t\t\tprocess_pm_pmsignal();","1697":"","1698":"\t\t\tif (events[i].events \u0026 WL_SOCKET_ACCEPT)","1699":"\t\t\t{","1700":"\t\t\t\tClientSocket s;","1701":"","1702":"\t\t\t\tif (AcceptConnection(events[i].fd, \u0026s) == STATUS_OK)","1703":"\t\t\t\t\tBackendStartup(\u0026s);","1704":"","1705":"\t\t\t\t/* We no longer need the open socket in this process */","1706":"\t\t\t\tif (s.sock != PGINVALID_SOCKET)","1707":"\t\t\t\t{","1708":"\t\t\t\t\tif (closesocket(s.sock) != 0)","1709":"\t\t\t\t\t\telog(LOG, \"could not close client socket: %m\");","1710":"\t\t\t\t}","1711":"\t\t\t}","1712":"\t\t}","1713":"","1714":"\t\t/*","1715":"\t\t * If we need to launch any background processes after changing state","3509":"/*","3510":" * BackendStartup -- start backend process","3511":" *","3512":" * returns: STATUS_ERROR if the fork failed, STATUS_OK otherwise.","3513":" *","3514":" * Note: if you change this code, also consider StartAutovacuumWorker and","3515":" * StartBackgroundWorker.","3516":" */","3517":"static int","3518":"BackendStartup(ClientSocket *client_sock)","3519":"{","3557":"\t\t\t\t\t errmsg(\"out of memory\")));","3558":"\t\t\treturn STATUS_ERROR;","3559":"\t\t}","3560":"\t}","3561":"","3562":"\t/* Pass down canAcceptConnections state */","3563":"\tstartup_data.canAcceptConnections = cac;","3564":"\tbn-\u003erw = NULL;","3565":"","3566":"\t/* Hasn't asked to be notified about any bgworkers yet */","3567":"\tbn-\u003ebgworker_notify = false;","3568":"","3569":"\tpid = postmaster_child_launch(bn-\u003ebkend_type, bn-\u003echild_slot,","3570":"\t\t\t\t\t\t\t\t  \u0026startup_data, sizeof(startup_data),","3571":"\t\t\t\t\t\t\t\t  client_sock);","3572":"\tif (pid \u003c 0)","3573":"\t{","3574":"\t\t/* in parent, fork failed */","3575":"\t\tint\t\t\tsave_errno = errno;","3576":"","3577":"\t\t(void) ReleasePostmasterChildSlot(bn);","3578":"\t\terrno = save_errno;","3579":"\t\tereport(LOG,","3580":"\t\t\t\t(errmsg(\"could not fork new process for connection: %m\")));","3581":"\t\treport_fork_failure_to_client(client_sock, save_errno);"},"src/backend/storage/aio/read_stream.c":{"219":"/*","220":" * Start as much of the current pending read as we can.  If we have to split it","221":" * because of the per-backend buffer limit, or the buffer manager decides to","222":" * split it, then the pending read is adjusted to hold the remaining portion.","223":" *","224":" * We can always start a read of at least size one if we have no progress yet.","225":" * Otherwise it's possible that we can't start a read at all because of a lack","226":" * of buffers, and then false is returned.  Buffer shortages also reduce the","227":" * distance to a level that prevents look-ahead until buffers are released.","228":" */","229":"static bool","230":"read_stream_start_pending_read(ReadStream *stream)","231":"{","344":"\t/*","345":"\t * We say how many blocks we want to read, but it may be smaller on return","346":"\t * if the buffer manager decides to shorten the read.  Initialize buffers","347":"\t * to InvalidBuffer (= not a forwarded buffer) as input on first use only,","348":"\t * and keep the original nblocks number so we can check for forwarded","349":"\t * buffers as output, below.","350":"\t */","351":"\tbuffer_index = stream-\u003enext_buffer_index;","352":"\tio_index = stream-\u003enext_io_index;","353":"\twhile (stream-\u003einitialized_buffers \u003c buffer_index + nblocks)","354":"\t\tstream-\u003ebuffers[stream-\u003einitialized_buffers++] = InvalidBuffer;","355":"\trequested_nblocks = nblocks;","356":"\tneed_wait = StartReadBuffers(\u0026stream-\u003eios[io_index].op,","357":"\t\t\t\t\t\t\t\t \u0026stream-\u003ebuffers[buffer_index],","358":"\t\t\t\t\t\t\t\t stream-\u003epending_read_blocknum,","359":"\t\t\t\t\t\t\t\t \u0026nblocks,","360":"\t\t\t\t\t\t\t\t flags);","361":"\tstream-\u003epinned_buffers += nblocks;","362":"","363":"\t/* Remember whether we need to wait before returning this buffer. */","364":"\tif (!need_wait)","365":"\t{","366":"\t\t/* Look-ahead distance decays, no I/O necessary. */","367":"\t\tif (stream-\u003edistance \u003e 1)","368":"\t\t\tstream-\u003edistance--;","428":"static void","429":"read_stream_look_ahead(ReadStream *stream)","430":"{","502":"\t * if we've already reached io_combine_limit, or we've reached the","503":"\t * distance limit and there isn't anything pinned yet, or the callback has","504":"\t * signaled end-of-stream, we start the read immediately.  Note that the","505":"\t * pending read can exceed the distance goal, if the latter was reduced","506":"\t * after hitting the per-backend buffer limit.","507":"\t */","508":"\tif (stream-\u003epending_read_nblocks \u003e 0 \u0026\u0026","509":"\t\t(stream-\u003epending_read_nblocks == stream-\u003eio_combine_limit ||","510":"\t\t (stream-\u003epending_read_nblocks \u003e= stream-\u003edistance \u0026\u0026","511":"\t\t  stream-\u003epinned_buffers == 0) ||","512":"\t\t stream-\u003edistance == 0) \u0026\u0026","513":"\t\tstream-\u003eios_in_progress \u003c stream-\u003emax_ios)","514":"\t\tread_stream_start_pending_read(stream);","515":"","516":"\t/*","517":"\t * There should always be something pinned when we leave this function,","518":"\t * whether started by this call or not, unless we've hit the end of the","519":"\t * stream.  In the worst case we can always make progress one buffer at a","520":"\t * time.","521":"\t */","522":"\tAssert(stream-\u003epinned_buffers \u003e 0 || stream-\u003edistance == 0);","523":"","524":"\tif (stream-\u003ebatch_mode)","525":"\t\tpgaio_exit_batchmode();","526":"}","790":"/*","791":" * Pull one pinned buffer out of a stream.  Each call returns successive","792":" * blocks in the order specified by the callback.  If per_buffer_data_size was","793":" * set to a non-zero size, *per_buffer_data receives a pointer to the extra","794":" * per-buffer data that the callback had a chance to populate, which remains","795":" * valid until the next call to read_stream_next_buffer().  When the stream","796":" * runs out of data, InvalidBuffer is returned.  The caller may decide to end","797":" * the stream early at any time by calling read_stream_end().","798":" */","799":"Buffer","800":"read_stream_next_buffer(ReadStream *stream, void **per_buffer_data)","801":"{","802":"\tBuffer\t\tbuffer;","803":"\tint16\t\toldest_buffer_index;","804":"","805":"#ifndef READ_STREAM_DISABLE_FAST_PATH","806":"","807":"\t/*","808":"\t * A fast path for all-cached scans.  This is the same as the usual","809":"\t * algorithm, but it is specialized for no I/O and no per-buffer data, so","810":"\t * we can skip the queue management code, stay in the same buffer slot and","811":"\t * use singular StartReadBuffer().","812":"\t */","813":"\tif (likely(stream-\u003efast_path))","814":"\t{","815":"\t\tBlockNumber next_blocknum;","816":"","817":"\t\t/* Fast path assumptions. */","818":"\t\tAssert(stream-\u003eios_in_progress == 0);","819":"\t\tAssert(stream-\u003eforwarded_buffers == 0);","820":"\t\tAssert(stream-\u003epinned_buffers == 1);","821":"\t\tAssert(stream-\u003edistance == 1);","822":"\t\tAssert(stream-\u003epending_read_nblocks == 0);","823":"\t\tAssert(stream-\u003eper_buffer_data_size == 0);","824":"\t\tAssert(stream-\u003einitialized_buffers \u003e stream-\u003eoldest_buffer_index);","825":"","887":"\t\tAssert(stream-\u003eoldest_buffer_index == stream-\u003enext_buffer_index);","888":"","889":"\t\t/* End of stream reached?  */","890":"\t\tif (stream-\u003edistance == 0)","891":"\t\t\treturn InvalidBuffer;","892":"","893":"\t\t/*","894":"\t\t * The usual order of operations is that we look ahead at the bottom","895":"\t\t * of this function after potentially finishing an I/O and making","896":"\t\t * space for more, but if we're just starting up we'll need to crank","897":"\t\t * the handle to get started.","898":"\t\t */","899":"\t\tread_stream_look_ahead(stream);","900":"","901":"\t\t/* End of stream reached? */","902":"\t\tif (stream-\u003epinned_buffers == 0)","903":"\t\t{","904":"\t\t\tAssert(stream-\u003edistance == 0);","905":"\t\t\treturn InvalidBuffer;","906":"\t\t}","907":"\t}","908":"","909":"\t/* Grab the oldest pinned buffer and associated per-buffer data. */","910":"\tAssert(stream-\u003epinned_buffers \u003e 0);","911":"\toldest_buffer_index = stream-\u003eoldest_buffer_index;"},"src/backend/storage/buffer/bufmgr.c":{"1095":"/*","1096":" * Pin a buffer for a given block.  *foundPtr is set to true if the block was","1097":" * already present, or false if more work is required to either read it in or","1098":" * zero it.","1099":" */","1100":"static pg_always_inline Buffer","1101":"PinBufferForBlock(Relation rel,","1102":"\t\t\t\t  SMgrRelation smgr,","1103":"\t\t\t\t  char persistence,","1104":"\t\t\t\t  ForkNumber forkNum,","1105":"\t\t\t\t  BlockNumber blockNum,","1106":"\t\t\t\t  BufferAccessStrategy strategy,","1107":"\t\t\t\t  bool *foundPtr)","1108":"{","1109":"\tBufferDesc *bufHdr;","1110":"\tIOContext\tio_context;","1111":"\tIOObject\tio_object;","1112":"","1113":"\tAssert(blockNum != P_NEW);","1114":"","1115":"\t/* Persistence should be set before */","1116":"\tAssert((persistence == RELPERSISTENCE_TEMP ||","1117":"\t\t\tpersistence == RELPERSISTENCE_PERMANENT ||","1118":"\t\t\tpersistence == RELPERSISTENCE_UNLOGGED));","1119":"","1120":"\tif (persistence == RELPERSISTENCE_TEMP)","1121":"\t{","1122":"\t\tio_context = IOCONTEXT_NORMAL;","1123":"\t\tio_object = IOOBJECT_TEMP_RELATION;","1124":"\t}","1125":"\telse","1126":"\t{","1127":"\t\tio_context = IOContextForStrategy(strategy);","1128":"\t\tio_object = IOOBJECT_RELATION;","1129":"\t}","1130":"","1131":"\tTRACE_POSTGRESQL_BUFFER_READ_START(forkNum, blockNum,","1132":"\t\t\t\t\t\t\t\t\t   smgr-\u003esmgr_rlocator.locator.spcOid,","1264":"static pg_always_inline bool","1265":"StartReadBuffersImpl(ReadBuffersOperation *operation,","1266":"\t\t\t\t\t Buffer *buffers,","1267":"\t\t\t\t\t BlockNumber blockNum,","1268":"\t\t\t\t\t int *nblocks,","1269":"\t\t\t\t\t int flags,","1270":"\t\t\t\t\t bool allow_forwarding)","1271":"{","1316":"\t\t\t * it BM_VALID after this check, but StartBufferIO() will handle","1317":"\t\t\t * those cases.","1318":"\t\t\t */","1319":"\t\t\tif (BufferIsLocal(buffers[i]))","1320":"\t\t\t\tbufHdr = GetLocalBufferDescriptor(-buffers[i] - 1);","1321":"\t\t\telse","1322":"\t\t\t\tbufHdr = GetBufferDescriptor(buffers[i] - 1);","1323":"\t\t\tAssert(pg_atomic_read_u32(\u0026bufHdr-\u003estate) \u0026 BM_TAG_VALID);","1324":"\t\t\tfound = pg_atomic_read_u32(\u0026bufHdr-\u003estate) \u0026 BM_VALID;","1325":"\t\t}","1326":"\t\telse","1327":"\t\t{","1328":"\t\t\tbuffers[i] = PinBufferForBlock(operation-\u003erel,","1329":"\t\t\t\t\t\t\t\t\t\t   operation-\u003esmgr,","1330":"\t\t\t\t\t\t\t\t\t\t   operation-\u003epersistence,","1331":"\t\t\t\t\t\t\t\t\t\t   operation-\u003eforknum,","1332":"\t\t\t\t\t\t\t\t\t\t   blockNum + i,","1333":"\t\t\t\t\t\t\t\t\t\t   operation-\u003estrategy,","1334":"\t\t\t\t\t\t\t\t\t\t   \u0026found);","1335":"\t\t}","1336":"","1337":"\t\tif (found)","1338":"\t\t{","1339":"\t\t\t/*","1340":"\t\t\t * We have a hit.  If it's the first block in the requested range,","1474":"/*","1475":" * Begin reading a range of blocks beginning at blockNum and extending for","1476":" * *nblocks.  *nblocks and the buffers array are in/out parameters.  On entry,","1477":" * the buffers elements covered by *nblocks must hold either InvalidBuffer or","1478":" * buffers forwarded by an earlier call to StartReadBuffers() that was split","1479":" * and is now being continued.  On return, *nblocks holds the number of blocks","1480":" * accepted by this operation.  If it is less than the original number then","1481":" * this operation has been split, but buffer elements up to the original","1482":" * requested size may hold forwarded buffers to be used for a continuing","1483":" * operation.  The caller must either start a new I/O beginning at the block","1484":" * immediately following the blocks accepted by this call and pass those","1485":" * buffers back in, or release them if it chooses not to.  It shouldn't make","1486":" * any other use of or assumptions about forwarded buffers.","1487":" *","1488":" * If false is returned, no I/O is necessary and the buffers covered by","1489":" * *nblocks on exit are valid and ready to be accessed.  If true is returned,","1490":" * an I/O has been started, and WaitReadBuffers() must be called with the same","1491":" * operation object before the buffers covered by *nblocks on exit can be","1492":" * accessed.  Along with the operation object, the caller-supplied array of","1493":" * buffers must remain valid until WaitReadBuffers() is called, and any","1494":" * forwarded buffers must also be preserved for a continuing call unless","1495":" * they are explicitly released.","1496":" */","1497":"bool","1498":"StartReadBuffers(ReadBuffersOperation *operation,","1499":"\t\t\t\t Buffer *buffers,","1500":"\t\t\t\t BlockNumber blockNum,","1501":"\t\t\t\t int *nblocks,","1502":"\t\t\t\t int flags)","1503":"{","1504":"\treturn StartReadBuffersImpl(operation, buffers, blockNum, nblocks, flags,","1505":"\t\t\t\t\t\t\t\ttrue /* expect forwarded buffers */ );","1506":"}","1507":"","1508":"/*","1509":" * Single block version of the StartReadBuffers().  This might save a few","1510":" * instructions when called from another translation unit, because it is","1511":" * specialized for nblocks == 1.","1512":" *","1513":" * This version does not support \"forwarded\" buffers: they cannot be created","1514":" * by reading only one block and *buffer is ignored on entry.","1515":" */","1516":"bool"},"src/backend/tcop/backend_startup.c":{"100":"\t\tif (secure_initialize(false) == 0)","101":"\t\t\tLoadedSSL = true;","102":"\t\telse","103":"\t\t\tereport(LOG,","104":"\t\t\t\t\t(errmsg(\"SSL configuration could not be loaded in child process\")));","105":"\t}","106":"#endif","107":"#endif","108":"","109":"\t/* Perform additional initialization and collect startup packet */","110":"\tBackendInitialize(MyClientSocket, bsdata-\u003ecanAcceptConnections);","111":"","112":"\t/*","113":"\t * Create a per-backend PGPROC struct in shared memory.  We must do this","114":"\t * before we can use LWLocks or access any shared memory.","115":"\t */","116":"\tInitProcess();","117":"","118":"\t/*","119":"\t * Make sure we aren't in PostmasterContext anymore.  (We can't delete it","120":"\t * just yet, though, because InitPostgres will need the HBA data.)","121":"\t */","122":"\tMemoryContextSwitchTo(TopMemoryContext);","123":"","124":"\tPostgresMain(MyProcPort-\u003edatabase_name, MyProcPort-\u003euser_name);","125":"}","126":"","127":"","128":"/*","129":" * BackendInitialize -- initialize an interactive (postmaster-child)","130":" *\t\t\t\tbackend process, and collect the client's startup packet.","131":" *","132":" * returns: nothing.  Will not return at all if there's any failure.","133":" *","134":" * Note: this code does not depend on having any access to shared memory.","135":" * Indeed, our approach to SIGTERM/timeout handling *requires* that","136":" * shared memory not have been touched yet; see comments within.","69":"/*","70":" * Entry point for a new backend process.","71":" *","72":" * Initialize the connection, read the startup packet, authenticate the","73":" * client, and start the main processing loop.","74":" */","75":"void","76":"BackendMain(const void *startup_data, size_t startup_data_len)","77":"{","78":"\tconst BackendStartupData *bsdata = startup_data;","79":"","80":"\tAssert(startup_data_len == sizeof(BackendStartupData));","81":"\tAssert(MyClientSocket != NULL);","82":"","83":"#ifdef EXEC_BACKEND","84":"","85":"\t/*","86":"\t * Need to reinitialize the SSL library in the backend, since the context","87":"\t * structures contain function pointers and cannot be passed through the","88":"\t * parameter file.","89":"\t *","90":"\t * If for some reason reload fails (maybe the user installed broken key","91":"\t * files), soldier on without SSL; that's better than all connections","92":"\t * becoming impossible.","93":"\t *","94":"\t * XXX should we do this in all child processes?  For the moment it's","95":"\t * enough to do it in backend children.","96":"\t */","97":"#ifdef USE_SSL","98":"\tif (EnableSSL)","99":"\t{"},"src/backend/tcop/dest.c":{"244":"/* ----------------","245":" *\t\tReadyForQuery - tell dest that we are ready for a new query","246":" *","247":" *\t\tThe ReadyForQuery message is sent so that the FE can tell when","248":" *\t\twe are done processing a query string.","249":" *\t\tIn versions 3.0 and up, it also carries a transaction state indicator.","250":" *","251":" *\t\tNote that by flushing the stdio buffer here, we can avoid doing it","252":" *\t\tmost other places and thus reduce the number of separate packets sent.","253":" * ----------------","254":" */","255":"void","256":"ReadyForQuery(CommandDest dest)","257":"{","258":"\tswitch (dest)","259":"\t{","260":"\t\tcase DestRemote:","261":"\t\tcase DestRemoteExecute:","262":"\t\tcase DestRemoteSimple:","263":"\t\t\t{","264":"\t\t\t\tStringInfoData buf;","265":"","266":"\t\t\t\tpq_beginmessage(\u0026buf, PqMsg_ReadyForQuery);","267":"\t\t\t\tpq_sendbyte(\u0026buf, TransactionBlockStatusCode());","268":"\t\t\t\tpq_endmessage(\u0026buf);","269":"\t\t\t}","270":"\t\t\t/* Flush output at end of cycle in any case. */"},"src/backend/tcop/postgres.c":{"1006":"/*","1007":" * exec_simple_query","1008":" *","1009":" * Execute a \"simple Query\" protocol message.","1010":" */","1011":"static void","1012":"exec_simple_query(const char *query_string)","1013":"{","1014":"\tCommandDest dest = whereToSendOutput;","1015":"\tMemoryContext oldcontext;","1016":"\tList\t   *parsetree_list;","1017":"\tListCell   *parsetree_item;","1018":"\tbool\t\tsave_log_statement_stats = log_statement_stats;","1019":"\tbool\t\twas_logged = false;","1020":"\tbool\t\tuse_implicit_block;","1021":"\tchar\t\tmsec_str[32];","1022":"","1023":"\t/*","1024":"\t * Report query to various monitoring facilities.","1025":"\t */","1026":"\tdebug_query_string = query_string;","1262":"\t\treceiver = CreateDestReceiver(dest);","1263":"\t\tif (dest == DestRemote)","1264":"\t\t\tSetRemoteDestReceiverParams(receiver, portal);","1265":"","1266":"\t\t/*","1267":"\t\t * Switch back to transaction context for execution.","1268":"\t\t */","1269":"\t\tMemoryContextSwitchTo(oldcontext);","1270":"","1271":"\t\t/*","1272":"\t\t * Run the portal to completion, and then drop it (and the receiver).","1273":"\t\t */","1274":"\t\t(void) PortalRun(portal,","1275":"\t\t\t\t\t\t FETCH_ALL,","1276":"\t\t\t\t\t\t true,\t/* always top level */","1277":"\t\t\t\t\t\t receiver,","1278":"\t\t\t\t\t\t receiver,","1279":"\t\t\t\t\t\t \u0026qc);","1280":"","1281":"\t\treceiver-\u003erDestroy(receiver);","1282":"","1283":"\t\tPortalDrop(portal, false);","1284":"","1285":"\t\tif (lnext(parsetree_list, parsetree_item) == NULL)","1286":"\t\t{","4176":"/* ----------------------------------------------------------------","4177":" * PostgresMain","4178":" *\t   postgres main loop -- all backends, interactive or otherwise loop here","4179":" *","4180":" * dbname is the name of the database to connect to, username is the","4181":" * PostgreSQL user name to be used for the session.","4182":" *","4183":" * NB: Single user mode specific setup should go to PostgresSingleUserMain()","4184":" * if reasonably possible.","4185":" * ----------------------------------------------------------------","4186":" */","4187":"void","4188":"PostgresMain(const char *dbname, const char *username)","4189":"{","4758":"\t\t\t\t\t/* Set statement_timestamp() */","4759":"\t\t\t\t\tSetCurrentStatementStartTimestamp();","4760":"","4761":"\t\t\t\t\tquery_string = pq_getmsgstring(\u0026input_message);","4762":"\t\t\t\t\tpq_getmsgend(\u0026input_message);","4763":"","4764":"\t\t\t\t\tif (am_walsender)","4765":"\t\t\t\t\t{","4766":"\t\t\t\t\t\tif (!exec_replication_command(query_string))","4767":"\t\t\t\t\t\t\texec_simple_query(query_string);","4768":"\t\t\t\t\t}","4769":"\t\t\t\t\telse","4770":"\t\t\t\t\t\texec_simple_query(query_string);","4771":"","4772":"\t\t\t\t\tvalgrind_report_error_query(query_string);","4773":"","4774":"\t\t\t\t\tsend_ready_for_query = true;","4775":"\t\t\t\t}","4776":"\t\t\t\tbreak;","4777":"","4778":"\t\t\tcase PqMsg_Parse:","4779":"\t\t\t\t{","4780":"\t\t\t\t\tconst char *stmt_name;","4781":"\t\t\t\t\tconst char *query_string;","4782":"\t\t\t\t\tint\t\t\tnumParams;","590":"/*","591":" * Do raw parsing (only).","592":" *","593":" * A list of parsetrees (RawStmt nodes) is returned, since there might be","594":" * multiple commands in the given string.","595":" *","596":" * NOTE: for interactive queries, it is important to keep this routine","597":" * separate from the analysis \u0026 rewrite stages.  Analysis and rewriting","598":" * cannot be done in an aborted transaction, since they require access to","599":" * database tables.  So, we rely on the raw parser to determine whether","600":" * we've seen a COMMIT or ABORT command; when we are in abort state, other","601":" * commands are not processed any further than the raw parse stage.","602":" */","603":"List *","604":"pg_parse_query(const char *query_string)","605":"{","606":"\tList\t   *raw_parsetree_list;","607":"","608":"\tTRACE_POSTGRESQL_QUERY_PARSE_START(query_string);","609":"","610":"\tif (log_parser_stats)","611":"\t\tResetUsage();","612":"","613":"\traw_parsetree_list = raw_parser(query_string, RAW_PARSE_DEFAULT);","614":"","615":"\tif (log_parser_stats)","616":"\t\tShowUsage(\"PARSER STATISTICS\");","617":"","618":"#ifdef DEBUG_NODE_TESTS_ENABLED","619":"","620":"\t/* Optional debugging check: pass raw parsetrees through copyObject() */","621":"\tif (Debug_copy_parse_plan_trees)","622":"\t{","878":"/*","879":" * Generate a plan for a single already-rewritten query.","880":" * This is a thin wrapper around planner() and takes the same parameters.","881":" */","882":"PlannedStmt *","883":"pg_plan_query(Query *querytree, const char *query_string, int cursorOptions,","884":"\t\t\t  ParamListInfo boundParams)","885":"{","886":"\tPlannedStmt *plan;","887":"","888":"\t/* Utility commands have no plans. */","889":"\tif (querytree-\u003ecommandType == CMD_UTILITY)","890":"\t\treturn NULL;","891":"","892":"\t/* Planner must have a snapshot in case it calls user-defined functions. */","893":"\tAssert(ActiveSnapshotSet());","894":"","895":"\tTRACE_POSTGRESQL_QUERY_PLAN_START();","896":"","897":"\tif (log_planner_stats)","898":"\t\tResetUsage();","899":"","900":"\t/* call the optimizer */","901":"\tplan = planner(querytree, query_string, cursorOptions, boundParams);","962":"/*","963":" * Generate plans for a list of already-rewritten queries.","964":" *","965":" * For normal optimizable statements, invoke the planner.  For utility","966":" * statements, just make a wrapper PlannedStmt node.","967":" *","968":" * The result is a list of PlannedStmt nodes.","969":" */","970":"List *","971":"pg_plan_queries(List *querytrees, const char *query_string, int cursorOptions,","972":"\t\t\t\tParamListInfo boundParams)","973":"{","974":"\tList\t   *stmt_list = NIL;","975":"\tListCell   *query_list;","976":"","977":"\tforeach(query_list, querytrees)","978":"\t{","979":"\t\tQuery\t   *query = lfirst_node(Query, query_list);","980":"\t\tPlannedStmt *stmt;","981":"","982":"\t\tif (query-\u003ecommandType == CMD_UTILITY)","983":"\t\t{","984":"\t\t\t/* Utility commands require no planning. */","985":"\t\t\tstmt = makeNode(PlannedStmt);","986":"\t\t\tstmt-\u003ecommandType = CMD_UTILITY;"},"src/backend/tcop/pquery.c":{"410":"/*","411":" * PortalStart","412":" *\t\tPrepare a portal for execution.","413":" *","414":" * Caller must already have created the portal, done PortalDefineQuery(),","415":" * and adjusted portal options if needed.","416":" *","417":" * If parameters are needed by the query, they must be passed in \"params\"","418":" * (caller is responsible for giving them appropriate lifetime).","419":" *","420":" * The caller can also provide an initial set of \"eflags\" to be passed to","421":" * ExecutorStart (but note these can be modified internally, and they are","422":" * currently only honored for PORTAL_ONE_SELECT portals).  Most callers","423":" * should simply pass zero.","424":" *","425":" * The caller can optionally pass a snapshot to be used; pass InvalidSnapshot","426":" * for the normal behavior of setting a new snapshot.  This parameter is","427":" * presently ignored for non-PORTAL_ONE_SELECT portals (it's only intended","428":" * to be used for cursors).","429":" *","430":" * On return, portal is ready to accept PortalRun() calls, and the result","431":" * tupdesc (if any) is known.","432":" */","433":"void","434":"PortalStart(Portal portal, ParamListInfo params,","435":"\t\t\tint eflags, Snapshot snapshot)","436":"{","437":"\tPortal\t\tsaveActivePortal;","438":"\tResourceOwner saveResourceOwner;","439":"\tMemoryContext savePortalContext;","440":"\tMemoryContext oldContext;","441":"\tQueryDesc  *queryDesc;","442":"\tint\t\t\tmyeflags;","443":"","444":"\tAssert(PortalIsValid(portal));","445":"\tAssert(portal-\u003estatus == PORTAL_DEFINED);","446":"","447":"\t/*","448":"\t * Set up global portal context pointers.","449":"\t */","450":"\tsaveActivePortal = ActivePortal;","451":"\tsaveResourceOwner = CurrentResourceOwner;","452":"\tsavePortalContext = PortalContext;","453":"\tPG_TRY();","454":"\t{","455":"\t\tActivePortal = portal;","456":"\t\tif (portal-\u003eresowner)","457":"\t\t\tCurrentResourceOwner = portal-\u003eresowner;","458":"\t\tPortalContext = portal-\u003eportalContext;","459":"","460":"\t\toldContext = MemoryContextSwitchTo(PortalContext);","461":"","462":"\t\t/* Must remember portal param list, if any */","662":"/*","663":" * PortalRun","664":" *\t\tRun a portal's query or queries.","665":" *","666":" * count \u003c= 0 is interpreted as a no-op: the destination gets started up","667":" * and shut down, but nothing else happens.  Also, count == FETCH_ALL is","668":" * interpreted as \"all rows\".  Note that count is ignored in multi-query","669":" * situations, where we always run the portal to completion.","670":" *","671":" * isTopLevel: true if query is being executed at backend \"top level\"","672":" * (that is, directly from a client command message)","673":" *","674":" * dest: where to send output of primary (canSetTag) query","675":" *","676":" * altdest: where to send output of non-primary queries","677":" *","678":" * qc: where to store command completion status data.","679":" *\t\tMay be NULL if caller doesn't want status data.","680":" *","681":" * Returns true if the portal's execution is complete, false if it was","682":" * suspended due to exhaustion of the count parameter.","683":" */","684":"bool","685":"PortalRun(Portal portal, long count, bool isTopLevel,","686":"\t\t  DestReceiver *dest, DestReceiver *altdest,","687":"\t\t  QueryCompletion *qc)","688":"{","689":"\tbool\t\tresult;","690":"\tuint64\t\tnprocessed;","691":"\tResourceOwner saveTopTransactionResourceOwner;","692":"\tMemoryContext saveTopTransactionContext;","693":"\tPortal\t\tsaveActivePortal;","694":"\tResourceOwner saveResourceOwner;","695":"\tMemoryContext savePortalContext;","696":"\tMemoryContext saveMemoryContext;","697":"","698":"\tAssert(PortalIsValid(portal));","699":"","700":"\tTRACE_POSTGRESQL_QUERY_EXECUTE_START();","701":"","702":"\t/* Initialize empty completion data */","703":"\tif (qc)","704":"\t\tInitializeQueryCompletion(qc);","705":"","706":"\tif (log_executor_stats \u0026\u0026 portal-\u003estrategy != PORTAL_MULTI_QUERY)","707":"\t{","708":"\t\telog(DEBUG3, \"PortalRun\");","709":"\t\t/* PORTAL_MULTI_QUERY logs its own stats per query */","710":"\t\tResetUsage();","711":"\t}","712":"","713":"\t/*","714":"\t * Check for improper portal use, and mark portal active.","715":"\t */","753":"","754":"\t\t\t\t/*","755":"\t\t\t\t * If we have not yet run the command, do so, storing its","756":"\t\t\t\t * results in the portal's tuplestore.  But we don't do that","757":"\t\t\t\t * for the PORTAL_ONE_SELECT case.","758":"\t\t\t\t */","759":"\t\t\t\tif (portal-\u003estrategy != PORTAL_ONE_SELECT \u0026\u0026 !portal-\u003eholdStore)","760":"\t\t\t\t\tFillPortalStore(portal, isTopLevel);","761":"","762":"\t\t\t\t/*","763":"\t\t\t\t * Now fetch desired portion of results.","764":"\t\t\t\t */","765":"\t\t\t\tnprocessed = PortalRunSelect(portal, true, count, dest);","766":"","767":"\t\t\t\t/*","768":"\t\t\t\t * If the portal result contains a command tag and the caller","769":"\t\t\t\t * gave us a pointer to store it, copy it and update the","770":"\t\t\t\t * rowcount.","771":"\t\t\t\t */","772":"\t\t\t\tif (qc \u0026\u0026 portal-\u003eqc.commandTag != CMDTAG_UNKNOWN)","773":"\t\t\t\t{","774":"\t\t\t\t\tCopyQueryCompletion(qc, \u0026portal-\u003eqc);","775":"\t\t\t\t\tqc-\u003enprocessed = nprocessed;","776":"\t\t\t\t}","777":"","845":"/*","846":" * PortalRunSelect","847":" *\t\tExecute a portal's query in PORTAL_ONE_SELECT mode, and also","848":" *\t\twhen fetching from a completed holdStore in PORTAL_ONE_RETURNING,","849":" *\t\tPORTAL_ONE_MOD_WITH, and PORTAL_UTIL_SELECT cases.","850":" *","851":" * This handles simple N-rows-forward-or-backward cases.  For more complex","852":" * nonsequential access to a portal, see PortalRunFetch.","853":" *","854":" * count \u003c= 0 is interpreted as a no-op: the destination gets started up","855":" * and shut down, but nothing else happens.  Also, count == FETCH_ALL is","856":" * interpreted as \"all rows\".  (cf FetchStmt.howMany)","857":" *","858":" * Caller must already have validated the Portal and done appropriate","859":" * setup (cf. PortalRun).","860":" *","861":" * Returns number of rows processed (suitable for use in result tag)","862":" */","863":"static uint64","864":"PortalRunSelect(Portal portal,","865":"\t\t\t\tbool forward,","866":"\t\t\t\tlong count,","867":"\t\t\t\tDestReceiver *dest)","868":"{","909":"\t\telse","910":"\t\t\tdirection = ForwardScanDirection;","911":"","912":"\t\t/* In the executor, zero count processes all rows */","913":"\t\tif (count == FETCH_ALL)","914":"\t\t\tcount = 0;","915":"","916":"\t\tif (portal-\u003eholdStore)","917":"\t\t\tnprocessed = RunFromStore(portal, direction, (uint64) count, dest);","918":"\t\telse","919":"\t\t{","920":"\t\t\tPushActiveSnapshot(queryDesc-\u003esnapshot);","921":"\t\t\tExecutorRun(queryDesc, direction, (uint64) count);","922":"\t\t\tnprocessed = queryDesc-\u003eestate-\u003ees_processed;","923":"\t\t\tPopActiveSnapshot();","924":"\t\t}","925":"","926":"\t\tif (!ScanDirectionIsNoMovement(direction))","927":"\t\t{","928":"\t\t\tif (nprocessed \u003e 0)","929":"\t\t\t\tportal-\u003eatStart = false;\t/* OK to go backward now */","930":"\t\t\tif (count == 0 || nprocessed \u003c (uint64) count)","931":"\t\t\t\tportal-\u003eatEnd = true;\t/* we retrieved 'em all */","932":"\t\t\tportal-\u003eportalPos += nprocessed;","933":"\t\t}"},"src/include/access/tableam.h":{"1016":"/*","1017":" * Return next tuple from `scan`, store in slot.","1018":" */","1019":"static inline bool","1020":"table_scan_getnextslot(TableScanDesc sscan, ScanDirection direction, TupleTableSlot *slot)","1021":"{","1022":"\tslot-\u003etts_tableOid = RelationGetRelid(sscan-\u003ers_rd);","1023":"","1024":"\t/* We don't expect actual scans using NoMovementScanDirection */","1025":"\tAssert(direction == ForwardScanDirection ||","1026":"\t\t   direction == BackwardScanDirection);","1027":"","1028":"\t/*","1029":"\t * We don't expect direct calls to table_scan_getnextslot with valid","1030":"\t * CheckXidAlive for catalog or regular tables.  See detailed comments in","1031":"\t * xact.c where these variables are declared.","1032":"\t */","1033":"\tif (unlikely(TransactionIdIsValid(CheckXidAlive) \u0026\u0026 !bsysscan))","1034":"\t\telog(ERROR, \"unexpected table_scan_getnextslot call during logical decoding\");","1035":"","1036":"\treturn sscan-\u003ers_rd-\u003erd_tableam-\u003escan_getnextslot(sscan, direction, slot);","1037":"}","1038":"","1039":"/* ----------------------------------------------------------------------------","1040":" * TID Range scanning related functions.","1041":" * ----------------------------------------------------------------------------","1042":" */","1043":"","1044":"/*","1045":" * table_beginscan_tidrange is the entry point for setting up a TableScanDesc","1046":" * for a TID range scan.","1047":" */","1048":"static inline TableScanDesc"},"src/include/executor/execScan.h":{"122":"","123":"\t\t\t/* Check if it meets the access-method conditions */","124":"\t\t\tif (!(*recheckMtd) (node, slot))","125":"\t\t\t\treturn ExecClearTuple(slot);\t/* would not be returned by","126":"\t\t\t\t\t\t\t\t\t\t\t\t * scan */","127":"\t\t\treturn slot;","128":"\t\t}","129":"\t}","130":"","131":"\t/*","132":"\t * Run the node-type-specific access method function to get the next tuple","133":"\t */","134":"\treturn (*accessMtd) (node);","135":"}","136":"","137":"/* ----------------------------------------------------------------","138":" * ExecScanExtended","139":" *\t\tScans the relation using the specified 'access method' and returns the","140":" *\t\tnext tuple.  Optionally checks the tuple against 'qual' and applies","141":" *\t\t'projInfo' if provided.","142":" *","143":" * The 'recheck method' validates an arbitrary tuple of the relation against","144":" * conditions enforced by the access method.","145":" *","146":" * This function is an alternative to ExecScan, used when callers may omit","147":" * 'qual' or 'projInfo'. The pg_always_inline attribute allows the compiler","148":" * to eliminate non-relevant branches at compile time, avoiding run-time","149":" * checks in those cases.","150":" *","151":" * Conditions:","152":" *\t-- The AMI \"cursor\" is positioned at the previously returned tuple.","153":" *","154":" * Initial States:","155":" *\t-- The relation is opened for scanning, with the \"cursor\"","156":" *\tpositioned before the first qualifying tuple.","157":" * ----------------------------------------------------------------","158":" */","159":"static pg_always_inline TupleTableSlot *","160":"ExecScanExtended(ScanState *node,","161":"\t\t\t\t ExecScanAccessMtd accessMtd,\t/* function returning a tuple */","162":"\t\t\t\t ExecScanRecheckMtd recheckMtd,","163":"\t\t\t\t EPQState *epqstate,","164":"\t\t\t\t ExprState *qual,","165":"\t\t\t\t ProjectionInfo *projInfo)","166":"{","183":"\t * storage allocated in the previous tuple cycle.","184":"\t */","185":"\tResetExprContext(econtext);","186":"","187":"\t/*","188":"\t * get a tuple from the access method.  Loop until we obtain a tuple that","189":"\t * passes the qualification.","190":"\t */","191":"\tfor (;;)","192":"\t{","193":"\t\tTupleTableSlot *slot;","194":"","195":"\t\tslot = ExecScanFetch(node, epqstate, accessMtd, recheckMtd);","196":"","197":"\t\t/*","198":"\t\t * if the slot returned by the accessMtd contains NULL, then it means","199":"\t\t * there is nothing more to scan so we just return an empty slot,","20":"/*","200":"\t\t * being careful to use the projection result slot so it has correct","201":"\t\t * tupleDesc.","202":"\t\t */","203":"\t\tif (TupIsNull(slot))","204":"\t\t{","205":"\t\t\tif (projInfo)","206":"\t\t\t\treturn ExecClearTuple(projInfo-\u003epi_state.resultslot);","207":"\t\t\telse","21":" * ExecScanFetch -- check interrupts \u0026 fetch next potential tuple","22":" *","23":" * This routine substitutes a test tuple if inside an EvalPlanQual recheck.","24":" * Otherwise, it simply executes the access method's next-tuple routine.","25":" *","26":" * The pg_always_inline attribute allows the compiler to inline this function","27":" * into its caller. When EPQState is NULL, the EvalPlanQual logic is completely","28":" * eliminated at compile time, avoiding unnecessary run-time checks and code","29":" * for cases where EPQ is not required.","30":" */","31":"static pg_always_inline TupleTableSlot *","32":"ExecScanFetch(ScanState *node,","33":"\t\t\t  EPQState *epqstate,","34":"\t\t\t  ExecScanAccessMtd accessMtd,","35":"\t\t\t  ExecScanRecheckMtd recheckMtd)","36":"{"},"src/include/executor/executor.h":{"302":"/* ----------------------------------------------------------------","303":" *\t\tExecProcNode","304":" *","305":" *\t\tExecute the given node to return a(nother) tuple.","306":" * ----------------------------------------------------------------","307":" */","308":"#ifndef FRONTEND","309":"static inline TupleTableSlot *","310":"ExecProcNode(PlanState *node)","311":"{","312":"\tif (node-\u003echgParam != NULL) /* something changed? */","313":"\t\tExecReScan(node);\t\t/* let ReScan handle this */","314":"","315":"\treturn node-\u003eExecProcNode(node);","316":"}","317":"#endif","318":"","319":"/*","320":" * prototypes from functions in execExpr.c","321":" */","322":"extern ExprState *ExecInitExpr(Expr *node, PlanState *parent);","323":"extern ExprState *ExecInitExprWithParams(Expr *node, ParamListInfo ext_params);","324":"extern ExprState *ExecInitQual(List *qual, PlanState *parent);","325":"extern ExprState *ExecInitCheck(List *qual, PlanState *parent);","326":"extern List *ExecInitExprList(List *nodes, PlanState *parent);","327":"extern ExprState *ExecBuildAggTrans(AggState *aggstate, struct AggStatePerPhaseData *phase,"}}}</script>
+<script>
+// 오픈소스 내부 작업대의 화면 코드입니다. 실시간 실행과 재생본이 이 파일 하나를 함께 씁니다.
+//
+// 자료(Bundle)의 모양은 Go의 internal/replay/bundle.go가 정합니다. 이 파일은 그 자료를 그리기만 하고,
+// 자료에 없는 소스 줄이나 설명을 지어내지 않습니다.
+// 화면에 넣는 글자는 모두 textContent로 넣습니다. 소스에는 <, >, &가 흔하고, SQL은 학습자가 입력한 문자열이기 때문입니다.
+(() => {
+  'use strict';
+
+  // 단계 목록의 고정 치수입니다. app.css의 --row, --lane, --seq와 같아야 경로 그림이 행과 점에 맞습니다.
+  const ROW = 30;
+  const LANE = 22;
+  const SEQ = 36;
+
+  const $ = (id) => document.getElementById(id);
+
+  const state = {
+    mode: 'replay', // 'replay'는 파일에 담긴 자료, 'live'는 서버에서 받은 자료
+    bundle: null,
+    index: 0, // 지금 보는 단계(0부터)
+    frame: null, // 호출 스택의 칸을 보는 중이면 그 칸 번호, 아니면 null
+    columns: [], // 이 기록에 실제로 나온 층만, 층 순서대로
+    subjects: [],
+  };
+
+  /**
+   * 요소 하나를 만듭니다. 문자열 자식은 글자로만 들어가므로 HTML로 해석되지 않습니다.
+   * @param {string} tag 태그 이름
+   * @param {Object} attrs 속성. on으로 시작하면 이벤트 처리기, false나 null이면 생략합니다.
+   * @param {...(Node|string|number)} children 자식
+   * @returns {HTMLElement}
+   */
+  function h(tag, attrs, ...children) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v === false || v == null) continue;
+      if (k === 'class') node.className = v;
+      else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+      else node.setAttribute(k, v === true ? '' : String(v));
+    }
+    for (const c of children.flat()) {
+      if (c == null || c === false) continue;
+      node.append(c instanceof Node ? c : document.createTextNode(String(c)));
+    }
+    return node;
+  }
+
+  /** 페이지를 준비합니다. 파일에 자료가 들어 있으면 재생 모드, 없으면 서버에 붙는 실시간 모드입니다. */
+  function init() {
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('hashchange', () => selectFromHash());
+    $('prev').addEventListener('click', () => go(state.index - 1));
+    $('next').addEventListener('click', () => go(state.index + 1));
+    $('frame-back').addEventListener('click', () => {
+      state.frame = null;
+      renderCurrent();
+    });
+
+    const embedded = $('bundle');
+    if (embedded) {
+      state.mode = 'replay';
+      show(JSON.parse(embedded.textContent), []);
+    } else {
+      state.mode = 'live';
+      initLive();
+    }
+  }
+
+  /** 서버에서 주제 목록을 받아 실행 양식을 채웁니다. 실패하면 이유를 화면에 보입니다. */
+  async function initLive() {
+    $('run-form').hidden = false;
+    $('run-form').addEventListener('submit', onRun);
+    try {
+      const data = await request('/api/subjects');
+      state.subjects = data.subjects;
+      const subj = data.subjects[0];
+      $('title').textContent = `${subj.title} 작업대`;
+      document.title = $('title').textContent;
+      $('watch').replaceChildren(...subj.watches.map((w) => h('option', { value: w.id }, w.label)));
+      $('watch').addEventListener('change', renderExamples);
+      renderExamples();
+      renderLabStatus(subj);
+      $('provenance').textContent = subj.sourceNotice || '';
+    } catch (err) {
+      showMessage(`서버에서 주제 목록을 받지 못했습니다. ${err.message}`);
+    }
+  }
+
+  /**
+   * 서버에 요청하고 JSON 응답을 돌려줍니다. 서버의 다른 사이트 요청 방어가 요구하는 머리글을 붙입니다.
+   * @param {string} url
+   * @param {Object} [body] 있으면 POST로 보냅니다.
+   * @returns {Promise<Object>} 응답 JSON
+   * @throws {Error} 응답이 실패면 서버가 보낸 이유를 담습니다.
+   */
+  async function request(url, body) {
+    const init = { headers: { 'X-Workbench': '1' } };
+    if (body) {
+      init.method = 'POST';
+      init.headers['Content-Type'] = 'application/json';
+      init.body = JSON.stringify(body);
+    }
+    const res = await fetch(url, init);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `서버 응답 ${res.status}`);
+    return data;
+  }
+
+  /** 고른 감시 목록의 예시 SQL을 버튼으로 보입니다. 누르면 입력칸에 들어갑니다. */
+  function renderExamples() {
+    const subj = state.subjects[0];
+    const watch = subj.watches.find((w) => w.id === $('watch').value);
+    const box = $('examples');
+    box.replaceChildren('예시: ');
+    for (const sql of watch.examples || []) {
+      box.append(h('button', { type: 'button', onclick: () => { $('sql').value = sql; $('sql').focus(); } }, sql));
+    }
+    if (!$('sql').value && watch.examples && watch.examples[0]) $('sql').value = watch.examples[0];
+  }
+
+  /** 실습 컨테이너가 켜져 있는지와, 꺼져 있으면 켜는 명령을 보입니다. */
+  function renderLabStatus(subj) {
+    const box = $('lab-status');
+    if (subj.running) {
+      box.replaceChildren(`실습 컨테이너 ${subj.container}이(가) 켜져 있습니다. SQL은 이 컨테이너 안에서만 실행됩니다.`);
+      return;
+    }
+    box.replaceChildren(
+      `실습 컨테이너 ${subj.container}이(가) 꺼져 있습니다. 저장소 루트에서 `,
+      h('code', null, subj.startCommand),
+      '을 실행한 뒤 다시 실행하세요.',
+    );
+  }
+
+  /** 실행 양식을 보내고, 받은 기록을 화면에 그립니다. */
+  async function onRun(ev) {
+    ev.preventDefault();
+    const subj = state.subjects[0];
+    const button = $('run');
+    button.disabled = true;
+    button.textContent = '추적하는 중';
+    hideMessage();
+    try {
+      const data = await request('/api/runs', { subject: subj.id, watch: $('watch').value, sql: $('sql').value });
+      show(data.bundle, data.warnings || []);
+    } catch (err) {
+      showMessage(err.message);
+    } finally {
+      button.disabled = false;
+      button.textContent = '실행하고 추적';
+    }
+    // 실행이 성공했든 실패했든 컨테이너 상태를 다시 받아, 실행 사이에 켜거나 끈 상태가 화면에 남지 않게 합니다.
+    try {
+      const data = await request('/api/subjects');
+      renderLabStatus(data.subjects[0]);
+    } catch (_) {
+      // 상태를 다시 받지 못하면 이전 상태 문구를 그대로 둡니다. 실행 결과나 오류 문구는 이미 보이고 있습니다.
+    }
+  }
+
+  /**
+   * 실행 한 번의 자료를 화면 전체에 그리고, 주소의 #step-N 또는 첫 단계를 고릅니다.
+   * @param {Object} bundle internal/replay.Bundle
+   * @param {string[]} warnings 서버가 붙인 주의 문구
+   */
+  function show(bundle, warnings) {
+    state.bundle = bundle;
+    state.frame = null;
+    state.columns = usedColumns(bundle);
+
+    if (state.mode === 'replay') {
+      $('title').textContent = `${bundle.subjectTitle} 실행 재생`;
+      document.title = $('title').textContent;
+      $('provenance').textContent = bundle.sourceNotice || '';
+    }
+    renderOrigin(bundle.meta);
+    $('summary').hidden = false;
+    $('main').hidden = false;
+    $('summary-sql').textContent = bundle.meta.sql;
+
+    renderLegend();
+    renderSteps();
+    renderCounts();
+    renderOutput();
+
+    const notes = [...warnings];
+    if (bundle.noBreak && bundle.noBreak.length) {
+      notes.push(`gdb가 중단점을 만들지 못한 함수가 있습니다: ${bundle.noBreak.join(', ')}.`);
+    }
+    if (!bundle.steps.length) {
+      notes.push('기록에 멈춘 단계가 하나도 없습니다. 감시 목록의 함수를 이 SQL이 지나지 않았을 수 있습니다.');
+    }
+    if (notes.length) showMessage(notes.join(' '));
+    else hideMessage();
+
+    // 단계가 없으면 앞선 실행의 소스 창과 위치가 남아 이번 기록처럼 보이므로, 소스 창을 숨기고 위치를 0으로 둡니다.
+    const empty = !bundle.steps.length;
+    $('code-pane').hidden = empty;
+    if (empty) {
+      $('position').textContent = '0 / 0';
+      $('prev').disabled = true;
+      $('next').disabled = true;
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      return;
+    }
+    // 주소의 #step-N은 재생본을 처음 열 때만 따릅니다. 실시간 실행에서는 그 값이 앞선 실행의 단계 번호이기 때문입니다.
+    if (state.mode === 'replay' && selectFromHash()) return;
+    go(0);
+  }
+
+  /** 기록의 출처, 감시 목록, 두 번 실행된다는 사실을 제목 옆에 밝힙니다. */
+  function renderOrigin(meta) {
+    const box = $('origin');
+    box.replaceChildren(`출처: ${meta.origin} · 감시 목록: ${meta.watchLabel}`);
+    if (meta.recordedAt) box.append(` · ${meta.recordedAt}`);
+    if (meta.guide) box.append(' · ', h('a', { href: meta.guide }, '이 실행을 설명하는 문서'));
+    box.append(h('br'), '이 SQL은 두 번 실행됩니다. 첫 번째는 캐시를 데우는 실행이고, 아래 기록은 두 번째 실행의 것입니다.');
+  }
+
+  /**
+   * 이 기록의 단계에 실제로 나온 층만 층 순서대로 골라 그림의 세로줄로 씁니다.
+   * @returns {{lane: number, label: string}[]}
+   */
+  function usedColumns(bundle) {
+    const used = new Set(bundle.steps.map((s) => s.place.lane));
+    return bundle.lanes.filter((l) => used.has(l.index)).map((l) => ({ lane: l.index, label: l.label }));
+  }
+
+  /** 세로줄 번호와 층 이름을 범례로 보입니다. */
+  function renderLegend() {
+    $('lane-legend').replaceChildren(
+      ...state.columns.map((c, i) => h('li', null, h('b', null, i + 1), c.label)),
+    );
+  }
+
+  /** 단계 목록과, 단계가 층 사이를 오가는 경로 그림을 그립니다. */
+  function renderSteps() {
+    const box = $('steps');
+    const steps = state.bundle.steps;
+    const col = new Map(state.columns.map((c, i) => [c.lane, i]));
+    const track = state.columns.length * LANE + 8;
+    box.style.setProperty('--track', `${track}px`);
+
+    // 경로 그림은 행 뒤에 깔리는 SVG 하나입니다. 행 높이가 고정이라 점의 세로 위치를 계산할 수 있습니다.
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width', String(SEQ + track));
+    svg.setAttribute('height', String(steps.length * ROW));
+    svg.setAttribute('aria-hidden', 'true');
+    const line = document.createElementNS(ns, 'polyline');
+    line.setAttribute('points', steps.map((s, i) => `${SEQ + col.get(s.place.lane) * LANE + LANE / 2},${i * ROW + ROW / 2}`).join(' '));
+    svg.append(line);
+
+    const rows = steps.map((s, i) => h('button', {
+      type: 'button',
+      class: 'step',
+      role: 'option',
+      'aria-selected': 'false',
+      title: `분류: ${s.place.layer} · ${s.place.loc.path || '위치 모름'}:${s.place.loc.line || ''}`,
+      onclick: () => go(i),
+    },
+    h('span', { class: 'seq' }, s.seq),
+    h('span', { class: 'track' }, dot(col.get(s.place.lane))),
+    h('span', { class: 'name' }, s.place.function)));
+    box.replaceChildren(svg, ...rows);
+  }
+
+  /** 세로줄 c에 놓이는 점 하나를 만듭니다. */
+  function dot(c) {
+    const d = h('span', { class: 'dot' });
+    d.style.left = `${c * LANE + LANE / 2}px`;
+    return d;
+  }
+
+  /** END 줄의 함수별 횟수를 표로 보입니다. */
+  function renderCounts() {
+    const rows = (state.bundle.counts || []).map((c) => h('tr', null, h('td', null, c.function), h('td', null, `${c.hits}회`)));
+    $('counts').replaceChildren(...rows);
+  }
+
+  /** psql 출력이 있으면 보이고, 없으면 그 칸을 숨깁니다. */
+  function renderOutput() {
+    const out = state.bundle.output || [];
+    $('output-box').hidden = out.length === 0;
+    $('output').textContent = out.join('\n');
+  }
+
+  /** 단계 i로 옮겨 갑니다. 범위를 넘으면 가장 가까운 끝 단계로 맞춥니다. */
+  function go(i) {
+    if (!state.bundle || !state.bundle.steps.length) return;
+    state.index = Math.max(0, Math.min(state.bundle.steps.length - 1, i));
+    state.frame = null;
+    renderCurrent();
+  }
+
+  /**
+   * 주소의 #step-N을 읽어 그 단계로 옮겨 갑니다.
+   * @returns {boolean} 주소에 단계가 있었으면 true
+   */
+  function selectFromHash() {
+    const m = /^#step-(\d+)$/.exec(window.location.hash);
+    if (!m || !state.bundle) return false;
+    go(Number(m[1]) - 1);
+    return true;
+  }
+
+  /** 지금 단계(또는 호출 스택의 칸)를 소스 창, 값, 호출 스택에 그립니다. */
+  function renderCurrent() {
+    const b = state.bundle;
+    const step = b.steps[state.index];
+    const rows = $('steps').querySelectorAll('.step');
+    rows.forEach((r, i) => r.setAttribute('aria-selected', String(i === state.index)));
+    keepVisible($('steps'), rows[state.index]);
+
+    $('position').textContent = `${state.index + 1} / ${b.steps.length}`;
+    $('prev').disabled = state.index === 0;
+    $('next').disabled = state.index === b.steps.length - 1;
+
+    const place = state.frame == null ? step.place : step.stack[state.frame];
+    $('fn').textContent = place.function;
+    $('loc').textContent = place.loc.path ? `${place.loc.path}:${place.loc.line}` : 'gdb가 소스 위치를 알지 못한 프레임';
+    $('layer').textContent = `분류: ${place.layer}`;
+    $('layer').title = '작업대가 소스 디렉터리를 보고 붙인 이름입니다. 소스가 정한 이름이 아닙니다.';
+    $('frame-note').hidden = state.frame == null;
+    if (state.frame != null) {
+      $('frame-text').textContent = `${step.seq}번 단계의 호출 스택 ${state.frame}번 칸을 보는 중입니다.`;
+    }
+
+    renderCode(place);
+    renderValues(step);
+    renderStack(step);
+    history.replaceState(null, '', `#step-${state.index + 1}`);
+  }
+
+  /** 소스 창에 위치 place의 구간을 그리고, 멈춘 줄이 보이도록 창 안에서만 스크롤합니다. */
+  function renderCode(place) {
+    const box = $('code');
+    box.replaceChildren();
+    const ranges = (place.window && place.window.ranges) || [];
+    if (!ranges.length) {
+      box.append(h('div', { class: 'empty' }, place.loc.path ? '이 위치의 소스 구간을 계산하지 못했습니다.' : 'gdb가 이 프레임의 소스 위치를 알지 못했습니다.'));
+      return;
+    }
+    const lines = state.bundle.files[place.loc.path] || {};
+    let current = null;
+    let prevTo = 0;
+    ranges.forEach((r, k) => {
+      if (k > 0) box.append(h('div', { class: 'gap' }, `${prevTo + 1}~${r.from - 1}번 줄 생략`));
+      for (let n = r.from; n <= r.to; n++) {
+        const isCurrent = n === place.loc.line;
+        const cls = ['ln', isCurrent ? 'current' : '', n === place.window.defLine ? 'def' : ''].filter(Boolean).join(' ');
+        const text = lines[n];
+        const row = h('div', { class: cls, 'data-n': n, 'aria-current': isCurrent ? 'true' : null },
+          h('span', { class: 'no' }, n),
+          h('span', { class: 'tx' }, text === undefined ? '(이 자료에 없는 줄)' : text));
+        if (isCurrent) current = row;
+        box.append(row);
+      }
+      prevTo = r.to;
+    });
+    if (current) box.scrollTop = Math.max(0, current.offsetTop - box.clientHeight / 3);
+  }
+
+  /** gdb가 멈춘 순간 읽은 값을 식마다 보입니다. 식으로 나눌 수 없었던 값은 기록 원문 그대로 보입니다. */
+  function renderValues(step) {
+    const rows = [];
+    for (const v of step.values || []) rows.push(h('tr', null, h('td', null, v.expr), h('td', null, v.text)));
+    if (step.rawValues) rows.push(h('tr', null, h('td', null, '기록 원문'), h('td', null, step.rawValues)));
+    $('values').replaceChildren(...rows);
+    $('values').hidden = rows.length === 0;
+    $('no-values').hidden = rows.length !== 0;
+  }
+
+  /** 이 단계에 호출 스택이 기록되어 있으면 칸마다 버튼으로 보입니다. */
+  function renderStack(step) {
+    const stack = step.stack || [];
+    $('stack-box').hidden = stack.length === 0;
+    $('stack').replaceChildren(...stack.map((f, d) => h('li', null, h('button', {
+      type: 'button',
+      'aria-current': state.frame === d ? 'true' : null,
+      onclick: () => {
+        state.frame = d;
+        renderCurrent();
+      },
+    },
+    h('span', { class: 'd' }, d),
+    h('span', { class: 'f' }, f.function, ' ', h('small', null, f.loc.path ? `${f.loc.path}:${f.loc.line} · 분류: ${f.layer}` : '위치 모름'))))));
+  }
+
+  /** 목록 box 안에서 row가 보이도록 box만 스크롤합니다. 페이지 전체는 움직이지 않습니다. */
+  function keepVisible(box, row) {
+    if (!row) return;
+    const top = row.offsetTop;
+    if (top < box.scrollTop || top + row.offsetHeight > box.scrollTop + box.clientHeight) {
+      box.scrollTop = Math.max(0, top - box.clientHeight / 2);
+    }
+  }
+
+  /** 오른쪽·왼쪽 화살표(또는 j·k)로 단계를 넘깁니다. 입력칸에 있을 때는 가로채지 않습니다. */
+  function onKey(ev) {
+    const tag = (ev.target && ev.target.tagName) || '';
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag) || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    const moves = { ArrowRight: 1, j: 1, ArrowLeft: -1, k: -1 };
+    if (ev.key in moves) {
+      ev.preventDefault();
+      go(state.index + moves[ev.key]);
+    } else if (ev.key === 'Home') {
+      ev.preventDefault();
+      go(0);
+    } else if (ev.key === 'End') {
+      ev.preventDefault();
+      go(Infinity);
+    }
+  }
+
+  /** 주의나 오류 문구를 보입니다. */
+  function showMessage(text) {
+    $('message').textContent = text;
+    $('message').hidden = false;
+  }
+
+  /** 주의나 오류 문구를 숨깁니다. */
+  function hideMessage() {
+    $('message').hidden = true;
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

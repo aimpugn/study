@@ -1,0 +1,334 @@
+$  n=44  obj:44 len[min=16,max=16,sum=704]  | 모음 | 관찰 | G9
+$.bystanders  n=44  list:44 len[min=1,max=9,sum=110]  | 모음 | 도출 | T2+G9
+$.bystanders[]  n=110  obj:110 len[min=7,max=7,sum=770]  | 사건 | 도출 | T2+G8
+$.bystanders[].firstSql  n=110  str:110  | 값 | 도출 | T2+G9
+$.bystanders[].hints  n=110  int:110  | 값 | 도출 | T2+G9
+$.bystanders[].outsideHints  n=110  int:110  | 값 | 도출 | T2+G9
+$.bystanders[].pid  n=110  int:110  | 장소 | 도출 | T2+G4
+$.bystanders[].queries  n=110  int:110  | 값 | 도출 | T2+G9
+$.bystanders[].watchedChecks  n=110  int:110  | 값 | 도출 | T2+G9
+$.bystanders[].watchedHints  n=110  int:110  | 값 | 도출 | T2+G9
+$.captures  n=44  list:44 len[min=6,max=10,sum=344]  | 모음 | 관찰 | G9
+$.captures[]  n=344  obj:344 len[min=8,max=10,sum=2906]  | 사건 | 관찰 | G8
+$.captures[].activity  n=344  list:336,null:8 len[min=1,max=2,sum=626]  | 모음 | 관찰 | G9
+$.captures[].activity[]  n=626  obj:626 len[min=6,max=6,sum=3756]  | 값 | 관찰 | G5d
+$.captures[].activity[].pid  n=626  int:626  | 장소 | 관찰 | G4
+$.captures[].activity[].state  n=626  str:626  | 값 | 관찰 | G9
+$.captures[].activity[].waitEvent  n=626  str:626  | 값 | 관찰 | G9
+$.captures[].activity[].waitType  n=626  str:626  | 값 | 관찰 | G9
+$.captures[].activity[].xid  n=626  str:626  | 장소 | 관찰 | G4
+$.captures[].activity[].xmin  n=626  str:626  | 값 | 관찰 | G9
+$.captures[].afterStep  n=344  int:344  | 연결 | 관찰 | T8
+$.captures[].locks  n=344  null:158,list:186 len[min=1,max=16,sum=992]  | 모음 | 관찰 | G9
+$.captures[].pages  n=344  obj:344 len[min=0,max=2,sum=348]  | 모음 | 관찰 | G9
+$.captures[].pages.acct  n=204  list:204 len[min=1,max=5,sum=498]  | 모음 | 관찰 | G9
+$.captures[].pages.acct[]  n=498  obj:498 len[min=8,max=8,sum=3984]  | 값 | 관찰 | G5d
+$.captures[].pages.acct[].block  n=498  int:498  | 장소 | 관찰 | G4
+$.captures[].pages.acct[].ctid  n=498  str:498  | 장소 | 관찰 | G4
+$.captures[].pages.acct[].flags  n=498  list:498 len[min=2,max=7,sum=1618]  | 모음 | 관찰 | G9
+$.captures[].pages.acct[].flags[]  n=1618  str:1618  | 값 | 관찰 | G8
+$.captures[].pages.acct[].lp  n=498  int:498  | 장소 | 관찰 | G4
+$.captures[].pages.acct[].lpFlags  n=498  int:498  | 값 | 관찰 | G9
+$.captures[].pages.acct[].values  n=498  obj:498 len[min=3,max=3,sum=1494]  | 모음 | 관찰 | G9
+$.captures[].pages.acct[].values.balance  n=498  str:498  | 값 | 관찰 | G9
+$.captures[].pages.acct[].values.id  n=498  str:498  | 장소 | 관찰 | G4
+$.captures[].pages.acct[].values.owner  n=498  str:498  | 값 | 관찰 | G9
+$.captures[].pages.acct[].xmax  n=498  str:498  | 값 | 관찰 | G9
+$.captures[].pages.acct[].xmin  n=498  str:498  | 값 | 관찰 | G9
+$.captures[].reads  n=344  obj:344 len[min=4,max=5,sum=1708]  | 시각 | 관찰 | T7
+$.captures[].reads.activity  n=344  list:344 len[min=2,max=2,sum=688]  | 시각 | 관찰 | T7
+$.captures[].reads.activity[]  n=688  float:688  | 시각 | 관찰 | T7
+$.captures[].reads.locks  n=344  list:344 len[min=2,max=2,sum=688]  | 시각 | 관찰 | T7
+$.captures[].reads.locks[]  n=688  float:688  | 시각 | 관찰 | T7
+$.captures[].reads.pages  n=344  list:344 len[min=2,max=2,sum=688]  | 시각 | 관찰 | T7
+$.captures[].reads.pages[]  n=688  float:688  | 시각 | 관찰 | T7
+$.captures[].reads.running  n=344  list:344 len[min=2,max=2,sum=688]  | 시각 | 관찰 | T7
+$.captures[].reads.running[]  n=688  float:688  | 시각 | 관찰 | T7
+$.captures[].reads.xacts  n=332  list:332 len[min=2,max=2,sum=664]  | 시각 | 관찰 | T7
+$.captures[].reads.xacts[]  n=664  float:664  | 시각 | 관찰 | T7
+$.captures[].running  n=344  str:344  | 값 | 관찰 | G9
+$.captures[].t  n=344  float:344  | 시각 | 관찰 | G3
+$.captures[].xacts  n=344  obj:344 len[min=0,max=3,sum=640] (dynamic keys)  | 모음 | 관찰 | G9
+$.captures[].xacts.{*}  n=640  str:640  | 값 | 관찰 | G9
+$.captures[].locks[]  n=992  obj:992 len[min=9,max=9,sum=8928]  | 값 | 관찰 | G5d
+$.captures[].locks[].granted  n=992  bool:992  | 값 | 관찰 | G9
+$.captures[].locks[].mode  n=992  str:992  | 값 | 관찰 | G9
+$.captures[].locks[].page  n=992  str:992  | 장소 | 관찰 | G4
+$.captures[].locks[].pid  n=992  int:992  | 장소 | 관찰 | G4
+$.captures[].locks[].relation  n=992  str:992  | 장소 | 관찰 | G4
+$.captures[].locks[].tuple  n=992  str:992  | 장소 | 관찰 | G4
+$.captures[].locks[].type  n=992  str:992  | 값 | 관찰 | G5b
+$.captures[].locks[].vxid  n=992  str:992  | 장소 | 관찰 | G4
+$.captures[].locks[].xid  n=992  str:992  | 장소 | 관찰 | G4
+$.clock  n=44  obj:44 len[min=4,max=4,sum=176]  | 출처 | 도출 | T5
+$.clock.events  n=44  int:44  | 출처 | 도출 | T5
+$.clock.joined  n=44  int:44  | 출처 | 도출 | T5
+$.clock.maxDeviationUs  n=44  float:44  | 출처 | 도출 | T5
+$.clock.medianOffsetUs  n=44  float:44  | 출처 | 도출 | T5
+$.hintChanges  n=44  list:44 len[min=1,max=6,sum=172]  | 모음 | 도출 | T2+G9
+$.hintChanges[]  n=172  obj:172 len[min=8,max=8,sum=1376]  | 사건 | 도출 | T2+G8
+$.hintChanges[].at  n=172  str:172  | 장소 | 도출 | T2+G4
+$.hintChanges[].bit  n=172  str:172  | 값 | 도출 | T2+G9
+$.hintChanges[].by  n=172  str:172  | 연결 | 도출 | T2+G5
+$.hintChanges[].ctid  n=172  str:172  | 장소 | 도출 | T2+G4
+$.hintChanges[].step  n=172  int:172  | 연결 | 도출 | T2+G5
+$.hintChanges[].t  n=172  float:172  | 시각 | 도출 | T2+G3
+$.hintChanges[].table  n=172  str:172  | 장소 | 도출 | T2+G4
+$.hintChanges[].via  n=172  str:172  | 출처 | 도출 | T2+G7
+$.joins  n=44  list:44 len[min=27,max=55,sum=1822]  | 출처 | 도출 | T5
+$.joins[]  n=1822  obj:1822 len[min=4,max=5,sum=8068]  | 출처 | 도출 | T5
+$.joins[].fn  n=1822  str:1822  | 출처 | 도출 | T5
+$.joins[].pid  n=1822  int:1822  | 출처 | 도출 | T5
+$.joins[].recorder  n=1822  int:1822  | 출처 | 도출 | T5
+$.joins[].uprobe  n=1822  int:1822  | 출처 | 도출 | T5
+$.joins[].return  n=780  bool:780  | 출처 | 도출 | T5
+$.kills  n=44  list:44 len[min=0,max=1,sum=8]  | 모음 | 관찰 | G9
+$.pauses  n=44  list:44 len[min=0,max=1,sum=6]  | 모음 | 관찰 | G9
+$.scenario  n=44  str:44  | 값 | 관찰 | T14
+$.server  n=44  obj:44 len[min=3,max=3,sum=132]  | 모음 | 관찰 | G9
+$.server.events  n=44  list:44 len[min=8,max=155,sum=1601]  | 모음 | 관찰 | G9
+$.server.events[]  n=1601  obj:1601 len[min=4,max=6,sum=7812]  | 사건 | 관찰 | G8
+$.server.events[].f  n=1601  obj:1601 len[min=1,max=7,sum=5330]  | 모음 | 관찰 | G9
+$.server.events[].f.call  n=466  str:466  | 값 | 관찰 | G9
+$.server.events[].f.durUs  n=466  str:466  | 시각 | 관찰 | G3
+$.server.events[].f.file  n=466  str:466  | 장소 | 관찰 | G4
+$.server.events[].f.len  n=374  str:374  | 값 | 관찰 | G9
+$.server.events[].f.lsn0  n=218  str:218  | 값 | 관찰 | G9
+$.server.events[].f.lsn1  n=218  str:218  | 값 | 관찰 | G9
+$.server.events[].f.off  n=218  str:218  | 장소 | 관찰 | G4
+$.server.events[].kind  n=1601  str:1601  | 사건 | 관찰 | G6
+$.server.events[].pid  n=1601  int:1601  | 장소 | 관찰 | G4
+$.server.events[].stack  n=942  list:942 len[min=2,max=14,sum=5101]  | 장소 | 관찰 | G2
+$.server.events[].stack[]  n=5101  obj:5101 len[min=2,max=2,sum=10202]  | 장소 | 관찰 | G2
+$.server.events[].stack[].at  n=5101  str:5101  | 장소 | 관찰 | G2
+$.server.events[].stack[].fn  n=5101  str:5101  | 장소 | 관찰 | G2
+$.server.events[].t  n=1601  float:1600,int:1  | 시각 | 관찰 | G3
+$.server.events[].t1  n=466  float:466  | 시각 | 관찰 | G3
+$.server.procs  n=44  list:44 len[min=12,max=22,sum=608]  | 모음 | 관찰 | G9
+$.server.procs[]  n=608  obj:608 len[min=5,max=6,sum=3128]  | 장소 | 관찰 | G5c
+$.server.procs[].exit  n=608  str:608  | 값 | 관찰 | G9
+$.server.procs[].pid  n=608  int:608  | 장소 | 관찰 | G4
+$.server.procs[].role  n=608  str:608  | 이름 | 도출 | T6
+$.server.procs[].t0  n=608  float:608  | 시각 | 관찰 | G3
+$.server.procs[].t1  n=608  float:608  | 시각 | 관찰 | G3
+$.server.procs[].session  n=88  str:88  | 장소 | 관찰 | G4
+$.server.spans  n=44  list:44 len[min=0,max=28,sum=224]  | 모음 | 관찰 | G9
+$.sessions  n=44  list:44 len[min=2,max=2,sum=88]  | 모음 | 관찰 | G9
+$.sessions[]  n=88  obj:88 len[min=2,max=2,sum=176]  | 장소 | 관찰 | G5c
+$.sessions[].name  n=88  str:88  | 장소 | 관찰 | G4
+$.sessions[].pid  n=88  int:88  | 장소 | 관찰 | G4
+$.siteRepair  n=44  obj:44 len[min=4,max=5,sum=200]  | 출처 | 도출 | T5
+$.siteRepair.before  n=44  obj:44 len[min=1,max=1,sum=44] (dynamic keys)  | 출처 | 도출 | T5
+$.siteRepair.before.{*}  n=44  int:44  | 출처 | 도출 | T5
+$.siteRepair.leftAfter  n=44  int:44  | 출처 | 도출 | T5
+$.siteRepair.repaired  n=44  int:44  | 출처 | 도출 | T5
+$.siteRepair.unchanged  n=44  int:44  | 출처 | 도출 | T5
+$.src  n=44  obj:44 len[min=91,max=185,sum=6018] (dynamic keys)  | 발췌 | 관찰 | G1
+$.src.{*}  n=6018  obj:6018 len[min=2,max=2,sum=12036]  | 발췌 | 관찰 | G1
+$.src.{*}.from  n=6018  int:6018  | 발췌 | 관찰 | G1
+$.src.{*}.lines  n=6018  list:6018 len[min=14,max=21,sum=126298]  | 발췌 | 관찰 | G1
+$.src.{*}.lines[]  n=126298  str:126298  | 발췌 | 관찰 | G1
+$.steps  n=44  list:44 len[min=4,max=9,sum=292]  | 모음 | 관찰 | G9
+$.steps[]  n=292  obj:292 len[min=7,max=9,sum=2132]  | 사건 | 관찰 | G8
+$.steps[].n  n=292  int:292  | 연결 | 관찰 | T13
+$.steps[].output  n=292  list:292 len[min=1,max=7,sum=706]  | 모음 | 관찰 | T12
+$.steps[].output[]  n=706  str:706  | 값 | 관찰 | T12
+$.steps[].requests  n=292  list:292 len[min=1,max=1,sum=292]  | 모음 | 관찰 | G9
+$.steps[].requests[]  n=292  obj:292 len[min=9,max=10,sum=2640]  | 사건 | 관찰 | G8
+$.steps[].requests[].catalogSnapshots  n=292  int:292  | 값 | 관찰 | G9
+$.steps[].requests[].checks  n=292  list:292 len[min=0,max=4,sum=266]  | 모음 | 관찰 | G9
+$.steps[].requests[].events  n=292  list:292 len[min=0,max=20,sum=1094]  | 모음 | 관찰 | G9
+$.steps[].requests[].in  n=292  list:292 len[min=1,max=1,sum=292]  | 모음 | 관찰 | T10
+$.steps[].requests[].in[]  n=292  obj:292 len[min=3,max=3,sum=876]  | 사건 | 관찰 | T10
+$.steps[].requests[].in[].len  n=292  int:292  | 값 | 관찰 | G9
+$.steps[].requests[].in[].text  n=292  str:292  | 값 | 관찰 | G9
+$.steps[].requests[].in[].type  n=292  str:292  | 사건 | 관찰 | G6
+$.steps[].requests[].out  n=292  list:227,null:65 len[min=2,max=6,sum=651]  | 모음 | 관찰 | T10
+$.steps[].requests[].out[]  n=651  obj:651 len[min=3,max=3,sum=1953]  | 사건 | 관찰 | T10
+$.steps[].requests[].out[].len  n=651  int:651  | 값 | 관찰 | G9
+$.steps[].requests[].out[].text  n=651  str:651  | 값 | 관찰 | G9
+$.steps[].requests[].out[].type  n=651  str:651  | 사건 | 관찰 | G6
+$.steps[].requests[].snapshots  n=292  list:292 len[min=0,max=4,sum=304]  | 모음 | 관찰 | G9
+$.steps[].requests[].sql  n=292  str:292  | 값 | 관찰 | G9
+$.steps[].requests[].t0  n=292  float:292  | 시각 | 도출 | T9
+$.steps[].requests[].t1  n=292  float:292  | 시각 | 도출 | T9
+$.steps[].session  n=292  str:292  | 장소 | 관찰 | G4
+$.steps[].sql  n=292  str:292  | 값 | 관찰 | G9
+$.steps[].t0  n=292  int:45,float:247  | 시각 | 관찰 | G3
+$.steps[].t1  n=292  float:292  | 시각 | 관찰 | G3
+$.steps[].check  n=70  obj:70 len[min=7,max=7,sum=490]  | 모음 | 도출 | T1
+$.steps[].check.checks  n=70  int:70  | 값 | 도출 | T1
+$.steps[].check.countMatch  n=70  bool:70  | 값 | 도출 | T1
+$.steps[].check.lpNormal  n=70  int:70  | 값 | 도출 | T1
+$.steps[].check.result  n=70  list:70 len[min=1,max=3,sum=120]  | 모음 | 도출 | T1
+$.steps[].check.result[]  n=120  str:120  | 값 | 도출 | T1
+$.steps[].check.setMatch  n=70  bool:70  | 값 | 도출 | T1
+$.steps[].check.table  n=70  str:70  | 값 | 도출 | T1
+$.steps[].check.visible  n=70  list:70 len[min=1,max=3,sum=120]  | 모음 | 도출 | T1
+$.steps[].check.visible[]  n=120  str:120  | 값 | 도출 | T1
+$.steps[].requests[].checks[]  n=266  obj:266 len[min=12,max=13,sum=3382]  | 사건 | 관찰 | G8
+$.steps[].requests[].checks[].ctid  n=266  str:266  | 장소 | 관찰 | G4
+$.steps[].requests[].checks[].lines  n=266  list:266 len[min=2,max=13,sum=2238]  | 모음 | 관찰 | G9
+$.steps[].requests[].checks[].lines[]  n=2238  obj:2238 len[min=2,max=2,sum=4476]  | 사건 | 관찰 | G8
+$.steps[].requests[].checks[].lines[].at  n=2238  str:2238  | 장소 | 관찰 | G4
+$.steps[].requests[].checks[].lines[].fn  n=2238  str:2238  | 장소 | 관찰 | G4
+$.steps[].requests[].checks[].mask  n=266  int:266  | 값 | 관찰 | G9
+$.steps[].requests[].checks[].path  n=266  list:262,null:4 len[min=1,max=4,sum=638]  | 장소 | 관찰 | G4
+$.steps[].requests[].checks[].path[]  n=638  obj:638 len[min=3,max=5,sum=2878]  | 장소 | 관찰 | G4
+$.steps[].requests[].checks[].path[].arg  n=638  str:638  | 값 | 관찰 | G9
+$.steps[].requests[].checks[].path[].at  n=638  str:638  | 장소 | 관찰 | G4
+$.steps[].requests[].checks[].path[].fn  n=638  str:638  | 장소 | 관찰 | G4
+$.steps[].requests[].checks[].path[].inner  n=482  list:482 len[min=1,max=2,sum=504]  | 모음 | 관찰 | G9
+$.steps[].requests[].checks[].path[].inner[]  n=504  obj:504 len[min=2,max=2,sum=1008]  | 사건 | 관찰 | G8
+$.steps[].requests[].checks[].path[].inner[].at  n=504  str:504  | 장소 | 관찰 | G4
+$.steps[].requests[].checks[].path[].inner[].fn  n=504  str:504  | 장소 | 관찰 | G4
+$.steps[].requests[].checks[].path[].ret  n=482  str:482  | 값 | 관찰 | G9
+$.steps[].requests[].checks[].snapXmax  n=266  int:266  | 값 | 관찰 | G9
+$.steps[].requests[].checks[].snapXmin  n=266  int:266  | 값 | 관찰 | G9
+$.steps[].requests[].checks[].stack  n=266  list:266 len[min=19,max=37,sum=5760]  | 장소 | 관찰 | G2
+$.steps[].requests[].checks[].stack[]  n=5760  obj:5760 len[min=2,max=2,sum=11520]  | 장소 | 관찰 | G2
+$.steps[].requests[].checks[].stack[].at  n=5760  str:5760  | 장소 | 관찰 | G2
+$.steps[].requests[].checks[].stack[].fn  n=5760  str:5760  | 장소 | 관찰 | G2
+$.steps[].requests[].checks[].t  n=266  float:266  | 시각 | 관찰 | G3
+$.steps[].requests[].checks[].table  n=266  str:266  | 장소 | 관찰 | G4
+$.steps[].requests[].checks[].visible  n=266  bool:266  | 값 | 도출 | T11
+$.steps[].requests[].checks[].xmax  n=266  int:266  | 값 | 관찰 | G9
+$.steps[].requests[].checks[].xmin  n=266  int:266  | 값 | 관찰 | G9
+$.steps[].requests[].events[]  n=1094  obj:1094 len[min=2,max=5,sum=4618]  | 사건 | 관찰 | G8
+$.steps[].requests[].events[].f  n=1066  obj:1066 len[min=1,max=7,sum=3390] (dynamic keys)  | 모음 | 관찰 | G9
+$.steps[].requests[].events[].f.{*}  n=3390  str:3390  | 값 | 관찰 | T15
+$.steps[].requests[].events[].kind  n=1094  str:1094  | 사건 | 관찰 | G6
+$.steps[].requests[].events[].stack  n=828  list:828 len[min=4,max=33,sum=12920]  | 장소 | 관찰 | G2
+$.steps[].requests[].events[].stack[]  n=12920  obj:12920 len[min=2,max=2,sum=25840]  | 장소 | 관찰 | G2
+$.steps[].requests[].events[].stack[].at  n=12920  str:12920  | 장소 | 관찰 | G2
+$.steps[].requests[].events[].stack[].fn  n=12920  str:12920  | 장소 | 관찰 | G2
+$.steps[].requests[].events[].t  n=1094  float:1094  | 시각 | 관찰 | G3
+$.steps[].requests[].events[].t1  n=536  float:536  | 시각 | 관찰 | G3
+$.steps[].requests[].snapshots[]  n=304  obj:304 len[min=7,max=7,sum=2128]  | 사건 | 관찰 | G8
+$.steps[].requests[].snapshots[].curcid  n=304  int:304  | 값 | 관찰 | G9
+$.steps[].requests[].snapshots[].kind  n=304  str:304  | 사건 | 관찰 | G6
+$.steps[].requests[].snapshots[].stack  n=304  list:304 len[min=3,max=18,sum=1262]  | 장소 | 관찰 | G2
+$.steps[].requests[].snapshots[].stack[]  n=1262  obj:1262 len[min=2,max=2,sum=2524]  | 장소 | 관찰 | G2
+$.steps[].requests[].snapshots[].stack[].at  n=1262  str:1262  | 장소 | 관찰 | G2
+$.steps[].requests[].snapshots[].stack[].fn  n=1262  str:1262  | 장소 | 관찰 | G2
+$.steps[].requests[].snapshots[].t  n=304  float:304  | 시각 | 관찰 | G3
+$.steps[].requests[].snapshots[].xip  n=304  null:304  | 모음 | 관찰 | G9
+$.steps[].requests[].snapshots[].xmax  n=304  int:304  | 값 | 관찰 | G9
+$.steps[].requests[].snapshots[].xmin  n=304  int:304  | 값 | 관찰 | G9
+$.tables  n=44  list:44 len[min=1,max=2,sum=48]  | 모음 | 관찰 | G9
+$.tables[]  n=48  obj:48 len[min=3,max=4,sum=152]  | 장소 | 관찰 | G5c
+$.tables[].columns  n=48  list:48 len[min=2,max=3,sum=122]  | 모음 | 관찰 | G9
+$.tables[].columns[]  n=122  obj:122 len[min=2,max=2,sum=244]  | 장소 | 관찰 | G5c
+$.tables[].columns[].name  n=122  str:122  | 장소 | 관찰 | G4
+$.tables[].columns[].type  n=122  str:122  | 값 | 관찰 | G5b
+$.tables[].name  n=48  str:48  | 장소 | 관찰 | G4
+$.tables[].oid  n=48  int:48  | 값 | 관찰 | G9
+$.title  n=44  str:44  | 값 | 관찰 | T14
+$.tupleAddrs  n=44  list:44 len[min=0,max=4,sum=96]  | 장소 | 도출 | T4
+$.steps[].blocked  n=18  float:18  | 값 | 관찰 | T12
+$.server.events[].f.level  n=136  str:136  | 값 | 관찰 | G9
+$.server.events[].f.msg  n=136  str:136  | 값 | 관찰 | G9
+$.siteRepair.leftFns  n=24  obj:24 len[min=1,max=2,sum=30]  | 출처 | 도출 | T5
+$.siteRepair.leftFns.exec_simple_query  n=12  int:12  | 출처 | 도출 | T5
+$.steps[].requests[].aborted  n=12  bool:12  | 값 | 관찰 | G9
+$.siteRepair.leftFns.LockAcquireExtended  n=2  int:2  | 출처 | 도출 | T5
+$.steps[].requests[].checks[].tup  n=190  str:190  | 장소 | 관찰 | G4
+$.tupleAddrs[]  n=96  obj:96 len[min=3,max=4,sum=308]  | 장소 | 도출 | T4
+$.tupleAddrs[].addrs  n=96  list:96 len[min=1,max=1,sum=96]  | 장소 | 도출 | T4
+$.tupleAddrs[].addrs[]  n=96  str:96  | 장소 | 도출 | T4
+$.tupleAddrs[].ctid  n=96  str:96  | 장소 | 도출 | T4
+$.tupleAddrs[].table  n=96  str:96  | 장소 | 도출 | T4
+$.captures[].pages.parent  n=24  list:24 len[min=1,max=2,sum=30]  | 연결 | 관찰 | G5
+$.captures[].pages.parent[]  n=30  obj:30 len[min=8,max=8,sum=240]  | 연결 | 관찰 | G5
+$.captures[].pages.parent[].block  n=30  int:30  | 장소 | 관찰 | G4
+$.captures[].pages.parent[].ctid  n=30  str:30  | 장소 | 관찰 | G4
+$.captures[].pages.parent[].flags  n=30  list:30 len[min=2,max=6,sum=116]  | 모음 | 관찰 | G9
+$.captures[].pages.parent[].flags[]  n=116  str:116  | 값 | 관찰 | G8
+$.captures[].pages.parent[].lp  n=30  int:30  | 장소 | 관찰 | G4
+$.captures[].pages.parent[].lpFlags  n=30  int:30  | 값 | 관찰 | G9
+$.captures[].pages.parent[].values  n=30  obj:30 len[min=2,max=2,sum=60]  | 모음 | 관찰 | G9
+$.captures[].pages.parent[].values.id  n=30  str:30  | 장소 | 관찰 | G4
+$.captures[].pages.parent[].values.name  n=30  str:30  | 장소 | 관찰 | G4
+$.captures[].pages.parent[].xmax  n=30  str:30  | 값 | 관찰 | G9
+$.captures[].pages.parent[].xmin  n=30  str:30  | 값 | 관찰 | G9
+$.captures[].pages.child  n=16  list:16 len[min=1,max=1,sum=16]  | 모음 | 관찰 | G9
+$.captures[].pages.child[]  n=16  obj:16 len[min=8,max=8,sum=128]  | 값 | 관찰 | G5d
+$.captures[].pages.child[].block  n=16  int:16  | 장소 | 관찰 | G4
+$.captures[].pages.child[].ctid  n=16  str:16  | 장소 | 관찰 | G4
+$.captures[].pages.child[].flags  n=16  list:16 len[min=1,max=3,sum=24]  | 모음 | 관찰 | G9
+$.captures[].pages.child[].flags[]  n=24  str:24  | 값 | 관찰 | G8
+$.captures[].pages.child[].lp  n=16  int:16  | 장소 | 관찰 | G4
+$.captures[].pages.child[].lpFlags  n=16  int:16  | 값 | 관찰 | G9
+$.captures[].pages.child[].values  n=16  obj:16 len[min=2,max=2,sum=32]  | 모음 | 관찰 | G9
+$.captures[].pages.child[].values.id  n=16  str:16  | 장소 | 관찰 | G4
+$.captures[].pages.child[].values.parent_id  n=16  str:16  | 값 | 관찰 | G9
+$.captures[].pages.child[].xmax  n=16  str:16  | 값 | 관찰 | G9
+$.captures[].pages.child[].xmin  n=16  str:16  | 값 | 관찰 | G9
+$.pauses[]  n=6  obj:6 len[min=3,max=3,sum=18]  | 사건 | 관찰 | G8
+$.pauses[].beforeStep  n=6  int:6  | 연결 | 관찰 | G5
+$.pauses[].t  n=6  float:6  | 시각 | 관찰 | G3
+$.pauses[].t1  n=6  float:6  | 시각 | 관찰 | G3
+$.captures[].pages.payment  n=24  list:24 len[min=1,max=2,sum=36]  | 모음 | 관찰 | G9
+$.captures[].pages.payment[]  n=36  obj:36 len[min=8,max=8,sum=288]  | 값 | 관찰 | G5d
+$.captures[].pages.payment[].block  n=36  int:36  | 장소 | 관찰 | G4
+$.captures[].pages.payment[].ctid  n=36  str:36  | 장소 | 관찰 | G4
+$.captures[].pages.payment[].flags  n=36  list:36 len[min=2,max=3,sum=88]  | 모음 | 관찰 | G9
+$.captures[].pages.payment[].flags[]  n=88  str:88  | 값 | 관찰 | G8
+$.captures[].pages.payment[].lp  n=36  int:36  | 장소 | 관찰 | G4
+$.captures[].pages.payment[].lpFlags  n=36  int:36  | 값 | 관찰 | G9
+$.captures[].pages.payment[].values  n=36  obj:36 len[min=2,max=2,sum=72]  | 모음 | 관찰 | G9
+$.captures[].pages.payment[].values.amount  n=36  str:36  | 값 | 관찰 | G9
+$.captures[].pages.payment[].values.idem_key  n=36  str:36  | 값 | 관찰 | G9
+$.captures[].pages.payment[].xmax  n=36  str:36  | 값 | 관찰 | G9
+$.captures[].pages.payment[].xmin  n=36  str:36  | 값 | 관찰 | G9
+$.captures[].wal  n=146  obj:146 len[min=3,max=3,sum=438]  | 모음 | 관찰 | G9
+$.captures[].wal.flush  n=146  str:146  | 값 | 관찰 | G9
+$.captures[].wal.insert  n=146  str:146  | 값 | 관찰 | G9
+$.captures[].wal.write  n=146  str:146  | 값 | 관찰 | G9
+$.captures[].afterKill  n=8  bool:8  | 연결 | 관찰 | T8
+$.kills[]  n=8  obj:8 len[min=5,max=8,sum=58]  | 사건 | 관찰 | G8
+$.kills[].beforeStep  n=8  int:8  | 연결 | 관찰 | G5
+$.kills[].pid  n=8  int:8  | 장소 | 관찰 | G4
+$.kills[].session  n=8  str:8  | 장소 | 관찰 | G4
+$.kills[].t  n=8  float:8  | 시각 | 관찰 | G3
+$.kills[].tReady  n=8  float:8  | 시각 | 관찰 | G3
+$.kills[].walSynced  n=6  str:6  | 값 | 관찰 | G9
+$.kills[].walWritten  n=6  str:6  | 값 | 관찰 | G9
+$.kills[].walWrittenT  n=6  float:6  | 시각 | 관찰 | G3
+$.server.events[].f.clock  n=541  str:541  | 출처 | 도출 | T16
+$.server.events[].f.ret  n=629  str:629  | 값 | 관찰 | G9
+$.server.events[].f.lsn  n=278  str:278  | 값 | 관찰 | G9
+$.server.events[].f.how  n=88  str:88  | 값 | 관찰 | G9
+$.server.events[].f.sig  n=198  str:198  | 값 | 관찰 | G9
+$.server.events[].f.to  n=198  str:198  | 장소 | 관찰 | G4
+$.server.events[].f.group  n=72  str:72  | 값 | 관찰 | G9
+$.server.events[].f.end  n=156  str:156  | 값 | 관찰 | G9
+$.server.events[].f.kind  n=156  str:156  | 값 | 관찰 | G5b
+$.server.events[].f.rmgr  n=156  str:156  | 값 | 관찰 | G9
+$.server.events[].f.xid  n=160  str:160  | 장소 | 관찰 | G4
+$.server.spans[]  n=224  obj:224 len[min=5,max=5,sum=1120]  | 사건 | 관찰 | G8
+$.server.spans[].at  n=224  str:224  | 장소 | 관찰 | G4
+$.server.spans[].fn  n=224  str:224  | 장소 | 관찰 | G4
+$.server.spans[].pid  n=224  int:224  | 장소 | 관찰 | G4
+$.server.spans[].t0  n=224  float:224  | 시각 | 관찰 | G3
+$.server.spans[].t1  n=224  float:224  | 시각 | 관찰 | G3
+$.siteRepair.leftFns.XLogBackgroundFlush  n=16  int:16  | 출처 | 도출 | T5
+$.tupleAddrs[].epoch  n=20  int:20  | 값 | 도출 | T4a
+$.captures[].pages.doctors  n=80  list:80 len[min=2,max=4,sum=232]  | 모음 | 관찰 | G9
+$.captures[].pages.doctors[]  n=232  obj:232 len[min=8,max=8,sum=1856]  | 값 | 관찰 | G5d
+$.captures[].pages.doctors[].block  n=232  int:232  | 장소 | 관찰 | G4
+$.captures[].pages.doctors[].ctid  n=232  str:232  | 장소 | 관찰 | G4
+$.captures[].pages.doctors[].flags  n=232  list:232 len[min=2,max=5,sum=760]  | 모음 | 관찰 | G9
+$.captures[].pages.doctors[].flags[]  n=760  str:760  | 값 | 관찰 | G8
+$.captures[].pages.doctors[].lp  n=232  int:232  | 장소 | 관찰 | G4
+$.captures[].pages.doctors[].lpFlags  n=232  int:232  | 값 | 관찰 | G9
+$.captures[].pages.doctors[].values  n=232  obj:232 len[min=2,max=2,sum=464]  | 모음 | 관찰 | G9
+$.captures[].pages.doctors[].values.name  n=232  str:232  | 장소 | 관찰 | G4
+$.captures[].pages.doctors[].values.on_call  n=232  str:232  | 값 | 관찰 | G9
+$.captures[].pages.doctors[].xmax  n=232  str:232  | 값 | 관찰 | G9
+$.captures[].pages.doctors[].xmin  n=232  str:232  | 값 | 관찰 | G9
+$.tables[].indexes  n=8  list:8 len[min=1,max=1,sum=8]  | 모음 | 관찰 | G9
+$.tables[].indexes[]  n=8  obj:8 len[min=2,max=2,sum=16]  | 장소 | 관찰 | G5c
+$.tables[].indexes[].name  n=8  str:8  | 장소 | 관찰 | G4
+$.tables[].indexes[].oid  n=8  int:8  | 값 | 관찰 | G9
+# role x provenance line counts: {('값', '관찰'): 87, ('장소', '관찰'): 78, ('모음', '관찰'): 44, ('시각', '관찰'): 30, ('출처', '도출'): 24, ('사건', '관찰'): 19, ('값', '도출'): 16, ('장소', '도출'): 10, ('연결', '관찰'): 7, ('모음', '도출'): 5, ('발췌', '관찰'): 5, ('시각', '도출'): 3, ('사건', '도출'): 2, ('연결', '도출'): 2, ('이름', '도출'): 1}

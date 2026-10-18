@@ -1,0 +1,85 @@
+backend=788 mode=cold
+--- P1: gdb가 붙은 백엔드에 strace 붙이기
+strace: attach: ptrace(PTRACE_SEIZE, 788): Operation not permitted
+--- 공유 버퍼에서 t 빼기
+1|0|0
+--- 추적 직전 공유 버퍼 안의 t 페이지 수
+0
+--- psql
+2|b
+2|b
+--- gdb (backend)
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/aarch64-linux-gnu/libthread_db.so.1".
+0x0000ffff8960c0a0 in epoll_pwait () from /lib/aarch64-linux-gnu/libc.so.6
+Breakpoint 1 at 0xaaaab38589b0: file postgres.c, line 1014.
+Breakpoint 2 at 0xaaaab334a11c: file heapam.c, line 558.
+Breakpoint 3 at 0xaaaab32fdda8: file printtup.c, line 306.
+Breakpoint 4 at 0xaaaab3856c04: file dest.c, line 258.
+Catchpoint 5 (syscalls 'pread64' [67] 'preadv' [69] 'pwrite64' [68] 'openat' [56] 'sendto' [206] 'recvfrom' [207] 'epoll_pwait' [22])
+
+Catchpoint 5 (call to syscall epoll_pwait), 0x0000ffff8960c0a0 in epoll_pwait () from /lib/aarch64-linux-gnu/libc.so.6
+SYSCALL epoll_pwait timeout_ms=-1
+
+Catchpoint 5 (returned from syscall epoll_pwait), 0x0000ffff8960c0a0 in epoll_pwait () from /lib/aarch64-linux-gnu/libc.so.6
+SYSRET epoll_pwait -> 1
+
+Catchpoint 5 (call to syscall recvfrom), 0x0000ffff8960e218 in recv () from /lib/aarch64-linux-gnu/libc.so.6
+SYSCALL recvfrom fd=8(socket:[2842413]) len=8192
+
+Catchpoint 5 (returned from syscall recvfrom), 0x0000ffff8960e218 in recv () from /lib/aarch64-linux-gnu/libc.so.6
+SYSRET recvfrom -> 35
+STOP exec_simple_query postgres.c:1014
+
+Catchpoint 5 (call to syscall epoll_pwait), 0x0000ffff8960c0a0 in epoll_pwait () from /lib/aarch64-linux-gnu/libc.so.6
+SYSCALL epoll_pwait timeout_ms=-1
+
+Catchpoint 5 (returned from syscall epoll_pwait), 0x0000ffff8960c0a0 in epoll_pwait () from /lib/aarch64-linux-gnu/libc.so.6
+SYSRET epoll_pwait -> 1
+STOP heap_prepare_pagescan heapam.c:558
+BUF buffer=616 spcOid=1663 dbOid=5 relNumber=16384 fork=0 block=0 state=0x83040001
+PAGE addr=0xffff80ab5000 lsn=0/171B710 pd_lower=36 pd_upper=8096 pd_special=8192
+LP 1 lp_off=8160 lp_flags=1 lp_len=30 t_xmin=752 t_xmax=0 t_infomask=0x0902
+LP 2 lp_off=8128 lp_flags=1 lp_len=30 t_xmin=752 t_xmax=0 t_infomask=0x0902
+LP 3 lp_off=8096 lp_flags=1 lp_len=30 t_xmin=752 t_xmax=0 t_infomask=0x0902
+MCX depth=0 name=TopMemoryContext mem_allocated=99456
+MCX depth=1 name=dynahash mem_allocated=8192
+MCX depth=1 name=dynahash mem_allocated=24576
+MCX depth=1 name=search_path processing cache mem_allocated=8192
+MCX depth=1 name=RowDescriptionContext mem_allocated=8192
+MCX depth=1 name=MessageContext mem_allocated=16384
+MCX depth=1 name=dynahash mem_allocated=8192
+MCX depth=1 name=dynahash mem_allocated=32768
+MCX depth=1 name=PgStat Shared Ref Hash mem_allocated=9264
+MCX depth=1 name=PgStat Shared Ref mem_allocated=4096
+MCX depth=1 name=PgStat Pending mem_allocated=16384
+MCX depth=1 name=TopTransactionContext mem_allocated=8192
+MCX depth=1 name=TransactionAbortContext mem_allocated=32768
+MCX depth=1 name=dynahash mem_allocated=8192
+MCX depth=1 name=TopPortalContext mem_allocated=8192
+MCX depth=1 name=dynahash mem_allocated=16384
+MCX depth=1 name=CacheMemoryContext mem_allocated=524288
+MCX depth=1 name=dynahash mem_allocated=8192
+MCX depth=1 name=WAL record construction mem_allocated=49760
+MCX depth=1 name=dynahash mem_allocated=8192
+MCX depth=1 name=MdSmgr mem_allocated=8192
+MCX depth=1 name=GUCMemoryContext mem_allocated=24576
+MCX depth=1 name=dynahash mem_allocated=104112
+MCX depth=1 name=ErrorContext mem_allocated=8192
+MCX total_contexts=117 total_mem_allocated=1328256
+CUR ExecutorState <- PortalContext <- TopPortalContext <- TopMemoryContext
+STOP printtup printtup.c:306
+STOP ReadyForQuery dest.c:258
+
+Catchpoint 5 (call to syscall sendto), 0x0000ffff8960e4c8 in send () from /lib/aarch64-linux-gnu/libc.so.6
+SYSCALL sendto fd=8(socket:[2842413]) len=88
+
+Catchpoint 5 (returned from syscall sendto), 0x0000ffff8960e4c8 in send () from /lib/aarch64-linux-gnu/libc.so.6
+SYSRET sendto -> 88
+
+Catchpoint 5 (call to syscall recvfrom), 0x0000ffff8960e218 in recv () from /lib/aarch64-linux-gnu/libc.so.6
+SYS recvfrom (다음 명령 대기, 여기서 끝냄)
+END
+[Inferior 1 (process 788) detached]
+--- strace (io workers)
+11    09:40:31.494780 pread64(30</var/lib/pgsql/data/base/5/16384>, "\0\0\0\0\20\267q\1\211\316\0\0$\0\240\37\0 \4 \0\0\0\0\340\237<\0\300\237<\0"..., 8192, 0) = 8192

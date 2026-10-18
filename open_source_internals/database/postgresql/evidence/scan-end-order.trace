@@ -1,0 +1,38 @@
+# select.watch 끝에 heap_endscan, read_stream_end, read_stream_reset 세 줄을 더한 감시 목록으로 실행한 기록입니다.
+# 그 사본을 docker cp로 컨테이너의 /tmp/endscan.watch에 넣고 아래 명령으로 실행했습니다(2026-10-12, start-lab.sh로 띄운 컨테이너, 테이블 t는 행 3개).
+# sh database/postgresql/internals-lab/scripts/run-trace.sh ../tmp/endscan.watch "SELECT * FROM t WHERE id = 2;"
+# 실행 뒤 이 폴더는 open_source_internals/database/postgresql/로 옮겨졌습니다. 지금 다시 실행하려면 스크립트 경로를 그 위치로 바꿉니다.
+STOP 1 exec_simple_query src/backend/tcop/postgres.c:1014 query_string=0xaaaad63538e8 "SELECT * FROM t WHERE id = 2;"
+STOP 2 pg_parse_query src/backend/tcop/postgres.c:610
+STOP 3 raw_parser src/backend/parser/parser.c:49 str=0xaaaad63538e8 "SELECT * FROM t WHERE id = 2;"
+STOP 4 parse_analyze_fixedparams src/backend/parser/analyze.c:109 ((Node *) parseTree->stmt)->type=T_SelectStmt
+STOP 5 pg_plan_queries src/backend/tcop/postgres.c:974
+STOP 6 pg_plan_query src/backend/tcop/postgres.c:889
+STOP 7 standard_planner src/backend/optimizer/plan/planner.c:335 parse->commandType=CMD_SELECT
+STOP 8 PortalStart src/backend/tcop/pquery.c:450
+STOP 9 standard_ExecutorStart src/backend/executor/execMain.c:168
+STOP 10 PortalRun src/backend/tcop/pquery.c:703
+STOP 11 standard_ExecutorRun src/backend/executor/execMain.c:319 queryDesc->plannedstmt->planTree->type=T_SeqScan
+STOP 12 ExecutePlan src/backend/executor/execMain.c:1667
+STOP 13 ExecSeqScanWithQual src/backend/executor/nodeSeqscan.c:132
+STOP 14 heap_getnextslot src/backend/access/heap/heapam.c:1390 (char *) sscan->rs_rd->rd_rel->relname.data=0xffff7efc50cc "t"
+STOP 15 heap_fetch_next_buffer src/backend/access/heap/heapam.c:652
+STOP 16 read_stream_next_buffer src/backend/storage/aio/read_stream.c:813
+STOP 17 StartReadBuffers src/backend/storage/buffer/bufmgr.c:1504
+STOP 18 PinBufferForBlock src/backend/storage/buffer/bufmgr.c:1120 (char *) rel->rd_rel->relname.data=0xffff7efc50cc "t" blockNum=0
+STOP 19 heap_getnextslot src/backend/access/heap/heapam.c:1390 (char *) sscan->rs_rd->rd_rel->relname.data=0xffff7efc50cc "t"
+STOP 20 printtup src/backend/access/common/printtup.c:306
+STOP 21 ExecSeqScanWithQual src/backend/executor/nodeSeqscan.c:132
+STOP 22 heap_getnextslot src/backend/access/heap/heapam.c:1390 (char *) sscan->rs_rd->rd_rel->relname.data=0xffff7efc50cc "t"
+STOP 23 heap_getnextslot src/backend/access/heap/heapam.c:1390 (char *) sscan->rs_rd->rd_rel->relname.data=0xffff7efc50cc "t"
+STOP 24 heap_fetch_next_buffer src/backend/access/heap/heapam.c:652
+STOP 25 read_stream_next_buffer src/backend/storage/aio/read_stream.c:813
+STOP 26 heap_endscan src/backend/access/heap/heapam.c:1302
+STOP 27 read_stream_end src/backend/storage/aio/read_stream.c:1122
+STOP 28 read_stream_reset src/backend/storage/aio/read_stream.c:1081
+STOP 29 read_stream_next_buffer src/backend/storage/aio/read_stream.c:813
+STOP 30 ReadyForQuery src/backend/tcop/dest.c:258
+END ExecSeqScanWithQual=2 ExecutePlan=1 PinBufferForBlock=1 PortalRun=1 PortalStart=1 ReadyForQuery=1 StartReadBuffers=1 exec_simple_query=1 heap_endscan=1 heap_fetch_next_buffer=2 heap_getnextslot=4 parse_analyze_fixedparams=1 pg_parse_query=1 pg_plan_queries=1 pg_plan_query=1 printtup=1 raw_parser=1 read_stream_end=1 read_stream_next_buffer=3 read_stream_reset=1 standard_ExecutorRun=1 standard_ExecutorStart=1 standard_planner=1
+--- psql
+2|b
+2|b

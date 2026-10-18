@@ -1,0 +1,9 @@
+--- psql
+INSERT 0 1
+INSERT 0 1
+--- strace (backend=537 walwriter=12)
+backend   12:04:16.847283 pwrite64(10</var/lib/pgsql/data/pg_wal/000000010000000000000001>, "\30\321\5\0\1\0\0\0\0\340y\1\0\0\0\09\20\0\0\0\0\0\0\0\0\0\0\0\0\0\0"..., 8192, 7987200) = 8192
+backend   12:04:16.847889 fdatasync(10</var/lib/pgsql/data/pg_wal/000000010000000000000001>) = 0
+backend   12:04:16.861145 +++ exited with 0 +++
+walwriter    12:04:17.787390 pwrite64(6</var/lib/pgsql/data/pg_wal/000000010000000000000001>, "\30\321\5\0\1\0\0\0\0\340y\1\0\0\0\09\20\0\0\0\0\0\0\0\0\0\0\0\0\0\0"..., 8192, 7987200) = 8192
+walwriter    12:04:17.787741 fdatasync(6</var/lib/pgsql/data/pg_wal/000000010000000000000001>) = 0

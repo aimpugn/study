@@ -1,0 +1,8 @@
+# 2-idem-onconflict: 같은 멱등성 키의 두 번째 요청을 ON CONFLICT DO NOTHING으로 받기
+setup: CREATE TABLE payment(idem_key text PRIMARY KEY, amount int);
+watch: payment
+S1: BEGIN;
+S1: INSERT INTO payment VALUES ('k1', 100);
+S2: INSERT INTO payment VALUES ('k1', 100) ON CONFLICT (idem_key) DO NOTHING;
+S1: COMMIT;
+S1: SELECT ctid, xmin, xmax, idem_key, amount FROM payment;

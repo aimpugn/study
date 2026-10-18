@@ -1,0 +1,7 @@
+# 5-requires-new: 안쪽 @Transactional(REQUIRES_NEW)는 연결을 하나 더 쓰고, 바깥보다 먼저 커밋한다
+# 앱: Outer.requiresNew → Inner.requiresNew. 바깥은 1번 행을, 안쪽은 2번 행을 고칩니다.
+setup: CREATE TABLE acct(id int PRIMARY KEY, owner text, balance int);
+setup: INSERT INTO acct VALUES (1, 'kim', 100), (2, 'lee', 200);
+watch: acct
+spring: requires-new
+pool: 2

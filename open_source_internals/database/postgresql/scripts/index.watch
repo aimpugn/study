@@ -1,0 +1,23 @@
+# run-trace.sh와 trace.py가 읽는 감시 목록입니다: "함수<TAB>gdb 식".
+# 인덱스가 있을 때 같은 SELECT가 지나는 경로를 봅니다. select.watch의 순차 스캔 경로와 나란히 비교합니다.
+# 함수 이름과 인자 이름은 PostgreSQL 18.6 소스의 함수 서명에서 확인했습니다.
+exec_simple_query	query_string
+standard_ExecutorRun	queryDesc->plannedstmt->planTree->type
+ExecSeqScanWithQual
+ExecIndexScan
+IndexNext
+index_getnext_slot
+index_getnext_tid
+btgettuple
+_bt_first
+# 메타 페이지 내용은 relcache의 rd_amcache에 남습니다(nbtpage.c 361행). 캐시를 데운 뒤에는 다시 읽지 않을 수 있습니다.
+_bt_getroot	(char *) rel->rd_rel->relname.data
+_bt_search
+_bt_next
+index_fetch_heap
+heapam_index_fetch_tuple	tid->ip_posid
+heap_hot_search_buffer	tid->ip_posid
+ReleaseAndReadBuffer	blockNum
+PinBufferForBlock	(char *) rel->rd_rel->relname.data
+PinBufferForBlock	blockNum
+printtup

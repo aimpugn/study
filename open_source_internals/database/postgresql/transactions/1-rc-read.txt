@@ -1,0 +1,10 @@
+# 1-rc-read: READ COMMITTED에서 같은 SELECT 두 번 사이에 다른 세션이 행을 바꾸고 넣기
+setup: CREATE TABLE acct(id int PRIMARY KEY, owner text, balance int);
+setup: INSERT INTO acct VALUES (1, 'kim', 100), (2, 'lee', 200);
+watch: acct
+S1: BEGIN ISOLATION LEVEL READ COMMITTED;
+S1: SELECT pg_current_snapshot() AS snap, ctid, xmin, xmax, id, balance FROM acct WHERE balance >= 100 ORDER BY id;
+S2: UPDATE acct SET balance = 150 WHERE id = 1;
+S2: INSERT INTO acct VALUES (3, 'park', 300);
+S1: SELECT pg_current_snapshot() AS snap, ctid, xmin, xmax, id, balance FROM acct WHERE balance >= 100 ORDER BY id;
+S1: COMMIT;

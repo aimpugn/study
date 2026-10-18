@@ -1,0 +1,53 @@
+STOP 1 exec_simple_query src/backend/tcop/postgres.c:1014 query_string=0xaaaaf5ae38e8 "SELECT * FROM t WHERE id = 2;"
+STOP 2 standard_ExecutorRun src/backend/executor/execMain.c:319 queryDesc->plannedstmt->planTree->type=T_IndexScan
+STOP 3 ExecIndexScan src/backend/executor/nodeIndexscan.c:523
+STOP 4 IndexNext src/backend/executor/nodeIndexscan.c:91
+STOP 5 index_getnext_slot src/backend/access/index/indexam.c:724
+STOP 6 index_getnext_tid src/backend/access/index/indexam.c:626
+STOP 7 btgettuple src/backend/access/nbtree/nbtree.c:228
+STOP 8 _bt_first src/backend/access/nbtree/nbtsearch.c:889
+STOP 9 _bt_search src/backend/access/nbtree/nbtsearch.c:110
+STOP 10 _bt_getroot src/backend/access/nbtree/nbtpage.c:361 (char *) rel->rd_rel->relname.data=0xffffa632815c "t_id_idx"
+STOP 11 PinBufferForBlock src/backend/storage/buffer/bufmgr.c:1120 (char *) rel->rd_rel->relname.data=0xffffa632815c "t_id_idx" blockNum=1
+STOP 12 index_fetch_heap src/backend/access/index/indexam.c:681
+STOP 13 heapam_index_fetch_tuple src/backend/access/heap/heapam_handler.c:121 tid->ip_posid=2
+STOP 14 ReleaseAndReadBuffer src/backend/storage/buffer/bufmgr.c:3036 blockNum=0
+STOP 15 PinBufferForBlock src/backend/storage/buffer/bufmgr.c:1120 (char *) rel->rd_rel->relname.data=0xffffa63250cc "t" blockNum=0
+STOP 16 heap_hot_search_buffer src/backend/access/heap/heapam.c:1722 tid->ip_posid=2
+BT 0 heap_hot_search_buffer src/backend/access/heap/heapam.c:1722
+BT 1 heapam_index_fetch_tuple src/backend/access/heap/heapam_handler.c:146
+BT 2 table_index_fetch_tuple src/include/access/tableam.h:1220
+BT 3 index_fetch_heap src/backend/access/index/indexam.c:684
+BT 4 index_getnext_slot src/backend/access/index/indexam.c:744
+BT 5 IndexNext src/backend/executor/nodeIndexscan.c:131
+BT 6 ExecScanFetch src/include/executor/execScan.h:134
+BT 7 ExecScanExtended src/include/executor/execScan.h:178
+BT 8 ExecScan src/backend/executor/execScan.c:59
+BT 9 ExecIndexScan src/backend/executor/nodeIndexscan.c:536
+BT 10 ExecProcNodeFirst src/backend/executor/execProcnode.c:469
+BT 11 ExecProcNode src/include/executor/executor.h:315
+BT 12 ExecutePlan src/backend/executor/execMain.c:1711
+BT 13 standard_ExecutorRun src/backend/executor/execMain.c:366
+BT 14 ExecutorRun src/backend/executor/execMain.c:303
+BT 15 PortalRunSelect src/backend/tcop/pquery.c:921
+BT 16 PortalRun src/backend/tcop/pquery.c:765
+BT 17 exec_simple_query src/backend/tcop/postgres.c:1274
+BT 18 PostgresMain src/backend/tcop/postgres.c:4770
+BT 19 BackendMain src/backend/tcop/backend_startup.c:124
+BT 20 postmaster_child_launch src/backend/postmaster/launch_backend.c:290
+BT 21 BackendStartup src/backend/postmaster/postmaster.c:3569
+BT 22 ServerLoop src/backend/postmaster/postmaster.c:1703
+BT 23 PostmasterMain src/backend/postmaster/postmaster.c:1401
+BT 24 main src/backend/main/main.c:227
+STOP 17 printtup src/backend/access/common/printtup.c:306
+STOP 18 ExecIndexScan src/backend/executor/nodeIndexscan.c:523
+STOP 19 IndexNext src/backend/executor/nodeIndexscan.c:91
+STOP 20 index_getnext_slot src/backend/access/index/indexam.c:724
+STOP 21 index_getnext_tid src/backend/access/index/indexam.c:626
+STOP 22 btgettuple src/backend/access/nbtree/nbtree.c:228
+STOP 23 _bt_next src/backend/access/nbtree/nbtsearch.c:1599
+STOP 24 ReadyForQuery src/backend/tcop/dest.c:258
+END ExecIndexScan=2 IndexNext=2 PinBufferForBlock=2 ReadyForQuery=1 ReleaseAndReadBuffer=1 _bt_first=1 _bt_getroot=1 _bt_next=1 _bt_search=1 btgettuple=2 exec_simple_query=1 heap_hot_search_buffer=1 heapam_index_fetch_tuple=1 index_fetch_heap=1 index_getnext_slot=2 index_getnext_tid=2 printtup=1 standard_ExecutorRun=1
+--- psql
+2|b
+2|b

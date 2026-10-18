@@ -1,0 +1,757 @@
+# 탐색용 기록(2026-10-13, P15~P20). 만든 명령: decode -bin postgres -dir trace <하위 명령>. 원본 .bin(198MB)은 저장소에 두지 않았다.
+# 프로세스: 5235 postmaster, 5236~5238 io worker 0~2, 5239 checkpointer, 5240 background writer, 5241 startup, 5242 walwriter, 5243 autovacuum launcher, 5244 logical replication launcher, 5247 pg_isready 접속, 5253 S1, 5255 S2, 5257 S3, 5259 S4, 5261 S5
+## summary
+PID 5235 slide=0xaaaab1ae0000 enters=342232 exits=342225 dropped=6 first_enter=main from_ns=1791891534565916342 to_ns=1791891539830807725
+PID 5236 slide=0xaaaab1ae0000 enters=5380 exits=5379 dropped=0 first_enter=pg_strong_random_init from_ns=1791891535050650823 to_ns=1791891539810382103
+PID 5237 slide=0xaaaab1ae0000 enters=689 exits=688 dropped=0 first_enter=pg_strong_random_init from_ns=1791891535050495274 to_ns=1791891539810072255
+PID 5238 slide=0xaaaab1ae0000 enters=667 exits=666 dropped=0 first_enter=pg_strong_random_init from_ns=1791891535052562359 to_ns=1791891539809521057
+PID 5239 slide=0xaaaab1ae0000 enters=168584 exits=168583 dropped=0 first_enter=pg_strong_random_init from_ns=1791891535052677927 to_ns=1791891539828898858
+PID 5240 slide=0xaaaab1ae0000 enters=11224 exits=11222 dropped=0 first_enter=pg_strong_random_init from_ns=1791891535055490073 to_ns=1791891539506098204
+PID 5241 slide=0xaaaab1ae0000 enters=38679 exits=38678 dropped=0 first_enter=pg_strong_random_init from_ns=1791891535057849537 to_ns=1791891535112986352
+PID 5242 slide=0xaaaab1ae0000 enters=5837 exits=5835 dropped=0 first_enter=pg_strong_random_init from_ns=1791891535116170132 to_ns=1791891539507042882
+PID 5243 slide=0xaaaab1ae0000 enters=12320 exits=12317 dropped=0 first_enter=pg_strong_random_init from_ns=1791891535119641706 to_ns=1791891539508612009
+PID 5244 slide=0xaaaab1ae0000 enters=11937 exits=11934 dropped=6 first_enter=pg_strong_random_init from_ns=1791891535118001579 to_ns=1791891539507688760
+PID 5247 slide=0xaaaab1ae0000 enters=1187004 exits=1187002 dropped=0 first_enter=pg_strong_random_init from_ns=1791891535569884915 to_ns=1791891537229929636
+PID 5253 slide=0xaaaab1ae0000 enters=111319 exits=111317 dropped=0 first_enter=pg_strong_random_init from_ns=1791891537253131592 to_ns=1791891537459744905
+PID 5255 slide=0xaaaab1ae0000 enters=299448 exits=299446 dropped=0 first_enter=pg_strong_random_init from_ns=1791891537455645797 to_ns=1791891537888239425
+PID 5257 slide=0xaaaab1ae0000 enters=209652 exits=209650 dropped=0 first_enter=pg_strong_random_init from_ns=1791891537880247039 to_ns=1791891538192989764
+PID 5259 slide=0xaaaab1ae0000 enters=103450 exits=103448 dropped=0 first_enter=pg_strong_random_init from_ns=1791891538188645972 to_ns=1791891538359033747
+PID 5261 slide=0xaaaab1ae0000 enters=84875 exits=84851 dropped=0 first_enter=pg_strong_random_init from_ns=1791891538352250276 to_ns=1791891538489227829
+
+## query S1 SELECT * FROM t (t를 처음 읽음)
+QUERY pid=5253 nth=2 start_ns=1791891537406249801 end_ns=1791891537445413433
+calls=27869 distinct=1512 max_depth=51 duration_ms=39.164 unresolved=0 unwound=0 orphan_exits=0 dropped=0
+header_defined_calls=13539 (48.6%) no_decl_file_calls=0 (0.0%)
+MODULE include/port                    5142  18.5%
+MODULE include/storage                 2845  10.2%
+MODULE utils/mmgr                      2155   7.7%
+MODULE include/access                  2077   7.5%
+MODULE storage/lmgr                    1561   5.6%
+MODULE storage/buffer                  1383   5.0%
+MODULE include                         1302   4.7%
+MODULE include/utils                   1082   3.9%
+MODULE utils/hash                       988   3.5%
+MODULE utils/error                      932   3.3%
+MODULE utils/cache                      753   2.7%
+MODULE access/nbtree                    731   2.6%
+MODULE utils/resowner                   648   2.3%
+MODULE storage/aio                      569   2.0%
+MODULE src/common                       506   1.8%
+MODULE include/common                   476   1.7%
+MODULE access/common                    428   1.5%
+MODULE utils/activity                   409   1.5%
+MODULE include/lib                      383   1.4%
+MODULE utils/time                       278   1.0%
+MODULE utils/fmgr                       274   1.0%
+MODULE nodes                            273   1.0%
+MODULE access/index                     255   0.9%
+MODULE access/transam                   250   0.9%
+MODULE executor                         218   0.8%
+MODULE access/heap                      197   0.7%
+MODULE catalog                          179   0.6%
+MODULE include/nodes                    161   0.6%
+MODULE storage/smgr                     135   0.5%
+MODULE storage/ipc                      127   0.5%
+MODULE src/port                         126   0.5%
+MODULE utils/misc                       120   0.4%
+MODULE parser                           119   0.4%
+MODULE access/table                     111   0.4%
+MODULE utils/adt                        102   0.4%
+MODULE lib                               95   0.3%
+MODULE storage/file                      81   0.3%
+MODULE optimizer/util                    76   0.3%
+MODULE optimizer/plan                    72   0.3%
+MODULE optimizer/path                    41   0.1%
+MODULE include/executor                  36   0.1%
+MODULE libpq                             35   0.1%
+MODULE tcop                              35   0.1%
+MODULE include/libpq                     34   0.1%
+MODULE storage/page                      18   0.1%
+MODULE utils/mb                          18   0.1%
+MODULE commands                           9   0.0%
+MODULE optimizer/prep                     8   0.0%
+MODULE rewrite                            8   0.0%
+MODULE utils/init                         5   0.0%
+MODULE replication/logical                2   0.0%
+MODULE include/tcop                       1   0.0%
+TOP pg_rotate_left32                           2716
+TOP AllocSetAlloc                               403
+TOP AllocSetFreeIndex                           395
+TOP pg_leftmost_one_pos32                       367
+TOP GetBufferDescriptor                         261
+TOP is_log_level_output                         233
+TOP should_output_to_client                     233
+TOP should_output_to_server                     233
+TOP errstart                                    231
+TOP calc_bucket                                 221
+TOP hash_initial_lookup                         221
+TOP hash_search_with_hash_value                 221
+TOP BufferDescriptorGetBuffer                   214
+TOP TupleDescCompactAttr                        208
+TOP MemoryChunkSetHdrMask                       206
+FIND heap_prepare_pagescan=2
+FIND ReadBuffer=39
+FIND ReleaseAndReadBuffer=22
+FIND FileStartReadV=13
+FIND pgaio_io_wait=1
+FIND CatalogTuplesMultiInsertWithInfo=0
+FIND heap_multi_insert=0
+FIND heap_insert=0
+FIND smgrcreate=0
+FIND XLogInsert=1
+FIND XLogFlush=0
+FIND table_index_build_scan=0
+FIND heapam_index_build_range_scan=0
+FIND btbuild=0
+FIND tuplesort_begin_index_btree=0
+FIND smgr_bulk_write=0
+FIND errfinish=0
+FIND int4div=0
+
+## query S1 SELECT * FROM t (다시)
+QUERY pid=5253 nth=3 start_ns=1791891537446049805 end_ns=1791891537451422867
+calls=3756 distinct=923 max_depth=28 duration_ms=5.373 unresolved=0 unwound=0 orphan_exits=0 dropped=0
+header_defined_calls=1251 (33.3%) no_decl_file_calls=0 (0.0%)
+MODULE utils/mmgr                       685  18.2%
+MODULE include/port                     388  10.3%
+MODULE utils/cache                      280   7.5%
+MODULE nodes                            235   6.3%
+MODULE include/utils                    232   6.2%
+MODULE include                          183   4.9%
+MODULE include/nodes                    152   4.0%
+MODULE utils/misc                       120   3.2%
+MODULE parser                           119   3.2%
+MODULE utils/resowner                   102   2.7%
+MODULE executor                          80   2.1%
+MODULE include/storage                   79   2.1%
+MODULE utils/hash                        77   2.1%
+MODULE include/access                    77   2.1%
+MODULE optimizer/util                    76   2.0%
+MODULE optimizer/plan                    72   1.9%
+MODULE src/common                        68   1.8%
+MODULE storage/lmgr                      66   1.8%
+MODULE include/lib                       57   1.5%
+MODULE utils/time                        48   1.3%
+MODULE access/transam                    47   1.3%
+MODULE optimizer/path                    41   1.1%
+MODULE access/common                     37   1.0%
+MODULE tcop                              35   0.9%
+MODULE storage/buffer                    35   0.9%
+MODULE libpq                             35   0.9%
+MODULE include/libpq                     34   0.9%
+MODULE access/heap                       28   0.7%
+MODULE include/common                    27   0.7%
+MODULE utils/adt                         24   0.6%
+MODULE utils/activity                    22   0.6%
+MODULE access/table                      22   0.6%
+MODULE storage/aio                       21   0.6%
+MODULE include/executor                  21   0.6%
+MODULE utils/fmgr                        21   0.6%
+MODULE utils/mb                          18   0.5%
+MODULE catalog                           15   0.4%
+MODULE storage/ipc                       12   0.3%
+MODULE storage/smgr                      12   0.3%
+MODULE commands                           9   0.2%
+MODULE optimizer/prep                     8   0.2%
+MODULE rewrite                            8   0.2%
+MODULE utils/error                        8   0.2%
+MODULE lib                                7   0.2%
+MODULE utils/init                         5   0.1%
+MODULE storage/file                       4   0.1%
+MODULE replication/logical                2   0.1%
+MODULE include/tcop                       1   0.0%
+MODULE src/port                           1   0.0%
+TOP AllocSetFreeIndex                           144
+TOP pg_rotate_left32                            143
+TOP AllocSetAlloc                               140
+TOP pg_leftmost_one_pos32                       131
+TOP MemoryChunkSetHdrMask                       128
+TOP AllocSetAllocChunkFromBlock                 124
+TOP palloc                                       71
+TOP palloc0                                      56
+TOP check_stack_depth                            54
+TOP stack_is_too_deep                            54
+TOP DatumGetInt32                                48
+TOP new_list                                     40
+TOP pg_nextpower2_32                             40
+TOP dlist_is_empty                               32
+TOP list_last_cell                               32
+FIND heap_prepare_pagescan=1
+FIND ReadBuffer=0
+FIND ReleaseAndReadBuffer=0
+FIND FileStartReadV=0
+FIND pgaio_io_wait=0
+FIND CatalogTuplesMultiInsertWithInfo=0
+FIND heap_multi_insert=0
+FIND heap_insert=0
+FIND smgrcreate=0
+FIND XLogInsert=0
+FIND XLogFlush=0
+FIND table_index_build_scan=0
+FIND heapam_index_build_range_scan=0
+FIND btbuild=0
+FIND tuplesort_begin_index_btree=0
+FIND smgr_bulk_write=0
+FIND errfinish=0
+FIND int4div=0
+
+## query S2 CREATE TABLE u(id int, name text)
+QUERY pid=5255 nth=2 start_ns=1791891537555173096 end_ns=1791891537876501221
+calls=224790 distinct=1918 max_depth=50 duration_ms=321.328 unresolved=0 unwound=0 orphan_exits=0 dropped=0
+header_defined_calls=124513 (55.4%) no_decl_file_calls=0 (0.0%)
+MODULE include/port                   46135  20.5%
+MODULE include/storage                29042  12.9%
+MODULE include/access                 22740  10.1%
+MODULE storage/lmgr                   16411   7.3%
+MODULE include                        15759   7.0%
+MODULE utils/mmgr                     12017   5.3%
+MODULE storage/buffer                 11469   5.1%
+MODULE access/nbtree                   8221   3.7%
+MODULE utils/hash                      7253   3.2%
+MODULE include/utils                   6885   3.1%
+MODULE utils/cache                     5583   2.5%
+MODULE utils/resowner                  4374   1.9%
+MODULE src/common                      3770   1.7%
+MODULE access/common                   3478   1.5%
+MODULE access/transam                  3374   1.5%
+MODULE utils/error                     3112   1.4%
+MODULE utils/fmgr                      2772   1.2%
+MODULE utils/activity                  2245   1.0%
+MODULE access/index                    2217   1.0%
+MODULE executor                        2140   1.0%
+MODULE storage/aio                     1775   0.8%
+MODULE include/common                  1720   0.8%
+MODULE include/lib                     1545   0.7%
+MODULE catalog                         1465   0.7%
+MODULE utils/time                      1453   0.6%
+MODULE access/heap                     1367   0.6%
+MODULE src/port                        1028   0.5%
+MODULE utils/adt                        685   0.3%
+MODULE nodes                            651   0.3%
+MODULE storage/ipc                      646   0.3%
+MODULE access/table                     593   0.3%
+MODULE storage/smgr                     573   0.3%
+MODULE lib                              431   0.2%
+MODULE include/executor                 423   0.2%
+MODULE storage/page                     368   0.2%
+MODULE storage/file                     297   0.1%
+MODULE include/nodes                    262   0.1%
+MODULE storage/freespace                143   0.1%
+MODULE parser                           128   0.1%
+MODULE utils/misc                        63   0.0%
+MODULE tcop                              37   0.0%
+MODULE commands                          37   0.0%
+MODULE optimizer/util                    26   0.0%
+MODULE utils/sort                        22   0.0%
+MODULE utils/init                        16   0.0%
+MODULE utils/mb                          12   0.0%
+MODULE postmaster                         6   0.0%
+MODULE libpq                              5   0.0%
+MODULE storage/sync                       5   0.0%
+MODULE optimizer/path                     3   0.0%
+MODULE replication                        2   0.0%
+MODULE replication/logical                2   0.0%
+MODULE optimizer/plan                     2   0.0%
+MODULE include/tcop                       1   0.0%
+MODULE include/replication                1   0.0%
+TOP pg_rotate_left32                          22381
+TOP DatumGetObjectId                           2946
+TOP GetBufferDescriptor                        2642
+TOP TupleDescCompactAttr                       2597
+TOP PageValidateSpecialPointer                 2486
+TOP pg_atomic_read_u32                         2313
+TOP pg_atomic_read_u32_impl                    2313
+TOP LWLockAttemptLock                          2305
+TOP LWLockDisownInternal                       2305
+TOP LWLockRelease                              2305
+TOP LWLockReleaseInternal                      2305
+TOP pg_atomic_compare_exchange_u32             2305
+TOP pg_atomic_compare_exchange_u32_impl        2305
+TOP pg_atomic_fetch_sub_u32_impl               2305
+TOP pg_atomic_sub_fetch_u32                    2305
+FIND heap_prepare_pagescan=2
+FIND ReadBuffer=377
+FIND ReleaseAndReadBuffer=243
+FIND FileStartReadV=43
+FIND pgaio_io_wait=0
+FIND CatalogTuplesMultiInsertWithInfo=10
+FIND heap_multi_insert=10
+FIND heap_insert=6
+FIND smgrcreate=3
+FIND XLogInsert=97
+FIND XLogFlush=1
+FIND table_index_build_scan=1
+FIND heapam_index_build_range_scan=1
+FIND btbuild=1
+FIND tuplesort_begin_index_btree=2
+FIND smgr_bulk_write=1
+FIND errfinish=0
+FIND int4div=0
+
+## query S3 CREATE INDEX ON t(id)
+QUERY pid=5257 nth=2 start_ns=1791891537984523367 end_ns=1791891538182318560
+calls=134995 distinct=1825 max_depth=48 duration_ms=197.795 unresolved=0 unwound=0 orphan_exits=0 dropped=0
+header_defined_calls=73995 (54.8%) no_decl_file_calls=0 (0.0%)
+MODULE include/port                   28410  21.0%
+MODULE include/storage                16941  12.5%
+MODULE include/access                 13124   9.7%
+MODULE storage/lmgr                   10152   7.5%
+MODULE include                         8907   6.6%
+MODULE utils/mmgr                      8381   6.2%
+MODULE storage/buffer                  6568   4.9%
+MODULE access/nbtree                   5136   3.8%
+MODULE utils/hash                      4769   3.5%
+MODULE include/utils                   4610   3.4%
+MODULE utils/cache                     3588   2.7%
+MODULE utils/resowner                  2932   2.2%
+MODULE src/common                      2497   1.8%
+MODULE access/index                    1835   1.4%
+MODULE utils/fmgr                      1761   1.3%
+MODULE access/common                   1523   1.1%
+MODULE utils/activity                  1342   1.0%
+MODULE access/transam                  1339   1.0%
+MODULE access/heap                     1302   1.0%
+MODULE utils/time                      1285   1.0%
+MODULE executor                        1179   0.9%
+MODULE include/common                  1111   0.8%
+MODULE catalog                          708   0.5%
+MODULE utils/error                      664   0.5%
+MODULE include/lib                      635   0.5%
+MODULE storage/ipc                      482   0.4%
+MODULE src/port                         465   0.3%
+MODULE access/table                     460   0.3%
+MODULE utils/adt                        428   0.3%
+MODULE storage/aio                      421   0.3%
+MODULE lib                              393   0.3%
+MODULE nodes                            359   0.3%
+MODULE storage/smgr                     313   0.2%
+MODULE storage/file                     158   0.1%
+MODULE utils/misc                       143   0.1%
+MODULE include/nodes                    129   0.1%
+MODULE include/executor                 126   0.1%
+MODULE parser                           115   0.1%
+MODULE storage/page                      72   0.1%
+MODULE storage/freespace                 67   0.0%
+MODULE tcop                              37   0.0%
+MODULE commands                          36   0.0%
+MODULE utils/sort                        25   0.0%
+MODULE utils/init                        20   0.0%
+MODULE optimizer/util                    14   0.0%
+MODULE utils/mb                          12   0.0%
+MODULE libpq                              5   0.0%
+MODULE postmaster                         3   0.0%
+MODULE optimizer/path                     3   0.0%
+MODULE storage/sync                       2   0.0%
+MODULE replication/logical                2   0.0%
+MODULE optimizer/plan                     2   0.0%
+MODULE replication                        2   0.0%
+MODULE include/tcop                       1   0.0%
+MODULE include/replication                1   0.0%
+TOP pg_rotate_left32                          14688
+TOP DatumGetObjectId                           1730
+TOP GetBufferDescriptor                        1551
+TOP AllocSetAlloc                              1448
+TOP AllocSetFreeIndex                          1394
+TOP pg_atomic_read_u32                         1366
+TOP pg_atomic_read_u32_impl                    1366
+TOP LWLockAttemptLock                          1358
+TOP LWLockDisownInternal                       1358
+TOP LWLockRelease                              1358
+TOP LWLockReleaseInternal                      1358
+TOP pg_atomic_compare_exchange_u32             1358
+TOP pg_atomic_compare_exchange_u32_impl        1358
+TOP pg_atomic_fetch_sub_u32_impl               1358
+TOP pg_atomic_sub_fetch_u32                    1358
+FIND heap_prepare_pagescan=2
+FIND ReadBuffer=231
+FIND ReleaseAndReadBuffer=188
+FIND FileStartReadV=9
+FIND pgaio_io_wait=0
+FIND CatalogTuplesMultiInsertWithInfo=2
+FIND heap_multi_insert=2
+FIND heap_insert=2
+FIND smgrcreate=1
+FIND XLogInsert=19
+FIND XLogFlush=1
+FIND table_index_build_scan=1
+FIND heapam_index_build_range_scan=1
+FIND btbuild=1
+FIND tuplesort_begin_index_btree=1
+FIND smgr_bulk_write=2
+FIND errfinish=0
+FIND int4div=0
+
+## query S4 INSERT INTO t VALUES (4,d)
+QUERY pid=5259 nth=2 start_ns=1791891538297607334 end_ns=1791891538347684854
+calls=29889 distinct=1602 max_depth=47 duration_ms=50.078 unresolved=0 unwound=0 orphan_exits=0 dropped=0
+header_defined_calls=15643 (52.3%) no_decl_file_calls=0 (0.0%)
+MODULE include/port                    5754  19.3%
+MODULE include/storage                 3382  11.3%
+MODULE include/access                  2829   9.5%
+MODULE utils/mmgr                      2407   8.1%
+MODULE storage/lmgr                    1780   6.0%
+MODULE include                         1756   5.9%
+MODULE storage/buffer                  1367   4.6%
+MODULE include/utils                   1182   4.0%
+MODULE utils/hash                      1033   3.5%
+MODULE access/nbtree                   1006   3.4%
+MODULE utils/cache                      792   2.6%
+MODULE utils/resowner                   682   2.3%
+MODULE src/common                       545   1.8%
+MODULE access/common                    400   1.3%
+MODULE utils/activity                   391   1.3%
+MODULE executor                         360   1.2%
+MODULE utils/fmgr                       351   1.2%
+MODULE access/transam                   351   1.2%
+MODULE access/index                     346   1.2%
+MODULE include/common                   346   1.2%
+MODULE utils/time                       326   1.1%
+MODULE nodes                            309   1.0%
+MODULE access/heap                      248   0.8%
+MODULE include/lib                      187   0.6%
+MODULE catalog                          174   0.6%
+MODULE include/nodes                    171   0.6%
+MODULE utils/error                      152   0.5%
+MODULE storage/ipc                      131   0.4%
+MODULE utils/misc                       128   0.4%
+MODULE parser                           126   0.4%
+MODULE access/table                     122   0.4%
+MODULE utils/adt                        108   0.4%
+MODULE lib                              102   0.3%
+MODULE storage/aio                      100   0.3%
+MODULE src/port                          96   0.3%
+MODULE optimizer/plan                    85   0.3%
+MODULE storage/smgr                      46   0.2%
+MODULE tcop                              34   0.1%
+MODULE include/executor                  34   0.1%
+MODULE optimizer/util                    34   0.1%
+MODULE storage/file                      31   0.1%
+MODULE commands                          16   0.1%
+MODULE storage/page                      14   0.0%
+MODULE optimizer/prep                    12   0.0%
+MODULE optimizer/path                    10   0.0%
+MODULE rewrite                            9   0.0%
+MODULE libpq                              5   0.0%
+MODULE storage/freespace                  5   0.0%
+MODULE utils/init                         5   0.0%
+MODULE replication/logical                2   0.0%
+MODULE replication                        2   0.0%
+MODULE utils/mb                           2   0.0%
+MODULE include/tcop                       1   0.0%
+MODULE jit                                1   0.0%
+MODULE include/replication                1   0.0%
+TOP pg_rotate_left32                           3154
+TOP AllocSetAlloc                               448
+TOP AllocSetFreeIndex                           441
+TOP pg_leftmost_one_pos32                       412
+TOP TupleDescCompactAttr                        315
+TOP DatumGetObjectId                            310
+TOP GetBufferDescriptor                         307
+TOP PageValidateSpecialPointer                  278
+TOP BufferDescriptorGetBuffer                   246
+TOP AllocSetFree                                239
+TOP GetMemoryChunkMethodID                      239
+TOP MemoryChunkIsExternal                       239
+TOP pfree                                       239
+TOP FunctionCall2Coll                           236
+TOP calc_bucket                                 232
+FIND heap_prepare_pagescan=1
+FIND ReadBuffer=50
+FIND ReleaseAndReadBuffer=34
+FIND FileStartReadV=2
+FIND pgaio_io_wait=0
+FIND CatalogTuplesMultiInsertWithInfo=0
+FIND heap_multi_insert=0
+FIND heap_insert=1
+FIND smgrcreate=0
+FIND XLogInsert=3
+FIND XLogFlush=1
+FIND table_index_build_scan=0
+FIND heapam_index_build_range_scan=0
+FIND btbuild=0
+FIND tuplesort_begin_index_btree=0
+FIND smgr_bulk_write=0
+FIND errfinish=0
+FIND int4div=0
+
+## query S5 SELECT 1/0
+QUERY pid=5261 nth=2 start_ns=1791891538464866194 end_ns=1791891538480272337
+calls=9566 distinct=872 max_depth=47 duration_ms=15.406 unresolved=0 unwound=22 orphan_exits=0 dropped=0
+header_defined_calls=4540 (47.5%) no_decl_file_calls=0 (0.0%)
+MODULE include/port                    1737  18.2%
+MODULE include/storage                  888   9.3%
+MODULE include/access                   683   7.1%
+MODULE utils/error                      666   7.0%
+MODULE utils/mmgr                       661   6.9%
+MODULE storage/buffer                   525   5.5%
+MODULE storage/lmgr                     502   5.2%
+MODULE include                          423   4.4%
+MODULE storage/aio                      360   3.8%
+MODULE include/utils                    321   3.4%
+MODULE utils/hash                       262   2.7%
+MODULE include/common                   251   2.6%
+MODULE access/nbtree                    196   2.0%
+MODULE include/lib                      183   1.9%
+MODULE utils/resowner                   181   1.9%
+MODULE utils/cache                      180   1.9%
+MODULE utils/activity                   154   1.6%
+MODULE src/common                       126   1.3%
+MODULE access/common                    109   1.1%
+MODULE parser                           103   1.1%
+MODULE nodes                             97   1.0%
+MODULE utils/fmgr                        89   0.9%
+MODULE src/port                          89   0.9%
+MODULE utils/misc                        79   0.8%
+MODULE storage/smgr                      78   0.8%
+MODULE executor                          66   0.7%
+MODULE access/index                      57   0.6%
+MODULE catalog                           53   0.6%
+MODULE utils/time                        51   0.5%
+MODULE include/nodes                     50   0.5%
+MODULE lib                               50   0.5%
+MODULE storage/file                      48   0.5%
+MODULE access/transam                    48   0.5%
+MODULE utils/adt                         42   0.4%
+MODULE access/heap                       34   0.4%
+MODULE optimizer/util                    31   0.3%
+MODULE storage/ipc                       23   0.2%
+MODULE access/table                      21   0.2%
+MODULE tcop                              15   0.2%
+MODULE storage/page                       9   0.1%
+MODULE optimizer/prep                     7   0.1%
+MODULE optimizer/plan                     5   0.1%
+MODULE include/executor                   4   0.0%
+MODULE utils/init                         4   0.0%
+MODULE rewrite                            3   0.0%
+MODULE commands                           1   0.0%
+MODULE jit                                1   0.0%
+TOP pg_rotate_left32                            814
+TOP is_log_level_output                         164
+TOP should_output_to_client                     164
+TOP should_output_to_server                     164
+TOP errstart                                    163
+TOP AllocSetFreeIndex                           132
+TOP AllocSetAlloc                               127
+TOP pg_leftmost_one_pos32                       125
+TOP MemoryChunkSetHdrMask                        97
+TOP AllocSetAllocChunkFromBlock                  89
+TOP GetBufferDescriptor                          83
+TOP TupleDescCompactAttr                         75
+TOP pgaio_io_update_state                        72
+TOP BufferDescriptorGetBuffer                    68
+TOP LWLockAcquire                                62
+FIND heap_prepare_pagescan=0
+FIND ReadBuffer=11
+FIND ReleaseAndReadBuffer=6
+FIND FileStartReadV=9
+FIND pgaio_io_wait=0
+FIND CatalogTuplesMultiInsertWithInfo=0
+FIND heap_multi_insert=0
+FIND heap_insert=0
+FIND smgrcreate=0
+FIND XLogInsert=0
+FIND XLogFlush=0
+FIND table_index_build_scan=0
+FIND heapam_index_build_range_scan=0
+FIND btbuild=0
+FIND tuplesort_begin_index_btree=0
+FIND smgr_bulk_write=0
+FIND errfinish=1
+FIND int4div=1
+
+## query S5 SELECT 1 (오류 다음)
+QUERY pid=5261 nth=3 start_ns=1791891538481784639 end_ns=1791891538484865484
+calls=1837 distinct=594 max_depth=18 duration_ms=3.081 unresolved=0 unwound=0 orphan_exits=0 dropped=0
+header_defined_calls=504 (27.4%) no_decl_file_calls=0 (0.0%)
+MODULE utils/mmgr                       425  23.1%
+MODULE include/port                     151   8.2%
+MODULE include/utils                    147   8.0%
+MODULE nodes                            104   5.7%
+MODULE executor                          90   4.9%
+MODULE parser                            80   4.4%
+MODULE utils/misc                        79   4.3%
+MODULE utils/cache                       77   4.2%
+MODULE include/nodes                     73   4.0%
+MODULE optimizer/plan                    54   2.9%
+MODULE include/lib                       46   2.5%
+MODULE utils/resowner                    46   2.5%
+MODULE utils/time                        45   2.4%
+MODULE access/transam                    42   2.3%
+MODULE optimizer/util                    42   2.3%
+MODULE include                           40   2.2%
+MODULE tcop                              35   1.9%
+MODULE storage/lmgr                      31   1.7%
+MODULE utils/hash                        30   1.6%
+MODULE src/common                        19   1.0%
+MODULE libpq                             18   1.0%
+MODULE access/common                     13   0.7%
+MODULE utils/activity                    13   0.7%
+MODULE include/access                    13   0.7%
+MODULE include/libpq                     13   0.7%
+MODULE optimizer/prep                    11   0.6%
+MODULE include/executor                   9   0.5%
+MODULE commands                           9   0.5%
+MODULE utils/adt                          9   0.5%
+MODULE utils/error                        8   0.4%
+MODULE storage/ipc                        8   0.4%
+MODULE include/common                     7   0.4%
+MODULE lib                                7   0.4%
+MODULE optimizer/path                     7   0.4%
+MODULE utils/fmgr                         5   0.3%
+MODULE catalog                            5   0.3%
+MODULE utils/mb                           4   0.2%
+MODULE include/storage                    4   0.2%
+MODULE storage/buffer                     4   0.2%
+MODULE rewrite                            3   0.2%
+MODULE storage/file                       2   0.1%
+MODULE storage/smgr                       2   0.1%
+MODULE replication/logical                2   0.1%
+MODULE utils/init                         1   0.1%
+MODULE include/tcop                       1   0.1%
+MODULE jit                                1   0.1%
+MODULE storage/aio                        1   0.1%
+MODULE src/port                           1   0.1%
+TOP AllocSetAlloc                                83
+TOP AllocSetFreeIndex                            83
+TOP pg_leftmost_one_pos32                        78
+TOP AllocSetAllocChunkFromBlock                  75
+TOP MemoryChunkSetHdrMask                        75
+TOP palloc                                       37
+TOP palloc0                                      36
+TOP check_stack_depth                            35
+TOP stack_is_too_deep                            35
+TOP dlist_is_empty                               32
+TOP new_list                                     22
+TOP pg_nextpower2_32                             22
+TOP pg_rotate_left32                             21
+TOP expression_tree_walker_impl                  18
+TOP dispatch_compare_ptr                         16
+FIND heap_prepare_pagescan=0
+FIND ReadBuffer=0
+FIND ReleaseAndReadBuffer=0
+FIND FileStartReadV=0
+FIND pgaio_io_wait=0
+FIND CatalogTuplesMultiInsertWithInfo=0
+FIND heap_multi_insert=0
+FIND heap_insert=0
+FIND smgrcreate=0
+FIND XLogInsert=0
+FIND XLogFlush=0
+FIND table_index_build_scan=0
+FIND heapam_index_build_range_scan=0
+FIND btbuild=0
+FIND tuplesort_begin_index_btree=0
+FIND smgr_bulk_write=0
+FIND errfinish=0
+FIND int4div=0
+
+## S5 SELECT 1/0 호출 나무(깊이 3)
+exec_simple_query  calls=9566  tcop  from src/backend/tcop/postgres.c:4770 [longjmp로 닫힘]
+  pgstat_report_activity  calls=3  utils/activity  from src/backend/tcop/postgres.c:1028
+    GetCurrentStatementStartTimestamp  calls=1  access/transam  from src/backend/utils/activity/backend_status.c:614
+    GetCurrentTimestamp  calls=1  utils/adt  from src/backend/utils/activity/backend_status.c:624
+  start_xact_command  calls=45  tcop  from src/backend/tcop/postgres.c:1046
+    StartTransactionCommand  calls=42  access/transam  from src/backend/tcop/postgres.c:2791
+    enable_statement_timeout  calls=2  tcop  from src/backend/tcop/postgres.c:2814
+  drop_unnamed_stmt  calls=1  tcop  from src/backend/tcop/postgres.c:1054
+  MemoryContextSwitchTo  calls=1  include/utils  from src/backend/tcop/postgres.c:1059
+  pg_parse_query  calls=154  tcop  from src/backend/tcop/postgres.c:1065
+    raw_parser  calls=153  parser  from src/backend/tcop/postgres.c:613
+  check_log_statement  calls=1  tcop  from src/backend/tcop/postgres.c:1068
+  MemoryContextSwitchTo  calls=1  include/utils  from src/backend/tcop/postgres.c:1080
+  list_length  calls=1  include/nodes  from src/backend/tcop/postgres.c:1090
+  pgstat_report_query_id  calls=1  utils/activity  from src/backend/tcop/postgres.c:1110
+  pgstat_report_plan_id  calls=1  utils/activity  from src/backend/tcop/postgres.c:1111
+  CreateCommandTag  calls=1  tcop  from src/backend/tcop/postgres.c:1119
+  GetCommandTagNameAndLen  calls=1  tcop  from src/backend/tcop/postgres.c:1120
+  set_ps_display_with_len  calls=3  utils/misc  from src/backend/tcop/postgres.c:1122
+    update_ps_display_precheck  calls=1  utils/misc  from src/backend/utils/misc/ps_status.c:459
+    flush_ps_display  calls=1  utils/misc  from src/backend/utils/misc/ps_status.c:482
+  BeginCommand  calls=1  tcop  from src/backend/tcop/postgres.c:1124
+  IsAbortedTransactionBlockState  calls=1  access/transam  from src/backend/tcop/postgres.c:1134
+  start_xact_command  calls=3  tcop  from src/backend/tcop/postgres.c:1143
+    enable_statement_timeout  calls=2  tcop  from src/backend/tcop/postgres.c:2814
+  analyze_requires_snapshot  calls=2  parser  from src/backend/tcop/postgres.c:1161
+    stmt_requires_parse_analysis  calls=1  parser  from src/backend/parser/analyze.c:506
+  GetTransactionSnapshot  calls=19  utils/time  from src/backend/tcop/postgres.c:1163
+    HistoricSnapshotActive  calls=1  utils/time  from src/backend/utils/time/snapmgr.c:281
+    InvalidateCatalogSnapshot  calls=1  utils/time  from src/backend/utils/time/snapmgr.c:299
+    IsInParallelMode  calls=1  access/transam  from src/backend/utils/time/snapmgr.c:304
+    GetSnapshotData  calls=15  storage/ipc  from src/backend/utils/time/snapmgr.c:330
+  PushActiveSnapshot  calls=16  utils/time  from src/backend/tcop/postgres.c:1163
+    GetCurrentTransactionNestLevel  calls=1  access/transam  from src/backend/utils/time/snapmgr.c:682
+    PushActiveSnapshotWithLevel  calls=14  utils/time  from src/backend/utils/time/snapmgr.c:682
+  lnext  calls=1  include/nodes  from src/backend/tcop/postgres.c:1179
+  MemoryContextSwitchTo  calls=1  include/utils  from src/backend/tcop/postgres.c:1188
+  pg_analyze_and_rewrite_fixedparams  calls=8847  tcop  from src/backend/tcop/postgres.c:1190
+    parse_analyze_fixedparams  calls=8820  parser  from src/backend/tcop/postgres.c:683
+    pg_rewrite_query  calls=26  tcop  from src/backend/tcop/postgres.c:692
+  pg_plan_queries  calls=460  tcop  from src/backend/tcop/postgres.c:1193 [longjmp로 닫힘]
+    pg_plan_query  calls=459  tcop  from src/backend/tcop/postgres.c:995 [longjmp로 닫힘]
+
+## S1 첫 SELECT 동안 I/O 워커(5236)가 부른 함수
+WINDOW pid=5236 calls=152
+MODULE access/transam                     1
+MODULE include/lib                        1
+MODULE include/port                      25
+MODULE include/storage                   16
+MODULE include/utils                      4
+MODULE src/common                         3
+MODULE src/port                          17
+MODULE storage/aio                       16
+MODULE storage/buffer                     5
+MODULE storage/file                       8
+MODULE storage/ipc                        4
+MODULE storage/lmgr                       8
+MODULE storage/page                       1
+MODULE storage/smgr                      10
+MODULE utils/error                       24
+MODULE utils/hash                         5
+MODULE utils/mmgr                         4
+STORAGE AllocateVfd storage/file 1
+STORAGE BasicOpenFilePerm storage/file 1
+STORAGE ConditionVariableBroadcast storage/lmgr 2
+STORAGE FileAccess storage/file 1
+STORAGE FileGetRawDesc storage/file 1
+STORAGE Insert storage/file 1
+STORAGE LWLockAcquire storage/lmgr 1
+STORAGE LWLockAttemptLock storage/lmgr 1
+STORAGE LWLockDisownInternal storage/lmgr 1
+STORAGE LWLockRelease storage/lmgr 1
+STORAGE LWLockReleaseInternal storage/lmgr 1
+STORAGE LockBufHdr storage/buffer 1
+STORAGE PageIsVerified storage/page 1
+STORAGE PathNameOpenFile storage/file 1
+STORAGE PathNameOpenFilePerm storage/file 1
+STORAGE ReleaseLruFiles storage/file 1
+STORAGE ResetLatch storage/ipc 1
+STORAGE SetLatch storage/ipc 1
+STORAGE TerminateBufferIO storage/buffer 1
+STORAGE WakeupOtherProc storage/ipc 1
+STORAGE _fdvec_resize storage/smgr 1
+STORAGE _mdfd_getseg storage/smgr 1
+STORAGE _mdfd_open_flags storage/smgr 1
+STORAGE buffer_readv_complete storage/buffer 1
+STORAGE buffer_readv_complete_one storage/buffer 1
+STORAGE drain storage/ipc 1
+STORAGE finish_spin_delay storage/lmgr 1
+STORAGE md_readv_complete storage/smgr 1
+STORAGE mdfd storage/smgr 1
+STORAGE mdopen storage/smgr 1
+STORAGE mdopenfork storage/smgr 1
+STORAGE pgaio_io_call_complete_shared storage/aio 1
+STORAGE pgaio_io_get_handle_data storage/aio 1
+STORAGE pgaio_io_get_op storage/aio 1
+STORAGE pgaio_io_get_op_data storage/aio 1
+STORAGE pgaio_io_get_target_data storage/aio 3
+STORAGE pgaio_io_perform_synchronously storage/aio 1
+STORAGE pgaio_io_process_completion storage/aio 1
+STORAGE pgaio_io_reopen storage/aio 1
+STORAGE pgaio_io_update_state storage/aio 2
+STORAGE pgaio_worker_submission_queue_consume storage/aio 1
+STORAGE pgaio_worker_submission_queue_depth storage/aio 2
+STORAGE pgaio_wref_clear storage/aio 1
+STORAGE shared_buffer_readv_complete storage/buffer 1
+STORAGE smgr_aio_reopen storage/smgr 1
+STORAGE smgrfd storage/smgr 1
+STORAGE smgropen storage/smgr 1

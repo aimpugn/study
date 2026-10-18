@@ -1,0 +1,92 @@
+# 트랜잭션 실험이 값을 읽는 함수들입니다. 형식은 uprobe.go 머리 주석에 있습니다.
+# 모든 정의에 pid=@MyProcPid를 붙입니다. ftrace는 커널의 전역 pid를 쓰고 함수 기록·strace는 컨테이너 안 pid를 쓰므로,
+# 사건마다 컨테이너 안 pid를 함께 남겨 둘을 잇습니다.
+
+# 스냅숏. 인자가 &CurrentSnapshotData(문장·트랜잭션 스냅숏)인지 &CatalogSnapshotData(카탈로그용)인지로 가릅니다(snapmgr.c).
+snap      GetSnapshotData                pid=@MyProcPid dst=$arg1
+snapret   GetSnapshotData%return         pid=@MyProcPid xmin=$retval->xmin xmax=$retval->xmax xcnt=$retval->xcnt xip0=$retval->xip[0] xip1=$retval->xip[1] xip2=$retval->xip[2] xip3=$retval->xip[3] curcid=$retval->curcid
+
+# 행 버전 하나의 판정. 줄의 위치(블록, 줄 번호)와 그 행의 xmin·xmax·힌트 비트, 견준 스냅숏의 값을 판정 직전에 읽습니다.
+# tup은 공유 버퍼 안 행 머리의 주소입니다. 힌트 비트를 쓴 SetHintBits의 tup과 맞춰, 값이 아니라 자리로 어느 행인지 가릅니다(실험 2 L13).
+mvcc      HeapTupleSatisfiesMVCC         pid=@MyProcPid tup=$arg1->t_data rel=$arg1->t_tableOid bhi=$arg1->t_self.ip_blkid.bi_hi blo=$arg1->t_self.ip_blkid.bi_lo off=$arg1->t_self.ip_posid xmin=$arg1->t_data->t_choice.t_heap.t_xmin xmax=$arg1->t_data->t_choice.t_heap.t_xmax mask=$arg1->t_data->t_infomask snap=$arg2 sxmin=$arg2->xmin sxmax=$arg2->xmax
+mvccret   HeapTupleSatisfiesMVCC%return  pid=@MyProcPid ret=$retval
+xidin     XidInMVCCSnapshot              pid=@MyProcPid xid=$arg1 snap=$arg2
+xidinret  XidInMVCCSnapshot%return       pid=@MyProcPid ret=$retval
+didc      TransactionIdDidCommit         pid=@MyProcPid xid=$arg1
+didcret   TransactionIdDidCommit%return  pid=@MyProcPid ret=$retval
+hint      SetHintBits                    pid=@MyProcPid tup=$arg1 xmin=$arg1->t_choice.t_heap.t_xmin xmax=$arg1->t_choice.t_heap.t_xmax bits=$arg3 xid=$arg4
+
+# 트랜잭션 번호와 커밋 로그.
+newxid    GetNewTransactionId%return     pid=@MyProcPid xid=$retval.value
+# 번호를 받는 트랜잭션의 깊이(1 최상위, 2부터 저장점 안의 하위 트랜잭션, xact.c 201행). 실험 5의 NESTED가 받는 하위 번호를 가립니다.
+# 하위가 번호를 받을 때 부모에 번호가 없으면 부모가 먼저 받습니다(xact.c 660~678행). 그때는 깊이 줄이 겹쳐 "자식 → 부모 → 부모의 newxid →
+# 자식의 newxid" 순서가 되므로, newxid는 아직 번호를 받지 않은 가장 안쪽 깊이 줄의 것입니다(실험 5의 NESTED는 바깥이 먼저 써서 부모에 번호가 있음).
+assign    AssignTransactionId            pid=@MyProcPid level=$arg1->nestingLevel
+commit    TransactionIdCommitTree        pid=@MyProcPid xid=$arg1 nsub=$arg2
+abort     TransactionIdAbortTree         pid=@MyProcPid xid=$arg1 nsub=$arg2
+
+# 쓰기 충돌과 기다림. HeapTupleSatisfiesUpdate의 반환값은 TM_Result(0 TM_Ok, 1 TM_Invisible, 2 TM_SelfModified, 3 TM_Updated,
+# 4 TM_Deleted, 5 TM_BeingModified, 6 TM_WouldBlock, tableam.h)입니다.
+upd       HeapTupleSatisfiesUpdate       pid=@MyProcPid xmin=$arg1->t_data->t_choice.t_heap.t_xmin xmax=$arg1->t_data->t_choice.t_heap.t_xmax off=$arg1->t_self.ip_posid
+updret    HeapTupleSatisfiesUpdate%return pid=@MyProcPid ret=$retval
+xwait     XactLockTableWait              pid=@MyProcPid xid=$arg1 oper=$arg4
+lock      LockAcquireExtended            pid=@MyProcPid f1=$arg1->locktag_field1 f2=$arg1->locktag_field2 f3=$arg1->locktag_field3 f4=$arg1->locktag_field4 type=$arg1->locktag_type mode=$arg2
+lockret   LockAcquireExtended%return     pid=@MyProcPid ret=$retval
+sleep     ProcSleep                      pid=@MyProcPid
+sleepret  ProcSleep%return               pid=@MyProcPid ret=$retval
+wake      ProcWakeup                     pid=@MyProcPid who=$arg1->pid status=$arg2
+epq       EvalPlanQual                   pid=@MyProcPid
+dlret     DeadLockCheck%return           pid=@MyProcPid ret=$retval
+
+# 행 잠금. SELECT ... FOR UPDATE·FOR SHARE와 외래 키 검사(FOR KEY SHARE)가 부릅니다. mode는 LockTupleMode(0 KeyShare, 1 Share,
+# 2 NoKeyExclusive, 3 Exclusive, nodes/lockoptions.h), wait는 LockWaitPolicy(0 기다림, 1 SKIP LOCKED, 2 NOWAIT), 반환값은 TM_Result입니다.
+# DeadLockCheck의 반환값은 DeadLockState(0 아직, 1 교착 없음, 2 순서를 바꿔 피함, 3 교착, 4 autovacuum이 막음, storage/lock.h)입니다.
+tlock     heap_lock_tuple                pid=@MyProcPid rel=$arg1->rd_id off=$arg2->t_self.ip_posid mode=$arg4 wait=$arg5
+tlockret  heap_lock_tuple%return         pid=@MyProcPid ret=$retval
+
+# MultiXact. 한 행에 다른 트랜잭션의 잠금과 바꾸기가 겹칠 때 두 번호를 하나로 묶습니다. 상태는 MultiXactStatus
+# (0 ForKeyShare, 1 ForShare, 2 ForNoKeyUpdate, 3 ForUpdate, 4 NoKeyUpdate, 5 Update, access/multixact.h)이고, 반환값이 묶은 번호입니다.
+mxact     MultiXactIdCreate              pid=@MyProcPid xid1=$arg1 st1=$arg2 xid2=$arg3 st2=$arg4
+mxactret  MultiXactIdCreate%return       pid=@MyProcPid ret=$retval
+
+# 요청의 경계. 단순 쿼리 프로토콜의 문장마다 한 번 불리고 첫 인자가 받은 SQL 문자열입니다(postgres.c).
+query     exec_simple_query              pid=@MyProcPid sql=$arg1:string
+queryret  exec_simple_query%return       pid=@MyProcPid
+
+# WAL과 지속성(실험 3). lsn은 WAL 안의 위치(바이트)입니다. XLogFlush의 인자는 디스크에 내려야 할 끝 위치이고, XLogSetAsyncXactLSN의
+# 인자는 비동기 커밋과 취소가 WAL writer에게 맡기는 끝 위치입니다(xact.c 1523·1841행). TransactionIdAsyncCommitTree는 비동기 커밋이
+# 커밋 로그에 그 위치와 함께 적는 자리입니다(xact.c 1531행). 크래시 복구가 커밋 레코드를 다시 실행할 때는 이것이 아니라
+# TransactionIdCommitTree를 부릅니다(standbyState가 STANDBY_DISABLED, xact.c 6157~6162행). 대기 서버의 복구만 이것을 부릅니다(6186행).
+walflush   XLogFlush                     pid=@MyProcPid lsn=$arg1
+asynclsn   XLogSetAsyncXactLSN           pid=@MyProcPid lsn=$arg1
+acommit    TransactionIdAsyncCommitTree  pid=@MyProcPid xid=$arg1 nsub=$arg2 lsn=$arg4
+# 체크섬이 켜져 있으면 깨끗한 페이지에 힌트 비트만 쓸 때 이 함수가 불리고, 체크포인트 뒤 처음이면 페이지 전체를 WAL에 남깁니다
+# (bufmgr.c 5542행). 반환값은 남긴 레코드의 위치이고, 남기지 않았으면 0입니다(xloginsert.c 1057~1058행).
+fpihint    XLogSaveBufferForHint         pid=@MyProcPid buf=$arg1
+fpihintret XLogSaveBufferForHint%return  pid=@MyProcPid lsn=$retval
+# WAL writer가 주기마다 부르는 쓰기. 반환값은 할 일이 있었는지입니다(xlog.c 2966행).
+bgflushret XLogBackgroundFlush%return    pid=@MyProcPid ret=$retval
+# 복구가 레코드 하나를 다시 실행하는 자리(xlogrecovery.c 1937행). lsn은 레코드의 시작, end는 끝 다음 위치, rmid는 자원 관리자
+# (rmgrlist.h의 순서, 0 XLOG·1 Transaction·10 Heap·11 Btree 등), info의 위 4비트가 그 안의 레코드 종류입니다.
+redo       ApplyWalRecord                pid=@MyProcPid lsn=$arg1->ReadRecPtr end=$arg1->EndRecPtr rmid=$arg2->xl_rmid xid=$arg2->xl_xid info=$arg2->xl_info len=$arg2->xl_tot_len
+
+# SERIALIZABLE(실험 4). PostgreSQL의 SERIALIZABLE은 SSI입니다. 읽은 자리에 SIRead 락(술어 락)을 남기고, 다른 트랜잭션이
+# 그 자리에 쓰면 "읽은 쪽 → 쓴 쪽" 간선을 긋고, 가운데가 된 트랜잭션을 커밋 때 실패시킵니다(storage/lmgr/predicate.c).
+# 이 함수는 SERIALIZABLE의 트랜잭션 스냅숏을 찍을 때 그 트랜잭션의 SERIALIZABLEXACT를 만듭니다(predicate.c 1862행에서 pid를 적음).
+ssibegin  GetSerializableTransactionSnapshotInt pid=@MyProcPid
+# 읽기가 잡는 SIRead 락의 요청. 표(순차 스캔), 페이지(B-tree 잎), 행(찾은 행)입니다. 실제로 새로 만들었는지는 함수 기록에서
+# 그 안에 CreatePredicateLock이 불렸는지로 봅니다. txid는 그 행을 쓴 트랜잭션 번호입니다(자기가 쓴 행이면 잡지 않음).
+plrel     PredicateLockRelation          pid=@MyProcPid rel=$arg1->rd_id
+plpage    PredicateLockPage              pid=@MyProcPid rel=$arg1->rd_id blk=$arg2
+pltid     PredicateLockTID               pid=@MyProcPid rel=$arg1->rd_id bhi=$arg2->ip_blkid.bi_hi blo=$arg2->ip_blkid.bi_lo off=$arg2->ip_posid txid=$arg4
+# 쓰기의 검사. heap_update·heap_delete·heap_insert가 부르고(heapam.c 4107행 등), 행·페이지·표 순으로 대상을 하나씩 봅니다.
+# 대상 태그의 f3은 블록(표 단위면 0xFFFFFFFF), f4는 줄(행 단위가 아니면 0)입니다(predicate_internals.h 388~404행).
+cin       CheckForSerializableConflictIn pid=@MyProcPid rel=$arg1->rd_id blk=$arg3
+cintgt    CheckTargetForConflictsIn      pid=@MyProcPid rel=$arg1->locktag_field2 blk=$arg1->locktag_field3 off=$arg1->locktag_field4
+cout      CheckForSerializableConflictOut pid=@MyProcPid rel=$arg1->rd_id xid=$arg2
+# 간선 하나. 첫 인자가 읽은 쪽, 둘째가 쓴 쪽의 SERIALIZABLEXACT입니다. topXid는 아직 쓰지 않았으면 0이고, flags는
+# SXACT_FLAG_*(predicate_internals.h 121~142행, 0x08이 DOOMED)입니다.
+rwflag    FlagRWConflict                 pid=@MyProcPid rpid=$arg1->pid rxid=$arg1->topXid rflags=$arg1->flags wpid=$arg2->pid wxid=$arg2->topXid wflags=$arg2->flags
+# 커밋 때의 검사. 이 백엔드의 SERIALIZABLEXACT가 없으면(RR·RC) 포인터 sx가 0입니다. 그때 flags는 읽기에 실패하는데, 숫자 인자는
+# 실패해도 (fault)가 아니라 0으로 남으므로(실험 4 도구 시험에서 세션 시작 때의 커밋이 flags=0) sx로 가립니다.
+precommit PreCommit_CheckForSerializationFailure pid=@MyProcPid sx=@MySerializableXact flags=@MySerializableXact->flags

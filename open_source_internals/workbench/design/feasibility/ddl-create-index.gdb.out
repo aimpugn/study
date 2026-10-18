@@ -1,0 +1,66 @@
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/aarch64-linux-gnu/libthread_db.so.1".
+0x0000ffff8960c0a0 in epoll_pwait () from /lib/aarch64-linux-gnu/libc.so.6
+Breakpoint 1 at 0xaaaab334c188: file heapam.c, line 2084.
+Breakpoint 2 at 0xaaaab3852cb0: file smgr.c, line 483.
+Breakpoint 3 at 0xaaaab33e6838: file xloginsert.c, line 479.
+Breakpoint 4 at 0xaaaab33d666c: file xlog.c, line 2784.
+Breakpoint 5 at 0xaaaab3a934fc: file tuplesortvariants.c, line 367.
+Breakpoint 6 at 0xaaaab338af2c: file nbtsort.c, line 306.
+Breakpoint 7 at 0xaaaab384efdc: file bulk_write.c, line 327.
+Breakpoint 8 at 0xaaaab334b404: file heapam.c, line 1390.
+Breakpoint 9 at 0xaaaab3856c04: file dest.c, line 258.
+SMGRCREATE relNumber=16467 fork=0
+HEAP_INSERT pg_class
+HEAP_INSERT pg_index
+BTBUILD index=t_id_idx1 heap=t
+TUPLESORT workMem=65536
+BULK_WRITE block=1
+BULK_WRITE block=0
+XLOGFLUSH
+Num     Type           Disp Enb Address            What
+1       breakpoint     keep y   0x0000aaaab334c188 in heap_insert at heapam.c:2084
+	breakpoint already hit 2 times
+        silent
+        printf "HEAP_INSERT %s\n", relation->rd_rel->relname.data
+        continue
+2       breakpoint     keep y   0x0000aaaab3852cb0 in smgrcreate at smgr.c:483
+	breakpoint already hit 1 time
+        silent
+        printf "SMGRCREATE relNumber=%u fork=%d\n", reln->smgr_rlocator.locator.relNumber, forknum
+        continue
+3       breakpoint     keep y   0x0000aaaab33e6838 in XLogInsert at xloginsert.c:479
+	breakpoint already hit 18 times
+        silent
+        continue
+4       breakpoint     keep y   0x0000aaaab33d666c in XLogFlush at xlog.c:2784
+	breakpoint already hit 1 time
+        silent
+        printf "XLOGFLUSH\n"
+        continue
+5       breakpoint     keep y   0x0000aaaab3a934fc in tuplesort_begin_index_btree at tuplesortvariants.c:367
+	breakpoint already hit 1 time
+        silent
+        printf "TUPLESORT workMem=%d\n", workMem
+        continue
+6       breakpoint     keep y   0x0000aaaab338af2c in btbuild at nbtsort.c:306
+	breakpoint already hit 1 time
+        silent
+        printf "BTBUILD index=%s heap=%s\n", index->rd_rel->relname.data, heap->rd_rel->relname.data
+        continue
+7       breakpoint     keep y   0x0000aaaab384efdc in smgr_bulk_write at bulk_write.c:327
+	breakpoint already hit 2 times
+        silent
+        printf "BULK_WRITE block=%u\n", blocknum
+        continue
+8       breakpoint     keep y   0x0000aaaab334b404 in heap_getnextslot at heapam.c:1390
+	breakpoint already hit 2 times
+        silent
+        continue
+9       breakpoint     keep y   0x0000aaaab3856c04 in ReadyForQuery at dest.c:258
+	breakpoint already hit 1 time
+        silent
+        info breakpoints
+        detach
+        quit
+[Inferior 1 (process 1525) detached]

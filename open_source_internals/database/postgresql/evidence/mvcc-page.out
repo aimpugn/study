@@ -1,0 +1,66 @@
+## 1. INSERT
+ insert_xid 
+------------
+        757
+(1 row)
+
+-- 테이블 u, 페이지 0
+ lp | lp_flags | lp_off | t_xmin | t_xmax | t_ctid |                flags                 
+----+----------+--------+--------+--------+--------+--------------------------------------
+  1 |        1 |   8160 |    757 |      0 | (0,1)  | {HEAP_HASVARWIDTH,HEAP_XMAX_INVALID}
+(1 row)
+
+## 2. UPDATE v='b'
+ update_xid 
+------------
+        758
+(1 row)
+
+-- 테이블 u, 페이지 0
+ lp | lp_flags | lp_off | t_xmin | t_xmax | t_ctid |                               flags                               
+----+----------+--------+--------+--------+--------+-------------------------------------------------------------------
+  1 |        1 |   8160 |    757 |    758 | (0,2)  | {HEAP_HASVARWIDTH,HEAP_XMIN_COMMITTED,HEAP_HOT_UPDATED}
+  2 |        1 |   8128 |    758 |      0 | (0,2)  | {HEAP_HASVARWIDTH,HEAP_XMAX_INVALID,HEAP_UPDATED,HEAP_ONLY_TUPLE}
+(2 rows)
+
+## 3. 먼저 시작한 읽기 트랜잭션(REPEATABLE READ)이 있는 동안 UPDATE v='c'
+ update_xid 
+------------
+        759
+(1 row)
+
+       step       | v 
+------------------+---
+ new session read | c
+(1 row)
+
+-- 테이블 u, 페이지 0
+ lp | lp_flags | lp_off | t_xmin | t_xmax | t_ctid |                                                  flags                                                   
+----+----------+--------+--------+--------+--------+----------------------------------------------------------------------------------------------------------
+  1 |        1 |   8160 |    757 |    758 | (0,2)  | {HEAP_HASVARWIDTH,HEAP_XMIN_COMMITTED,HEAP_XMAX_COMMITTED,HEAP_HOT_UPDATED}
+  2 |        1 |   8128 |    758 |    759 | (0,3)  | {HEAP_HASVARWIDTH,HEAP_XMIN_COMMITTED,HEAP_XMAX_COMMITTED,HEAP_UPDATED,HEAP_HOT_UPDATED,HEAP_ONLY_TUPLE}
+  3 |        1 |   8096 |    759 |      0 | (0,3)  | {HEAP_HASVARWIDTH,HEAP_XMIN_COMMITTED,HEAP_XMAX_INVALID,HEAP_UPDATED,HEAP_ONLY_TUPLE}
+(3 rows)
+
+-- 먼저 시작한 읽기 트랜잭션의 출력
+      step       | v | snapshot 
+-----------------+---+----------
+ reader 1st read | b | 759:759:
+(1 row)
+
+      step       | v 
+-----------------+---
+ reader 2nd read | b
+(1 row)
+
+## 4. VACUUM
+-- 테이블 u, 페이지 0
+ lp | lp_flags | lp_off | t_xmin | t_xmax | t_ctid |                                         flags                                         
+----+----------+--------+--------+--------+--------+---------------------------------------------------------------------------------------
+  1 |        2 |      3 |        |        |        | 
+  2 |        0 |      0 |        |        |        | 
+  3 |        1 |   8160 |    759 |      0 | (0,3)  | {HEAP_HASVARWIDTH,HEAP_XMIN_COMMITTED,HEAP_XMAX_INVALID,HEAP_UPDATED,HEAP_ONLY_TUPLE}
+(3 rows)
+
+NOTICE:  extension "pageinspect" already exists, skipping
+NOTICE:  table "u" does not exist, skipping

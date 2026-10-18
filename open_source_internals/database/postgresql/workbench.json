@@ -1,0 +1,117 @@
+{
+  "id": "postgresql",
+  "title": "PostgreSQL 18.6",
+  "guide": "README.md",
+  "container": "pg-lab",
+  "image": "pg-internals:18.6",
+  "sourceRoot": "/src/postgresql-18.6",
+  "sourceNotice": "소스 발췌: PostgreSQL 18.6, 공식 배포 tarball(체크섬 확인)을 빌드한 이미지 pg-internals:18.6의 /src/postgresql-18.6. Portions Copyright (c) 1996-2025, PostgreSQL Global Development Group; Portions Copyright (c) 1994, Regents of the University of California. PostgreSQL License에 따라 사용합니다.",
+  "startCommand": "sh open_source_internals/database/postgresql/scripts/start-lab.sh",
+  "runScript": "scripts/run-trace.sh",
+  "watches": [
+    {
+      "id": "select",
+      "file": "scripts/select.watch",
+      "label": "SELECT 경로(파싱, 계획, 순차 스캔, 버퍼)",
+      "stackAt": "PinBufferForBlock",
+      "examples": [
+        "SELECT * FROM t WHERE id = 2;",
+        "SELECT * FROM t;",
+        "SELECT name FROM t;"
+      ]
+    },
+    {
+      "id": "index",
+      "file": "scripts/index.watch",
+      "label": "인덱스 스캔 경로(실습 3: enable_seqscan=off 세션. 인덱스 t_id_idx는 터미널에서 먼저 만들어야 함)",
+      "stackAt": "heap_hot_search_buffer",
+      "pgOptions": "-c enable_seqscan=off",
+      "examples": [
+        "SELECT * FROM t WHERE id = 2;"
+      ]
+    },
+    {
+      "id": "commit",
+      "file": "scripts/commit.watch",
+      "label": "INSERT와 커밋 경로(WAL 기록과 디스크 동기화)",
+      "stackAt": "pg_fdatasync",
+      "examples": [
+        "INSERT INTO t VALUES (4, 'd');"
+      ]
+    }
+  ],
+  "layers": [
+    {
+      "prefix": "src/backend/main/",
+      "label": "프로세스 시작"
+    },
+    {
+      "prefix": "src/backend/postmaster/",
+      "label": "프로세스 시작"
+    },
+    {
+      "prefix": "src/backend/tcop/",
+      "label": "명령 처리"
+    },
+    {
+      "prefix": "src/backend/parser/",
+      "label": "구문 분석"
+    },
+    {
+      "prefix": "src/backend/optimizer/",
+      "label": "실행 계획"
+    },
+    {
+      "prefix": "src/backend/executor/",
+      "label": "실행기"
+    },
+    {
+      "prefix": "src/include/executor/",
+      "label": "실행기"
+    },
+    {
+      "prefix": "src/backend/access/heap/",
+      "label": "테이블 접근"
+    },
+    {
+      "prefix": "src/backend/access/table/",
+      "label": "테이블 접근"
+    },
+    {
+      "prefix": "src/include/access/tableam.h",
+      "label": "테이블 접근"
+    },
+    {
+      "prefix": "src/backend/access/index/",
+      "label": "인덱스 접근"
+    },
+    {
+      "prefix": "src/backend/access/nbtree/",
+      "label": "인덱스 접근"
+    },
+    {
+      "prefix": "src/backend/access/common/printtup.c",
+      "label": "결과 전송"
+    },
+    {
+      "prefix": "src/backend/access/common/",
+      "label": "공통 행 처리"
+    },
+    {
+      "prefix": "src/backend/access/transam/",
+      "label": "트랜잭션과 WAL"
+    },
+    {
+      "prefix": "src/backend/storage/aio/",
+      "label": "읽기 스트림"
+    },
+    {
+      "prefix": "src/backend/storage/buffer/",
+      "label": "버퍼 관리"
+    },
+    {
+      "prefix": "src/backend/storage/file/",
+      "label": "파일과 디스크"
+    }
+  ]
+}

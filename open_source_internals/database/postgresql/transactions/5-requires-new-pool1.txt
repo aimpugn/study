@@ -1,0 +1,9 @@
+# 5-requires-new-pool1: 풀에 연결이 하나뿐일 때 REQUIRES_NEW는 서버에 닿기 전에 풀에서 기다리다 끝난다
+# 앱: 5-requires-new와 같은 메서드, 풀 크기만 1. 연결 기다림은 2초(LabConfig).
+# 멈춘 채로 찍기는 go 뒤 0.5초에 합니다. 기다림을 묻고 찍는 데 0.7초쯤 걸려, 기본값 1.5초로는 관찰이 2초의 끝과 겹쳤습니다(WORK 실험 5, 18:36 기록).
+setup: CREATE TABLE acct(id int PRIMARY KEY, owner text, balance int);
+setup: INSERT INTO acct VALUES (1, 'kim', 100), (2, 'lee', 200);
+watch: acct
+spring: requires-new
+pool: 1
+blocked: 500ms

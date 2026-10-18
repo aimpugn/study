@@ -1,0 +1,865 @@
+backend=953 mode=cold
+--- P1: gdb가 붙은 백엔드에 strace 붙이기
+strace: attach: ptrace(PTRACE_SEIZE, 953): Operation not permitted
+--- 공유 버퍼에서 t 빼기
+1|0|0
+--- 추적 직전 공유 버퍼 안의 t 페이지 수
+0
+--- psql
+2|b
+2|b
+--- gdb (backend)
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/aarch64-linux-gnu/libthread_db.so.1".
+0x0000ffff8960c0a0 in epoll_pwait () from /lib/aarch64-linux-gnu/libc.so.6
+Breakpoint 1 at 0xaaaab38589b0: file postgres.c, line 1014.
+Breakpoint 2 at 0xaaaab334a11c: file heapam.c, line 558.
+Breakpoint 3 at 0xaaaab32fdda8: file printtup.c, line 306.
+Breakpoint 4 at 0xaaaab3856c04: file dest.c, line 258.
+Catchpoint 5 (syscalls 'pread64' [67] 'preadv' [69] 'pwrite64' [68] 'openat' [56] 'sendto' [206] 'recvfrom' [207] 'epoll_pwait' [22])
+
+Catchpoint 5 (call to syscall epoll_pwait), 0x0000ffff8960c0a0 in epoll_pwait () from /lib/aarch64-linux-gnu/libc.so.6
+SYSCALL epoll_pwait timeout_ms=-1
+
+Catchpoint 5 (returned from syscall epoll_pwait), 0x0000ffff8960c0a0 in epoll_pwait () from /lib/aarch64-linux-gnu/libc.so.6
+SYSRET epoll_pwait -> 1
+
+Catchpoint 5 (call to syscall recvfrom), 0x0000ffff8960e218 in recv () from /lib/aarch64-linux-gnu/libc.so.6
+SYSCALL recvfrom fd=8(socket:[2849045]) len=8192
+
+Catchpoint 5 (returned from syscall recvfrom), 0x0000ffff8960e218 in recv () from /lib/aarch64-linux-gnu/libc.so.6
+SYSRET recvfrom -> 35
+STOP exec_simple_query postgres.c:1014
+
+Catchpoint 5 (call to syscall epoll_pwait), 0x0000ffff8960c0a0 in epoll_pwait () from /lib/aarch64-linux-gnu/libc.so.6
+SYSCALL epoll_pwait timeout_ms=-1
+
+Catchpoint 5 (returned from syscall epoll_pwait), 0x0000ffff8960c0a0 in epoll_pwait () from /lib/aarch64-linux-gnu/libc.so.6
+SYSRET epoll_pwait -> 1
+STOP heap_prepare_pagescan heapam.c:558
+BUF buffer=617 spcOid=1663 dbOid=5 relNumber=16384 fork=0 block=0 state=0x83040001
+PAGE addr=0xffff80ab7000 lsn=0/171B710 pd_lower=36 pd_upper=8096 pd_special=8192
+LP 1 lp_off=8160 lp_flags=1 lp_len=30 t_xmin=752 t_xmax=0 t_infomask=0x0902
+LP 2 lp_off=8128 lp_flags=1 lp_len=30 t_xmin=752 t_xmax=0 t_infomask=0x0902
+LP 3 lp_off=8096 lp_flags=1 lp_len=30 t_xmin=752 t_xmax=0 t_infomask=0x0902
+MCX depth=0 name=TopMemoryContext mem_allocated=99456
+MCX depth=1 name=dynahash mem_allocated=8192
+MCX depth=1 name=dynahash mem_allocated=24576
+MCX depth=1 name=search_path processing cache mem_allocated=8192
+MCX depth=1 name=RowDescriptionContext mem_allocated=8192
+MCX depth=1 name=MessageContext mem_allocated=16384
+MCX depth=1 name=dynahash mem_allocated=8192
+MCX depth=1 name=dynahash mem_allocated=32768
+MCX depth=1 name=PgStat Shared Ref Hash mem_allocated=9264
+MCX depth=1 name=PgStat Shared Ref mem_allocated=4096
+MCX depth=1 name=PgStat Pending mem_allocated=16384
+MCX depth=1 name=TopTransactionContext mem_allocated=8192
+MCX depth=1 name=TransactionAbortContext mem_allocated=32768
+MCX depth=1 name=dynahash mem_allocated=8192
+MCX depth=1 name=TopPortalContext mem_allocated=8192
+MCX depth=1 name=dynahash mem_allocated=16384
+MCX depth=1 name=CacheMemoryContext mem_allocated=524288
+MCX depth=1 name=dynahash mem_allocated=8192
+MCX depth=1 name=WAL record construction mem_allocated=49760
+MCX depth=1 name=dynahash mem_allocated=8192
+MCX depth=1 name=MdSmgr mem_allocated=8192
+MCX depth=1 name=GUCMemoryContext mem_allocated=24576
+MCX depth=1 name=dynahash mem_allocated=104112
+MCX depth=1 name=ErrorContext mem_allocated=8192
+MCX total_contexts=117 total_mem_allocated=1328256
+CUR ExecutorState <- PortalContext <- TopPortalContext <- TopMemoryContext
+MAP aaaab3200000-aaaab3dff000 r-xp 00000000 00:61 2218603                    /usr/local/pgsql/bin/postgres
+MAP aaaab3e0b000-aaaab3e30000 r--p 00c0b000 00:61 2218603                    /usr/local/pgsql/bin/postgres
+MAP aaaab3e30000-aaaab3e4b000 rw-p 00c30000 00:61 2218603                    /usr/local/pgsql/bin/postgres
+MAP aaaab3e4b000-aaaab3e8d000 rw-p 00000000 00:00 0 
+MAP aaaace1e3000-aaaace234000 rw-p 00000000 00:00 0                          [heap]
+MAP aaaace234000-aaaace2fe000 rw-p 00000000 00:00 0                          [heap]
+MAP ffff7fe0c000-ffff7fe4d000 rw-p 00000000 00:00 0 
+MAP ffff7fe4d000-ffff7ff4d000 rw-s 00000000 00:6b 3                          /dev/shm/PostgreSQL.3962693252
+MAP ffff7ff4d000-ffff7ff6e000 rw-p 00000000 00:00 0 
+MAP ffff7ff6e000-ffff89520000 rw-s 00000000 00:01 43                         /dev/zero (deleted)
+MAP ffff89520000-ffff896ac000 r-xp 00000000 00:61 2106468                    /usr/lib/aarch64-linux-gnu/libc.so.6
+MAP ffff896ac000-ffff896bc000 ---p 0018c000 00:61 2106468                    /usr/lib/aarch64-linux-gnu/libc.so.6
+MAP ffff896bc000-ffff896c0000 r--p 0018c000 00:61 2106468                    /usr/lib/aarch64-linux-gnu/libc.so.6
+MAP ffff896c0000-ffff896c2000 rw-p 00190000 00:61 2106468                    /usr/lib/aarch64-linux-gnu/libc.so.6
+MAP ffff896c2000-ffff896cf000 rw-p 00000000 00:00 0 
+MAP ffff896d0000-ffff89752000 r-xp 00000000 00:61 2106507                    /usr/lib/aarch64-linux-gnu/libm.so.6
+MAP ffff89752000-ffff8976f000 ---p 00082000 00:61 2106507                    /usr/lib/aarch64-linux-gnu/libm.so.6
+MAP ffff8976f000-ffff89770000 r--p 0008f000 00:61 2106507                    /usr/lib/aarch64-linux-gnu/libm.so.6
+MAP ffff89770000-ffff89771000 rw-p 00090000 00:61 2106507                    /usr/lib/aarch64-linux-gnu/libm.so.6
+MAP ffff89780000-ffff8979a000 r-xp 00000000 00:61 2106566                    /usr/lib/aarch64-linux-gnu/libz.so.1.2.13
+MAP ffff8979a000-ffff897af000 ---p 0001a000 00:61 2106566                    /usr/lib/aarch64-linux-gnu/libz.so.1.2.13
+MAP ffff897af000-ffff897b0000 r--p 0001f000 00:61 2106566                    /usr/lib/aarch64-linux-gnu/libz.so.1.2.13
+MAP ffff897b0000-ffff897b1000 rw-p 00020000 00:61 2106566                    /usr/lib/aarch64-linux-gnu/libz.so.1.2.13
+MAP ffff897b3000-ffff897da000 r-xp 00000000 00:61 2106450                    /usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1
+MAP ffff897dc000-ffff897e4000 rw-s 00000000 00:6b 2                          /dev/shm/PostgreSQL.2625538418
+MAP ffff897e4000-ffff897e6000 rw-p 00000000 00:00 0 
+MAP ffff897e8000-ffff897e9000 rw-s 00000000 00:01 0                          /SYSV0021e09c (deleted)
+MAP ffff897e9000-ffff897eb000 rw-p 00000000 00:00 0 
+MAP ffff897eb000-ffff897ef000 r--p 00000000 00:00 0                          [vvar]
+MAP ffff897ef000-ffff897f1000 r-xp 00000000 00:00 0                          [vdso]
+MAP ffff897f1000-ffff897f3000 r--p 0002e000 00:61 2106450                    /usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1
+MAP ffff897f3000-ffff897f5000 rw-p 00030000 00:61 2106450                    /usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1
+MAP fffff69a6000-fffff69c7000 rw-p 00000000 00:00 0                          [stack]
+SHM BufferDescriptors=0xffff804e6a80 BufferBlocks=0xffff805e7000 NBuffers=16384 debug_query_string=0xaaaace1e78e8 CurrentMemoryContext=0xaaaace2c3800
+BYTES 1 f00200000000000005000000000000000100020002091800010000000561
+BYTES 2 f00200000000000005000000000000000200020002091800020000000562
+BYTES 3 f00200000000000005000000000000000300020002091800030000000563
+MCXN addr=0xaaaace1e34a0 parent=0x0 depth=0 mem_allocated=99456 name=TopMemoryContext
+MCXN addr=0xaaaace2c17f0 parent=0xaaaace1e34a0 depth=1 mem_allocated=8192 name=dynahash
+MCXN addr=0xaaaace2bf7e0 parent=0xaaaace1e34a0 depth=1 mem_allocated=24576 name=dynahash
+MCXN addr=0xaaaace219be0 parent=0xaaaace1e34a0 depth=1 mem_allocated=8192 name=search_path processing cache
+MCXN addr=0xaaaace2bafb0 parent=0xaaaace1e34a0 depth=1 mem_allocated=8192 name=RowDescriptionContext
+MCXN addr=0xaaaace1e77f0 parent=0xaaaace1e34a0 depth=1 mem_allocated=16384 name=MessageContext
+MCXN addr=0xaaaace2bd7d0 parent=0xaaaace1e34a0 depth=1 mem_allocated=8192 name=dynahash
+MCXN addr=0xaaaace28f0b0 parent=0xaaaace1e34a0 depth=1 mem_allocated=32768 name=dynahash
+MCXN addr=0xaaaace213bb0 parent=0xaaaace1e34a0 depth=1 mem_allocated=9264 name=PgStat Shared Ref Hash
+MCXN addr=0xaaaace2137a0 parent=0xaaaace1e34a0 depth=1 mem_allocated=4096 name=PgStat Shared Ref
+MCXN addr=0xaaaace213390 parent=0xaaaace1e34a0 depth=1 mem_allocated=16384 name=PgStat Pending
+MCXN addr=0xaaaace27bb20 parent=0xaaaace1e34a0 depth=1 mem_allocated=8192 name=TopTransactionContext
+MCXN addr=0xaaaace273b10 parent=0xaaaace1e34a0 depth=1 mem_allocated=32768 name=TransactionAbortContext
+MCXN addr=0xaaaace2699a0 parent=0xaaaace1e34a0 depth=1 mem_allocated=8192 name=dynahash
+MCXN addr=0xaaaace267990 parent=0xaaaace1e34a0 depth=1 mem_allocated=8192 name=TopPortalContext
+MCXN addr=0xaaaace247940 parent=0xaaaace1e34a0 depth=1 mem_allocated=16384 name=dynahash
+MCXN addr=0xaaaace245930 parent=0xaaaace1e34a0 depth=1 mem_allocated=524288 name=CacheMemoryContext
+MCXN addr=0xaaaace243920 parent=0xaaaace1e34a0 depth=1 mem_allocated=8192 name=dynahash
+MCXN addr=0xaaaace2376a0 parent=0xaaaace1e34a0 depth=1 mem_allocated=49760 name=WAL record construction
+MCXN addr=0xaaaace235690 parent=0xaaaace1e34a0 depth=1 mem_allocated=8192 name=dynahash
+MCXN addr=0xaaaace20d0b0 parent=0xaaaace1e34a0 depth=1 mem_allocated=8192 name=MdSmgr
+MCXN addr=0xaaaace203010 parent=0xaaaace1e34a0 depth=1 mem_allocated=24576 name=GUCMemoryContext
+MCXN addr=0xaaaace1e9940 parent=0xaaaace1e34a0 depth=1 mem_allocated=104112 name=dynahash
+MCXN addr=0xaaaace1e54b0 parent=0xaaaace1e34a0 depth=1 mem_allocated=8192 name=ErrorContext
+MCXN addr=0xaaaace205020 parent=0xaaaace203010 depth=2 mem_allocated=32768 name=dynahash
+MCXN addr=0xaaaace211ba0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace287080 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2b9380 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2b8b60 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2b8340 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2b7720 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2b6f00 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2b66e0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2b5ac0 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2b4ea0 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2b4680 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2b3e60 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2b3640 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2b2d70 parent=0xaaaace245930 depth=2 mem_allocated=2224 name=index info
+MCXN addr=0xaaaace2b2550 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2b1930 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2b0d10 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2b04f0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2afcd0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2af4b0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2aec90 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2ae070 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2ad850 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2ad030 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2ac810 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2abf40 parent=0xaaaace245930 depth=2 mem_allocated=2224 name=index info
+MCXN addr=0xaaaace2ab670 parent=0xaaaace245930 depth=2 mem_allocated=3248 name=index info
+MCXN addr=0xaaaace2aaa50 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2aa230 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2a9610 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2a8df0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2a85d0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2a79b0 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2a7190 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2a6970 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2a6150 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2a5930 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2a4d10 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2a40f0 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2a34d0 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2a2cb0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2a2090 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2a1870 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2a1050 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2a0830 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace29fc10 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace29eff0 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace29e3d0 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace29dbb0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace29d390 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace29c770 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace29bb50 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace29b330 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace29ab10 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace299ef0 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2996d0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace298ab0 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace298290 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace297a70 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace296e50 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace296230 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace295a10 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2951f0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2949d0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace294100 parent=0xaaaace245930 depth=2 mem_allocated=3248 name=index info
+MCXN addr=0xaaaace28ca70 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace28be50 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace28b230 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace28aa10 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace289df0 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2891d0 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2889b0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace288190 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace287570 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace2712e0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace2706c0 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace26fea0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace26f680 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace26ee60 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace26e640 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace26da20 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace26d200 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace26c9e0 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace26bdc0 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace20ff60 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace212d30 parent=0xaaaace245930 depth=2 mem_allocated=3072 name=index info
+MCXN addr=0xaaaace210b70 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace20f340 parent=0xaaaace245930 depth=2 mem_allocated=2048 name=index info
+MCXN addr=0xaaaace210760 parent=0xaaaace267990 depth=2 mem_allocated=1024 name=PortalContext
+MCXN addr=0xaaaace2c3800 parent=0xaaaace210760 depth=3 mem_allocated=16384 name=ExecutorState
+MCXN addr=0xaaaace2d5150 parent=0xaaaace2c3800 depth=4 mem_allocated=8192 name=printtup
+MCXN addr=0xaaaace2d3140 parent=0xaaaace2c3800 depth=4 mem_allocated=8192 name=ExprContext
+STOP printtup printtup.c:306
+STOP ReadyForQuery dest.c:258
+
+Catchpoint 5 (call to syscall sendto), 0x0000ffff8960e4c8 in send () from /lib/aarch64-linux-gnu/libc.so.6
+SYSCALL sendto fd=8(socket:[2849045]) len=88
+
+Catchpoint 5 (returned from syscall sendto), 0x0000ffff8960e4c8 in send () from /lib/aarch64-linux-gnu/libc.so.6
+SYSRET sendto -> 88
+
+Catchpoint 5 (call to syscall recvfrom), 0x0000ffff8960e218 in recv () from /lib/aarch64-linux-gnu/libc.so.6
+SYS recvfrom (다음 명령 대기, 여기서 끝냄)
+END
+[Inferior 1 (process 953) detached]
+--- strace (io workers)
+11    09:42:47.341217 pread64(0x1e, 0xffff80ab7000, 0x2000, 0) = 0x2000
+--- pg_buffercache (실행 직후, 쓰인 칸만)
+1 0 1262 0 0 5 f - -
+2 0 1260 0 0 5 f - -
+3 5 1259 0 0 5 f r pg_class
+4 5 1259 0 1 5 f r pg_class
+5 5 1259 0 2 5 f r pg_class
+6 5 1259 0 3 5 f r pg_class
+7 5 1259 0 4 5 f r pg_class
+8 5 1259 0 5 5 f r pg_class
+9 5 1259 0 6 5 f r pg_class
+10 5 1259 0 7 5 f r pg_class
+11 5 1259 0 8 5 f r pg_class
+12 5 1259 0 9 5 f r pg_class
+13 5 1259 0 10 5 f r pg_class
+14 5 1259 0 11 5 f r pg_class
+15 5 1249 0 0 5 f r pg_attribute
+16 5 1249 0 1 5 f r pg_attribute
+17 5 1249 0 2 5 f r pg_attribute
+18 5 1249 0 3 5 f r pg_attribute
+19 5 1249 0 4 5 f r pg_attribute
+20 5 1249 0 5 5 f r pg_attribute
+21 5 1249 0 6 5 f r pg_attribute
+22 5 1249 0 7 5 f r pg_attribute
+23 5 1249 0 8 5 f r pg_attribute
+24 5 1249 0 9 5 f r pg_attribute
+25 5 1249 0 10 5 f r pg_attribute
+26 5 1249 0 11 5 f r pg_attribute
+27 5 1249 0 12 5 f r pg_attribute
+28 5 1249 0 13 5 f r pg_attribute
+29 5 1249 0 14 5 f r pg_attribute
+30 5 1249 0 15 5 f r pg_attribute
+31 5 1249 0 16 5 f r pg_attribute
+32 5 1249 0 17 5 f r pg_attribute
+33 5 1249 0 18 5 f r pg_attribute
+34 5 1249 0 19 5 f r pg_attribute
+35 5 1249 0 20 5 f r pg_attribute
+36 5 1249 0 21 5 f r pg_attribute
+37 5 1249 0 22 5 f r pg_attribute
+38 5 1249 0 23 5 f r pg_attribute
+39 5 1249 0 24 5 f r pg_attribute
+40 5 1249 0 25 5 f r pg_attribute
+41 5 1249 0 26 5 f r pg_attribute
+42 5 1249 0 27 5 f r pg_attribute
+43 5 1249 0 28 1 f r pg_attribute
+44 5 1249 0 29 2 f r pg_attribute
+45 5 1249 0 30 2 f r pg_attribute
+46 5 1249 0 31 1 f r pg_attribute
+47 5 1249 0 32 1 f r pg_attribute
+48 5 1249 0 33 1 f r pg_attribute
+49 5 1249 0 34 1 f r pg_attribute
+50 5 1249 0 35 1 f r pg_attribute
+51 5 1249 0 36 1 f r pg_attribute
+52 5 1249 0 37 1 f r pg_attribute
+53 5 1249 0 38 1 f r pg_attribute
+54 5 1249 0 39 1 f r pg_attribute
+55 5 1249 0 40 1 f r pg_attribute
+56 5 1249 0 41 1 f r pg_attribute
+57 5 1249 0 42 1 f r pg_attribute
+58 5 1249 0 43 1 f r pg_attribute
+59 5 1249 0 44 1 f r pg_attribute
+60 5 1249 0 45 1 f r pg_attribute
+61 5 1249 0 46 1 f r pg_attribute
+62 5 1249 0 47 1 f r pg_attribute
+63 5 1249 0 48 1 f r pg_attribute
+64 5 1249 0 49 1 f r pg_attribute
+65 5 1249 0 50 1 f r pg_attribute
+66 5 1249 0 51 1 f r pg_attribute
+67 5 1249 0 52 1 f r pg_attribute
+68 5 1249 0 53 1 f r pg_attribute
+69 5 1249 0 54 5 f r pg_attribute
+70 5 2610 0 0 5 f r pg_index
+71 5 2610 0 1 5 f r pg_index
+72 5 2610 0 2 5 f r pg_index
+73 5 2610 0 3 5 f r pg_index
+74 5 2601 0 0 5 f r pg_am
+75 5 2616 0 0 5 f r pg_opclass
+76 5 2616 0 1 5 f r pg_opclass
+77 5 2616 0 2 1 f r pg_opclass
+78 5 2603 0 0 5 f r pg_amproc
+79 5 2603 0 1 4 f r pg_amproc
+80 5 2603 0 2 2 f r pg_amproc
+81 5 2603 0 3 2 f r pg_amproc
+82 5 2603 0 4 2 f r pg_amproc
+83 5 2687 0 0 5 f i pg_opclass_oid_index
+84 5 2687 0 1 5 f i pg_opclass_oid_index
+85 5 2655 0 0 5 f i pg_amproc_fam_proc_index
+86 5 2655 0 3 5 f i pg_amproc_fam_proc_index
+87 5 2655 0 1 5 f i pg_amproc_fam_proc_index
+88 5 2662 0 0 5 f i pg_class_oid_index
+89 5 2662 0 3 5 f i pg_class_oid_index
+90 5 2662 0 1 5 f i pg_class_oid_index
+91 5 2659 0 0 5 f i pg_attribute_relid_attnum_index
+92 5 2659 0 3 5 f i pg_attribute_relid_attnum_index
+93 5 2659 0 2 5 f i pg_attribute_relid_attnum_index
+94 5 2679 0 0 5 f i pg_index_indexrelid_index
+95 5 2679 0 1 5 f i pg_index_indexrelid_index
+96 5 2659 0 4 5 f i pg_attribute_relid_attnum_index
+97 5 2659 0 5 5 f i pg_attribute_relid_attnum_index
+98 5 2659 0 1 5 f i pg_attribute_relid_attnum_index
+99 5 2659 0 6 5 f i pg_attribute_relid_attnum_index
+100 0 2672 0 0 5 f - -
+101 0 2672 0 1 5 f - -
+102 0 2965 0 0 5 f - -
+103 0 2676 0 0 5 f - -
+104 0 2676 0 1 5 f - -
+105 0 2677 0 0 5 f - -
+106 0 2677 0 1 5 f - -
+107 0 2671 0 0 5 f - -
+108 0 2671 0 1 5 f - -
+109 5 3467 0 0 2 f i pg_event_trigger_evtname_index
+110 5 2684 0 0 5 f i pg_namespace_nspname_index
+111 5 2684 0 1 5 f i pg_namespace_nspname_index
+112 5 2615 0 0 5 f r pg_namespace
+113 5 2663 0 0 5 f i pg_class_relname_nsp_index
+114 5 2663 0 3 5 f i pg_class_relname_nsp_index
+115 5 2663 0 2 5 f i pg_class_relname_nsp_index
+116 5 2685 0 0 2 f i pg_namespace_oid_index
+117 5 2685 0 1 2 f i pg_namespace_oid_index
+118 5 2704 0 0 5 f i pg_type_typname_nsp_index
+119 5 2704 0 3 5 f i pg_type_typname_nsp_index
+120 5 2704 0 4 5 f i pg_type_typname_nsp_index
+121 5 1247 0 0 5 f r pg_type
+122 5 2703 0 0 5 f i pg_type_oid_index
+123 5 2703 0 3 5 f i pg_type_oid_index
+124 5 2703 0 1 5 f i pg_type_oid_index
+125 5 2704 0 2 5 f i pg_type_typname_nsp_index
+126 5 2662 0 2 5 f i pg_class_oid_index
+127 5 827 0 0 5 f i pg_default_acl_role_nsp_obj_index
+128 5 2703 0 2 5 f i pg_type_oid_index
+129 5 2678 0 0 4 f i pg_index_indrelid_index
+130 5 2678 0 1 5 f i pg_index_indrelid_index
+131 5 1247 1 0 2 f r pg_type
+132 5 1247 1 1 2 f r pg_type
+133 5 1247 1 2 2 f r pg_type
+134 5 1247 0 14 5 f r pg_type
+135 5 1247 2 0 1 f r pg_type
+136 5 2608 1 0 2 f r pg_depend
+137 5 2608 1 1 2 f r pg_depend
+138 5 2608 1 2 4 f r pg_depend
+139 5 2608 0 2 2 f r pg_depend
+140 5 2608 2 0 3 f r pg_depend
+141 5 2673 0 0 2 f i pg_depend_depender_index
+142 5 2673 0 3 5 f i pg_depend_depender_index
+143 5 2673 0 4 5 f i pg_depend_depender_index
+144 5 2674 0 0 2 f i pg_depend_reference_index
+145 5 2674 0 3 5 f i pg_depend_reference_index
+146 5 2674 0 7 5 f i pg_depend_reference_index
+147 5 2608 0 3 5 f r pg_depend
+148 5 2674 0 5 5 f i pg_depend_reference_index
+149 5 1259 1 0 2 f r pg_class
+150 5 1259 1 1 2 f r pg_class
+151 5 1259 1 2 2 f r pg_class
+152 5 1259 2 0 2 f r pg_class
+153 5 3455 0 0 3 f i pg_class_tblspc_relfilenode_index
+154 5 3455 0 1 5 f i pg_class_tblspc_relfilenode_index
+155 5 1249 1 0 5 f r pg_attribute
+156 5 1249 1 1 5 f r pg_attribute
+157 5 1249 1 2 5 f r pg_attribute
+158 5 1249 2 0 2 f r pg_attribute
+159 5 2658 0 0 2 f i pg_attribute_relid_attnam_index
+160 5 2658 0 3 5 f i pg_attribute_relid_attnam_index
+161 5 2658 0 15 5 f i pg_attribute_relid_attnam_index
+162 5 2659 0 10 5 f i pg_attribute_relid_attnum_index
+163 5 2673 0 9 5 f i pg_depend_depender_index
+164 5 2663 0 5 4 f i pg_class_relname_nsp_index
+165 5 2610 1 0 1 f r pg_index
+166 5 2610 1 1 1 f r pg_index
+167 5 2610 1 2 1 f r pg_index
+168 5 2610 2 0 1 f r pg_index
+169 5 3379 0 0 5 f i pg_statistic_ext_relid_index
+170 5 2696 0 0 5 f i pg_statistic_relid_att_inh_index
+171 5 2696 0 3 5 f i pg_statistic_relid_att_inh_index
+172 5 2696 0 2 5 f i pg_statistic_relid_att_inh_index
+173 0 2697 0 0 5 f - -
+174 0 2697 0 1 5 f - -
+175 0 1213 0 0 5 f - -
+177 5 2663 0 1 5 f i pg_class_relname_nsp_index
+178 5 2693 0 0 5 f i pg_rewrite_rel_rulename_index
+179 5 2693 0 1 5 f i pg_rewrite_rel_rulename_index
+180 5 2618 0 1 2 f r pg_rewrite
+181 5 1247 0 2 5 f r pg_type
+182 5 2689 0 0 5 f i pg_operator_oprname_l_r_n_index
+183 5 2689 0 3 5 f i pg_operator_oprname_l_r_n_index
+184 5 2689 0 2 5 f i pg_operator_oprname_l_r_n_index
+185 5 2617 0 0 5 f r pg_operator
+186 5 2688 0 0 5 f i pg_operator_oid_index
+187 5 2688 0 3 5 f i pg_operator_oid_index
+188 5 2688 0 1 5 f i pg_operator_oid_index
+189 5 2690 0 0 5 f i pg_proc_oid_index
+190 5 2690 0 3 5 f i pg_proc_oid_index
+191 5 2690 0 1 5 f i pg_proc_oid_index
+192 5 1255 0 0 5 f r pg_proc
+193 5 2690 0 7 3 f i pg_proc_oid_index
+194 5 1255 0 75 1 f r pg_proc
+195 5 2654 0 0 5 f i pg_amop_opr_fam_index
+196 5 2654 0 3 5 f i pg_amop_opr_fam_index
+197 5 2654 0 1 5 f i pg_amop_opr_fam_index
+198 5 2602 0 0 5 f r pg_amop
+199 5 2602 0 2 5 f r pg_amop
+200 5 2602 0 3 4 f r pg_amop
+201 5 3080 0 0 2 f i pg_extension_oid_index
+202 5 3081 0 0 2 f i pg_extension_name_index
+203 5 2665 0 0 2 f i pg_constraint_conrelid_contypid_conname_index
+204 5 2665 0 3 2 f i pg_constraint_conrelid_contypid_conname_index
+205 5 2665 0 4 1 f i pg_constraint_conrelid_contypid_conname_index
+206 5 2606 0 2 1 f r pg_constraint
+207 5 2686 0 0 3 f i pg_opclass_am_name_nsp_index
+208 5 2686 0 1 5 f i pg_opclass_am_name_nsp_index
+209 5 2661 0 0 5 f i pg_cast_source_target_index
+210 5 2661 0 1 5 f i pg_cast_source_target_index
+211 5 2605 0 0 5 f r pg_cast
+212 5 2653 0 0 4 f i pg_amop_fam_strat_index
+213 5 2653 0 3 5 f i pg_amop_fam_strat_index
+214 5 2653 0 1 5 f i pg_amop_fam_strat_index
+215 5 2696 0 1 5 f i pg_statistic_relid_att_inh_index
+216 5 2619 0 16 4 f r pg_statistic
+217 5 2755 0 0 2 f i pg_opfamily_oid_index
+218 5 2755 0 1 5 f i pg_opfamily_oid_index
+219 5 2753 0 0 5 f r pg_opfamily
+220 5 2602 0 4 5 f r pg_amop
+221 5 3079 0 0 5 f r pg_extension
+222 5 1259 0 12 5 f r pg_class
+223 5 1259 0 13 5 f r pg_class
+224 5 3081 0 1 2 f i pg_extension_name_index
+225 5 3080 0 1 5 f i pg_extension_oid_index
+226 5 3079 1 0 1 f r pg_extension
+227 5 3079 1 1 1 f r pg_extension
+228 5 3079 1 2 1 f r pg_extension
+229 5 3079 2 0 1 f r pg_extension
+230 5 2608 0 12 5 f r pg_depend
+231 5 2673 0 2 5 f i pg_depend_depender_index
+232 5 2675 0 0 1 f i pg_description_o_c_o_index
+233 5 2675 0 3 3 f i pg_description_o_c_o_index
+234 5 2675 0 16 3 f i pg_description_o_c_o_index
+235 5 2609 1 0 1 f r pg_description
+236 5 2609 1 1 1 f r pg_description
+237 5 2609 1 2 1 f r pg_description
+238 5 2609 0 39 1 f r pg_description
+239 5 2609 2 0 1 f r pg_description
+240 5 2681 0 0 1 f i pg_language_name_index
+241 5 2681 0 1 1 f i pg_language_name_index
+242 5 2612 0 0 2 f r pg_language
+243 5 2691 0 0 5 f i pg_proc_proname_args_nsp_index
+244 5 2691 0 3 5 f i pg_proc_proname_args_nsp_index
+245 5 2691 0 20 5 f i pg_proc_proname_args_nsp_index
+246 5 2690 0 11 5 f i pg_proc_oid_index
+247 5 1255 1 0 1 f r pg_proc
+248 5 1255 1 1 1 f r pg_proc
+249 5 1255 1 2 5 f r pg_proc
+250 5 1255 0 18 5 f r pg_proc
+251 5 1255 2 0 5 f r pg_proc
+252 5 2682 0 0 1 f i pg_language_oid_index
+253 5 2682 0 1 1 f i pg_language_oid_index
+254 5 2704 0 1 4 f i pg_type_typname_nsp_index
+255 5 1249 0 55 5 f r pg_attribute
+256 5 2692 0 0 1 f i pg_rewrite_oid_index
+257 5 2692 0 1 4 f i pg_rewrite_oid_index
+258 5 2618 1 0 2 f r pg_rewrite
+259 5 2618 0 13 1 f r pg_rewrite
+260 5 2618 2 0 1 f r pg_rewrite
+261 5 2618 1 2 1 f r pg_rewrite
+262 5 2618 0 14 5 f r pg_rewrite
+263 5 3395 0 0 1 f i pg_init_privs_o_c_o_index
+264 5 3395 0 1 5 f i pg_init_privs_o_c_o_index
+265 5 3394 1 0 1 f r pg_init_privs
+266 5 3394 1 1 1 f r pg_init_privs
+267 5 3394 1 2 1 f r pg_init_privs
+268 5 3394 0 2 5 f r pg_init_privs
+269 5 3394 2 0 1 f r pg_init_privs
+270 5 1255 0 21 5 f r pg_proc
+271 5 1255 0 26 5 f r pg_proc
+272 5 1255 0 33 5 f r pg_proc
+273 5 1255 0 35 5 f r pg_proc
+274 5 1255 0 45 5 f r pg_proc
+275 5 1255 0 46 5 f r pg_proc
+276 5 1255 0 47 4 f r pg_proc
+277 0 1232 0 0 2 f - -
+278 5 3597 0 0 2 f i pg_seclabel_object_index
+279 5 1247 0 1 5 f r pg_type
+280 5 1255 0 48 5 f r pg_proc
+281 5 1255 0 60 2 f r pg_proc
+282 5 2691 0 22 2 f i pg_proc_proname_args_nsp_index
+283 5 1255 0 54 4 f r pg_proc
+284 5 2619 0 5 4 f r pg_statistic
+285 5 2691 0 6 5 f i pg_proc_proname_args_nsp_index
+286 5 1255 0 50 5 f r pg_proc
+287 5 2690 0 6 5 f i pg_proc_oid_index
+288 5 2650 0 0 5 f i pg_aggregate_fnoid_index
+289 5 2650 0 1 5 f i pg_aggregate_fnoid_index
+290 5 2600 0 0 5 f r pg_aggregate
+291 5 2617 0 2 5 f r pg_operator
+292 5 1255 0 3 5 f r pg_proc
+293 5 2690 0 2 5 f i pg_proc_oid_index
+294 1 1259 0 0 5 f - -
+295 1 1259 0 1 5 f - -
+296 1 1259 0 2 5 f - -
+297 1 1259 0 3 5 f - -
+298 1 1259 0 4 5 f - -
+299 1 1259 0 5 5 f - -
+300 1 1259 0 6 5 f - -
+301 1 1259 0 7 5 f - -
+302 1 1259 0 8 5 f - -
+303 1 1259 0 9 5 f - -
+304 1 1259 0 10 5 f - -
+305 1 1259 0 11 5 f - -
+306 1 1249 0 0 5 f - -
+307 1 1249 0 1 5 f - -
+308 1 1249 0 2 5 f - -
+309 1 1249 0 3 5 f - -
+310 1 1249 0 4 5 f - -
+311 1 1249 0 5 5 f - -
+312 1 1249 0 6 5 f - -
+313 1 1249 0 7 5 f - -
+314 1 1249 0 8 5 f - -
+315 1 1249 0 9 5 f - -
+316 1 1249 0 10 5 f - -
+317 1 1249 0 11 5 f - -
+318 1 1249 0 12 5 f - -
+319 1 1249 0 13 5 f - -
+320 1 1249 0 14 5 f - -
+321 1 1249 0 15 5 f - -
+322 1 1249 0 16 5 f - -
+323 1 1249 0 17 5 f - -
+324 1 1249 0 18 5 f - -
+325 1 1249 0 19 5 f - -
+326 1 1249 0 20 5 f - -
+327 1 1249 0 21 5 f - -
+328 1 1249 0 22 5 f - -
+329 1 1249 0 23 5 f - -
+330 1 1249 0 24 5 f - -
+331 1 1249 0 25 5 f - -
+332 1 1249 0 26 5 f - -
+333 1 1249 0 27 5 f - -
+334 1 1249 0 28 1 f - -
+335 1 1249 0 29 1 f - -
+336 1 1249 0 30 1 f - -
+337 1 1249 0 31 1 f - -
+338 1 1249 0 32 1 f - -
+339 1 1249 0 33 1 f - -
+340 1 1249 0 34 1 f - -
+341 1 1249 0 35 1 f - -
+342 1 1249 0 36 1 f - -
+343 1 1249 0 37 1 f - -
+344 1 1249 0 38 1 f - -
+345 1 1249 0 39 1 f - -
+346 1 1249 0 40 1 f - -
+347 1 1249 0 41 1 f - -
+348 1 1249 0 42 1 f - -
+349 1 1249 0 43 1 f - -
+350 1 1249 0 44 1 f - -
+351 1 1249 0 45 1 f - -
+352 1 1249 0 46 1 f - -
+353 1 1249 0 47 1 f - -
+354 1 1249 0 48 5 f - -
+355 1 1249 0 49 1 f - -
+356 1 1249 0 50 1 f - -
+357 1 1249 0 51 1 f - -
+358 1 1249 0 52 1 f - -
+359 1 1249 0 53 1 f - -
+360 1 1249 0 54 1 f - -
+361 1 2610 0 0 5 f - -
+362 1 2610 0 1 5 f - -
+363 1 2610 0 2 5 f - -
+364 1 2610 0 3 5 f - -
+365 1 2601 0 0 5 f - -
+366 1 2616 0 0 5 f - -
+367 1 2616 0 1 5 f - -
+368 1 2616 0 2 1 f - -
+369 1 2603 0 0 5 f - -
+370 1 2603 0 1 5 f - -
+371 1 2603 0 2 5 f - -
+372 1 2603 0 3 5 f - -
+373 1 2603 0 4 5 f - -
+374 1 2687 0 0 5 f - -
+375 1 2687 0 1 5 f - -
+376 1 2655 0 0 5 f - -
+377 1 2655 0 3 5 f - -
+378 1 2655 0 1 5 f - -
+379 1 2662 0 0 5 f - -
+380 1 2662 0 3 5 f - -
+381 1 2662 0 1 5 f - -
+382 1 2659 0 0 5 f - -
+383 1 2659 0 3 5 f - -
+384 1 2659 0 1 5 f - -
+385 1 2659 0 2 5 f - -
+386 1 2679 0 0 5 f - -
+387 1 2679 0 1 5 f - -
+388 1 2659 0 4 5 f - -
+389 1 2659 0 6 5 f - -
+390 1 2659 0 5 5 f - -
+391 1 1259 0 12 5 f - -
+392 1 1259 0 13 5 f - -
+393 1 2685 0 0 2 f - -
+394 1 2685 0 1 3 f - -
+395 1 2615 0 0 3 f - -
+396 1 2703 0 0 1 f - -
+397 1 2703 0 3 5 f - -
+398 1 2703 0 1 5 f - -
+399 1 1247 0 0 5 f - -
+400 1 2686 0 0 1 f - -
+401 1 2686 0 1 5 f - -
+402 1 2661 0 0 1 f - -
+403 1 2661 0 1 5 f - -
+404 1 2605 0 0 5 f - -
+405 1 2653 0 0 1 f - -
+406 1 2653 0 3 5 f - -
+407 1 2653 0 1 5 f - -
+408 1 2602 0 0 5 f - -
+409 1 2688 0 0 1 f - -
+410 1 2688 0 3 5 f - -
+411 1 2688 0 1 5 f - -
+412 1 2617 0 2 1 f - -
+413 1 2617 0 0 5 f - -
+414 1 2602 0 1 5 f - -
+415 1 2605 0 1 1 f - -
+416 1 1247 0 1 2 f - -
+417 1 1247 0 3 1 f - -
+418 1 1247 0 2 4 f - -
+419 1 2653 0 2 2 f - -
+420 1 2602 0 2 4 f - -
+421 1 2617 0 5 2 f - -
+422 1 2678 0 0 2 f - -
+423 1 2678 0 1 5 f - -
+424 1 3379 0 0 5 f - -
+425 1 1247 0 4 1 f - -
+426 1 1247 0 5 1 f - -
+427 1 1247 0 6 1 f - -
+428 1 1247 0 7 1 f - -
+429 1 1247 0 8 1 f - -
+430 1 1247 0 9 1 f - -
+431 1 1247 0 10 1 f - -
+432 1 1247 0 11 3 f - -
+433 1 1247 0 12 1 f - -
+434 1 1247 0 13 1 f - -
+435 1 1247 0 14 1 f - -
+436 1 2654 0 0 1 f - -
+437 1 2654 0 3 5 f - -
+438 1 2654 0 1 5 f - -
+439 1 2602 0 4 5 f - -
+440 1 2654 0 2 3 f - -
+441 1 2602 0 3 3 f - -
+442 1 2696 0 0 2 f - -
+443 1 2696 0 3 5 f - -
+444 1 2696 0 1 5 f - -
+445 1 2619 0 0 5 f - -
+446 1 2619 2 0 5 f - -
+447 1 2619 1 0 5 f - -
+448 1 2619 1 1 5 f - -
+449 1 2619 1 2 5 f - -
+450 1 2619 0 18 5 f - -
+451 1 2619 0 19 5 f - -
+452 1 2619 0 1 5 f - -
+453 1 1247 2 0 1 f - -
+454 1 1249 2 0 4 f - -
+455 1 1249 1 2 2 f - -
+456 1 1249 1 0 1 f - -
+457 1 1249 1 1 1 f - -
+458 1 2658 0 0 1 f - -
+459 1 2619 0 2 5 f - -
+460 1 2841 0 0 1 f - -
+461 1 2841 0 1 5 f - -
+462 1 2840 0 0 4 f - -
+463 1 2840 1 0 5 f - -
+464 1 2840 1 1 4 f - -
+465 1 2840 1 2 3 f - -
+466 1 2840 0 2 5 f - -
+467 1 2840 2 0 3 f - -
+468 1 2619 0 16 5 f - -
+469 1 2619 0 17 5 f - -
+470 1 2619 0 20 5 f - -
+471 1 2617 0 3 1 f - -
+472 1 2602 0 5 1 f - -
+473 1 2619 0 3 3 f - -
+474 1 2619 0 5 5 f - -
+475 1 2619 0 21 5 f - -
+476 1 2619 0 6 5 f - -
+477 1 1259 2 0 1 f - -
+478 1 2662 0 2 3 f - -
+479 1 2659 0 9 5 f - -
+480 1 2703 0 2 2 f - -
+481 1 12604 0 0 1 f - -
+482 1 12604 0 1 1 f - -
+483 1 12604 0 2 1 f - -
+484 1 12604 0 3 1 f - -
+485 1 12604 0 4 1 f - -
+486 1 12604 0 5 1 f - -
+487 1 12604 0 6 1 f - -
+488 1 12604 0 7 1 f - -
+489 1 2696 0 2 5 f - -
+490 1 2840 0 1 2 f - -
+491 1 2840 0 3 4 f - -
+492 1 12604 2 0 1 f - -
+493 1 2606 0 0 1 f - -
+494 1 2606 0 1 1 f - -
+495 1 2606 0 2 1 f - -
+496 1 2606 0 3 1 f - -
+497 1 2606 0 4 1 f - -
+498 1 2619 0 7 5 f - -
+499 1 2619 0 22 5 f - -
+500 1 2619 0 15 5 f - -
+501 1 2696 0 4 5 f - -
+502 1 2619 0 8 3 f - -
+503 1 2606 2 0 1 f - -
+504 1 2618 0 0 1 f - -
+505 1 2618 0 1 1 f - -
+506 1 2618 0 2 1 f - -
+507 1 2618 0 3 1 f - -
+508 1 2618 0 4 1 f - -
+509 1 2618 0 5 1 f - -
+510 1 2618 0 6 1 f - -
+511 1 2618 0 7 1 f - -
+512 1 2618 0 8 1 f - -
+513 1 2618 0 9 1 f - -
+514 1 2618 0 10 1 f - -
+515 1 2618 0 11 1 f - -
+516 1 2618 0 12 1 f - -
+517 1 2618 0 13 1 f - -
+518 1 2619 0 13 5 f - -
+519 1 2619 0 23 5 f - -
+520 1 2618 2 0 1 f - -
+521 1 2609 0 0 1 f - -
+522 1 2609 0 1 1 f - -
+523 1 2609 0 2 1 f - -
+524 1 2609 0 3 1 f - -
+525 1 2609 0 4 1 f - -
+526 1 2609 0 5 1 f - -
+527 1 2609 0 6 1 f - -
+528 1 2609 0 7 1 f - -
+529 1 2609 0 8 1 f - -
+530 1 2609 0 9 1 f - -
+531 1 2609 0 10 1 f - -
+532 1 2609 0 11 1 f - -
+533 1 2609 0 12 1 f - -
+534 1 2609 0 13 1 f - -
+535 1 2609 0 14 1 f - -
+536 1 2609 0 15 1 f - -
+537 1 2609 0 16 1 f - -
+538 1 2609 0 17 1 f - -
+539 1 2609 0 18 1 f - -
+540 1 2609 0 19 1 f - -
+541 1 2609 0 20 1 f - -
+542 1 2609 0 21 1 f - -
+543 1 2609 0 22 1 f - -
+544 1 2609 0 23 1 f - -
+545 1 2609 0 24 1 f - -
+546 1 2609 0 25 1 f - -
+547 1 2609 0 26 1 f - -
+548 1 2609 0 27 1 f - -
+549 1 2609 0 28 1 f - -
+550 1 2609 0 29 1 f - -
+551 1 2609 0 30 1 f - -
+552 1 2609 0 31 1 f - -
+553 1 2609 0 32 1 f - -
+554 1 2609 0 33 1 f - -
+555 1 2609 0 34 1 f - -
+556 1 2609 0 35 1 f - -
+557 1 2609 0 36 1 f - -
+558 1 2609 0 37 1 f - -
+559 1 2609 0 38 1 f - -
+560 1 2609 0 39 1 f - -
+561 1 2609 2 0 1 f - -
+562 1 2608 2 0 3 f - -
+563 1 2608 0 0 1 f - -
+564 1 2608 0 1 1 f - -
+565 1 2608 0 2 1 f - -
+566 1 2608 1 2 5 f - -
+567 1 2608 0 3 1 f - -
+568 1 2608 0 4 1 f - -
+569 1 2608 0 5 1 f - -
+570 1 2608 0 6 1 f - -
+571 1 2608 0 7 1 f - -
+572 1 2608 0 8 1 f - -
+573 1 2608 0 9 1 f - -
+574 1 2608 0 10 1 f - -
+575 1 2608 0 11 1 f - -
+576 1 2608 0 12 1 f - -
+577 1 2608 1 0 1 f - -
+578 1 2608 1 1 1 f - -
+579 1 2673 0 0 1 f - -
+580 1 2674 0 0 1 f - -
+581 1 2619 0 14 3 f - -
+582 1 2619 0 24 5 f - -
+583 1 3603 0 0 1 f - -
+584 1 3603 0 1 1 f - -
+585 1 3603 0 2 1 f - -
+586 1 3603 0 3 1 f - -
+587 1 3603 2 0 1 f - -
+588 1 3394 0 0 1 f - -
+589 1 3394 0 1 1 f - -
+590 1 3394 0 2 1 f - -
+591 1 3394 2 0 1 f - -
+592 1 2619 0 4 1 f - -
+593 1 2619 0 9 1 f - -
+594 1 2619 0 10 1 f - -
+595 1 2619 0 11 1 f - -
+596 1 2619 0 12 1 f - -
+597 5 1255 0 41 5 f r pg_proc
+598 5 2690 0 5 5 f i pg_proc_oid_index
+599 5 2602 0 1 5 f r pg_amop
+600 5 2617 0 9 5 f r pg_operator
+601 5 2617 0 1 5 f r pg_operator
+602 5 2617 0 7 5 f r pg_operator
+603 5 2617 0 4 5 f r pg_operator
+604 5 2617 0 3 5 f r pg_operator
+605 5 2617 0 5 5 f r pg_operator
+606 5 2617 0 6 5 f r pg_operator
+607 5 2617 0 8 5 f r pg_operator
+608 5 2689 0 4 5 f i pg_operator_oprname_l_r_n_index
+609 5 2617 0 10 5 f r pg_operator
+610 5 2617 0 12 5 f r pg_operator
+611 5 2617 0 11 5 f r pg_operator
+612 5 2617 0 13 5 f r pg_operator
+615 5 2663 0 4 1 f i pg_class_relname_nsp_index
+617 5 16384 0 0 1 f r t
+618 5 1255 0 13 2 f r pg_proc
+619 5 1255 0 14 1 f r pg_proc
+620 5 2605 0 1 1 f r pg_cast
+621 5 2619 0 15 2 f r pg_statistic
+622 5 2665 0 1 1 f i pg_constraint_conrelid_contypid_conname_index
+623 5 2606 0 0 1 f r pg_constraint
+624 5 2619 0 3 1 f r pg_statistic
+--- heap_page_items (실행 직후)
+ERROR:  function get_raw_page(unknown, integer) does not exist
+LINE 1: ..._hoff, encode(t_data, 'hex') FROM heap_page_items(get_raw_pa...
+                                                             ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.

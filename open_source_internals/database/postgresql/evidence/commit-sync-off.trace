@@ -1,0 +1,13 @@
+STOP 1 exec_simple_query src/backend/tcop/postgres.c:1014 query_string=0xaaab0674d8e8 "INSERT INTO t VALUES (4, 'd');"
+STOP 2 ExecInsert src/backend/executor/nodeModifyTable.c:857
+STOP 3 heap_insert src/backend/access/heap/heapam.c:2084 (char *) relation->rd_rel->relname.data=0xffff79df50cc "t"
+STOP 4 XLogInsert src/backend/access/transam/xloginsert.c:479 RmgrTable[rmid].rm_name=0xaaaadc93fc78 "Heap"
+STOP 5 CommitTransaction src/backend/access/transam/xact.c:2230
+STOP 6 RecordTransactionCommit src/backend/access/transam/xact.c:1317
+STOP 7 XLogInsert src/backend/access/transam/xloginsert.c:479 RmgrTable[rmid].rm_name=0xaaaadc93fc10 "Transaction"
+STOP 8 XLogSetAsyncXactLSN src/backend/access/transam/xlog.c:2611 asyncXactLSN=24575000
+STOP 9 ReadyForQuery src/backend/tcop/dest.c:258
+END CommitTransaction=1 ExecInsert=1 ReadyForQuery=1 RecordTransactionCommit=1 XLogInsert=2 XLogSetAsyncXactLSN=1 exec_simple_query=1 heap_insert=1
+--- psql
+INSERT 0 1
+INSERT 0 1

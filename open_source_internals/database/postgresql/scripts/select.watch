@@ -1,0 +1,30 @@
+# run-trace.sh와 trace.py가 읽는 감시 목록입니다: "함수<TAB>gdb 식".
+# SELECT 한 문장이 백엔드에서 지나는 단계를 순서대로 적었습니다.
+# 함수 이름과 인자 이름은 PostgreSQL 18.6 소스의 함수 서명에서 확인했습니다.
+exec_simple_query	query_string
+pg_parse_query
+raw_parser	str
+parse_analyze_fixedparams	((Node *) parseTree->stmt)->type
+pg_plan_queries
+pg_plan_query
+standard_planner	parse->commandType
+PortalStart
+PortalRun
+standard_ExecutorStart
+standard_ExecutorRun	queryDesc->plannedstmt->planTree->type
+ExecutePlan
+# 18.6은 WHERE 조건(qual)과 열 재구성(projection) 유무로 아래 넷 중 하나를 고릅니다(nodeSeqscan.c 262~277행).
+ExecSeqScan
+ExecSeqScanWithQual
+ExecSeqScanWithProject
+ExecSeqScanWithQualProject
+heap_getnextslot	(char *) sscan->rs_rd->rd_rel->relname.data
+# 18.6의 순차 스캔은 read stream으로 페이지를 받습니다(heapam.c 679행). ReadBufferExtended는 비교용으로 남깁니다.
+heap_fetch_next_buffer
+read_stream_next_buffer
+StartReadBuffers
+PinBufferForBlock	(char *) rel->rd_rel->relname.data
+PinBufferForBlock	blockNum
+WaitReadBuffers
+ReadBufferExtended	(char *) reln->rd_rel->relname.data
+printtup

@@ -1,0 +1,13 @@
+# README 재생(2026-10-12)의 질문 3 명령 뒤: pg_waldump -p /var/lib/pgsql/data/pg_wal 000000010000000000000001 | tail -12
+rmgr: Transaction len (rec/tot):     34/    34, tx:        766, lsn: 0/0179F390, prev 0/0179F350, desc: COMMIT 2026-10-12 12:18:01.130819 UTC
+rmgr: Heap        len (rec/tot):     61/    61, tx:        767, lsn: 0/0179F3B8, prev 0/0179F390, desc: INSERT off: 7, flags: 0x00, blkref #0: rel 1663/5/16384 blk 0
+rmgr: Transaction len (rec/tot):     34/    34, tx:        767, lsn: 0/0179F3F8, prev 0/0179F3B8, desc: COMMIT 2026-10-12 12:18:01.775605 UTC
+rmgr: Heap        len (rec/tot):     61/    61, tx:        768, lsn: 0/0179F420, prev 0/0179F3F8, desc: INSERT off: 8, flags: 0x00, blkref #0: rel 1663/5/16384 blk 0
+rmgr: Transaction len (rec/tot):     34/    34, tx:        768, lsn: 0/0179F460, prev 0/0179F420, desc: COMMIT 2026-10-12 12:18:02.059516 UTC
+rmgr: Heap        len (rec/tot):     61/    61, tx:        769, lsn: 0/0179F488, prev 0/0179F460, desc: INSERT off: 9, flags: 0x00, blkref #0: rel 1663/5/16384 blk 0
+rmgr: Transaction len (rec/tot):     34/    34, tx:        769, lsn: 0/0179F4C8, prev 0/0179F488, desc: COMMIT 2026-10-12 12:18:02.884572 UTC
+rmgr: Heap        len (rec/tot):     61/    61, tx:        770, lsn: 0/0179F4F0, prev 0/0179F4C8, desc: INSERT off: 10, flags: 0x00, blkref #0: rel 1663/5/16384 blk 0
+rmgr: Transaction len (rec/tot):     34/    34, tx:        770, lsn: 0/0179F530, prev 0/0179F4F0, desc: COMMIT 2026-10-12 12:18:04.656747 UTC
+rmgr: Heap        len (rec/tot):     61/    61, tx:        771, lsn: 0/0179F558, prev 0/0179F530, desc: INSERT off: 11, flags: 0x00, blkref #0: rel 1663/5/16384 blk 0
+rmgr: Transaction len (rec/tot):     34/    34, tx:        771, lsn: 0/0179F598, prev 0/0179F558, desc: COMMIT 2026-10-12 12:18:05.695110 UTC
+rmgr: Standby     len (rec/tot):     50/    50, tx:          0, lsn: 0/0179F5C0, prev 0/0179F598, desc: RUNNING_XACTS nextXid 772 latestCompletedXid 771 oldestRunningXid 772

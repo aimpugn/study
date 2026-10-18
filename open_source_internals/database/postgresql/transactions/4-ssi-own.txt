@@ -1,0 +1,13 @@
+# 4-ssi-own: SERIALIZABLE에서 저마다 자기 행만 읽고 바꾸기(대조군). 서로 상대가 쓴 것을 읽지 않습니다.
+setup: CREATE TABLE doctors(name text PRIMARY KEY, on_call bool);
+setup: INSERT INTO doctors VALUES ('alice', true), ('bob', true);
+watch: doctors
+S1: BEGIN ISOLATION LEVEL SERIALIZABLE;
+S1: SELECT on_call FROM doctors WHERE name = 'alice';
+S2: BEGIN ISOLATION LEVEL SERIALIZABLE;
+S2: SELECT on_call FROM doctors WHERE name = 'bob';
+S1: UPDATE doctors SET on_call = false WHERE name = 'alice';
+S2: UPDATE doctors SET on_call = false WHERE name = 'bob';
+S1: COMMIT;
+S2: COMMIT;
+S1: SELECT ctid, xmin, xmax, name, on_call FROM doctors;

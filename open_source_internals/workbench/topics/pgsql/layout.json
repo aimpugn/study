@@ -1,0 +1,510 @@
+{
+ "design/concept-3.html": {
+  "REL": {
+   "base/5/16384": "t",
+   "base/5/1247": "pg_type",
+   "base/5/2690": "pg_proc_oid_index",
+   "base/5/2703": "pg_type_oid_index",
+   "base/5/2659": "pg_attribute_relid_attnum_index",
+   "base/5/2662": "pg_class_oid_index",
+   "base/5/2663": "pg_class_relname_nsp_index",
+   "base/5/2678": "pg_index_indrelid_index",
+   "base/5/2688": "pg_operator_oid_index",
+   "base/5/2689": "pg_operator_oprname_l_r_n_index",
+   "base/5/2654": "pg_amop_opr_fam_index",
+   "base/5/2696": "pg_statistic_relid_att_inh_index",
+   "base/5/3379": "pg_statistic_ext_relid_index",
+   "base/5/2684": "pg_namespace_nspname_index",
+   "global/2697": "pg_tablespace_oid_index",
+   "base/5/6239": "pg_publication_namespace_pnnspid_pnpubid_index",
+   "base/5/6113": "pg_publication_rel_prrelid_prpubid_index",
+   "base/5/1255": "pg_proc",
+   "base/5/2617": "pg_operator",
+   "base/5/2602": "pg_amop",
+   "base/5/2615": "pg_namespace",
+   "global/1213": "pg_tablespace"
+  },
+  "LANES": [
+   {
+    "id": "client",
+    "name": "psql",
+    "sub": "클라이언트",
+    "zone": "client"
+   },
+   {
+    "id": "comm_buffer",
+    "name": "통신 버퍼",
+    "sub": "8 KB 송·수신",
+    "zone": "local"
+   },
+   {
+    "id": "backend",
+    "name": "백엔드",
+    "sub": "",
+    "zone": "local"
+   },
+   {
+    "id": "shared_buffer",
+    "name": "공유 버퍼",
+    "sub": "shared_buffers",
+    "zone": "shared"
+   },
+   {
+    "id": "wal_buffer",
+    "name": "WAL 버퍼",
+    "sub": "wal_buffers",
+    "zone": "shared"
+   },
+   {
+    "id": "io_worker",
+    "name": "I/O 워커",
+    "sub": "",
+    "zone": "proc"
+   },
+   {
+    "id": "data_files",
+    "name": "데이터 파일",
+    "sub": "base/, global/",
+    "zone": "disk"
+   },
+   {
+    "id": "wal_files",
+    "name": "WAL 파일",
+    "sub": "pg_wal/",
+    "zone": "disk"
+   }
+  ],
+  "SYSKINDS": [
+   "요청 받음",
+   "응답 보냄",
+   "페이지 읽기",
+   "WAL 쓰기",
+   "디스크까지 동기화",
+   "새 파일",
+   "페이지 쓰기"
+  ]
+ },
+ "design/concept-4.html": {
+  "REL": {
+   "base/5/16384": "t",
+   "base/5/1247": "pg_type",
+   "base/5/2690": "pg_proc_oid_index",
+   "base/5/2691": "pg_proc_proname_args_nsp_index",
+   "base/5/2703": "pg_type_oid_index",
+   "base/5/2704": "pg_type_typname_nsp_index",
+   "base/5/2658": "pg_attribute_relid_attnam_index",
+   "base/5/2659": "pg_attribute_relid_attnum_index",
+   "base/5/2662": "pg_class_oid_index",
+   "base/5/2663": "pg_class_relname_nsp_index",
+   "base/5/3455": "pg_class_tblspc_relfilenode_index",
+   "base/5/2678": "pg_index_indrelid_index",
+   "base/5/2688": "pg_operator_oid_index",
+   "base/5/2689": "pg_operator_oprname_l_r_n_index",
+   "base/5/2686": "pg_opclass_am_name_nsp_index",
+   "base/5/2654": "pg_amop_opr_fam_index",
+   "base/5/2696": "pg_statistic_relid_att_inh_index",
+   "base/5/3379": "pg_statistic_ext_relid_index",
+   "base/5/3467": "pg_event_trigger_evtname_index",
+   "base/5/2661": "pg_cast_source_target_index",
+   "base/5/2684": "pg_namespace_nspname_index",
+   "base/5/2673": "pg_depend_depender_index",
+   "base/5/2674": "pg_depend_reference_index",
+   "global/2697": "pg_tablespace_oid_index",
+   "base/5/6239": "pg_publication_namespace_pnnspid_pnpubid_index",
+   "base/5/6113": "pg_publication_rel_prrelid_prpubid_index",
+   "base/5/1249": "pg_attribute",
+   "base/5/1255": "pg_proc",
+   "base/5/1259": "pg_class",
+   "base/5/2610": "pg_index",
+   "base/5/2617": "pg_operator",
+   "base/5/2602": "pg_amop",
+   "base/5/2605": "pg_cast",
+   "base/5/2615": "pg_namespace",
+   "base/5/2608": "pg_depend",
+   "global/1213": "pg_tablespace",
+   "base/5/16393": "t_name_idx",
+   "base/5/16389": "t_name_idx"
+  },
+  "LANES": [
+   {
+    "id": "client",
+    "name": "psql",
+    "zone": "client"
+   },
+   {
+    "id": "comm_buffer",
+    "name": "통신 버퍼",
+    "zone": "local"
+   },
+   {
+    "id": "backend",
+    "name": "백엔드",
+    "zone": "local"
+   },
+   {
+    "id": "shared_buffer",
+    "name": "공유 버퍼",
+    "zone": "shared"
+   },
+   {
+    "id": "wal_buffer",
+    "name": "WAL 버퍼",
+    "zone": "shared"
+   },
+   {
+    "id": "txn",
+    "name": "공유 표",
+    "zone": "shared"
+   },
+   {
+    "id": "io_worker",
+    "name": "다른 프로세스",
+    "zone": "proc"
+   },
+   {
+    "id": "data_files",
+    "name": "데이터 파일",
+    "zone": "disk"
+   },
+   {
+    "id": "wal_files",
+    "name": "WAL 파일",
+    "zone": "disk"
+   }
+  ],
+  "LANE_OF": {
+   "lock_table": "txn",
+   "proc_array": "txn",
+   "clog": "txn",
+   "sinval": "txn",
+   "work_mem": "backend",
+   "clog_files": "data_files"
+  },
+  "SYSKINDS": [
+   "요청 받음",
+   "응답 보냄",
+   "페이지 읽기",
+   "WAL 쓰기",
+   "디스크까지 동기화",
+   "새 파일",
+   "페이지 쓰기",
+   "커밋 로그 페이지"
+  ],
+  "FORK": {
+   "fsm": "빈 공간 지도",
+   "vm": "가시성 지도",
+   "init": "초기화 fork"
+  },
+  "STAGES": [
+   "받기",
+   "구문 분석",
+   "의미 분석",
+   "계획",
+   "실행",
+   "커밋",
+   "응답",
+   "오류 처리"
+  ],
+  "SHORT": {
+   "받기": "받기",
+   "구문 분석": "구문",
+   "의미 분석": "의미",
+   "계획": "계획",
+   "실행": "실행",
+   "커밋": "커밋",
+   "응답": "응답",
+   "오류 처리": "오류"
+  },
+  "ZONES": [
+   {
+    "z": "client",
+    "name": "클라이언트",
+    "x0": 4,
+    "x1": 80
+   },
+   {
+    "z": "local",
+    "name": "백엔드 프로세스",
+    "x0": 88,
+    "x1": 476
+   },
+   {
+    "z": "shared",
+    "name": "공유 메모리",
+    "x0": 484,
+    "x1": 680
+   },
+   {
+    "z": "proc",
+    "name": "다른 서버 프로세스",
+    "x0": 688,
+    "x1": 846
+   },
+   {
+    "z": "disk",
+    "name": "디스크",
+    "x0": 854,
+    "x1": 956
+   }
+  ],
+  "NODES": {
+   "client": {
+    "x": 42,
+    "y": 114,
+    "w": 64,
+    "h": 30,
+    "z": "client",
+    "name": "psql",
+    "role": "사용자가 쿼리를 친 클라이언트 프로세스입니다."
+   },
+   "comm": {
+    "x": 130,
+    "y": 64,
+    "w": 76,
+    "h": 30,
+    "z": "local",
+    "name": "통신 버퍼",
+    "role": "소켓에서 받은 요청과 보낼 응답을 담는 백엔드의 8 KB 버퍼 두 개(PqRecvBuffer, PqSendBuffer)입니다."
+   },
+   "catcache": {
+    "x": 300,
+    "y": 178,
+    "w": 110,
+    "h": 30,
+    "z": "local",
+    "name": "카탈로그 캐시",
+    "role": "테이블·열·연산자 정의를 백엔드마다 따로 담아 두는 캐시(catcache, relcache)입니다. 없으면 공유 버퍼의 시스템 카탈로그를 읽습니다."
+   },
+   "work_mem": {
+    "x": 428,
+    "y": 178,
+    "w": 76,
+    "h": 30,
+    "z": "local",
+    "name": "work_mem",
+    "role": "정렬과 해시에 쓰는 백엔드 메모리입니다."
+   },
+   "shared_buffer": {
+    "x": 532,
+    "y": 58,
+    "w": 88,
+    "h": 30,
+    "z": "shared",
+    "name": "공유 버퍼",
+    "role": "모든 서버 프로세스가 함께 쓰는 8 KB 페이지 칸들입니다(shared_buffers)."
+   },
+   "wal_buffer": {
+    "x": 632,
+    "y": 58,
+    "w": 88,
+    "h": 30,
+    "z": "shared",
+    "name": "WAL 버퍼",
+    "role": "파일에 쓰기 전의 WAL 레코드를 모으는 공유 메모리입니다(wal_buffers)."
+   },
+   "lock_table": {
+    "x": 532,
+    "y": 120,
+    "w": 88,
+    "h": 30,
+    "z": "shared",
+    "name": "락 테이블",
+    "role": "어느 프로세스가 어떤 테이블이나 트랜잭션에 락을 잡았는지 적는 공유 표입니다."
+   },
+   "proc_array": {
+    "x": 632,
+    "y": 120,
+    "w": 88,
+    "h": 30,
+    "z": "shared",
+    "name": "프로세스 배열",
+    "role": "실행 중인 트랜잭션의 목록입니다. 스냅숏을 여기서 만들고, 트랜잭션 번호도 여기에 알립니다."
+   },
+   "clog": {
+    "x": 532,
+    "y": 182,
+    "w": 88,
+    "h": 30,
+    "z": "shared",
+    "name": "커밋 로그 (CLOG)",
+    "role": "트랜잭션마다 커밋됐는지를 2비트로 적은 표의 공유 버퍼입니다. 행이 보이는지 판단할 때 읽습니다."
+   },
+   "sinval": {
+    "x": 632,
+    "y": 182,
+    "w": 88,
+    "h": 30,
+    "z": "shared",
+    "name": "무효화 큐",
+    "role": "카탈로그를 바꾼 백엔드가 다른 백엔드에 캐시의 어느 항목을 버리라고 알리는 공유 큐입니다(sinval). 다른 백엔드는 트랜잭션을 시작하거나 테이블 락을 잡을 때 이 큐를 읽습니다(xact.c AtStart_Cache, lmgr.c LockRelationOid)."
+   },
+   "io_worker": {
+    "x": 727,
+    "y": 54,
+    "w": 72,
+    "h": 34,
+    "z": "proc",
+    "name": "I/O 워커",
+    "proc": "io_worker",
+    "role": "백엔드 대신 파일을 읽어 공유 버퍼 칸에 바로 넣는 프로세스입니다(io_method=worker)."
+   },
+   "walwriter": {
+    "x": 807,
+    "y": 54,
+    "w": 72,
+    "h": 34,
+    "z": "proc",
+    "name": "WAL 라이터",
+    "proc": "walwriter",
+    "role": "WAL 버퍼를 주기적으로 파일에 쓰는 프로세스입니다."
+   },
+   "checkpointer": {
+    "x": 727,
+    "y": 104,
+    "w": 72,
+    "h": 34,
+    "z": "proc",
+    "name": "체크포인터",
+    "proc": "checkpointer",
+    "role": "주기적으로 바뀐 페이지를 모두 파일에 쓰고 복구 시작점을 남기는 프로세스입니다."
+   },
+   "bgwriter": {
+    "x": 807,
+    "y": 104,
+    "w": 72,
+    "h": 34,
+    "z": "proc",
+    "name": "백그라운드 라이터",
+    "proc": "bgwriter",
+    "role": "바뀐 공유 버퍼 페이지를 미리 파일에 써 두는 프로세스입니다."
+   },
+   "autovacuum": {
+    "x": 727,
+    "y": 154,
+    "w": 72,
+    "h": 34,
+    "z": "proc",
+    "name": "autovacuum",
+    "proc": "autovacuum",
+    "role": "죽은 행 버전을 치우는 작업을 띄우는 프로세스입니다."
+   },
+   "logrep": {
+    "x": 807,
+    "y": 154,
+    "w": 72,
+    "h": 34,
+    "z": "proc",
+    "name": "논리 복제 런처",
+    "proc": "logrep",
+    "role": "논리 복제 작업 프로세스를 띄우는 프로세스입니다."
+   },
+   "postmaster": {
+    "x": 767,
+    "y": 202,
+    "w": 110,
+    "h": 26,
+    "z": "proc",
+    "name": "postmaster",
+    "proc": "postmaster",
+    "role": "접속마다 백엔드를 fork하는 부모 프로세스입니다. 이 쿼리보다 앞선 접속 때 일했습니다."
+   },
+   "data_files": {
+    "x": 905,
+    "y": 58,
+    "w": 92,
+    "h": 34,
+    "z": "disk",
+    "name": "데이터 파일",
+    "sub": "base/ global/",
+    "role": "테이블과 인덱스의 8 KB 페이지가 든 파일입니다."
+   },
+   "wal_files": {
+    "x": 905,
+    "y": 120,
+    "w": 92,
+    "h": 34,
+    "z": "disk",
+    "name": "WAL 파일",
+    "sub": "pg_wal/",
+    "role": "커밋을 보장하는 변경 기록 파일입니다. 커밋 때 디스크까지 동기화합니다."
+   },
+   "clog_files": {
+    "x": 905,
+    "y": 182,
+    "w": 92,
+    "h": 34,
+    "z": "disk",
+    "name": "커밋 로그 파일",
+    "sub": "pg_xact/",
+    "role": "커밋 로그의 파일 사본입니다."
+   }
+  },
+  "BAR": {
+   "x0": 180,
+   "x1": 468,
+   "y": 64,
+   "h": 28
+  },
+  "KLAYER": {
+   "시스템 콜 입구": "koth",
+   "VFS": "kvfs",
+   "overlayfs": "kovl",
+   "btrfs": "kbtrfs",
+   "페이지 캐시·메모리": "kmm",
+   "블록 계층": "kblk",
+   "virtio 디스크": "kvirt",
+   "잠들고 깨기": "ksched",
+   "락": "klock",
+   "권한 검사": "koth",
+   "기타": "koth"
+  }
+ },
+ "design/spring-view.tmpl.html": {
+  "TOPIC.lanes": [
+   {
+    "key": "app",
+    "name": "앱 코드",
+    "w": 78,
+    "anchor": true
+   },
+   {
+    "key": "tx",
+    "name": "Spring 트랜잭션",
+    "w": 170
+   },
+   {
+    "key": "jdbc",
+    "name": "JdbcTemplate",
+    "w": 80
+   },
+   {
+    "key": "hikari",
+    "name": "HikariCP",
+    "w": 110
+   },
+   {
+    "key": "pg",
+    "name": "pgjdbc",
+    "w": 80
+   },
+   {
+    "key": "wire",
+    "name": "연결 위 메시지",
+    "w": 190,
+    "side": "link"
+   },
+   {
+    "key": "C1",
+    "name": "백엔드 C1",
+    "w": 100,
+    "side": "peer"
+   },
+   {
+    "key": "C2",
+    "name": "백엔드 C2",
+    "w": 100,
+    "side": "peer"
+   }
+  ]
+ }
+}

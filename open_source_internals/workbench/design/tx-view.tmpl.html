@@ -1,0 +1,1189 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>트랜잭션 둘 관측</title>
+<style>
+:root{--bg:#fbfaf7;--card:#ffffff;--line:#d9d6cc;--ink:#2c2c2a;--sub:#5f5e5a;--mute:#888780;--acc:#534AB7;--accbg:#EEEDFE;
+--client:#5F5E5A;--clientbg:#F1EFE8;--s1:#185FA5;--s1bg:#E6F1FB;--s2:#0F6E56;--s2bg:#E1F5EE;--shared:#534AB7;--sharedbg:#EEEDFE;--disk:#993C1D;--diskbg:#FAECE7;
+--hl:#FAEEDA;--now:#BA7517;--snap:#185FA5;--wait:#A32D2D;--waitbg:#FCEBEB;--ok:#3B6D11;--okbg:#EAF3DE}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1f1e1c;--card:#2a2927;--line:#444441;--ink:#f1efe8;--sub:#d3d1c7;--mute:#b4b2a9;--acc:#AFA9EC;--accbg:#3C3489;
+--client:#D3D1C7;--clientbg:#444441;--s1:#85B7EB;--s1bg:#0C447C;--s2:#5DCAA5;--s2bg:#085041;--shared:#AFA9EC;--sharedbg:#3C3489;--disk:#F0997B;--diskbg:#712B13;
+--hl:#633806;--now:#FAC775;--snap:#85B7EB;--wait:#F09595;--waitbg:#791F1F;--ok:#97C459;--okbg:#27500A}}
+:root[data-theme="dark"]{--bg:#1f1e1c;--card:#2a2927;--line:#444441;--ink:#f1efe8;--sub:#d3d1c7;--mute:#b4b2a9;--acc:#AFA9EC;--accbg:#3C3489;
+--client:#D3D1C7;--clientbg:#444441;--s1:#85B7EB;--s1bg:#0C447C;--s2:#5DCAA5;--s2bg:#085041;--shared:#AFA9EC;--sharedbg:#3C3489;--disk:#F0997B;--diskbg:#712B13;
+--hl:#633806;--now:#FAC775;--snap:#85B7EB;--wait:#F09595;--waitbg:#791F1F;--ok:#97C459;--okbg:#27500A}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif}
+main{max-width:1480px;margin:0 auto;padding:10px 16px}
+.top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.top h1{font-size:16px;margin:0 6px 0 0}
+button{font:inherit;font-size:13px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:3px 10px;cursor:pointer}
+button[aria-pressed="true"]{background:var(--accbg);border-color:var(--acc);font-weight:600}
+.grp{display:flex;gap:4px;flex-wrap:wrap}
+.ctl{display:flex;gap:6px;align-items:center;margin-left:auto}
+.ctl .n{font:600 13px ui-monospace,Menlo,monospace;min-width:64px;text-align:center}
+.g1{display:grid;grid-template-columns:minmax(0,1fr) 330px 330px;gap:10px;margin-bottom:10px}
+.g2{display:grid;grid-template-columns:minmax(0,1fr) 560px;gap:10px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.mm{height:262px;padding:4px}.mm svg{display:block;width:100%;height:100%}
+.term{font:11.5px/1.42 ui-monospace,Menlo,monospace;background:#1f1e1c;color:#f1efe8;border-radius:12px;padding:6px 10px 8px;height:262px;overflow:hidden;border:1px solid var(--line);display:flex;flex-direction:column}
+.term .body{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
+.term .body>div{white-space:pre-wrap;word-break:break-all}
+.term .p{color:#97C459}.term .w{color:#FAC775}.term .e{color:#F09595}.term .x{color:#888780}
+.term .h{flex:none;color:#b4b2a9;font-size:11px;font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;padding-bottom:3px;border-bottom:1px solid #444441;margin-bottom:2px}
+svg text{font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif}
+.mono{font-family:ui-monospace,Menlo,monospace}
+.lanes{max-height:calc(100vh - 330px);min-height:420px;overflow:auto}
+#lanehead{position:sticky;top:0;z-index:1;display:block;background:var(--card)}
+#lanes{display:block}
+.d h2{font-size:14px;margin:0 0 4px}
+.sec{font-size:11px;color:var(--mute);margin:10px 0 4px;letter-spacing:.02em}
+.code{font:11.5px/1.55 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:8px;overflow:auto;background:var(--bg);max-height:250px}
+.code div{white-space:pre;display:flex;tab-size:4}
+.code .no{color:var(--mute);min-width:44px;text-align:right;padding-right:10px;flex:none}
+.code .on{background:var(--hl)}
+.path{font:12px ui-monospace,Menlo,monospace;color:var(--sub);margin-bottom:4px}
+.leg{display:flex;gap:14px;font-size:11.5px;color:var(--sub);flex-wrap:wrap;margin-top:6px}
+.sw{display:inline-block;width:12px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.vrow{display:grid;grid-template-columns:52px 80px 44px 1fr;gap:6px;align-items:start;font-size:12px;padding:3px 0;border-top:1px solid var(--line)}
+.chip{display:inline-block;font:11px/1.6 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:6px;padding:0 5px;margin:0 3px 3px 0;cursor:pointer;background:var(--bg)}
+.chip.sel{border-color:var(--now);background:var(--hl)}
+.chip .k{color:var(--mute)}
+.yes{color:var(--ok);font-weight:700}.no{color:var(--wait);font-weight:700}
+.badge{display:inline-block;font-size:11.5px;border-radius:6px;padding:1px 7px;margin:2px 4px 2px 0;border:1px solid var(--line)}
+.badge.ok{border-color:var(--ok);color:var(--ok);background:var(--okbg)}
+.badge.bad{border-color:var(--wait);color:var(--wait);background:var(--waitbg)}
+.badge.note{border-color:var(--now);color:var(--ink);background:var(--hl)}
+.facts{font-size:12.5px;line-height:1.6}
+.facts b{font-weight:600}
+</style>
+</head>
+<body>
+<main>
+<div class="top">
+  <h1 id="title"></h1>
+  <span class="grp" id="scs"></span>
+  <span class="grp" id="runs"></span>
+  <div class="ctl"><button id="prev" aria-label="이전 장면">◀</button><span class="n" id="pos"></span><button id="next" aria-label="다음 장면">▶</button></div>
+</div>
+<div class="g1">
+  <div class="card mm"><svg id="mm" viewBox="0 0 960 254" role="img" aria-label="백엔드 둘과 공유 메모리"></svg></div>
+  <div class="term" id="t1"></div>
+  <div class="term" id="t2"></div>
+</div>
+<div class="g2">
+  <section class="card"><div class="lanes" id="lanewrap"><svg id="lanehead" viewBox="0 0 880 40" width="100%" aria-hidden="true"></svg><svg id="lanes" viewBox="0 0 880 400" role="img" aria-label="두 세션의 시간 순서"></svg></div>
+    <div class="leg"><span><span class="sw" style="background:var(--s1)"></span>세션 1 백엔드</span><span><span class="sw" style="background:var(--s2)"></span>세션 2 백엔드</span><span><span class="sw" style="background:var(--shared)"></span>공유 메모리</span><span><span class="sw" style="background:var(--disk)"></span>디스크</span><span><span class="sw" style="background:repeating-linear-gradient(45deg,var(--wait) 0 2px,transparent 2px 5px);border:1px solid var(--wait)"></span>기다림</span><span>줄을 누르면 그 장면으로 · ← → 키</span></div>
+  </section>
+  <section class="card d" id="detail"></section>
+</div>
+</main>
+<script>
+// 값은 모두 txlab 기록을 decode scenario로 푼 것입니다(시나리오/실행 → 해석 결과). 화면은 계산을 하지 않고 고르고 그리기만 합니다.
+// 예외는 화면이 기록에서 셈한 것입니다: 버전 막대의 위치(xmin·xmax), 기다림 길이(ProcSleep 입구·출구 시각의 차),
+// WAL 막대의 위치(LSN을 바이트 수로 읽음), 서버가 죽고 다시 뜨는 장면의 시간 축(구간마다 축척이 다름),
+// 이 장면에서 사라진 SIRead 락(앞 장면의 관찰과 이 장면에서 만든 락 가운데 이 장면의 관찰에 없는 것).
+const RUNS = __RUNS__;
+const LABEL = {"1-rc-read":"RC · 두 번 읽기","1-rr-read":"RR · 두 번 읽기","1-ru-read":"RU · 두 번 읽기","1-rc-write":"RC · 같은 행 바꾸기","1-rr-write":"RR · 같은 행 바꾸기",
+  "2-lost-update":"덮어쓰기","2-for-update":"FOR UPDATE","2-deadlock":"교착","2-fk-nokey":"외래 키 · 이름 바꾸기","2-fk-delete":"외래 키 · 부모 지우기",
+  "2-idem-commit":"멱등성 키 · 첫 요청 커밋","2-idem-rollback":"멱등성 키 · 첫 요청 취소","2-idem-onconflict":"멱등성 키 · ON CONFLICT",
+  "3-rollback":"취소 (ROLLBACK)","3-crash-sync-on":"kill · 동기 커밋","3-crash-sync-off":"kill · 비동기 커밋 바로 뒤","3-crash-sync-off-wait":"kill · 비동기 11초 뒤","3-crash-sync-off-wait2":"kill · 비동기 21초 뒤",
+  "4-skew-rr":"RR · 둘 다 세고 빠짐","4-skew-ssi":"SERIALIZABLE · 둘 다 세고 빠짐","4-skew-ssi-row":"SERIALIZABLE · 상대 행을 보고 빠짐","4-ssi-own":"SERIALIZABLE · 자기 행만 보고 빠짐"};
+const TITLE = {"1": "트랜잭션 둘이 같은 행을 볼 때", "2": "트랜잭션 둘이 같은 행을 잠글 때", "3": "트랜잭션을 취소하거나 서버가 죽을 때", "4": "트랜잭션 둘이 서로 읽은 것을 바꿀 때 (write skew)"};
+const SCS = [...new Set(Object.keys(RUNS).map(k => k.split("/")[0]))].sort((a, b) => Object.keys(LABEL).indexOf(a) - Object.keys(LABEL).indexOf(b));
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ms = us => (us / 1000).toLocaleString("ko-KR", {maximumFractionDigits: 1});
+const fileLine = at => (at || "").split("/").pop();
+// 숫자 뒤의 조사. 숫자를 한국어로 읽었을 때 끝소리에 받침이 있으면 a(이·을·은), 없으면 b(가·를·는)입니다.
+// 끝자리 1·3·6·7·8(일·삼·육·칠·팔)과 0으로 끝나는 십·백·천·만은 받침이 있고, 2·4·5·9(이·사·오·구)는 없습니다.
+const pp = (n, a, b) => { n = Math.abs(+n); const d = n % 10; return (d ? [1, 3, 6, 7, 8].includes(d) : n > 0) ? a : b; };
+// 행 잠금 모드(LockTupleMode)와 MultiXact 상태, 기다림의 이유(XLTW_Oper)를 SQL 쪽 이름으로 읽습니다.
+const MODE = {KeyShare: "FOR KEY SHARE", Share: "FOR SHARE", NoKeyExclusive: "FOR NO KEY UPDATE", Exclusive: "FOR UPDATE"};
+const MXST = {ForKeyShare: "key share 잠금", ForShare: "share 잠금", ForNoKeyUpdate: "no key update 잠금", ForUpdate: "update 잠금", NoKeyUpdate: "키 아닌 열 바꿈", Update: "바꿈·지움"};
+// 힌트 비트(htup_details.h)를 그 뜻으로 읽습니다. xmax 무효는 지운 쪽이 중단됐거나, 그 xmax가 잠금만이라 지운 쪽이 없다는 뜻입니다.
+const HINT = {HEAP_XMIN_COMMITTED: "xmin 커밋됨", HEAP_XMIN_INVALID: "xmin 중단됨", HEAP_XMAX_COMMITTED: "xmax 커밋됨", HEAP_XMAX_INVALID: "xmax 무효"};
+const OPER = {Update: "바꾸려고", Delete: "지우려고", Lock: "잠그려고", InsertIndex: "같은 키를 넣으려고", LockUpdated: "새 버전을 잠그려고", FetchUpdated: "새 버전을 읽으려고"};
+// kill 뒤의 구간 번호. kill 뒤 서버가 다시 뜨면 트랜잭션 번호와 공유 버퍼의 자리를 다시 씁니다(실험 3의 비동기 커밋에서 753을 다시 받음).
+// 그래서 관찰과 커밋 로그 사건은 같은 구간의 것끼리만 잇습니다.
+const epochAt = (D, t) => (D.kills || []).filter(k => k.t <= t).length;
+// LSN("상위/하위" 16진)을 바이트 위치로 읽고 되돌립니다. WAL 막대의 위치에만 씁니다.
+const lsnNum = s => { const [h, l] = String(s ?? "").split("/"); return l === undefined ? NaN : parseInt(h, 16) * 2 ** 32 + parseInt(l, 16); };
+const lsnStr = n => `${Math.floor(n / 2 ** 32).toString(16).toUpperCase()}/${(n % 2 ** 32).toString(16).toUpperCase()}`;
+const kb = n => (n / 1024).toLocaleString("ko-KR", {maximumFractionDigits: 1});
+const hp = new URLSearchParams(location.hash.slice(1));
+let SC = SCS.includes(hp.get("sc")) ? hp.get("sc") : SCS[0];
+let RUN = RUNS[SC + "/" + hp.get("run")] ? hp.get("run") : "a";
+let CUR = +hp.get("f") || 0, SRC = hp.get("src") || "";
+
+// 장면 만들기. 단계 하나가 보통 장면 하나입니다. 락을 기다린 단계는 기다림이 끝난 시각에서 앞뒤로 나눕니다.
+// 끝난 시각은 다른 세션이 이 세션을 깨운 시각이고, 깨운 일이 없으면(교착의 피해자처럼 스스로 오류를 받음) 잠에서 나온 시각입니다.
+// 장면은 시작 시각 순서로 늘어놓으므로, 깨어난 뒤의 일은 그 시각 전에 시작한 장면들 뒤에 옵니다.
+// readEnd 는 관찰 c가 부분 part를 다 읽은 때입니다. 읽은 구간을 모르면 묻기 시작한 시각을 씁니다.
+const readEnd = (c, part) => c.reads?.[part]?.[1] ?? c.t;
+function build(D) {
+  const pid = Object.fromEntries(D.sessions.map(s => [s.name, s.pid]));
+  const nameOf = Object.fromEntries(D.sessions.map(s => [s.pid, s.name]));
+  const wakes = [];
+  D.steps.forEach((st, i) => st.requests.forEach(r => r.events.forEach(e => { if (e.kind === "wake") wakes.push({i, t: e.t, who: +e.f.who}); })));
+  const frames = [];
+  D.steps.forEach((st, i) => {
+    const hs = hopsOf(D, st, pid, nameOf);
+    const sleep = st.requests.flatMap(r => r.events).find(e => e.kind === "proc_sleep");
+    const wake = sleep && wakes.find(x => x.who === pid[st.session] && x.t > sleep.t);
+    const cut = st.blocked && sleep ? (wake ? wake.t : sleep.t1) : null;
+    if (cut != null && hs.some(h => h.t >= cut)) {
+      frames.push({i, part: "before", hops: hs.filter(h => h.t < cut), start: st.t0, cut});
+      frames.push({i, part: "after", hops: hs.filter(h => h.t >= cut), start: cut, cut});
+    } else frames.push({i, hops: hs, start: st.t0});
+  });
+  // kill 하나가 장면 하나입니다. SIGKILL을 보낸 때부터 postmaster가 접속을 다시 받는다고 남긴 때까지입니다(server.log, 1 ms 단위).
+  // 그 줄이 없으면 드라이버가 그 줄을 본 때(tReady, 50 ms 간격으로 확인)까지입니다.
+  (D.kills || []).forEach((kl, j) => {
+    const ready = (D.server?.events || []).find(e => e.kind === "log" && e.t >= kl.t && /ready to accept connections/.test(e.f.msg));
+    frames.push({kind: "crash", kill: kl, j, hops: [], start: kl.t, end: ready ? ready.t : kl.tReady});
+  });
+  frames.sort((a, b) => a.start - b.start);
+  // 장면마다 보일 관찰(페이지·세션 상태·락·커밋 로그의 사진)을 고릅니다. 관찰은 단계가 끝나거나 기다리기 시작할 때만 묻고,
+  // 관찰용 접속이 부분을 차례로 읽느라 한 관찰이 수백 ms에 걸칩니다(해석기의 captures[].reads). 그래서 한 관찰이 이 장면 뒤에
+  // 다른 세션이 한 일까지 담을 수 있습니다(교착에서 S1이 오류를 받은 뒤 깨어난 S2가 바로 새 버전을 만듦).
+  // 먼저 고른 관찰(깨어난 뒤의 장면은 깨어난 뒤 첫 관찰, 다른 장면은 그 단계가 끝나거나 기다리기 시작한 뒤의 관찰)에서, 부분마다
+  // 이 장면의 마지막 일과 그 부분을 다 읽은 때 사이에 다른 장면의 일이 있으면, 그 부분만 이 장면의 마지막 일 전에 다 읽은
+  // 마지막 관찰로 물러섭니다(f.capBack에 물러선 부분). 커밋 로그의 상태는 기록된 커밋·중단 시각으로 이 장면의 마지막 일까지 고칩니다.
+  // 관찰과 커밋 로그 사건은 이 장면과 같은 kill 구간의 것만 씁니다. kill 장면은 서버가 다시 뜬 뒤의 관찰(afterKill)을 보이고,
+  // kill 직전의 관찰을 f.before에 둡니다.
+  const clog = D.steps.flatMap(st => st.requests.flatMap(r => r.events)).filter(e => e.kind === "commit_clog" || e.kind === "abort_clog");
+  frames.forEach((f, k) => {
+    f.k = k;
+    if (f.kind === "crash") {
+      const after = D.captures.find(c => c.afterKill && c.t >= f.start) || D.captures[D.captures.length - 1];
+      f.before = [...D.captures].reverse().find(c => c.t < f.start) || D.captures[0];
+      Object.assign(f, {capStep: after.afterStep, capBack: [], capParts: {pages: after, activity: after, locks: after}, cap: after});
+      return;
+    }
+    f.st = D.steps[f.i]; f.sess = f.st.session;
+    const ep = epochAt(D, f.start), same = D.captures.filter(c => epochAt(D, c.t) === ep);
+    const end = Math.max(f.start, ...f.hops.map(h => h.t));
+    const pref = (f.part === "after" ? same.find(c => c.t >= f.start) : same.find(c => c.afterStep === f.st.n && !c.afterKill)) || same[same.length - 1] || D.captures[D.captures.length - 1];
+    const pick = part => {
+      const leak = frames.some((g, j) => j !== k && g.hops.some(h => h.t > end && h.t < readEnd(pref, part)));
+      return leak ? [...same].reverse().find(c => readEnd(c, part) <= end) || same[0] || D.captures[0] : pref;
+    };
+    const parts = {pages: pick("pages"), activity: pick("activity"), locks: pick("locks")};
+    const xacts = {...pref.xacts};
+    clog.filter(e => e.t <= end && epochAt(D, e.t) === ep).forEach(e => { xacts[e.f.xid] = e.kind === "commit_clog" ? "committed" : "aborted"; });
+    const back = Object.keys(parts).filter(p => parts[p] !== pref);
+    Object.assign(f, {capStep: parts.pages.afterStep, capBack: back, capParts: parts,
+      cap: {...pref, pages: parts.pages.pages, activity: parts.activity.activity, locks: parts.locks.locks, xacts, reads: parts.pages.reads, t: parts.pages.t}});
+  });
+  const pauseBg = bgWrites(D, frames);
+  const first = {}, done = {};
+  frames.forEach((f, k) => { if (f.kind) return; first[f.i] ??= k; done[f.i] = k; });
+  // SSI 사건이 있는 실행(실험 4)은 미니맵의 공유 버퍼 아래와 오른쪽 위에 SSI 그림을 그립니다.
+  const ssi = frames.some(f => f.hops.some(h => h.lane === "ssi"));
+  return {D, frames, first, done, pid, nameOf, pauseBg, ssi};
+}
+
+// 세션이 WAL 위치만 남기고 기다리지 않은 WAL(XLogSetAsyncXactLSN, 비동기 커밋)은 WAL writer가 나중에 씁니다. 그 위치를 덮을 때까지
+// WAL writer가 pg_wal에 쓴 일을 그 시각의 장면에 붙이고(bg), 드라이버가 쉬는 동안이면 그 쉼에 붙입니다. 다음 kill에서 멈춥니다.
+// 그 WAL 버퍼는 서버와 함께 사라지기 때문입니다. 이 일은 세션이 한 일이 아니라서 관찰을 고르는 계산에는 넣지 않습니다.
+//
+// Returns: 쉼의 번호(D.pauses의 자리)마다 그 쉼 동안의 일입니다.
+function bgWrites(D, frames) {
+  const sev = D.server?.events || [], role = Object.fromEntries((D.server?.procs || []).map(p => [p.pid, p.role]));
+  const asks = D.steps.flatMap(st => st.requests.flatMap(r => r.events)).filter(e => e.kind === "async_lsn" || (e.kind === "commit_clog" && e.f.async));
+  const picked = new Set();
+  asks.forEach(a => {
+    const L = lsnNum(a.f.lsn), stop = (D.kills || []).find(k => k.t > a.t)?.t ?? Infinity;
+    for (const e of sev) {
+      if (e.t <= a.t || e.t >= stop || e.kind !== "wal_io" || !e.f.lsn1 || role[e.pid] !== "walwriter") continue;
+      picked.add(e);
+      if (lsnNum(e.f.lsn1) >= L) break;
+    }
+  });
+  const pauseBg = {};
+  [...picked].sort((a, b) => a.t - b.t).forEach(e => {
+    const sync = sev.find(x => x.kind === "wal_io" && x.pid === e.pid && /sync/.test(x.f.call) && x.t >= e.t1 && x.t - e.t1 < 5000);
+    const hop = {t: e.t, lane: "disk", bg: true, text: `WAL writer(pid ${e.pid})가 ${e.f.lsn0}–${e.f.lsn1} pwrite${sync ? ` · ${sync.f.call} ${ms(+sync.f.durUs)} ms` : ""}`, ref: e.stack?.[e.stack.length - 2]?.at};
+    const pi = (D.pauses || []).findIndex(p => e.t >= p.t && e.t <= p.t1);
+    if (pi >= 0) { (pauseBg[pi] ??= []).push(hop); return; }
+    const fr = [...frames].reverse().find(f => !f.kind && f.start <= e.t);
+    if (fr) { fr.hops.push(hop); fr.hops.sort((a, b) => a.t - b.t); }
+  });
+  return pauseBg;
+}
+
+// 단계 i의 세션이 시각 t까지 같은 트랜잭션 안에서 남긴 kind 사건. 단계 i부터 거꾸로 그 세션의 단계를 보다가 BEGIN에서, 또는 앞
+// 트랜잭션을 끝낸 COMMIT·ROLLBACK 앞에서 멈춥니다. 자동 커밋 문장이면 그 문장 안만 봅니다.
+function txEvent(D, i, t, kind) {
+  const sess = D.steps[i].session;
+  for (let k = i; k >= 0; k--) {
+    const st = D.steps[k];
+    if (st.session !== sess) continue;
+    if (k < i && /^(COMMIT|ROLLBACK)/i.test(st.sql)) break;
+    const e = st.requests.flatMap(r => r.events).findLast(e => e.kind === kind && e.t <= t);
+    if (e) return e;
+    if (/^BEGIN/i.test(st.sql)) break;
+  }
+  return null;
+}
+// 시각 t에 직렬화(SERIALIZABLE) 트랜잭션 안이었는지: 같은 트랜잭션이 그 전에 SERIALIZABLEXACT를 받았는지(ssi_begin, 첫 스냅숏 때)로
+// 고릅니다. SIRead 락 요청과 쓰기 전 검사는 직렬화 트랜잭션이 아니면 함수에 들어가자마자 돌아옵니다(predicate.c의
+// SerializationNeededForRead·ForWrite가 MySerializableXact부터 봄). 해석기는 그렇게 돌아온 이유를 따로 남기지 않습니다.
+const ssiBegun = (D, i, t) => !!txEvent(D, i, t, "ssi_begin");
+// 술어 락의 대상. 표 단위는 블록·줄이 없고, 페이지 단위는 블록만, 행 단위는 ctid가 있습니다.
+const predWhere = f => f.gran === "relation" ? `표 ${f.rel}` : f.gran === "page" ? `${f.rel} 페이지 ${f.blk}` : `${f.rel} 행 ${f.ctid}`;
+// SSI 사건을 부른 함수 이름. 직렬화 트랜잭션이 아니라 바로 돌아온 호출을 함수마다 한 줄로 모을 때 씁니다.
+const ssiFn = e => e.kind === "pred_lock" ? {relation: "PredicateLockRelation", page: "PredicateLockPage", tuple: "PredicateLockTID"}[e.f.gran] :
+  {conflict_in: "CheckForSerializableConflictIn", conflict_out: "CheckForSerializableConflictOut", ssi_precommit: "PreCommit_CheckForSerializationFailure"}[e.kind];
+
+// 장면의 일. 각 일은 생명선 하나(lane)와 짧은 말, 시각, 소스 위치(ref)를 가집니다.
+function hopsOf(D, st, pid, nameOf) {
+  const out = [], me = pid[st.session], many = D.tables.length > 1, si = D.steps.indexOf(st);
+  const purpose = x => x.stack.some(f => /PortalStart|PortalRunMulti/.test(f.fn)) ? "실행용" : "계획용";
+  const snap = x => `${x.xmin}:${x.xmax}:${(x.xip || []).join(",")}`;
+  const tm = f => ({TM_Ok: "바꿀 수 있음", TM_BeingModified: f.xmax == st.requests[0]?.events.find(e => e.kind === "xid")?.f.xid ? "내 잠금" : `xmax ${f.xmax} 진행 중`, TM_Updated: `이미 바뀜 (xmax ${f.xmax})`, TM_Invisible: "안 보임", TM_SelfModified: "내가 바꿈", TM_Deleted: "지워짐"}[f.result] || f.result);
+  // heap_lock_tuple의 결과(TM_Result)를 잠금의 말로 읽습니다.
+  const tl = res => ({TM_Ok: "잠금", TM_Updated: "이미 바뀜", TM_Deleted: "지워짐", TM_BeingModified: "다른 세션이 쓰는 중", TM_WouldBlock: "기다리지 않고 포기", TM_SelfModified: "내가 바꾼 행", TM_Invisible: "안 보임"}[res] || res || "");
+  for (const r of st.requests) {
+    const cur = r.snapshots.filter(x => x.kind === "CurrentSnapshotData");
+    cur.forEach(x => out.push({t: x.t, lane: "proc", text: `스냅숏 ${snap(x)} 찍음 · ${purpose(x)}`, ref: x.stack[x.stack.length - 2]?.at}));
+    const checks = r.checks.filter(c => D.tables.some(t => t.name === c.table));
+    if (!cur.length && checks.length) out.push({t: checks[0].t - 1, lane: "self", text: `스냅숏 다시 씀 · ${checks[0].snapXmin}:${checks[0].snapXmax}:`});
+    for (const t of D.tables) {
+      const cs = checks.filter(c => c.table === t.name);
+      if (cs.length) out.push({t: cs[0].t, lane: "buf", text: `${many ? t.name + " " : ""}행 버전 ${cs.length}개 판정 → ${cs.filter(c => c.visible).length}개 보임`, kind: "checks"});
+    }
+    const idle = [];
+    for (const e of r.events) {
+      // 소스 위치는 그 함수를 부른 줄입니다(스택의 끝에서 두 번째 칸). 끝 칸은 그 함수 안이라 판단의 자리가 아닙니다.
+      const f = e.f || {}, at = e.stack?.[e.stack.length - 2]?.at;
+      switch (e.kind) {
+        case "xid": out.push({t: e.t, lane: "proc", text: `번호 ${f.xid} 받음`}); break;
+        case "lock":
+          if (f.type === "transactionid" && f.mode === "ExclusiveLock") out.push({t: e.t, lane: "lock", text: `자기 번호 ${f.xid}에 락`});
+          if (f.type === "tuple") out.push({t: e.t, lane: "lock", text: `행 ${f.ctid} 락`});
+          break;
+        case "update_check": out.push({t: e.t, lane: "buf", text: `(0,${f.off}) 바꾸기 전 확인 → ${tm(f)}`, ref: at, cls: f.result === "TM_Ok" ? "" : "warn"}); break;
+        case "xact_wait": out.push({t: e.t, lane: "lock", text: `${f.xid}${pp(f.xid, "이", "가")} 끝나기를 기다림${OPER[f.oper] ? ` · ${OPER[f.oper]}` : ""}`, ref: at, cls: "wait", wait: r.events.find(x => x.kind === "proc_sleep")}); break;
+        case "alarm": out.push({t: e.t, lane: "self", text: "1초 타이머 울림 (deadlock_timeout)"}); break;
+        case "deadlock_check": {
+          // 결과는 DeadLockCheck의 반환값입니다. 실험 1의 기록에는 그 값이 없어, 검사 뒤 다시 잠든 것만 압니다.
+          const res = f.result, hard = res === "HardDeadlock";
+          out.push({t: e.t + 0.1, lane: "self", text: hard ? "교착 검사 (DeadLockCheck) → 교착 찾음, 이 세션이 빠짐" : res === "NoDeadlock" ? "교착 검사 (DeadLockCheck) → 교착 없음, 다시 잠듦" : "교착 검사 (DeadLockCheck) → 다시 잠듦", cls: hard ? "err" : ""});
+          break;
+        }
+        case "tuple_lock": out.push({t: e.t, lane: "buf", text: `${many ? f.table + " " : ""}행 (0,${f.off}) ${MODE[f.mode] || f.mode} 잠금 → ${tl(f.result)}`, ref: at, cls: f.result && f.result !== "TM_Ok" ? "warn" : ""}); break;
+        case "hint": {
+          // 판정 밖에서 쓴 힌트 비트입니다. 쓰기로 정한 함수는 SetHintBits·HeapTupleSetHintBits로 내려오기 전의 함수
+          // (UpdateXmaxHintBits, HeapTupleSatisfiesDirty 등)이고, 소스 위치는 그 함수 안에서 힌트를 고른 줄입니다.
+          const st = e.stack || [], k = st.findLastIndex(x => !/SetHintBits$/.test(x.fn)), by = st[k], caller = st[k - 1];
+          out.push({t: e.t, lane: "buf", text: `${many ? f.table + " " : ""}${f.ctid} 힌트 ${HINT[f.bit] || f.bit} 씀${by ? ` · ${by.fn}${caller ? ` ← ${caller.fn}` : ""}` : ""}`, ref: by?.at || f.at});
+          break;
+        }
+        case "multixact": out.push({t: e.t, lane: "mx", text: `MultiXact ${f.id} 만듦 = ${f.xid1} ${MXST[f.st1] || f.st1} + ${f.xid2} ${MXST[f.st2] || f.st2}`, ref: at}); break;
+        case "kill": if (+f.args.split(",")[0] === me) out.push({t: e.t + 0.05, lane: "self", text: "자기에게 SIGURG", cls: "selfkill"}); break;
+        case "wake": out.push({t: e.t, lane: "wake", text: `세션 ${nameOf[+f.who]?.slice(1)} 깨움 · ProcWakeup → SIGURG`, who: +f.who, ref: at}); break;
+        case "epq": out.push({t: e.t, lane: "self", text: "새 버전으로 WHERE 다시 계산 (EvalPlanQual)", ref: at}); break;
+        case "ereport": out.push({t: e.t, lane: "self", text: `오류 · ${fileLine(f.at)}`, ref: f.at, cls: "err"}); break;
+        case "commit_clog": out.push({t: e.t, lane: "clog", kind: f.async ? "async_commit" : "commit", lsn: f.lsn, text: f.async ? `${f.xid} 커밋 기록 · WAL ${f.lsn}은 아직 디스크 전 (비동기)` : `${f.xid} 커밋 기록`, ref: at, cls: f.async ? "warn" : ""}); break;
+        case "abort_clog": out.push({t: e.t, lane: "clog", text: `${f.xid} 중단 기록`, ref: at}); break;
+        // WAL 쓰기는 쓴 범위를 LSN으로 적습니다(해석기가 파일 이름과 파일 안 위치로 옮긴 값). 범위가 없는 기록은 쓰기를 빼고 동기화만 적습니다.
+        case "io":
+          if (f.lsn0) out.push({t: e.t, lane: "disk", kind: "io", text: `WAL ${f.lsn0}–${f.lsn1} pwrite (${kb(+f.len)} KB)`, t1: e.t1});
+          else if (f.call !== "pwrite64") out.push({t: e.t, lane: "disk", kind: "io", text: `WAL ${f.call} ${ms(+f.durUs)} ms`, t1: e.t1});
+          break;
+        case "wal_flush": out.push({t: e.t, lane: "disk", kind: "wal_flush", lsn: f.lsn, text: `WAL을 ${f.lsn}까지 디스크로 내림 (XLogFlush)`, ref: at}); break;
+        case "async_lsn": out.push({t: e.t, lane: "disk", kind: "async_lsn", lsn: f.lsn, text: `기다리지 않고 WAL ${f.lsn}만 WAL writer에 남김 (XLogSetAsyncXactLSN)`, ref: at, cls: "warn"}); break;
+        case "hint_fpi": out.push({t: e.t, lane: "disk", kind: "hint_fpi", text: `힌트 비트를 쓰려고 페이지 사진을 WAL에 넣음 (FPI_FOR_HINT, 버퍼 ${f.buf}) → ${f.lsn}`, ref: at}); break;
+        // SERIALIZABLE(실험 4). SIRead 락은 읽은 범위를 공유 메모리에 적어 두는 표시이고 누구도 기다리게 하지 않습니다. 쓰기는 그 표시를
+        // 행·페이지·표 차례로 찾아 읽은 쪽 → 쓴 쪽의 rw 간선을 긋고, 커밋 전 검사가 간선이 이어진 꼴을 보고 한쪽을 중단시킵니다.
+        // 락 요청의 끝에는 그 요청을 부른 함수를 적습니다. 순차 스캔은 표 전체를, 인덱스 스캔은 인덱스 페이지와 행을 잠급니다.
+        case "ssi_begin": out.push({t: e.t, lane: "ssi", text: "직렬화 트랜잭션으로 등록 (SERIALIZABLEXACT를 받음)", ref: at}); break;
+        case "pred_lock": case "conflict_in": case "conflict_out":
+          if (!ssiBegun(D, si, e.t)) { idle.push(e); break; }
+          // 만들지 않은 까닭은 둘입니다. 이 트랜잭션이 쓴 행이면 쓰기 락이 대신하고(PredicateLockTID, predicate.c 2632~2637행),
+          // 아니면 같거나 더 굵은 SIRead 락이 이미 있습니다(2648·2524·2527행).
+          if (e.kind === "pred_lock") {
+            const mine = f.gran === "tuple" && f.txid === txEvent(D, si, e.t, "xid")?.f.xid;
+            const [blk, off] = (f.ctid || "").replace(/[()]/g, "").split(",");
+            const lock = {pid: me, type: f.gran, relation: f.rel, page: f.gran === "page" ? f.blk : f.gran === "tuple" ? blk : "", tuple: f.gran === "tuple" ? off : ""};
+            out.push({t: e.t, lane: "ssi", kind: "pred_lock", created: f.created === "1", lock, text: `SIRead 락 · ${predWhere(f)} → ${f.created === "1" ? "새로 만듦" : mine ? "내가 쓴 행이라 만들지 않음" : "이미 덮는 락이 있어 그대로"} · ${e.stack?.[e.stack.length - 2]?.fn ?? ""}`, ref: at, cls: f.created === "1" ? "" : "mute"});
+          }
+          else if (e.kind === "conflict_in") out.push({t: e.t, lane: "ssi", kind: "conflict_in", text: "쓰기 전 검사: 이 행에 걸린 남의 SIRead 락을 행 → 페이지 → 표 차례로 찾음", ref: at});
+          else out.push({t: e.t, lane: "ssi", text: `읽은 행을 다른 직렬화 트랜잭션 ${f.xid}${pp(f.xid, "이", "가")} 바꿨는지 검사`, ref: at});
+          break;
+        case "conflict_target": out.push({t: e.t, lane: "ssi", kind: "conflict_target", where: predWhere(f), flagged: f.flagged === "1", text: `↳ ${predWhere(f)} → ${f.flagged === "1" ? "남의 SIRead 락 있음, 간선 그음" : "간선 없음"}`, ref: at, cls: f.flagged === "1" ? "" : "mute"}); break;
+        case "rw_conflict": {
+          // FlagRWConflict(reader, writer). 간선은 읽은 쪽에서 쓴 쪽으로 갑니다: 직렬 순서로 놓으면 읽은 쪽이 쓴 쪽보다 앞이어야 합니다.
+          const rd = nameOf[+f.rpid]?.slice(1) ?? f.rpid, wr = nameOf[+f.wpid]?.slice(1) ?? f.wpid;
+          out.push({t: e.t, lane: "ssi", kind: "rw", r: rd, w: wr, text: `rw 간선 세션 ${rd} → 세션 ${wr} · 세션 ${rd}${pp(rd, "이", "가")} 읽은 것을 세션 ${wr}${pp(wr, "이", "가")} 바꿈`, ref: at, cls: "warn"});
+          break;
+        }
+        case "ssi_precommit": {
+          if (f.sxact === "none") { idle.push(e); break; }
+          const doomed = /DOOMED/.test(f.flags);
+          out.push({t: e.t, lane: "ssi", kind: "precommit", doomed, text: doomed ? "커밋 전 SSI 검사 → 이 트랜잭션의 flags에 DOOMED" : `커밋 전 SSI 검사 → ${f.flags ? `flags ${f.flags}` : "flags 비어 있음"}, 통과`, ref: at, cls: doomed ? "err" : ""});
+          break;
+        }
+        case "ssi_clear": out.push({t: e.t, lane: "ssi", kind: "ssi_clear", text: "끝난 직렬화 트랜잭션들의 SIRead 락을 지움 (ClearOldPredicateLocks)", ref: at}); break;
+        case "index_insert": out.push({t: e.t, lane: "buf", text: "B-tree에 항목 넣음 (_bt_doinsert)", ref: at}); break;
+      }
+    }
+    // 직렬화 트랜잭션이 아니라 바로 돌아온 SSI 함수는 함수마다 한 줄로 적습니다(시각은 그 함수의 첫 호출).
+    [...new Set(idle.map(ssiFn))].forEach(fn => {
+      const es = idle.filter(e => ssiFn(e) === fn), e = es[0];
+      out.push({t: e.t, lane: "ssi", text: `${fn}${es.length > 1 ? ` ×${es.length}` : ""} → 직렬화 트랜잭션이 아니라 바로 돌아옴`, ref: e.stack?.[e.stack.length - 2]?.at, cls: "mute"});
+    });
+  }
+  return out.sort((a, b) => a.t - b.t);
+}
+
+let M;
+function load() { M = build(RUNS[SC + "/" + RUN]); CUR = Math.max(0, Math.min(CUR, M.frames.length - 1)); }
+function save() { location.replace("#" + new URLSearchParams({sc: SC, run: RUN, f: CUR, ...(SRC ? {src: SRC} : {})})); }
+
+function header() {
+  document.getElementById("title").textContent = TITLE[SC.split("-")[0]] || "트랜잭션 관측";
+  document.getElementById("scs").innerHTML = SCS.map(k => `<button data-sc="${k}" aria-pressed="${k === SC}">${esc(LABEL[k] || k)}</button>`).join("");
+  const runs = Object.keys(RUNS).filter(k => k.startsWith(SC + "/")).map(k => k.split("/")[1]);
+  document.getElementById("runs").innerHTML = runs.map((r, i) => `<button data-run="${r}" aria-pressed="${r === RUN}">실행 ${i + 1}</button>`).join("");
+  document.getElementById("pos").textContent = `${CUR + 1} / ${M.frames.length}`;
+}
+
+// psql 창. 지금 장면까지 보낸 문장과 받은 출력을 쌓습니다. 프롬프트는 트랜잭션 밖 =#, 안 =*#, 실패한 트랜잭션 안 =!#입니다(psql %x).
+// kill한 세션은 kill 장면부터 끝난 것으로 적고, kill 뒤에 처음 접속한 세션은 첫 문장 전까지 접속 전으로 적습니다.
+function term(sess) {
+  const {D, frames, first, done, pid} = M, n = sess.slice(1);
+  const head = `<span class="h">세션 ${n} · psql · 백엔드 pid ${pid[sess]}</span>`;
+  const i0 = D.steps.findIndex(st => st.session === sess);
+  if (i0 >= 0 && epochAt(D, D.steps[i0].t0) > 0 && first[i0] > CUR)
+    return `${head}<div class="body"><div><span class="x">아직 접속 전 · 서버가 다시 뜬 뒤 이 세션이 처음 접속합니다</span></div></div>`;
+  const killK = frames.findIndex(f => f.kind === "crash" && f.kill.session === sess);
+  let s = "", state = "#", waiting = false;
+  D.steps.forEach((st, i) => {
+    if (st.session !== sess || first[i] > CUR) return;
+    s += `<span class="p">postgres=${state}</span> ${esc(st.sql)}\n`;
+    if (/^BEGIN/i.test(st.sql)) state = "*#";
+    if (done[i] > CUR) { s += `<span class="w">▌ 응답을 기다리는 중</span>\n`; waiting = true; return; }
+    const out = st.output.filter((l, k, a) => !(l === "" && k === a.length - 1));
+    out.forEach(l => {
+      if (/^ERROR/.test(l)) { s += `<span class="e">${esc(l)}</span>\n`; if (state === "*#") state = "!#"; return; }
+      s += esc(l) + "\n";
+    });
+    if (/^(COMMIT|ROLLBACK)/i.test(st.sql)) state = "#";
+  });
+  if (killK >= 0 && killK <= CUR) {
+    s += `<span class="e">▌ 드라이버가 이 psql의 백엔드(pid ${pid[sess]})에 SIGKILL을 보냈습니다.</span>\n<span class="x">이 실험은 그 뒤 이 psql에 문장을 보내지 않았습니다.</span>\n`;
+    waiting = true;
+  }
+  if (!waiting) s += `<span class="p">postgres=${state}</span> `;
+  return `${head}<div class="body"><div>${s}</div></div>`;
+}
+
+function capOf(f) { return f.cap; }
+const ssiPage = () => M.ssi;
+
+// SIRead 락 한 줄(pg_locks의 꼴)을 대상의 말로 씁니다. 인덱스의 페이지 락도 relation에 인덱스 이름이 옵니다.
+const lockWhere = l => l.type === "relation" ? `표 ${l.relation} 전체` : l.type === "page" ? `${l.relation} 페이지 ${l.page}` : `${l.relation} 행 (${l.page},${l.tuple})`;
+// 이 장면이 끝날 때의 SSI 상태. SIRead 락은 이 장면의 관찰(f.cap)에서 고르고, 사라진 락은 앞 장면의 관찰과 이 장면에서 새로 만든 락
+// 가운데 이 장면의 관찰에 없는 것입니다(만들자마자 쓰기 전 검사가 지운 자기 행 락을 보이려고 만든 것도 넣음). rw 간선과 커밋 전
+// 검사의 flags는 이 장면의 마지막 일까지 기록된 사건입니다. 트랜잭션 번호와 상태는 세션마다 마지막으로 받은 번호와 관찰의 커밋 로그입니다.
+//
+// Returns: {now, gone, edges, sess: {S1, S2}, anySsi}. edges의 r·w는 읽은 쪽·쓴 쪽 세션 이름이고, here는 이 장면에서 그은 간선입니다.
+function ssiState(f) {
+  const {D, frames, nameOf} = M, tEnd = Math.max(f.start, ...f.hops.map(h => h.t));
+  const evs = D.steps.flatMap(st => st.requests.flatMap(r => r.events.map(e => ({...e, sess: st.session, n: st.n})))).filter(e => e.t <= tEnd);
+  const key = l => [l.pid, l.type, l.relation, l.page, l.tuple].join("|");
+  const now = (f.cap?.locks || []).filter(l => l.mode === "SIReadLock");
+  const prevF = frames[f.k - 1], prev = prevF && !prevF.kind ? (prevF.cap?.locks || []).filter(l => l.mode === "SIReadLock") : [];
+  const made = f.hops.filter(h => h.kind === "pred_lock" && h.created).map(h => h.lock);
+  const gone = [...new Map([...prev, ...made].filter(l => !now.some(n => key(n) === key(l))).map(l => [key(l), l])).values()];
+  const here = new Set(f.hops.filter(h => h.kind === "rw").map(h => h.t));
+  const edges = evs.filter(e => e.kind === "rw_conflict").map(e => ({r: nameOf[+e.f.rpid], w: nameOf[+e.f.wpid], t: e.t, n: e.n, here: here.has(e.t), rflags: e.f.rflags, wflags: e.f.wflags}));
+  const sess = {};
+  ["S1", "S2"].forEach(sn => {
+    const mine = evs.filter(e => e.sess === sn);
+    const xid = mine.findLast(e => e.kind === "xid")?.f.xid;
+    const pre = mine.findLast(e => e.kind === "ssi_precommit" && e.f.sxact !== "none");
+    sess[sn] = {xid, status: xid ? f.cap?.xacts?.[xid] : null, ssi: mine.some(e => e.kind === "ssi_begin"), doomed: !!pre && /DOOMED/.test(pre.f.flags), pre};
+  });
+  return {now, gone, edges, sess, anySsi: evs.some(e => e.kind === "ssi_begin")};
+}
+
+// 미니맵의 SSI 상자. 왼쪽은 세션마다 SIRead 락(관찰, 지운 것은 줄을 그음), 오른쪽은 rw 간선(기록)입니다. 원 안의 숫자가 세션이고,
+// 화살표는 읽은 쪽에서 쓴 쪽으로 갑니다.
+function ssiBox(f, cap, box, txt, on) {
+  const {pid, nameOf} = M, st = ssiState(f);
+  let s = box(310, 178, 270, 66, "shared", on) + txt(320, 194, "SSI · SIRead 락 (공유 메모리)", {bold: true});
+  const rows = [...st.now.map(l => ({l})), ...st.gone.map(l => ({l, gone: true}))];
+  if (!rows.length) s += txt(320, 210, st.anySsi ? "SIRead 락 없음" : "직렬화 트랜잭션 없음 · SIRead 락 없음", {size: 10, fill: "var(--mute)"});
+  rows.slice(0, rows.length > 4 ? 3 : 4).forEach(({l, gone}, k) => {
+    const sn = nameOf[l.pid] || "", y = 208 + k * 11, t = `${sn.slice(1)} · ${lockWhere(l)}`;
+    s += txt(320, y, t, {size: 9.5, mono: true, fill: gone ? "var(--mute)" : `var(--${sn.toLowerCase()})`, bold: !gone});
+    if (gone) s += `<line x1="320" y1="${y - 3.5}" x2="${322 + tw(t, 9.5) * 0.95}" y2="${y - 3.5}" stroke="var(--mute)"/>`;
+  });
+  if (rows.length > 4) s += txt(320, 241, `외 ${rows.length - 3}개`, {size: 9.5, fill: "var(--mute)"});
+  if (!st.anySsi) return s;
+  const X = {S1: 492, S2: 552}, Y = 212;
+  st.edges.forEach(e => {
+    const up = e.r === "S2", x0 = X[e.r] + (up ? -10 : 10), x1 = X[e.w] + (up ? 10 : -10), cy = up ? Y - 16 : Y + 16;
+    s += `<path d="M${x0} ${Y + (up ? -4 : 4)} Q${(x0 + x1) / 2} ${cy} ${x1} ${Y + (up ? -4 : 4)}" fill="none" stroke="${e.here ? "var(--now)" : "var(--shared)"}" stroke-width="${e.here ? 2.2 : 1.4}" marker-end="url(#mh)"/>`;
+  });
+  ["S1", "S2"].forEach(sn => {
+    const q = st.sess[sn], z = sn.toLowerCase(), bad = q.doomed || q.status === "aborted";
+    s += `<circle cx="${X[sn]}" cy="${Y}" r="10" fill="var(--${z}bg)" stroke="${bad ? "var(--wait)" : `var(--${z})`}" stroke-width="${bad ? 2.2 : 1.4}" ${q.ssi ? "" : 'stroke-dasharray="3 2"'}/>`;
+    s += txt(X[sn], Y + 4, sn.slice(1), {size: 11, anchor: "middle", bold: true});
+    const lab = q.status === "aborted" ? "중단" : q.doomed ? "DOOMED" : q.status === "committed" ? "커밋" : q.ssi ? "진행 중" : "";
+    s += txt(X[sn], 241, lab, {size: 9, anchor: "middle", bold: bad || q.status === "committed", fill: bad ? "var(--wait)" : q.status === "committed" ? "var(--ok)" : "var(--mute)"});
+  });
+  return s;
+}
+
+// 행 머리의 xmin·xmax를 글로 씁니다. 힌트 비트 ✓(커밋 확인)·✗(중단 확인), 잠금만인 xmax의 모드, MultiXact를 함께 적습니다.
+// 힌트가 아직 없어도 관찰한 커밋 로그에서 중단이면 “중단”을 붙입니다.
+const hasF = (v, n) => v.flags.includes(n);
+function xminText(v, cap) {
+  return v.xmin + (hasF(v, "HEAP_XMIN_COMMITTED") ? "✓" : hasF(v, "HEAP_XMIN_INVALID") ? "✗" : cap?.xacts?.[v.xmin] === "aborted" ? " 중단" : "");
+}
+function xmaxText(v) {
+  if (v.xmax === "0") return "없음";
+  if (hasF(v, "HEAP_XMAX_IS_MULTI")) return `MultiXact ${v.xmax}`;
+  const lock = !hasF(v, "HEAP_XMAX_LOCK_ONLY") ? "" : hasF(v, "HEAP_XMAX_EXCL_LOCK") && hasF(v, "HEAP_XMAX_KEYSHR_LOCK") ? " (share 잠금만)" :
+    hasF(v, "HEAP_XMAX_EXCL_LOCK") ? " (FOR UPDATE 잠금만)" : hasF(v, "HEAP_XMAX_KEYSHR_LOCK") ? " (key share 잠금만)" : " (잠금만)";
+  return v.xmax + lock + (hasF(v, "HEAP_XMAX_COMMITTED") ? "✓" : hasF(v, "HEAP_XMAX_INVALID") ? "✗" : "");
+}
+// 이 장면이 끝날 때까지 만든 MultiXact. 장면의 마지막 일의 시각까지 기록된 MultiXactIdCreate입니다.
+function mxUpTo(f) {
+  const tEnd = Math.max(f.start, ...f.hops.map(h => h.t));
+  return M.D.steps.flatMap(st => st.requests.flatMap(r => r.events)).filter(e => e.kind === "multixact" && e.t <= tEnd);
+}
+function mxById(id) { return M.D.steps.flatMap(st => st.requests.flatMap(r => r.events)).find(e => e.kind === "multixact" && e.f.id === String(id)); }
+
+// 미니맵. 백엔드 둘이 같은 공유 메모리를 씁니다. 공유 버퍼 상자에는 그 장면 뒤에 관찰용 접속이 읽은 페이지 내용을 그대로 그립니다.
+function minimap() {
+  const {D, frames, pid, nameOf} = M, f = frames[CUR], cap = capOf(f);
+  const act = Object.fromEntries((cap?.activity || []).map(a => [a.pid, a]));
+  const lanes = new Set(f.hops.map(h => h.lane));
+  let s = `<defs><marker id="mh" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs>`;
+  const zone = (x0, y0, x1, y1, z, label) => `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="8" fill="var(--${z}bg)" fill-opacity=".35" stroke="var(--${z})" stroke-opacity=".4"/><text x="${x0 + 8}" y="${y0 + 15}" font-size="10.5" font-weight="600" fill="var(--${z})">${label}</text>`;
+  const box = (x, y, w, h, z, on) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="var(--card)" stroke="${on ? "var(--now)" : `var(--${z})`}" stroke-width="${on ? 2.4 : 1}"/>`;
+  const txt = (x, y, t, o = {}) => `<text x="${x}" y="${y}" font-size="${o.size || 11}" ${o.mono ? 'class="mono"' : ""} ${o.anchor ? `text-anchor="${o.anchor}"` : ""} font-weight="${o.bold ? 600 : 400}" fill="${o.fill || "var(--ink)"}">${esc(t)}</text>`;
+  s += zone(4, 4, 80, 250, "client", "클라이언트");
+  // 세션의 백엔드가 kill로 끝났거나(kill 장면부터), kill 뒤에 처음 접속하는 세션이 아직 접속 전이면 상자에 그 사실만 적습니다.
+  const gone = sn => frames.some((g, k) => g.kind === "crash" && g.kill.session === sn && k <= CUR);
+  const notYet = sn => { const i0 = D.steps.findIndex(st => st.session === sn); return i0 >= 0 && epochAt(D, D.steps[i0].t0) > 0 && M.first[i0] > CUR; };
+  ["S1", "S2"].forEach((sn, k) => {
+    const y0 = k ? 130 : 4, z = sn.toLowerCase(), a = act[pid[sn]] || {}, on = f.sess === sn;
+    s += zone(88, y0, 292, y0 + 120, z, `세션 ${k + 1} 백엔드 · pid ${pid[sn]}`);
+    s += box(12, y0 + 46, 60, 30, "client", on) + txt(42, y0 + 65, `psql ${k + 1}`, {anchor: "middle", bold: true});
+    if (gone(sn) || notYet(sn)) {
+      s += `<rect x="100" y="${y0 + 24}" width="180" height="88" rx="6" fill="var(--card)" stroke="var(--${gone(sn) ? "wait" : z})" stroke-dasharray="5 4"/>`;
+      s += txt(110, y0 + 46, gone(sn) ? "SIGKILL로 끝남" : "아직 접속 전", {size: 11.5, bold: true, fill: gone(sn) ? "var(--wait)" : "var(--mute)"});
+      s += txt(110, y0 + 64, gone(sn) ? "드라이버가 kill -9를 보냄" : "서버가 다시 뜬 뒤 접속", {size: 10.5, fill: "var(--mute)"});
+      return;
+    }
+    s += box(100, y0 + 24, 180, 88, z, on);
+    const waitOn = a.waitType === "Lock";
+    s += txt(110, y0 + 42, a.state || "", {size: 11, bold: true, fill: waitOn ? "var(--wait)" : "var(--ink)"});
+    s += txt(110, y0 + 60, waitOn ? `락을 기다림 · ${a.waitEvent}` : (a.waitEvent ? `${a.waitType} · ${a.waitEvent}` : ""), {size: 10.5, fill: waitOn ? "var(--wait)" : "var(--mute)"});
+    s += txt(110, y0 + 80, `xid ${a.xid || "없음"} · xmin ${a.xmin || "없음"}`, {size: 10.5, mono: true, fill: "var(--sub)"});
+    s += txt(110, y0 + 98, on ? "지금 이 백엔드가 일함" : "", {size: 10, fill: "var(--now)"});
+    s += `<path d="M72 ${y0 + 61} L100 ${y0 + 61}" stroke="${on ? "var(--now)" : "var(--line)"}" stroke-width="${on ? 2.4 : 1.2}" marker-end="url(#mh)"/>`;
+  });
+  s += zone(300, 4, 812, 250, "shared", f.kind === "crash" ? "공유 메모리 · postmaster가 지우고 다시 만든 뒤" : "공유 메모리 (두 백엔드가 같은 곳을 씀)");
+  // 공유 버퍼의 페이지. 표마다 0번 페이지의 줄을 쌓습니다. 줄마다 값, xmin·xmax, 힌트 비트(✓ 커밋 확인, ✗ 중단 확인)를 적고,
+  // 이 장면에서 켜진 힌트 비트는 누가 썼는지 붙입니다. 실험 1의 기록에는 힌트 변화에 표 이름이 없어 첫 표로 봅니다.
+  // 물러선 페이지의 힌트 변화는 앞 장면에서 이미 보였으므로 다시 강조하지 않습니다.
+  const hints = f.capBack.includes("pages") ? [] : (D.hintChanges || []).filter(h => h.step === f.capStep);
+  const tbls = D.tables.filter(t => (cap?.pages?.[t.name] || []).length);
+  const nRows = tbls.reduce((n, t) => n + cap.pages[t.name].length, 0);
+  // SERIALIZABLE을 관찰한 실행(실험 4)은 공유 버퍼 상자 아래를 SSI 상자에 내줍니다. 그 실행의 표는 하나라 표 이름 줄이 없습니다.
+  const ssi = ssiPage(), BH = ssi ? 148 : 220;
+  const RH = Math.min(38, Math.floor((BH - 24 - (ssi && tbls.length < 2 && D.tables.length < 2 ? 0 : tbls.length * 14)) / Math.max(1, nRows)));
+  s += box(310, 24, 270, BH, "shared", lanes.has("buf")) + txt(320, 41, "공유 버퍼 (표마다 0번 페이지, 8 KB)", {bold: true});
+  let py = 47;
+  tbls.forEach(t => {
+    if (tbls.length > 1 || D.tables.length > 1) { s += txt(320, py + 10, t.name, {size: 10, bold: true, fill: "var(--sub)"}); py += 14; }
+    cap.pages[t.name].forEach(v => {
+      const ctid = `(${v.block},${v.lp})`, h = hints.filter(x => (x.table || D.tables[0].name) === t.name && x.ctid === ctid);
+      s += `<rect x="320" y="${py}" width="250" height="${RH - 6}" rx="4" fill="var(--sharedbg)" fill-opacity=".45" stroke="${h.length ? "var(--now)" : "var(--shared)"}" stroke-opacity="${h.length ? 1 : .45}" stroke-width="${h.length ? 2 : 1}"/>`;
+      const vals = t.columns.map(c => `${c.name} ${v.values[c.name]}`).join(" · ");
+      s += txt(328, py + 13, `줄 ${v.lp}  ${vals.length > 34 ? vals.slice(0, 33) + "…" : vals}`, {size: 10.5, mono: true});
+      s += txt(328, py + 25, `xmin ${xminText(v, cap)} · xmax ${xmaxText(v)}${v.ctid !== ctid ? ` → ${v.ctid}` : ""}`, {size: 10, mono: true, fill: "var(--sub)"});
+      if (h.length) s += txt(566, py + 13, h.map(x => `${/INVALID/.test(x.bit) ? "✗" : "✓"} ${x.by}`).join(" "), {size: 10, anchor: "end", fill: "var(--now)", bold: true});
+      py += RH;
+    });
+  });
+  // 프로세스 배열, 락 테이블, 커밋 로그
+  s += box(590, 24, 212, 70, "shared", lanes.has("proc")) + txt(600, 41, "프로세스 배열 (번호와 스냅숏)", {bold: true});
+  ["S1", "S2"].forEach((sn, k) => { const a = act[pid[sn]] || {}; s += txt(600, 58 + k * 15, `세션 ${k + 1}: xid ${a.xid || "-"} · xmin ${a.xmin || "-"}`, {size: 10.5, mono: true, fill: "var(--sub)"}); });
+  if (ssi) s += ssiBox(f, cap, box, txt, lanes.has("ssi"));
+  // SIRead 락은 락 테이블이 아니라 술어 락의 해시에 있으므로(pg_locks가 함께 보일 뿐) 여기서 빼고 SSI 상자에 그립니다.
+  const locks = (cap?.locks || []).filter(l => (l.type === "transactionid" || l.type === "tuple") && l.mode !== "SIReadLock");
+  s += box(590, 100, 212, 70, "shared", lanes.has("lock")) + txt(600, 117, "락 테이블", {bold: true});
+  locks.slice(0, 3).forEach((l, k) => s += txt(600, 133 + k * 13, `세션 ${nameOf[l.pid]?.slice(1)} ${l.type === "tuple" ? `행 ${l.page},${l.tuple}` : `번호 ${l.xid}`} ${l.mode.replace("Lock", "")}${l.granted ? "" : " 기다림"}`, {size: 10, mono: true, fill: l.granted ? "var(--sub)" : "var(--wait)"}));
+  if (!locks.length) s += txt(600, 135, "번호·행 락 없음", {size: 10, fill: "var(--mute)"});
+  // 커밋 로그와 MultiXact. MultiXact는 관찰용 접속이 읽지 않으므로, 이 장면까지 기록된 MultiXactIdCreate로 보입니다.
+  const mxs = mxUpTo(f);
+  s += box(590, 176, 212, 68, "shared", lanes.has("clog") || lanes.has("mx")) + txt(600, 193, mxs.length ? "커밋 로그 · MultiXact" : "커밋 로그 (번호마다 상태)", {bold: true});
+  const xs = Object.entries(cap?.xacts || {}).map(([x, st]) => `${x} ${{committed: "커밋", "in progress": "진행 중", aborted: "중단"}[st] || st}`);
+  xs.forEach((x, k) => s += txt(600 + (k % 2) * 100, 208 + Math.floor(k / 2) * 13, x, {size: 10, mono: true, fill: "var(--sub)"}));
+  mxs.forEach((e, k) => s += txt(600, 208 + Math.ceil(xs.length / 2) * 13 + k * 13, `MultiXact ${e.f.id} = ${e.f.xid1}, ${e.f.xid2}`, {size: 10, mono: true, fill: "var(--shared)", bold: true}));
+  s += zone(820, 4, 956, 250, "disk", "디스크");
+  // WAL의 세 위치(관찰이 함께 읽은 pg_current_wal_insert_lsn·pg_current_wal_lsn·pg_current_wal_flush_lsn). 쓴 곳·내린 곳이
+  // 넣은 곳보다 뒤면 그만큼은 아직 공유 메모리의 WAL 버퍼에만 있습니다. kill 장면은 kill 전에 커널에 넘긴 끝을 더 적습니다.
+  const w = cap?.wal;
+  s += box(828, 24, 120, 132, "disk", lanes.has("disk")) + txt(836, 41, "WAL", {bold: true});
+  if (w) {
+    const ins = lsnNum(w.insert), lag = x => ins - lsnNum(x);
+    [["넣은 곳", w.insert, 0], ["쓴 곳", w.write, lag(w.write)], ["내린 곳", w.flush, lag(w.flush)]].forEach(([k, v, d], i) => {
+      s += txt(836, 58 + i * 26, k, {size: 9.5, fill: "var(--mute)"});
+      s += txt(836, 70 + i * 26, `${v}${d > 0 ? ` −${kb(d)}K` : ""}`, {size: 10, mono: true, fill: d > 0 ? "var(--wait)" : "var(--sub)", bold: d > 0});
+    });
+    if (f.kind === "crash") s += txt(836, 146, `kill 전 커널: ${f.kill.walWritten || "쓰기 없음"}`, {size: 9.5, fill: "var(--wait)", bold: true});
+  }
+  s += box(828, 164, 120, 40, "disk", false) + txt(888, 188, "데이터 파일", {anchor: "middle", bold: true});
+  const wk = f.hops.find(h => h.lane === "wake");
+  if (wk) s += `<path d="M190 130 C 200 120, 200 120, 190 112" stroke="var(--wait)" stroke-width="2.4" fill="none" stroke-dasharray="4 3" marker-end="url(#mh)"/>` + txt(204, 126, "깨움", {size: 10.5, fill: "var(--wait)", bold: true});
+  // 관찰 시각은 페이지를 읽은 구간입니다(질의를 받은 때부터 관찰용 접속이 다음 질의를 받은 때까지). 실험 1·2 기록은 해석기가 strace에서 구합니다.
+  if (cap) { const r = cap.reads?.pages; s += txt(952, 248, r ? `페이지 관찰: +${ms(r[0])}~${ms(r[1])} ms` : `관찰: +${ms(cap.t)} ms`, {size: 9.5, anchor: "end", fill: "var(--mute)"}); }
+  document.getElementById("mm").innerHTML = s;
+}
+
+// 시간 순서. 세로로 장면이 쌓이고, 가로로 생명선이 있습니다. 세션의 일은 생명선에서 상자 쪽으로 가는 화살표입니다.
+const L = {S1: 120, proc: 270, buf: 350, lock: 430, clog: 510, mx: 590, disk: 665, S2: 790}, LW = 880;
+function lanes() {
+  const {frames, pid} = M;
+  const ROW = 22;
+  let s = `<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker>
+  <pattern id="hw" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="var(--wait)" stroke-width="2.4"/></pattern></defs>`;
+  const head = (x, t, z, w) => `<rect x="${x - w / 2}" y="6" width="${w}" height="28" rx="6" fill="var(--card)" stroke="var(--${z})"/><text x="${x}" y="25" text-anchor="middle" font-size="11.5" font-weight="600" fill="var(--ink)">${t}</text>`;
+  // SSI의 일(실험 4)은 MultiXact 자리에 그립니다. 실험 1~3의 기록에는 SSI 사건이 없고, 실험 4에는 MultiXact가 없습니다.
+  const ssiRun = frames.some(f => f.hops.some(h => h.lane === "ssi")), mxRun = frames.some(f => f.hops.some(h => h.lane === "mx"));
+  document.getElementById("lanehead").innerHTML = head(L.S1, "세션 1 백엔드", "s1", 120) + head(L.proc, "프로세스 배열", "shared", 76) + head(L.buf, "공유 버퍼", "shared", 70) + head(L.lock, "락 테이블", "shared", 70) + head(L.clog, "커밋 로그", "shared", 70) + head(L.mx, ssiRun ? (mxRun ? "MultiXact·SSI" : "SSI 술어 락") : "MultiXact", "shared", ssiRun ? 80 : 70) + head(L.disk, "WAL", "disk", 54) + head(L.S2, "세션 2 백엔드", "s2", 120);
+  // 쉼은 그 뒤에 온 단계 앞에 그립니다. 같은 단계 앞에 kill도 있으면 쉼 → kill → 단계 순서라 kill 장면 앞에 그립니다.
+  // 쉬는 동안 WAL writer가 쓴 일(bgWrites)은 쉼 줄 아래에 적습니다.
+  const pauseOf = f => (M.D.pauses || []).findIndex(p => f.kind === "crash" ? p.beforeStep === f.kill.beforeStep :
+    f.part !== "after" && p.beforeStep === f.st.n && !(M.D.kills || []).some(kl => kl.beforeStep === p.beforeStep));
+  let y = 8; const tops = [], hopY = [], pauseAt = {}, crashL = {};
+  frames.forEach((f, k) => {
+    const pi = pauseOf(f);
+    if (pi >= 0) { const p = M.D.pauses[pi], bg = M.pauseBg[pi] || []; pauseAt[k] = {y: y + 10, ms: p.t1 - p.t, bg}; y += 22 + bg.length * 16; }
+    tops.push(y);
+    if (f.kind === "crash") { crashL[k] = crashLayout(f); hopY.push([]); y += crashL[k].h + 12; return; }
+    hopY.push(f.hops.map((h, j) => y + 40 + j * ROW)); y += 34 + f.hops.length * ROW + 12;
+  });
+  const H = y + 8;
+  Object.values(L).forEach(x => s += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="var(--line)" stroke-dasharray="3 4"/>`);
+  Object.entries(pauseAt).forEach(([k, p]) => {
+    s += `<line x1="60" y1="${p.y}" x2="${LW - 8}" y2="${p.y}" stroke="var(--mute)" stroke-dasharray="2 4"/><text x="${LW / 2}" y="${p.y - 3}" font-size="10.5" text-anchor="middle" fill="var(--mute)">드라이버가 ${ms(p.ms)} ms 쉼 (시나리오의 pause)</text>`;
+    p.bg.forEach((h, i) => s += `<text x="${L.disk - 10}" y="${p.y + 15 + i * 16}" font-size="10.5" text-anchor="end" fill="var(--disk)">쉬는 동안 +${ms(h.t)} ms · ${esc(h.text)}</text><line x1="${L.disk + 50}" y1="${p.y + 11 + i * 16}" x2="${L.disk + 6}" y2="${p.y + 11 + i * 16}" stroke="var(--disk)" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#ah)"/>`);
+  });
+  frames.forEach((f, k) => {
+    if (f.kind === "crash") { s += crashSvg(f, k, tops[k], crashL[k]); return; }
+    const top = tops[k], x = L[f.sess], col = f.sess === "S1" ? "var(--s1)" : "var(--s2)", right = f.sess === "S2";
+    const h = 30 + f.hops.length * ROW;
+    let g = `<g data-k="${k}" style="cursor:pointer" opacity="${k > CUR ? .28 : 1}">`;
+    g += `<rect x="2" y="${top - 4}" width="${LW - 4}" height="${h + 6}" rx="8" fill="${k === CUR ? "var(--accbg)" : "transparent"}"/>`;
+    g += `<text x="8" y="${top + 15}" font-size="11" fill="var(--mute)">${k + 1}</text>`;
+    g += `<text x="8" y="${top + 28}" font-size="9.5" fill="var(--mute)">+${ms(f.hops[0]?.t ?? f.st.t0)}</text>`;
+    const label = f.part === "after" ? "깨어나 이어서" : f.st.sql;
+    const bw = Math.min(LW - 120, 16 + [...label].reduce((w, c) => w + (c.charCodeAt(0) > 0x3000 ? 12 : 6.9), 0)), bx = right ? Math.max(60, LW - 8 - bw) : L.S1 - 50;
+    g += `<rect x="${bx}" y="${top}" width="${bw}" height="22" rx="6" fill="var(--card)" stroke="${col}" stroke-width="1.4" ${f.part === "after" ? 'stroke-dasharray="4 3"' : ""}/>`;
+    g += `<text x="${bx + 8}" y="${top + 15}" font-size="11" class="mono" fill="var(--ink)">${esc(label)}</text>`;
+    f.hops.forEach((hp, j) => {
+      const yy = hopY[k][j];
+      const c = hp.cls === "err" || hp.cls === "wait" ? "var(--wait)" : hp.cls === "warn" ? "var(--now)" : hp.cls === "mute" ? "var(--mute)" : hp.lane === "disk" ? "var(--disk)" : "var(--shared)";
+      if (hp.lane === "self") {
+        g += `<path d="M${x} ${yy - 6} h${right ? -18 : 18} v10 h${right ? 18 : -18}" fill="none" stroke="${hp.cls === "err" ? "var(--wait)" : col}" stroke-width="1.6" marker-end="url(#ah)"/>`;
+        g += `<text x="${x + (right ? -24 : 24)}" y="${yy + 2}" font-size="11" text-anchor="${right ? "end" : "start"}" fill="${hp.cls === "err" ? "var(--wait)" : "var(--ink)"}" font-weight="${hp.cls === "err" ? 600 : 400}">${esc(hp.text)}</text>`;
+        return;
+      }
+      // WAL writer의 일은 세션이 한 일이 아니므로, 세션 생명선이 아니라 오른쪽에서 WAL 쪽으로 점선을 긋습니다.
+      if (hp.bg) {
+        g += `<line x1="${L.disk + 50}" y1="${yy}" x2="${L.disk + 6}" y2="${yy}" stroke="var(--disk)" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#ah)"/>`;
+        g += `<text x="${L.disk - 10}" y="${yy + 4}" font-size="11" text-anchor="end" fill="var(--disk)">${esc(hp.text)}</text>`;
+        return;
+      }
+      if (hp.lane === "wake") {
+        const tx = L[M.nameOf[hp.who]];
+        g += `<path d="M${x} ${yy} L${tx + (tx < x ? 8 : -8)} ${yy}" stroke="var(--wait)" stroke-width="1.8" fill="none" stroke-dasharray="5 3" marker-end="url(#ah)"/>`;
+        g += `<text x="${(x + tx) / 2}" y="${yy - 4}" font-size="11" text-anchor="middle" fill="var(--wait)" font-weight="600">${esc(hp.text)}</text>`;
+        return;
+      }
+      const tx = L[hp.lane === "ssi" ? "mx" : hp.lane];
+      g += `<line x1="${x}" y1="${yy}" x2="${tx + (tx < x ? 6 : -6)}" y2="${yy}" stroke="${c}" stroke-width="1.6" marker-end="url(#ah)"/>`;
+      g += `<text x="${right ? x - 8 : x + 8}" y="${yy - 4}" font-size="11" ${right ? 'text-anchor="end"' : ""} fill="${hp.cls === "wait" || hp.cls === "err" ? "var(--wait)" : hp.cls === "mute" ? "var(--mute)" : "var(--ink)"}" ${hp.cls === "err" ? 'font-weight="600"' : ""}>${esc(hp.text)}</text>`;
+    });
+    g += `</g>`;
+    s += g;
+  });
+  // 기다림 띠: 기다리기 시작한 일에서 깨운 일까지, 기다린 세션의 생명선 위에 빗금을 긋습니다.
+  frames.forEach((f, k) => {
+    const j = f.hops.findIndex(h => h.cls === "wait");
+    if (j < 0 || k > CUR) return;
+    const sess = f.sess, y0 = hopY[k][j] + 4;
+    let y1 = H - 4;
+    frames.forEach((g, kk) => { const jj = g.hops.findIndex(h => h.lane === "wake" && M.nameOf[h.who] === sess); if (jj >= 0 && kk > k && kk <= CUR && y1 === H - 4) y1 = hopY[kk][jj]; });
+    const x = L[sess], w = f.hops[j].wait;
+    s += `<rect x="${x - 6}" y="${y0}" width="12" height="${y1 - y0}" fill="url(#hw)" stroke="var(--wait)" rx="3"/>`;
+    if (w) {
+      s += `<text x="${x - 10}" y="${y0 + 14}" font-size="11" fill="var(--wait)" text-anchor="end" font-weight="600">기다림</text>`;
+      s += `<text x="${x - 10}" y="${y0 + 28}" font-size="10.5" fill="var(--wait)" text-anchor="end">${ms(w.t1 - w.t)} ms</text>`;
+    }
+  });
+  const svg = document.getElementById("lanes");
+  svg.setAttribute("viewBox", `0 0 ${LW} ${H}`);
+  svg.setAttribute("width", "100%");
+  svg.innerHTML = s;
+  svg.querySelectorAll("g[data-k]").forEach(g => g.onclick = ev => { const c = ev.target.closest("[data-src]"); CUR = +g.dataset.k; SRC = c ? c.dataset.src : ""; render(); });
+}
+
+// 서버가 죽고 다시 뜨는 장면(kill 장면). 가로는 시간이고 구간마다 축척이 다릅니다(kill에서 자식이 모두 끝나기까지 몇 ms,
+// 공유 메모리를 다시 만드는 데 수백 ms). 줄마다 프로세스 하나이고, 위가 kill 전부터 있던 프로세스, 아래가 다시 띄운 프로세스입니다.
+// 얇은 막대는 살아 있던 때, 굵은 막대는 고른 함수에 머문 때(해석기의 server.spans), 세로선은 신호(보낸 쪽 → 받은 쪽),
+// 눈금은 복구가 다시 실행한 레코드(redo)와 pg_wal 쓰기입니다. 번호는 server.log의 이정표이고 뜻은 오른쪽에 적습니다.
+const ROLE = {postmaster: "postmaster", backend: "백엔드", observer: "관찰 접속", startup: "startup", checkpointer: "checkpointer", bgwriter: "bgwriter",
+  walwriter: "WAL writer", "io worker": "I/O 워커", "autovacuum launcher": "autovacuum launcher", "logical replication launcher": "논리 복제 launcher"};
+const SPANKO = {CreateSharedMemoryAndSemaphores: "공유 메모리 새로", SyncDataDirectory: "데이터 fsync", PerformWalRecovery: "WAL 다시 실행",
+  CreateCheckPoint: "복구 끝 체크포인트", CheckPointBuffers: "버퍼 쓰기", ProcessSyncRequests: "파일 fsync", RequestCheckpoint: "체크포인트를 기다림",
+  TerminateChildren: "자식 모두 끝내기", StartupXLOG: "StartupXLOG"};
+// server.log의 이정표. DETAIL 줄은 앞 줄에 딸린 것이라 번호를 주지 않습니다.
+// 글 너비의 어림(px). 한글은 글자 크기만큼, 그 밖은 0.6배로 봅니다. 겹치는 이름을 빼는 데만 씁니다.
+const tw = (t, size) => [...String(t)].reduce((w, c) => w + (c.charCodeAt(0) > 0x3000 ? size : size * .6), 0);
+function crashMarks(f) {
+  return (M.D.server?.events || []).filter(e => e.kind === "log" && e.t >= f.start - 1000 && e.t <= f.end + 1000 && e.f.level !== "DETAIL").map((e, i) => ({...e, n: i + 1}));
+}
+function crashLayout(f) {
+  const {D} = M, t0 = f.start, t1 = f.end, sv = D.server || {procs: [], events: [], spans: []};
+  const RO = Object.keys(ROLE), key = p => [p.role === "postmaster" ? -1 : p.t0 >= t0 ? 1 : 0, RO.indexOf(p.role), p.pid];
+  const rows = sv.procs.filter(p => p.t1 >= t0 - 1000 && p.t0 <= t1).sort((a, b) => { const x = key(a), y = key(b); return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; });
+  const evs = sv.events.filter(e => e.t >= t0 - 1000 && e.t <= t1 + 1000 && e.kind !== "bg_flush" && e.kind !== "log");
+  const spans = (sv.spans || []).filter(x => x.t1 >= t0 && x.t0 <= t1);
+  const marks = crashMarks(f);
+  const old = rows.filter(p => p.t0 < t0 && p.role !== "postmaster"), neu = rows.filter(p => p.t0 >= t0);
+  const sp = fn => spans.find(x => x.fn === fn);
+  // 구간의 경계와 그 구간의 이름. 경계가 기록에 없으면(복구할 레코드가 없으면 PerformWalRecovery가 짧음 등) 그 경계를 뺍니다.
+  const lastExit = Math.max(...old.map(p => p.t1).filter(x => x <= t1)), firstNew = Math.min(...neu.map(p => p.t0));
+  const pwr = sp("PerformWalRecovery"), ck = sp("CreateCheckPoint"), end = t1 + 300;
+  const cand = [[t0, "SIGQUIT · 자식이 끝남"], [lastExit + 50, "공유 메모리 다시 만듦"], [firstNew - 50, sp("SyncDataDirectory") ? "데이터 디렉터리 fsync" : "startup 준비"],
+    [pwr?.t0, "WAL 다시 실행"], [pwr?.t1, ""], [ck?.t0, "복구 끝 체크포인트"], [ck?.t1, ""], [end, null]]
+    .filter(([t]) => Number.isFinite(t) && t >= t0 && t <= end).sort((a, b) => a[0] - b[0]);
+  const B = cand.filter((c, i) => i === 0 || c[0] - cand[i - 1][0] > 20);
+  // 구간의 너비는 그 구간에 그릴 것의 수로 나눕니다(1 + √개수). 축척이 구간마다 다르므로 구간마다 실제 길이를 적습니다.
+  const X0 = 170, CW = LW - 10 - X0;
+  const n = B.slice(0, -1).map((b, i) => evs.filter(e => e.t >= b[0] && e.t < B[i + 1][0]).length + spans.filter(x => x.t0 >= b[0] && x.t0 < B[i + 1][0]).length + marks.filter(e => e.t >= b[0] && e.t < B[i + 1][0]).length);
+  const wt = n.map(c => 1 + Math.sqrt(c)), sum = wt.reduce((a, b) => a + b, 0);
+  const Wd = wt.map(w => Math.max(84, CW * w / sum)), sc = CW / Wd.reduce((a, b) => a + b, 0), W = Wd.map(w => w * sc);
+  const XS = W.reduce((a, w, i) => (a.push(a[i] + w), a), [X0]);
+  const x = t => { const tt = Math.max(B[0][0], Math.min(end, t)); let i = B.findIndex((b, j) => j < B.length - 1 && tt <= B[j + 1][0]); if (i < 0) i = B.length - 2; return XS[i] + (tt - B[i][0]) / Math.max(1, B[i + 1][0] - B[i][0]) * W[i]; };
+  const RH = 15, oldN = rows.filter(p => p.t0 < t0).length;
+  const rowY = (i) => 86 + i * RH + (i >= oldN ? 26 : 0);
+  return {rows, evs, spans, marks, B, XS, W, x, RH, oldN, rowY, h: rowY(rows.length) + 24};
+}
+function crashSvg(f, k, top, C) {
+  const {rows, evs, spans, marks, B, XS, W, x, RH, oldN, rowY} = C, kl = f.kill, killed = M.pid[kl.session] === kl.pid ? kl.session.slice(1) : "?";
+  const row = Object.fromEntries(rows.map((p, i) => [p.pid, i]));
+  let g = `<g data-k="${k}" style="cursor:pointer" opacity="${k > CUR ? .28 : 1}">`;
+  g += `<rect x="2" y="${top - 4}" width="${LW - 4}" height="${C.h + 6}" rx="8" fill="${k === CUR ? "var(--accbg)" : "transparent"}"/>`;
+  g += `<text x="8" y="${top + 15}" font-size="11" fill="var(--mute)">${k + 1}</text><text x="8" y="${top + 28}" font-size="9.5" fill="var(--mute)">+${ms(f.start)}</text>`;
+  const title = `kill -9 → 세션 ${killed} 백엔드 pid ${kl.pid} · 접속을 다시 받기까지 ${ms(f.end - f.start)} ms`;
+  g += `<rect x="70" y="${top}" width="${16 + [...title].reduce((w, c) => w + (c.charCodeAt(0) > 0x3000 ? 12 : 6.9), 0)}" height="22" rx="6" fill="var(--waitbg)" stroke="var(--wait)" stroke-width="1.4"/><text x="78" y="${top + 15}" font-size="11" font-weight="600" fill="var(--ink)">${esc(title)}</text>`;
+  // 구간 띠와 축
+  const ay = top + 50, yTop = top + rowY(0) - 8, yBot = top + rowY(rows.length - 1) + 8;
+  B.slice(0, -1).forEach((b, i) => {
+    g += `<rect x="${XS[i]}" y="${ay}" width="${W[i]}" height="${yBot - ay}" fill="${i % 2 ? "var(--card)" : "transparent"}" opacity=".55"/>`;
+    g += `<line x1="${XS[i]}" y1="${ay - 4}" x2="${XS[i]}" y2="${yBot}" stroke="var(--line)"/>`;
+    if (b[1] && tw(b[1], 9.5) < W[i] - 4) g += `<text x="${XS[i] + W[i] / 2}" y="${ay + 12}" font-size="9.5" text-anchor="middle" fill="var(--sub)" font-weight="600">${esc(b[1])}</text>`;
+    g += `<text x="${XS[i] + W[i] / 2}" y="${ay + 23}" font-size="9.5" text-anchor="middle" fill="var(--mute)">${ms(B[i + 1][0] - b[0])} ms</text>`;
+  });
+  g += `<line x1="${XS[0]}" y1="${ay}" x2="${XS[XS.length - 1]}" y2="${ay}" stroke="var(--mute)"/>`;
+  g += `<text x="8" y="${ay + 12}" font-size="9.5" fill="var(--mute)">구간마다 축척이 다름</text>`;
+  // server.log 이정표: 같은 자리(9 px 안)에 몰린 것은 한 동그라미에 번호를 이어 적습니다.
+  const groups = [];
+  marks.forEach(m => { const xx = x(m.t), last = groups[groups.length - 1]; if (last && xx - last.x < 9) last.ns.push(m.n); else groups.push({x: xx, ns: [m.n]}); });
+  groups.forEach(gr => {
+    const lab = gr.ns.length > 1 ? `${gr.ns[0]}–${gr.ns[gr.ns.length - 1]}` : `${gr.ns[0]}`, w = 8 + lab.length * 5.6;
+    g += `<rect x="${gr.x - w / 2}" y="${top + 30}" width="${w}" height="13" rx="6.5" fill="var(--card)" stroke="var(--now)"/><text x="${gr.x}" y="${top + 40}" font-size="9" text-anchor="middle" fill="var(--ink)" font-weight="600">${lab}</text>`;
+    g += `<line x1="${gr.x}" y1="${top + 43}" x2="${gr.x}" y2="${ay}" stroke="var(--now)"/>`;
+  });
+  // 프로세스 줄
+  rows.forEach((p, i) => {
+    const cy = top + rowY(i), isOld = p.t0 < f.start && p.role !== "postmaster";
+    const name = `${ROLE[p.role] || p.role}${p.session ? ` (세션 ${p.session.slice(1)})` : ""} ${p.pid}`;
+    g += `<text x="${X0L}" y="${cy + 3.5}" font-size="10" fill="${isOld ? "var(--mute)" : "var(--sub)"}">${esc(name)}</text>`;
+    const a = x(p.t0), b = x(p.t1);
+    g += `<rect x="${a}" y="${cy - 2.5}" width="${Math.max(1, b - a)}" height="5" rx="2" fill="${isOld ? "var(--line)" : p.session ? "var(--s1bg)" : "var(--sharedbg)"}" stroke="${isOld ? "var(--mute)" : "var(--shared)"}" stroke-opacity=".5"/>`;
+    if (p.exit && p.t1 <= f.end + 300) {
+      const code = (p.exit.match(/exited with (\d+)/) || [])[1], kill9 = /SIGKILL/.test(p.exit);
+      g += kill9 ? `<text x="${b}" y="${cy + 4}" font-size="12" text-anchor="middle" font-weight="700" fill="var(--wait)">✕</text>` :
+        `<circle cx="${b}" cy="${cy}" r="4.5" fill="var(--card)" stroke="${code === "0" ? "var(--ok)" : "var(--mute)"}"/><text x="${b}" y="${cy + 3}" font-size="7.5" text-anchor="middle" fill="var(--ink)">${esc(code ?? "?")}</text>`;
+    }
+  });
+  if (oldN < rows.length) { const yy = top + rowY(oldN) - 19; g += `<line x1="8" y1="${yy}" x2="${LW - 8}" y2="${yy}" stroke="var(--line)" stroke-dasharray="3 3"/><text x="${X0L}" y="${yy + 11}" font-size="9.5" fill="var(--mute)">↓ 다시 띄운 프로세스</text>`; }
+  // 함수 구간. 같은 프로세스에서 다른 구간 안에 든 구간은 안쪽일수록 얇게 그립니다. 이름은 막대에 들어가고 앞서 적은 이름과
+  // 겹치지 않을 때만 적고, 이름은 다른 표시가 그 위에 와도 읽히게 맨 끝에 그립니다.
+  const labels = [], used = {};
+  spans.forEach(sp => {
+    const i = row[sp.pid]; if (i == null) return;
+    const depth = spans.filter(o => o !== sp && o.pid === sp.pid && o.t0 <= sp.t0 && o.t1 >= sp.t1 && (o.t0 < sp.t0 || o.t1 > sp.t1 || spans.indexOf(o) < spans.indexOf(sp))).length;
+    const cy = top + rowY(i), a = x(sp.t0), b = x(sp.t1), hh = Math.max(4, 10 - depth * 3), lab = SPANKO[sp.fn] || sp.fn;
+    g += `<rect data-src="${esc(sp.at)}" x="${a}" y="${cy - hh / 2}" width="${Math.max(2, b - a)}" height="${hh}" rx="2" fill="var(--accbg)" stroke="var(--acc)" stroke-width="${SRC === sp.at ? 2 : 1}"><title>${esc(sp.fn)} ${ms(sp.t1 - sp.t0)} ms</title></rect>`;
+    const wl = tw(lab, 9) + 6, free = !(used[i] || []).some(([p, q]) => a < q && a + wl > p);
+    if (b - a > wl && free && sp.fn !== "StartupXLOG") { labels.push(`<text x="${a + 3}" y="${cy + 3.2}" font-size="9" fill="var(--acc)" font-weight="700" paint-order="stroke" stroke="var(--card)" stroke-width="3" pointer-events="none">${esc(lab)}</text>`); (used[i] ??= []).push([a, a + wl]); }
+  });
+  // 신호, redo 레코드, 커밋 로그, pg_wal 쓰기
+  let quit = 0, redo = 0;
+  evs.forEach(e => {
+    const i = row[e.pid]; if (i == null) return;
+    const cy = top + rowY(i), xx = x(e.t), top1 = e.stack?.[e.stack.length - 1]?.at, call = e.stack?.[e.stack.length - 2]?.at;
+    if (e.kind === "signal") {
+      const j = row[+e.f.to], q = e.f.sig === "SIGQUIT";
+      if (q) quit++;
+      if (j == null) return;
+      const ty = top + rowY(j);
+      g += `<line data-src="${esc(top1 || "")}" x1="${xx}" y1="${cy}" x2="${xx}" y2="${ty + (ty > cy ? -3 : 3)}" stroke="${q ? "var(--wait)" : "var(--mute)"}" stroke-width="1.1" ${e.f.group ? 'stroke-dasharray="2 2"' : ""} marker-end="url(#ah)" opacity=".85"><title>${esc(`${e.f.sig} → ${e.f.group ? "그룹 -" : ""}${e.f.to}`)}</title></line>`;
+    } else if (e.kind === "redo") {
+      redo++;
+      g += `<rect data-src="${esc(call || "")}" x="${xx - 1}" y="${cy - 6}" width="2.4" height="12" fill="${e.f.xid !== "0" ? "var(--s1)" : "var(--mute)"}"><title>${esc(`${e.f.lsn} ${e.f.rmgr} ${e.f.kind}${e.f.xid !== "0" ? ` xid ${e.f.xid}` : ""}`)}</title></rect>`;
+    } else if (e.kind === "commit_clog" || e.kind === "abort_clog") {
+      const c = e.kind === "commit_clog";
+      g += `<rect data-src="${esc(call || "")}" x="${xx - 4}" y="${cy - 4}" width="8" height="8" transform="rotate(45 ${xx} ${cy})" fill="${c ? "var(--ok)" : "var(--wait)"}"/><text x="${xx + 7}" y="${cy - 5}" font-size="9.5" font-weight="600" fill="${c ? "var(--ok)" : "var(--wait)"}">${esc(e.f.xid)} ${c ? "커밋" : "중단"}</text>`;
+    } else if (e.kind === "wal_io") {
+      const w = /pwrite/.test(e.f.call);
+      g += w ? `<rect x="${xx - 1}" y="${cy - 6}" width="2.4" height="12" fill="var(--disk)"><title>${esc(`${e.f.call} ${e.f.lsn0 || ""}–${e.f.lsn1 || ""}`)}</title></rect>` : `<circle cx="${xx}" cy="${cy}" r="2" fill="var(--disk)"><title>${esc(`${e.f.call} ${e.f.file} ${ms(+e.f.durUs)} ms`)}</title></circle>`;
+    } else if (e.kind === "wal_flush") {
+      g += `<rect x="${xx - .6}" y="${cy - 4}" width="1.4" height="8" fill="var(--disk)" opacity=".6"/>`;
+    }
+  });
+  g += labels.join("");
+  // 신호와 redo의 수는 자식 줄과 새 프로세스 줄 사이의 빈 줄에 적습니다.
+  const yd = top + rowY(oldN) - 19, rr = evs.filter(e => e.kind === "redo");
+  if (quit) g += `<text x="${XS[1] + 4}" y="${yd - 3}" font-size="9.5" fill="var(--wait)" font-weight="600" paint-order="stroke" stroke="var(--card)" stroke-width="3">← postmaster가 보낸 SIGQUIT ${quit}번: 자식마다 pid로 한 번, 프로세스 그룹(-pid)으로 한 번 (점선)</text>`;
+  if (redo) g += `<text x="${x(rr[0].t)}" y="${yd + 11}" font-size="9.5" fill="var(--s1)" font-weight="600" paint-order="stroke" stroke="var(--card)" stroke-width="3">redo 레코드 ${redo}개 ↓</text>`;
+  g += `<text x="${X0L}" y="${top + C.h - 4}" font-size="9.5" fill="var(--mute)">얇은 막대 = 살아 있던 때 · 굵은 막대 = 함수 안 · 세로선 = 신호 · 파란 눈금 = 트랜잭션 번호가 있는 redo 레코드 · 갈색 = pg_wal 쓰기 · ✕ = SIGKILL, 숫자 = 종료 코드 · 막대를 누르면 소스</text>`;
+  return g + `</g>`;
+}
+const X0L = 8;
+
+// 다른 실행의 기다림 길이. 두 번 돌려 견주는 값입니다.
+function otherWait() {
+  return Object.keys(RUNS).filter(k => k.startsWith(SC + "/") && k !== SC + "/" + RUN).map((k, i) => {
+    let w; RUNS[k].steps.forEach(st => st.requests.forEach(r => r.events.forEach(e => { if (e.kind === "proc_sleep") w = e; })));
+    return w ? `다른 실행 ${ms(w.t1 - w.t)} ms` : "";
+  }).join(" · ");
+}
+
+// 판정에 쓴 스냅숏을 그 세션의 기록에서 찾습니다. 줄 판정은 스냅숏의 xmin·xmax만 남기므로, 같은 값의 스냅숏을 이 단계부터
+// 거꾸로 찾아 진행 중 목록(xip, 앞의 넷까지)을 얻습니다. 못 찾으면 목록을 모른다고 표시합니다.
+function snapOf(D, f, c) {
+  for (let i = f.i; i >= 0; i--) {
+    const st = D.steps[i];
+    if (st.session !== f.sess) continue;
+    for (const r of [...st.requests].reverse()) for (const x of [...r.snapshots].reverse())
+      if (x.xmin === c.snapXmin && x.xmax === c.snapXmax) return {xmin: x.xmin, xmax: x.xmax, xip: x.xip || []};
+  }
+  return {xmin: c.snapXmin, xmax: c.snapXmax, xip: [], unknown: true};
+}
+
+// 이 단계에서 세션이 쥔 자기 트랜잭션 번호를 받은 사건. 마지막 BEGIN부터 이 단계까지 받은 번호이고, 자동 커밋 문장이면 그 문장
+// 안의 번호입니다. 판정보다 늦게 받은 번호는 그 판정에 쓰이지 않았으므로(UPDATE는 행을 찾은 뒤에 번호를 받음) 호출하는 쪽이 시각을 견줍니다.
+function ownXid(D, f) {
+  for (let i = f.i; i >= 0; i--) {
+    const st = D.steps[i];
+    if (st.session !== f.sess) continue;
+    const x = st.requests.flatMap(r => r.events).find(e => e.kind === "xid");
+    if (x) return x;
+    if (/^BEGIN/i.test(st.sql) || (i < f.i && /^(COMMIT|ROLLBACK)/i.test(st.sql))) break;
+  }
+  return null;
+}
+
+// 오른쪽 위의 SSI 그림(실험 4). 세션마다 상자(번호, 상태)와 그 아래 SIRead 락(관찰, 이 장면에서 사라진 것은 점선과 그 까닭),
+// 상자 사이에 rw 간선(기록, 이 장면에서 그은 것은 굵게)을 그립니다. 아래 글은 이 장면의 SSI 일을 풉니다. 기록에서 바로 읽지 않은 것은
+// 그렇다고 적습니다.
+function ssiSection(f) {
+  const st = ssiState(f), W = 540, BX = {S1: [8, 196], S2: [344, 532]}, nameOf = M.nameOf;
+  const rowsOf = sn => [...st.now.filter(l => nameOf[l.pid] === sn).map(l => ({l})), ...st.gone.filter(l => nameOf[l.pid] === sn).map(l => ({l, gone: true}))];
+  // 사라진 까닭은 이 장면의 일에서 고릅니다. 쓰기 전 검사는 쓴 쪽이 같은 행에 쥔 자기 SIRead 락을 지우고(쓰기 락이 대신함,
+  // predicate.c 4218~4223·4262행), 정리(ClearOldPredicateLocks)는 끝난 직렬화 트랜잭션들의 락을 모두 지웁니다.
+  const why = l => f.hops.some(h => h.kind === "ssi_clear") ? "정리로 지움" : l.type === "tuple" && nameOf[l.pid] === f.sess && f.hops.some(h => h.kind === "conflict_in") ? "쓰기 검사가 지움" : "사라짐";
+  const n = Math.max(1, ...["S1", "S2"].map(sn => rowsOf(sn).length)), H = 66 + n * 22;
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="세션마다 SIRead 락과 rw 간선">`;
+  s += `<defs><marker id="sa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs>`;
+  ["S1", "S2"].forEach(sn => {
+    const [x0, x1] = BX[sn], q = st.sess[sn], z = sn.toLowerCase(), bad = q.doomed || q.status === "aborted", rows = rowsOf(sn);
+    const stat = !q.ssi ? "직렬화 트랜잭션 아님 · SSI 없음" : q.status === "aborted" ? "중단됨" : q.doomed ? "flags DOOMED · 커밋하면 오류" :
+      q.status === "committed" ? (rows.some(r => !r.gone) ? "커밋함 · SIRead 락은 남음" : "커밋함") : "진행 중";
+    s += `<rect x="${x0}" y="6" width="${x1 - x0}" height="44" rx="8" fill="var(--${z}bg)" fill-opacity=".55" stroke="${bad ? "var(--wait)" : `var(--${z})`}" stroke-width="${bad ? 2.4 : 1.4}" ${q.ssi ? "" : 'stroke-dasharray="4 3"'}/>`;
+    s += `<text x="${x0 + 10}" y="24" font-size="12" font-weight="700" fill="var(--${z})">세션 ${sn.slice(1)}${q.xid ? ` · xid ${q.xid}` : ""}</text>`;
+    s += `<text x="${x0 + 10}" y="41" font-size="11" font-weight="${bad || q.status === "committed" ? 600 : 400}" fill="${bad ? "var(--wait)" : q.status === "committed" ? "var(--ok)" : "var(--sub)"}">${esc(stat)}</text>`;
+    if (!rows.length) s += `<text x="${x0 + 4}" y="74" font-size="10.5" fill="var(--mute)">SIRead 락 없음</text>`;
+    rows.forEach(({l, gone}, k) => {
+      const y = 58 + k * 22;
+      s += `<rect x="${x0}" y="${y}" width="${x1 - x0}" height="18" rx="4" fill="${gone ? "transparent" : "var(--card)"}" stroke="${gone ? "var(--mute)" : `var(--${z})`}" ${gone ? 'stroke-dasharray="3 3"' : ""}/>`;
+      s += `<text x="${x0 + 8}" y="${y + 13}" font-size="10.5" class="mono" fill="${gone ? "var(--mute)" : "var(--ink)"}" ${gone ? 'text-decoration="line-through"' : ""}>${esc(lockWhere(l))}</text>`;
+      if (gone) s += `<text x="${x1 - 6}" y="${y + 13}" font-size="10" text-anchor="end" fill="var(--mute)">${esc(why(l))}</text>`;
+    });
+  });
+  // 간선: 세션 2 → 세션 1은 위, 세션 1 → 세션 2는 아래. 화살표는 읽은 쪽에서 쓴 쪽으로.
+  st.edges.forEach(e => {
+    const up = e.r === "S2", y = up ? 18 : 40, a = up ? BX.S2[0] - 2 : BX.S1[1] + 2, b = up ? BX.S1[1] + 4 : BX.S2[0] - 4;
+    s += `<line x1="${a}" y1="${y}" x2="${b}" y2="${y}" stroke="${e.here ? "var(--now)" : "var(--shared)"}" stroke-width="${e.here ? 3 : 1.8}" marker-end="url(#sa)"/>`;
+    s += `<text x="${(BX.S1[1] + BX.S2[0]) / 2}" y="${y - 4}" font-size="10.5" text-anchor="middle" font-weight="600" fill="${e.here ? "var(--now)" : "var(--shared)"}">rw · 단계 ${e.n}</text>`;
+  });
+  if (!st.edges.length && st.anySsi) s += `<text x="${(BX.S1[1] + BX.S2[0]) / 2}" y="32" font-size="10.5" text-anchor="middle" fill="var(--mute)">rw 간선 없음</text>`;
+  s += `</svg>`;
+  let h = `<h2>SSI: 누가 무엇을 읽었고(SIRead 락), 누가 그것을 바꿨나(rw 간선)</h2>${s}`;
+  h += `<div class="leg" style="margin:2px 0 4px">화살표 A → B = A가 읽은 범위를 B가 바꿈, 그래서 직렬 순서로 A가 B보다 앞이어야 함 · 화살표 둘이 고리를 이루면 어느 순서로도 맞출 수 없음 · SIRead 락은 관찰(+${ms(readEnd(f.capParts.locks, "locks"))} ms까지 읽음), 간선은 기록</div>`;
+  // 이 장면의 SSI 일을 풉니다.
+  // who는 "세션 1", jo는 그 뒤의 조사(받침이 있으면 a, 없으면 b)를 붙인 것입니다.
+  const t = [], who = sn => `세션 ${sn.slice(1)}`, jo = (sn, a, b) => who(sn) + pp(sn.slice(1), a, b);
+  // 읽기가 남긴 SIRead 락. 순차 스캔은 어떤 행을 읽을지 미리 모르므로 표 전체를 잠그고(heap_beginscan, heapam.c 1171행), 인덱스
+  // 스캔은 읽은 잎 페이지와 행을 잠급니다(nbtsearch.c 1691행, heapam.c 1813행). 잎 페이지 락은 나중에 그 페이지에 키를 넣는 쓰기
+  // (nbtinsert.c 251·639행의 검사)를 잡아, 그때 없던 행이 생기는 경우까지 덮습니다.
+  const made = f.hops.filter(h => h.kind === "pred_lock" && h.created);
+  if (made.length && !f.hops.some(h => h.kind === "conflict_in")) {
+    const seq = made.some(h => h.lock.type === "relation"), idx = made.some(h => h.lock.type === "page");
+    t.push(`이 문장이 읽은 범위를 SIRead 락 ${made.length}개로 남겼습니다. ${seq ? "순차 스캔이라 어떤 행을 읽을지 미리 모르므로 표 전체를 잠급니다." : ""}${idx ? "인덱스 스캔이라 읽은 인덱스 잎 페이지와 행을 잠급니다. 잎 페이지 락은 나중에 그 페이지에 키를 넣는 쓰기까지 잡습니다." : ""} 이 락은 누구도 기다리게 하지 않습니다. 다른 직렬화 트랜잭션이 이 범위를 쓰면 그 쓰기 전 검사가 이 락을 찾아 간선을 긋습니다.`);
+  }
+  if (!st.anySsi && f.hops.some(h => h.lane === "ssi")) t.push("REPEATABLE READ 트랜잭션이라 SSI 함수는 불려도 들어가자마자 돌아옵니다. SIRead 락도 rw 간선도 남지 않으므로, 둘이 서로 읽은 행을 바꿔도 누구도 막지 않습니다.");
+  f.hops.filter(h => h.kind === "rw").forEach(rw => {
+    const tg = f.hops.filter(h => h.kind === "conflict_target" && h.flagged && h.t <= rw.t).at(-1);
+    t.push(`${who("S" + rw.w)}의 쓰기 전 검사가 ${tg ? esc(tg.where) + "에서 " : ""}${who("S" + rw.r)}의 SIRead 락을 찾아 간선 ${who("S" + rw.r)} → ${jo("S" + rw.w, "을", "를")} 그었습니다.`);
+  });
+  if (f.hops.some(h => h.kind === "rw") && st.edges.some(a => st.edges.some(b => a.r === b.w && a.w === b.r)))
+    t.push("이제 간선 둘이 고리를 이룹니다. 간선을 그을 때도 위험한 꼴을 검사하지만(FlagRWConflict가 부르는 OnConflict_CheckForSerializationFailure), 그 검사는 관련된 트랜잭션 가운데 하나가 이미 커밋했거나 PREPARE했을 때만 중단시킵니다. 둘 다 커밋 전이라 이 UPDATE는 성공했습니다.");
+  const pre = f.hops.find(h => h.kind === "precommit");
+  if (pre && !pre.doomed) {
+    const me = f.sess, inn = st.edges.filter(e => e.w === me && st.sess[e.r]?.status !== "committed"), loop = inn.find(e => st.edges.some(b => b.r === me && b.w === e.r));
+    t.push(`${who(me)}의 커밋 전 검사는 자기 flags가 비어 있어 통과했습니다.${loop ? ` 이 검사는 이어서 나에게 들어온 간선(${who(loop.r)} → ${who(me)})의 읽은 쪽이 아직 커밋 전이고 그쪽에도 들어온 간선(${who(me)} → ${who(loop.r)})이 있으면 그쪽에 DOOMED를 켭니다(predicate.c 4730~4765행). 지금 간선이 그 꼴입니다. 이 기록은 그 순간의 flags를 읽지 않았고, ${who(loop.r)}의 커밋 전 검사가 나중에 읽습니다.` : ""}`);
+  }
+  if (pre && pre.doomed) {
+    const me = f.sess, last = st.edges.filter(e => e.r === me || e.w === me).at(-1), fl = last && (last.w === me ? last.wflags : last.rflags);
+    // 간선을 그은 단계까지 아무도 커밋하지 않았고 그 뒤 다른 세션의 커밋이 있을 때만, 그 커밋이 켰다고 추론해 적습니다.
+    const early = last && M.D.steps.some(x => x.n <= last.n && /^COMMIT/i.test(x.sql));
+    const between = last && !early && M.D.steps.filter(x => x.session !== me && x.n > last.n && x.n < f.st.n && /^COMMIT/i.test(x.sql));
+    t.push(`${who(me)}의 커밋 전 검사가 자기 flags에서 DOOMED를 읽고 오류를 냈습니다(predicate.c 4723행). 트랜잭션은 취소됩니다.${last && fl === "" && between?.length ? ` 단계 ${last.n}에서 간선을 그을 때는 flags가 비어 있었으니, 그 사이 ${between.map(x => `단계 ${x.n}(${who(x.session)}의 COMMIT)`).join("·")}의 커밋 전 검사가 켰다고 봅니다(4765행. 추론이며 그 순간의 값은 읽지 않음).` : ""}`);
+  }
+  if (f.hops.some(h => h.kind === "ssi_clear")) t.push("커밋한 트랜잭션의 SIRead 락도 겹쳐 돌던 직렬화 트랜잭션이 모두 끝날 때까지 남습니다(그동안의 쓰기가 그 락으로 간선을 그음). 마지막 트랜잭션이 끝난 이 장면에서 ClearOldPredicateLocks가 모두 지웠습니다.");
+  if (st.gone.some(l => why(l) === "쓰기 검사가 지움")) t.push("쓴 쪽이 같은 행에 쥔 자기 SIRead 락은 쓰기 전 검사가 지웁니다. 그 행은 이제 이 트랜잭션의 쓰기 락(xmax)이 지키기 때문입니다(predicate.c 4218~4223·4262행).");
+  if (st.anySsi && f.hops.some(h => h.kind === "conflict_in") && !f.hops.some(h => h.kind === "rw")) t.push("남의 SIRead 락이 걸린 대상이 없어 간선을 긋지 않았습니다.");
+  if (t.length) h += `<div class="facts">${t.join(" ")}</div>`;
+  return h;
+}
+
+// 오른쪽. 행 버전 막대(트랜잭션 번호 축), 스냅숏, 줄마다의 판정 경로, 고른 소스.
+function detail() {
+  const {D, frames} = M, f = frames[CUR], cap = capOf(f), el = document.getElementById("detail");
+  if (f.kind === "crash") return crashDetail(f, el);
+  // 기다림으로 나뉜 단계는 판정도 시각으로 나눕니다(깨어난 뒤 외래 키 검사처럼 새 스냅숏으로 한 판정은 뒤 장면에 둠).
+  const names = D.tables.map(t => t.name), many = names.length > 1;
+  const inFrame = c => f.cut == null || (f.part === "before" ? c.t < f.cut : c.t >= f.cut);
+  const checks = f.st.requests.flatMap(r => r.checks.filter(c => names.includes(c.table) && inFrame(c)));
+  const groups = D.tables.map(t => ({t, vs: cap?.pages?.[t.name] || []})).filter(g => g.vs.length);
+  const status = x => cap?.xacts?.[x];
+  // 막대의 끝. 잠금만인 xmax는 행을 지우지 않으므로 끝이 없습니다. MultiXact는 번호 공간이 달라 축에 두지 않고,
+  // 그 안에서 행을 바꾼 번호(NoKeyUpdate·Update)를 끝으로 씁니다.
+  const endXid = v => {
+    if (v.xmax === "0" || hasF(v, "HEAP_XMAX_LOCK_ONLY")) return null;
+    if (!hasF(v, "HEAP_XMAX_IS_MULTI")) return +v.xmax;
+    const m = mxById(v.xmax);
+    const up = m && [[m.f.xid1, m.f.st1], [m.f.xid2, m.f.st2]].find(([, st]) => st === "NoKeyUpdate" || st === "Update");
+    return up ? +up[0] : null;
+  };
+  const sn = checks[0] ? snapOf(D, f, checks[0]) : null, ownEv = ownXid(D, f);
+  const nums = groups.flatMap(g => g.vs.flatMap(v => [+v.xmin, endXid(v), hasF(v, "HEAP_XMAX_LOCK_ONLY") && !hasF(v, "HEAP_XMAX_IS_MULTI") ? +v.xmax : null]))
+    .concat(sn ? [sn.xmin, sn.xmax, ...sn.xip] : []).filter(Boolean);
+  const a0 = Math.min(...nums) - 1, a1 = Math.max(...nums) + 1, W = 540, X0 = 64, sx = v => X0 + (v - a0) / (a1 - a0) * (W - X0 - 14);
+  const vis = Object.fromEntries(checks.map(c => [c.table + c.ctid, c.visible]));
+  // 그림의 규칙: 판정에 쓴 스냅숏 전에 끝난 번호(xmax보다 작고 진행 중 목록에 없음) 가운데 중단되지 않은 것과, 판정보다 먼저 받은
+  // 자기 번호가 “일어난 일”입니다. 만든 번호가 일어났고 지운 번호가 일어나지 않았으면 보입니다. 판정마다 그 판정의 스냅숏과,
+  // 판정하던 순간 그 줄 머리에 있던 xmin·xmax·infomask(uprobe가 함께 읽은 값)로 견줍니다. 단계 뒤의 관찰로 견주면 같은 단계에서
+  // 판정 앞뒤로 자기가 바꾼 것(깨어난 DELETE가 xmax를 쓴 뒤의 외래 키 검사 등)이 섞입니다. 중단 여부는 끝난 번호라면 언제 보아도
+  // 같으므로 이 장면의 관찰에서 읽습니다. 기록된 판정과 다르면 그림이 틀린 것이라 알립니다.
+  const MASK = {HEAP_XMAX_LOCK_ONLY: 0x0080, HEAP_XMIN_COMMITTED: 0x0100, HEAP_XMIN_INVALID: 0x0200, HEAP_XMAX_COMMITTED: 0x0400,
+    HEAP_XMAX_INVALID: 0x0800, HEAP_XMAX_IS_MULTI: 0x1000};
+  const atCheck = c => ({xmin: String(c.xmin), xmax: String(c.xmax), flags: Object.keys(MASK).filter(k => c.mask & MASK[k])});
+  const geomBad = [];
+  checks.forEach(c => {
+    const sc = snapOf(D, f, c), pv = atCheck(c);
+    if (sc.unknown) return;
+    const own = ownEv && ownEv.t < c.t ? +ownEv.f.xid : null;
+    const happened = x => x === own || (x < sc.xmax && !sc.xip.includes(x) && status(x) !== "aborted");
+    const end = endXid(pv), shown = happened(+pv.xmin) && !(end != null && happened(end));
+    if (shown !== c.visible) geomBad.push(`${many ? c.table + " " : ""}${c.ctid} 그림 ${shown ? "보임" : "안 보임"}, 기록 ${c.visible ? "보임" : "안 보임"}`);
+  });
+  const snaps = new Set(checks.map(c => `${c.snapXmin}:${c.snapXmax}`));
+  const rows = groups.reduce((n, g) => n + g.vs.length + (many ? 1 : 0), 0);
+  let s = "", y = 34;
+  if (groups.length) {
+    const yEnd = 36 + rows * 30;
+    s = `<svg viewBox="0 0 ${W} ${yEnd + (sn ? 34 : 6)}" width="100%" role="img" aria-label="행 버전과 스냅숏">`;
+    for (let v = a0; v <= a1; v++) {
+      s += `<line x1="${sx(v)}" y1="28" x2="${sx(v)}" y2="${yEnd}" stroke="var(--line)"/>`;
+      s += `<text x="${sx(v)}" y="22" font-size="10.5" class="mono" text-anchor="middle" fill="${sn?.xip.includes(v) ? "var(--wait)" : "var(--sub)"}" font-weight="${sn?.xip.includes(v) ? 700 : 400}">${v}</text>`;
+    }
+    s += `<text x="4" y="22" font-size="10.5" fill="var(--mute)">번호 →</text>`;
+    groups.forEach(g => {
+      if (many) { s += `<text x="4" y="${y + 14}" font-size="10.5" font-weight="600" fill="var(--sub)">${esc(g.t.name)}</text>`; y += 30; }
+      const last = g.t.columns[g.t.columns.length - 1].name;
+      g.vs.forEach(v => {
+        const ctid = `(${v.block},${v.lp})`, end = endXid(v), open = end == null;
+        const aborted = status(v.xmin) === "aborted" || hasF(v, "HEAP_XMIN_INVALID");
+        const x1 = sx(+v.xmin), x2 = open ? W - 8 : sx(end);
+        const known = (g.t.name + ctid) in vis, on = vis[g.t.name + ctid];
+        s += `<text x="4" y="${y + 15}" font-size="11" class="mono" fill="var(--ink)">줄 ${v.lp}</text>`;
+        const fill = aborted ? "transparent" : known ? (on ? "var(--okbg)" : "var(--card)") : "var(--sharedbg)";
+        const stroke = aborted ? "var(--wait)" : known ? (on ? "var(--ok)" : "var(--mute)") : "var(--shared)";
+        s += `<rect x="${x1}" y="${y + 2}" width="${Math.max(4, x2 - x1)}" height="18" rx="4" fill="${fill}" stroke="${stroke}" ${aborted || (known && !on) ? 'stroke-dasharray="3 3"' : ""}/>`;
+        s += `<text x="${x1 + 6}" y="${y + 15}" font-size="10.5" class="mono" fill="var(--ink)">${esc(v.values[last])}${open ? "  →" : ""}</text>`;
+        const note = aborted ? `xmin ${v.xmin} 중단` : hasF(v, "HEAP_XMAX_IS_MULTI") ? `xmax MultiXact ${v.xmax}${end ? ` · 바꾼 번호 ${end}` : " · 잠금만"}` :
+          hasF(v, "HEAP_XMAX_LOCK_ONLY") ? `xmax ${v.xmax} · 잠금만` : "";
+        if (note) { const fits = x1 + 60 + note.length * 6.6 < W - 8; s += `<text x="${fits ? x1 + 60 : x1 - 6}" y="${y + 15}" font-size="10" class="mono" ${fits ? "" : 'text-anchor="end"'} fill="${aborted ? "var(--wait)" : "var(--sub)"}">${esc(note)}</text>`; }
+        y += 30;
+      });
+    });
+    if (sn) {
+      const x = sx(sn.xmax - 0.5);
+      s += `<line x1="${x}" y1="28" x2="${x}" y2="${yEnd + 2}" stroke="var(--snap)" stroke-width="2.6"/>`;
+      const xip = sn.xip.join(",");
+      s += `<text x="${x}" y="${yEnd + 16}" font-size="10.5" text-anchor="middle" fill="var(--snap)" font-weight="600">스냅숏 ${sn.xmin}:${sn.xmax}:${xip} · 선 왼쪽 = 끝난 번호</text>`;
+      if (sn.xip.length) s += `<text x="${x}" y="${yEnd + 30}" font-size="10.5" text-anchor="middle" fill="var(--wait)" font-weight="600">빨간 번호 ${xip}${pp(sn.xip[sn.xip.length - 1], "은", "는")} 선 왼쪽이어도 진행 중(목록 xip)</text>`;
+      else if (sn.unknown) s += `<text x="${x}" y="${yEnd + 30}" font-size="10" text-anchor="middle" fill="var(--mute)">진행 중 목록은 기록에서 찾지 못함</text>`;
+      else if (snaps.size > 1) s += `<text x="${x}" y="${yEnd + 30}" font-size="10" text-anchor="middle" fill="var(--mute)">이 장면의 판정은 스냅숏 ${snaps.size}개를 썼고, 선은 첫 스냅숏입니다</text>`;
+    }
+    s += `</svg>`;
+  }
+  let h = `${ssiPage() ? ssiSection(f) : ""}<h2>${groups.length > 1 || many ? "표마다 0번 페이지의 행 버전" : `${esc(names[0])} 0번 페이지의 행 버전`}${sn ? "과 이 문장의 스냅숏" : ""}</h2>${s}`;
+  if (f.capBack.length) {
+    const PART = {pages: "페이지", activity: "세션 상태", locks: "락"};
+    h += `<div class="fact">${f.capBack.map(p => PART[p]).join("·")}${f.capBack.at(-1) === "locks" ? "은" : "는"} 앞 관찰(${f.capBack.map(p => `+${ms(readEnd(f.capParts[p], p))} ms까지 읽음`).join(", ")})입니다. 이 장면 뒤에 다른 세션이 일을 하는 동안 다음 관찰이 그 부분을 읽어서, 그 관찰은 다음 장면에 보입니다. 커밋 로그의 상태는 기록된 시각으로 이 장면 끝까지 고쳤습니다.</div>`;
+  }
+  if (geomBad.length) h += `<span class="badge bad">그림의 규칙과 기록된 판정이 ${geomBad.length}줄 다름: ${esc(geomBad.join(" · "))}</span>`;
+  // 단계 전체의 판정 대조(해석기의 steps[].check)는 결과가 나오는 장면에 보입니다. 두 경우는 원인이 기록에 있으므로 설명을 붙입니다.
+  // 인덱스 스캔은 인덱스가 가리키는 HOT 사슬의 줄만 판정하고(heap_hot_search_buffer), FOR UPDATE는 기다린 뒤 최신 버전을 잠가
+  // 돌려줍니다(heap_lock_tuple이 TM_Updated를 받은 뒤 다음 버전을 잠금).
+  const ck = f.part === "before" ? null : f.st.check;
+  if (ck) {
+    const stepChecks = f.st.requests.flatMap(r => r.checks.filter(c => c.table === ck.table));
+    const viaIndex = stepChecks.length && stepChecks.every(c => c.stack.some(x => x.fn === "heap_hot_search_buffer"));
+    const relocked = f.st.requests.some(r => r.events.some(e => e.kind === "tuple_lock" && e.f.result === "TM_Updated"));
+    h += ck.countMatch ? `<span class="badge ok">판정 ${ck.checks}번 = ${many ? ck.table + " " : ""}정상 줄 ${ck.lpNormal}개</span>` :
+      viaIndex ? `<span class="badge note">인덱스 스캔: HOT 사슬에 걸린 줄만 판정 (${ck.lpNormal}개 중 ${ck.checks}개)</span>` :
+      `<span class="badge bad">판정 ${ck.checks}번 ≠ 정상 줄 ${ck.lpNormal}개</span>`;
+    h += ck.setMatch ? `<span class="badge ok">보인 줄 = psql 결과 행 (${ck.result.join(" ")})</span>` :
+      relocked ? `<span class="badge note">psql 결과 행 = 기다린 뒤 잠근 최신 버전 ${ck.result.join(" ")} · 스냅숏으로 보인 줄 ${ck.visible.join(" ")}</span>` :
+      `<span class="badge bad">보인 줄(${ck.visible.join(" ")}) ≠ psql 결과 행 (${ck.result.join(" ")})</span>`;
+  }
+  // 줄마다의 판정: HeapTupleSatisfiesMVCC 한 번이 거친 호출(uprobe 값)과, 그 안에서 마지막으로 부른 줄(함수 기록).
+  const refs = [];
+  if (checks.length) {
+    h += `<div class="sec">줄마다 판정 · HeapTupleSatisfiesMVCC 한 번이 거친 길 (값은 uprobe, 줄은 함수 기록)</div>`;
+    checks.forEach(c => {
+      const g = groups.find(x => x.t.name === c.table), v = g?.vs.find(x => `(${x.block},${x.lp})` === c.ctid);
+      const cols = g ? g.t.columns : [];
+      let seenXmin = false;
+      const chips = (c.path || []).map(p => {
+        const last = (p.inner || []).slice(-1)[0], ref = last?.at || p.at;
+        refs.push(ref);
+        let t;
+        if (p.fn === "XidInMVCCSnapshot") { const which = !seenXmin && +p.arg === c.xmin ? "xmin" : "xmax"; seenXmin = seenXmin || which === "xmin"; t = `${which} ${p.arg} 스냅숏 기준 진행 중? <b class="${p.ret === "1" ? "no" : "yes"}">${p.ret === "1" ? "예" : "아니오"}</b>`; }
+        else if (p.fn === "TransactionIdDidCommit") t = `${p.arg} 커밋? <b class="${p.ret === "1" ? "yes" : "no"}">${p.ret === "1" ? "예" : "아니오"}</b> <span class="k">커밋 로그</span>`;
+        else if (p.fn === "SetHintBits") t = `힌트 ${esc(p.arg.replace("HEAP_", ""))} 씀`;
+        else t = esc(p.fn);
+        return `<span class="chip${SRC === ref ? " sel" : ""}" data-src="${esc(ref)}">${t} <span class="k">${esc(fileLine(ref))}</span></span>`;
+      }).join("");
+      const val = v && cols.length ? `${cols[0].name} ${v.values[cols[0].name]} · ${v.values[cols[cols.length - 1].name]}` : "";
+      h += `<div class="vrow"><span class="mono">${many ? esc(c.table) + " " : ""}${c.ctid}</span><span class="mono">${esc(val)}</span><b class="${c.visible ? "yes" : "no"}">${c.visible ? "보임" : "안 보임"}</b><span>${chips || `<span class="k" style="font-size:11px">힌트 비트로 바로 판정</span>`}</span></div>`;
+    });
+  }
+  // 기다림과 깨움, 오류: 이 장면의 일 가운데 소스 위치가 있는 것
+  const facts = f.hops.filter(x => x.ref && x.kind !== "checks");
+  if (facts.length) {
+    h += `<div class="sec">이 장면에서 소스 위치가 있는 일</div><div>` + facts.map(x => { refs.push(x.ref); const at = fileLine(x.ref); return `<span class="chip${SRC === x.ref ? " sel" : ""}" data-src="${esc(x.ref)}">${esc(x.text)}${x.text.includes(at) ? "" : ` <span class="k">${esc(at)}</span>`}</span>`; }).join("") + `</div>`;
+  }
+  // 추적하는 일이 하나도 없던 문장은 빈칸 대신 그 사실을 적습니다. BEGIN이면 그 트랜잭션이 스냅숏과 번호를 실제로 받은 단계를
+  // 이 기록에서 찾아 적습니다(BEGIN 자체는 둘 다 받지 않음).
+  if (!f.hops.length && f.part !== "after") {
+    let t = "기록에서 이 문장은 스냅숏을 찍지 않았고 트랜잭션 번호도 받지 않았습니다. 락, 커밋 로그, WAL 동기화도 없습니다.";
+    if (/^BEGIN/i.test(f.st.sql)) {
+      const tx = [];
+      for (const x of D.steps.filter(x => x.session === f.sess && x.n > f.st.n)) { tx.push(x); if (/^(COMMIT|ROLLBACK)/i.test(x.sql)) break; }
+      const short = q => q.split(/\s+/).slice(0, 2).join(" ") + " …";
+      const snapAt = tx.find(x => x.requests.some(r => r.snapshots.some(z => z.kind === "CurrentSnapshotData")));
+      const xidAt = tx.find(x => x.requests.some(r => r.events.some(e => e.kind === "xid")));
+      t += ` BEGIN은 트랜잭션의 시작만 표시합니다. 이 트랜잭션은 ${snapAt ? `단계 ${snapAt.n}(${esc(short(snapAt.sql))})에서 처음 스냅숏을 찍었고` : "스냅숏을 찍지 않았고"}, ${xidAt ? `단계 ${xidAt.n}(${esc(short(xidAt.sql))}) 안에서 번호를 받았습니다.` : "끝까지 번호를 받지 않았습니다(읽기만 한 트랜잭션)."}`;
+    }
+    h += `<div class="facts" style="margin-top:8px">${t}</div>`;
+  }
+  const w = f.hops.find(x => x.cls === "wait")?.wait;
+  if (w) { const other = otherWait(), n = f.sess.slice(1); h += `<div class="facts" style="margin-top:6px">세션 ${n}${pp(n, "이", "가")} 잠든 시간 <b>${ms(w.t1 - w.t)} ms</b> (ProcSleep 입구에서 출구까지)${other ? ` · ${other}` : ""}</div>`; }
+  // WAL을 다룬 방식. 커밋이 WAL을 디스크로 내렸는지(XLogFlush와 pwrite·fdatasync), 기다리지 않고 WAL writer에 맡겼는지
+  // (비동기 커밋, 취소, 힌트 비트의 페이지 사진), 그리고 이 장면 안에 WAL writer가 쓴 일을 적습니다.
+  const io = f.hops.filter(x => x.kind === "io"), byKind = k => f.hops.find(x => x.kind === k), bg = f.hops.filter(x => x.bg);
+  const wk = f.hops.find(x => x.lane === "wake"), flush = byKind("wal_flush"), ac = byKind("async_commit"), al = byKind("async_lsn"), fpi = byKind("hint_fpi");
+  const wakeT = wk ? ` 그다음 기다리던 세션 ${M.nameOf[wk.who].slice(1)}${pp(M.nameOf[wk.who].slice(1), "을", "를")} 깨웁니다.` : "";
+  if (flush && io.length) h += `<div class="facts">커밋은 WAL을 커밋 레코드의 끝(${esc(flush.lsn)})까지 디스크로 내린 뒤(${io.map(x => esc(x.text)).join(", ")}) 커밋 로그에 적고 응답합니다.${wakeT}</div>`;
+  else if (io.length) h += `<div class="facts">커밋할 때 WAL을 디스크에 내린 뒤(${io.map(x => esc(x.text)).join(", ")}) 커밋 로그에 적습니다.${wakeT}</div>`;
+  if (ac) h += `<div class="facts">synchronous_commit = off라서 WAL이 디스크에 내려가기를 기다리지 않고 커밋 로그에 적은 뒤 응답했습니다. ${esc(ac.lsn)}까지의 WAL은 아직 공유 메모리의 WAL 버퍼에 있고, WAL writer가 나중에 씁니다.</div>`;
+  else if (al && /^ROLLBACK/i.test(f.st.sql)) h += `<div class="facts">취소는 WAL이 내려가기를 기다리지 않습니다. 취소 레코드의 끝(${esc(al.lsn)})만 WAL writer에 남기고 커밋 로그에 중단을 적습니다.</div>`;
+  else if (al && fpi) h += `<div class="facts">읽기만 하는 문장도 WAL을 남겼습니다. 이 서버는 데이터 체크섬이 켜져 있어, 체크포인트 뒤 처음으로 힌트 비트를 쓰는 페이지는 먼저 페이지 사진(FPI_FOR_HINT)을 WAL에 넣습니다(XLogSaveBufferForHint). 그 WAL도 기다리지 않고 ${esc(al.lsn)}까지를 WAL writer에 맡깁니다.</div>`;
+  if (bg.length) h += `<div class="facts">이 장면 동안 WAL writer가 맡은 WAL을 썼습니다: ${bg.map(x => `+${ms(x.t)} ms ${esc(x.text)}`).join(" · ")}</div>`;
+  // 고른 소스. 고른 것이 없으면 이 장면의 첫 소스 위치를 보입니다.
+  // SSI 장면은 간선을 그은 줄, 정리, 새로 만든 SIRead 락, 커밋 전 검사 순서로 고릅니다(실험 1~3의 기록에는 이 일들이 없음).
+  // DOOMED로 커밋이 실패한 장면은 그 검사와 오류를 낸 줄(predicate.c 4723행)을 먼저 보입니다.
+  const pick = [f.hops.some(x => x.kind === "precommit" && x.doomed) ? f.hops.find(x => x.lane === "self" && x.cls === "err") : null,
+    f.hops.find(x => x.cls === "wait"), f.hops.find(x => x.cls === "err"), f.hops.find(x => /EvalPlanQual/.test(x.text)), f.hops.find(x => x.lane === "wake"),
+    f.hops.find(x => x.kind === "rw"), f.hops.find(x => x.kind === "ssi_clear"), f.hops.find(x => x.kind === "pred_lock" && x.created), f.hops.find(x => x.kind === "precommit"),
+    f.hops.find(x => x.kind === "conflict_in"), f.hops.find(x => x.lane === "ssi")].find(x => x?.ref && D.src[x.ref])?.ref;
+  const ref = SRC && D.src[SRC] ? SRC : pick || refs.find(r => D.src[r]);
+  if (ref && D.src[ref]) {
+    const ex = D.src[ref], line = +ref.split(":").pop();
+    h += `<div class="sec">소스 · PostgreSQL 18.6</div><div class="path">${esc(ref.split(":")[0])} · ${line}행</div><div class="code" id="code">` + ex.lines.map((l, i) => `<div class="${ex.from + i === line ? "on" : ""}"><span class="no">${ex.from + i}</span>${esc(l)}</div>`).join("") + `</div>`;
+  }
+  el.innerHTML = h;
+  el.querySelectorAll("[data-src]").forEach(c => c.onclick = () => { SRC = c.dataset.src; detail(); save(); });
+  const on = el.querySelector(".code .on"); if (on) on.parentElement.scrollTop = Math.max(0, on.offsetTop - 80);
+}
+
+// kill 장면의 오른쪽. WAL 막대(kill 전에 WAL 버퍼에 넣은 끝, 커널에 넘긴 끝, 복구가 다시 실행한 레코드와 멈춘 곳), server.log의
+// 이정표, 이 장면에서 실행된 소스(함수 구간과 스택이 가리킨 줄).
+const LOGKO = [[/was terminated by signal 9/, "postmaster가 자식의 끝을 처리하다(process_pm_child_exit → CleanupBackend) 백엔드가 SIGKILL로 끝난 것을 알아챔"],
+  [/^Failed process was running/, "그 백엔드가 마지막으로 실행한 문장(이미 끝난 문장이어도 남음)"],
+  [/terminating any other active server processes/, "공유 메모리가 망가졌을 수 있다고 보고 다른 서버 프로세스를 모두 끝냄 (HandleChildCrash → TerminateChildren, SIGQUIT)"],
+  [/all server processes terminated; reinitializing/, "자식이 모두 끝나 공유 메모리를 지우고 다시 만듦"],
+  [/database system was interrupted/, "startup이 제어 파일(pg_control)을 읽음: 정상 종료가 아니었음"],
+  [/not properly shut down; automatic recovery/, "크래시 복구 시작: 데이터 디렉터리를 fsync한 뒤 WAL을 다시 실행"],
+  [/redo starts at/, "마지막 체크포인트의 redo 위치부터 레코드를 다시 실행"],
+  [/invalid record length at|invalid magic number|unexpected pageaddr|record with incorrect prev-link|contrecord/, "여기서 더 읽을 레코드가 없음 → 여기를 WAL의 끝으로 봄"],
+  [/redo done at/, "다시 실행한 마지막 레코드의 시작 위치"],
+  [/redo is not required/, "체크포인트 뒤에 읽을 레코드가 없어 다시 실행할 것이 없음"],
+  [/checkpoint starting: end-of-recovery/, "복구 끝 체크포인트 시작 (startup이 요청하고 끝나기를 기다림)"],
+  [/checkpoint complete/, "체크포인트 끝: 복구가 고친 페이지를 데이터 파일에 씀"],
+  [/ready to accept connections/, "접속을 다시 받음"]];
+function crashDetail(f, el) {
+  const {D} = M, kl = f.kill, sv = D.server?.events || [], inWin = e => e.t >= f.start - 1000 && e.t <= f.end + 1000;
+  const role = Object.fromEntries((D.server?.procs || []).map(p => [p.pid, p.role]));
+  const logs = sv.filter(e => e.kind === "log" && inWin(e)), marks = crashMarks(f);
+  const lsnIn = re => { for (const e of logs) { const m = e.f.msg.match(re); if (m) return {lsn: m[1], msg: e.f.msg}; } return null; };
+  const L = "([0-9A-F]+/[0-9A-F]+)";
+  const start = lsnIn(new RegExp(`redo starts at ${L}`)), stop = lsnIn(new RegExp(`(?:invalid record length at|LSN) ${L}`)), done = lsnIn(new RegExp(`redo done at ${L}`));
+  const redo = sv.filter(e => e.kind === "redo" && inWin(e)), w0 = f.before?.wal;
+  // kill한 세션의 마지막 트랜잭션: kill 전 그 세션의 마지막 번호와, 그 커밋 레코드의 끝(XLogFlush의 위치 또는 비동기 커밋이 남긴 위치)
+  const evs = D.steps.filter(st => st.session === kl.session && st.t0 < kl.t).flatMap(st => st.requests.flatMap(r => r.events));
+  const xid = [...evs].reverse().find(e => e.kind === "xid")?.f.xid;
+  const cEnd = [...evs].reverse().find(e => e.kind === "wal_flush" || (e.kind === "commit_clog" && e.f.lsn))?.f.lsn;
+  const PG = 8192;
+  const A0 = lsnNum(start?.lsn ?? stop?.lsn ?? w0?.write), A = Math.floor(A0 / PG) * PG;
+  const Z0 = Math.max(...[w0?.insert, kl.walWritten, stop?.lsn, cEnd, ...redo.map(e => e.f.end)].map(lsnNum).filter(Number.isFinite)), Z = Math.ceil(Z0 / PG) * PG;
+  const W = 540, X0 = 8, X1 = W - 8, sx = v => X0 + (Math.max(A, Math.min(Z, v)) - A) / Math.max(1, Z - A) * (X1 - X0);
+  const zc = lsnNum(cEnd ?? stop?.lsn), zoom = Number.isFinite(zc);
+  let s = `<svg id="walbar" viewBox="0 0 ${W} ${zoom ? 352 : 178}" width="100%" role="img" aria-label="WAL 위치">`;
+  // 페이지 경계마다 세로선을 긋고, 글이 겹치지 않게 80 px마다 LSN을 적습니다(첫 칸은 왼쪽 맞춤).
+  const every = Math.max(1, Math.ceil(80 / (sx(A + PG) - sx(A))));
+  for (let v = A, i = 0; v <= Z; v += PG, i++) {
+    s += `<line x1="${sx(v)}" y1="26" x2="${sx(v)}" y2="150" stroke="var(--line)"/>`;
+    if (i % every === 0 && (v === A || sx(Z) - sx(v) > 30)) s += `<text x="${sx(v)}" y="162" font-size="9" class="mono" text-anchor="${v === A ? "start" : "middle"}" fill="var(--mute)">${lsnStr(v)}</text>`;
+  }
+  s += `<text x="${X0}" y="12" font-size="9" fill="var(--mute)">세로선 = WAL 페이지 경계(8 KB)</text>`;
+  const bar = (y, a, b, fill, stroke, label) => `<text x="${X0}" y="${y - 4}" font-size="10.5" fill="var(--sub)">${esc(label)}</text>` +
+    (b > a ? `<rect x="${sx(a)}" y="${y}" width="${Math.max(2, sx(b) - sx(a))}" height="14" rx="3" fill="${fill}" stroke="${stroke}"/>` : "");
+  if (w0) s += bar(40, A0, lsnNum(w0.insert), "var(--sharedbg)", "var(--shared)", `kill 전 WAL 버퍼에 넣은 끝 ${w0.insert} (관찰 +${ms(f.before.t)} ms)`);
+  s += kl.walWritten ? bar(80, A, lsnNum(kl.walWritten), "var(--diskbg)", "var(--disk)", `kill 전 커널에 넘긴 끝 ${kl.walWritten} (+${ms(kl.walWrittenT)} ms의 pwrite, 페이지 단위)`) :
+    `<text x="${X0}" y="76" font-size="10.5" fill="var(--sub)">kill 전 커널에 넘긴 끝</text><text x="${X0}" y="92" font-size="10.5" fill="var(--wait)" font-weight="600">서버가 뜬 뒤 kill까지 pg_wal 쓰기 없음</text>`;
+  s += `<text x="${X0}" y="116" font-size="10.5" fill="var(--sub)">복구가 다시 실행한 레코드 ${redo.length}개${done ? ` · 마지막 시작 ${done.lsn}` : ""}</text>`;
+  redo.forEach(e => { const a = sx(lsnNum(e.f.lsn)), b = sx(lsnNum(e.f.end)), on = e.f.xid !== "0";
+    s += `<rect x="${a}" y="${on ? 120 : 123}" width="${Math.max(1.5, b - a - .6)}" height="${on ? 14 : 8}" fill="${on ? "var(--s1)" : "var(--mute)"}" opacity="${on ? 1 : .55}"><title>${esc(`${e.f.lsn} ${e.f.rmgr} ${e.f.kind}${on ? ` xid ${e.f.xid}` : ""} ${e.f.len} B`)}</title></rect>`; });
+  if (stop) { const xs = sx(lsnNum(stop.lsn)); s += `<line x1="${xs}" y1="112" x2="${xs}" y2="146" stroke="var(--wait)" stroke-width="2.2"/><text x="${xs + (xs > W - 120 ? -4 : 4)}" y="146" font-size="9.5" ${xs > W - 120 ? 'text-anchor="end"' : ""} fill="var(--wait)" font-weight="600">${esc(stop.lsn)}에서 멈춤</text>`; }
+  if (cEnd) { const xc = sx(lsnNum(cEnd)); s += `<line x1="${xc}" y1="14" x2="${xc}" y2="150" stroke="var(--s1)" stroke-width="1.6" stroke-dasharray="4 3"/><text x="${xc + (xc > W - 200 ? -4 : 4)}" y="12" font-size="10" ${xc > W - 200 ? 'text-anchor="end"' : ""} fill="var(--s1)" font-weight="600">세션 ${kl.session.slice(1)}의 ${esc(xid ?? "")} 커밋 레코드 끝 ${esc(cEnd)}</text>`; }
+  // 커밋 레코드가 든 8 KB 페이지를 같은 규칙으로 크게 그립니다. 레코드 몇십 바이트는 위 막대에서 1 px도 안 되기 때문입니다.
+  // 복구가 이 세션의 레코드를 다시 실행하지 않았으면 레코드의 경계를 모르므로, 세션의 기록에 있는 WAL 위치만 눈금으로 적습니다.
+  if (zoom) {
+    const P0 = Math.floor((zc - 1) / PG) * PG, P1 = P0 + PG, zx = v => X0 + (Math.max(P0, Math.min(P1, v)) - P0) / PG * (X1 - X0), y0 = 214;
+    s += `<path d="M${sx(P0)} 168 L${X0} ${y0 - 26} M${sx(P1)} 168 L${X1} ${y0 - 26}" stroke="var(--mute)" stroke-dasharray="2 3" fill="none"/>`;
+    s += `<text x="${X0}" y="${y0 - 12}" font-size="10.5" font-weight="600" fill="var(--ink)">확대: 커밋 레코드가 든 페이지 ${lsnStr(P0)}–${lsnStr(P1)} (8 KB)</text>`;
+    const zbar = (y, b, fill, stroke, label) => `<text x="${X0}" y="${y - 3}" font-size="10" fill="var(--sub)">${esc(label)}</text>` + (b > P0 ? `<rect x="${X0}" y="${y}" width="${Math.max(2, zx(b) - X0)}" height="11" rx="2" fill="${fill}" stroke="${stroke}"/>` : `<text x="${X0}" y="${y + 9}" font-size="10" fill="var(--wait)" font-weight="600">이 페이지는 커널에 넘어가지 않음</text>`);
+    if (w0) s += zbar(y0 + 10, lsnNum(w0.insert), "var(--sharedbg)", "var(--shared)", "WAL 버퍼에 넣은 끝");
+    s += zbar(y0 + 40, lsnNum(kl.walWritten ?? "0/0"), "var(--diskbg)", "var(--disk)", "커널에 넘긴 끝");
+    s += `<text x="${X0}" y="${y0 + 67}" font-size="10" fill="var(--sub)">레코드 (복구가 다시 실행한 것)</text>`;
+    let lab = 0;
+    redo.filter(e => lsnNum(e.f.end) > P0 && lsnNum(e.f.lsn) < P1).forEach(e => {
+      const a = zx(lsnNum(e.f.lsn)), b = zx(lsnNum(e.f.end)), on = e.f.xid !== "0";
+      s += `<rect x="${a}" y="${y0 + 72}" width="${Math.max(1.5, b - a - .8)}" height="14" fill="${on ? "var(--s1)" : "var(--mute)"}" opacity="${on ? 1 : .5}"><title>${esc(`${e.f.lsn} ${e.f.rmgr} ${e.f.kind} ${e.f.len} B`)}</title></rect>`;
+      const name = `${e.f.rmgr} ${e.f.kind}${on ? ` ${e.f.xid}` : ""}`;
+      if (!on && b - a > tw(name, 9) + 6) s += `<text x="${a + 4}" y="${y0 + 82}" font-size="9" fill="var(--card)" font-weight="600">${esc(name)}</text>`;
+      else if (on) { const ly = y0 + 100 + (lab++ % 3) * 11; s += `<line x1="${(a + b) / 2}" y1="${y0 + 86}" x2="${(a + b) / 2}" y2="${ly - 8}" stroke="var(--s1)"/><text x="${(a + b) / 2}" y="${ly}" font-size="9" text-anchor="end" fill="var(--s1)" font-weight="600">${esc(name)} ${esc(e.f.len)} B</text>`; }
+    });
+    if (!redo.some(e => e.f.xid === xid)) {
+      [...evs].filter(e => e.f?.lsn && ["hint_fpi", "wal_flush", "async_lsn"].includes(e.kind) && lsnNum(e.f.lsn) > P0 && lsnNum(e.f.lsn) <= P1).forEach(e => {
+        const xx = zx(lsnNum(e.f.lsn)), ly = y0 + 100 + (lab++ % 3) * 11;
+        s += `<line x1="${xx}" y1="${y0 + 70}" x2="${xx}" y2="${ly - 8}" stroke="var(--s1)" stroke-dasharray="2 2"/><text x="${xx}" y="${ly}" font-size="9" text-anchor="end" fill="var(--s1)" font-weight="600">${esc({hint_fpi: "페이지 사진 끝", wal_flush: "커밋 끝", async_lsn: "커밋 끝"}[e.kind])} ${esc(e.f.lsn)} (세션 기록)</text>`;
+      });
+    }
+    if (stop && lsnNum(stop.lsn) >= P0 && lsnNum(stop.lsn) <= P1) { const xs = zx(lsnNum(stop.lsn)); s += `<line x1="${xs}" y1="${y0 + 66}" x2="${xs}" y2="${y0 + 92}" stroke="var(--wait)" stroke-width="2.4"/><text x="${xs + 4}" y="${y0 + 102}" font-size="9.5" fill="var(--wait)" font-weight="600">복구가 멈춘 곳</text>`; }
+    if (cEnd) { const xc = zx(lsnNum(cEnd)); s += `<line x1="${xc}" y1="${y0 + 4}" x2="${xc}" y2="${y0 + 92}" stroke="var(--s1)" stroke-width="1.4" stroke-dasharray="4 3"/>`; }
+  }
+  s += `</svg>`;
+  let h = `<h2>kill 전에 WAL이 어디까지 있었고, 복구가 어디까지 읽었나</h2>${s}`;
+  const replayed = xid && redo.find(e => e.f.rmgr === "Transaction" && e.f.kind === "COMMIT" && e.f.xid === xid);
+  if (xid) h += replayed ? `<span class="badge ok">복구가 ${esc(xid)}의 COMMIT 레코드(${esc(replayed.f.lsn)})를 다시 실행했습니다 → 다시 뜬 서버에서도 ${esc(xid)}${pp(xid, "은", "는")} 커밋</span>` :
+    `<span class="badge note">${esc(xid)}의 커밋 레코드(끝 ${esc(cEnd ?? "?")})는 kill 전에 커널에 넘어가지 않아 복구가 읽지 못했습니다 → 다시 뜬 서버에서 ${esc(xid)}${pp(xid, "은", "는")} 커밋된 적이 없습니다</span>`;
+  const sameEnd = kl.walSynced && kl.walSynced === kl.walWritten;
+  h += `<div class="facts" style="margin-top:6px">SIGKILL은 프로세스만 끝냅니다. 커널에 넘긴 WAL(pwrite)은 커널의 페이지 캐시에 남아 다시 뜬 서버가 읽고, 아직 공유 메모리의 WAL 버퍼에만 있던 레코드는 postmaster가 공유 메모리를 다시 만들 때 사라집니다.${sameEnd ? " 이 기록에서는 pwrite마다 곧바로 fdatasync가 따라와, 커널에 넘긴 끝과 디스크에 내린 끝이 같습니다." : kl.walWritten ? ` 디스크까지 내린(fdatasync) 끝은 ${esc(kl.walSynced || "없음")}입니다.` : ""}</div>`;
+  // server.log 이정표
+  h += `<div class="sec">server.log의 이정표 (시각은 1 ms 단위로 내림) · 가운데 그림의 번호</div><div class="facts">` + marks.map(m => {
+    const ko = LOGKO.find(([re]) => re.test(m.f.msg))?.[1], mi = logs.findIndex(x => x.t === m.t && x.f.msg === m.f.msg), det = logs[mi + 1]?.f.level === "DETAIL" ? logs[mi + 1] : null;
+    return `<div style="margin-bottom:3px"><b>${m.n}</b> <span class="mono" style="font-size:11px">+${ms(m.t)} ms ${esc(ROLE[role[m.pid]] || role[m.pid] || m.pid)}</span> · ${esc(ko || "")}<br><span class="mono" style="font-size:10.5px;color:var(--sub)">${esc(m.f.msg.split("\n")[0])}${det ? ` / ${esc(det.f.msg)}` : ""}</span></div>`;
+  }).join("") + `</div>`;
+  // 이 장면에서 실행된 소스: 함수 구간(정의된 줄)과, 스택이 있는 사건이 가리킨 줄(시스템 콜은 그 콜을 낸 함수, 그 밖은 그 함수를 부른 줄)
+  const chips = [], add = (key, text, ref, t) => { if (!ref) return; const c = chips.find(x => x.key === key); if (c) { c.n++; return; } chips.push({key, text, ref, t, n: 1}); };
+  (D.server?.spans || []).filter(x => x.t1 >= f.start && x.t0 <= f.end).forEach(x => add(x.fn, `${x.fn} ${ms(x.t1 - x.t0)} ms`, x.at, x.t0));
+  sv.filter(e => inWin(e) && e.stack?.length && ["postmaster", "startup", "checkpointer"].includes(role[e.pid])).forEach(e => {
+    const st = e.stack, top = st[st.length - 1], call = st[st.length - 2];
+    if (e.kind === "signal" && role[e.pid] === "postmaster") add("signal_child", `${top.fn} · kill(pid)와 kill(-pid)`, top.at, e.t);
+    else if (e.kind === "redo") add("redo", `${call?.fn} → ${top.fn} · 레코드마다`, call?.at, e.t);
+    else if ((e.kind === "commit_clog" || e.kind === "abort_clog") && call) add(e.kind, `${call.fn} → ${top.fn} · ${e.f.xid}`, call.at, e.t);
+    else if (e.kind === "wal_flush" && role[e.pid] === "startup" && call) add("sflush" + call.fn, `${call.fn} → ${top.fn}`, call.at, e.t);
+  });
+  chips.sort((a, b) => a.t - b.t);
+  const pick = ["commit_clog", "sflushCreateOverwriteContrecordRecord", "redo", "signal_child"].map(k => chips.find(c => c.key === k)).find(c => c && D.src[c.ref])?.ref;
+  const ref = SRC && D.src[SRC] ? SRC : pick || chips.find(c => D.src[c.ref])?.ref;
+  h += `<div class="sec">이 장면에서 실행된 소스 (함수 기록) · 가운데 그림의 막대·선을 눌러도 됩니다</div><div>` + chips.map(c => `<span class="chip${ref === c.ref ? " sel" : ""}" data-src="${esc(c.ref)}">${esc(c.text)}${c.n > 1 ? ` ×${c.n}` : ""} <span class="k">${esc(fileLine(c.ref))}</span></span>`).join("") + `</div>`;
+  if (ref && D.src[ref]) {
+    const ex = D.src[ref], line = +ref.split(":").pop();
+    h += `<div class="sec">소스 · PostgreSQL 18.6</div><div class="path">${esc(ref.split(":")[0])} · ${line}행</div><div class="code" id="code">` + ex.lines.map((l, i) => `<div class="${ex.from + i === line ? "on" : ""}"><span class="no">${ex.from + i}</span>${esc(l)}</div>`).join("") + `</div>`;
+  }
+  el.innerHTML = h;
+  el.querySelectorAll("[data-src]").forEach(c => c.onclick = () => { SRC = c.dataset.src; detail(); lanes(); save(); });
+  const on = el.querySelector(".code .on"); if (on) on.parentElement.scrollTop = Math.max(0, on.offsetTop - 80);
+}
+
+function render() {
+  header();
+  document.getElementById("t1").innerHTML = term("S1");
+  document.getElementById("t2").innerHTML = term("S2");
+  minimap(); lanes(); detail(); save();
+  const g = document.querySelector(`#lanes g[data-k="${CUR}"]`), wrap = document.getElementById("lanewrap");
+  if (g) {
+    const head = document.getElementById("lanehead").getBoundingClientRect().height, top = g.getBoundingClientRect().top - wrap.getBoundingClientRect().top;
+    if (top < head || top + 60 > wrap.clientHeight) wrap.scrollTop += top - head - 8;
+  }
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.sc) { SC = b.dataset.sc; RUN = "a"; CUR = 0; SRC = ""; load(); render(); }
+  else if (b.dataset.run) { RUN = b.dataset.run; SRC = ""; load(); render(); }
+  else if (b.id === "prev" && CUR > 0) { CUR--; SRC = ""; render(); }
+  else if (b.id === "next" && CUR < M.frames.length - 1) { CUR++; SRC = ""; render(); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft" && CUR > 0) { CUR--; SRC = ""; render(); }
+  if (e.key === "ArrowRight" && CUR < M.frames.length - 1) { CUR++; SRC = ""; render(); }
+});
+load(); render();
+</script>
+</body>
+</html>

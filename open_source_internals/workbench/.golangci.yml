@@ -1,0 +1,22 @@
+version: "2"
+linters:
+  default: none
+  enable:
+    - revive
+    - godoclint
+  settings:
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+    godoclint:
+      default: basic
+      enable:
+        - require-doc
+        - start-with-name
+      options:
+        require-doc:
+          ignore-exported: false
+          ignore-unexported: false
+        start-with-name:
+          include-unexported: true

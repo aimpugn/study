@@ -1,0 +1,488 @@
+input	path	role	prov	decision	rule
+e05	$.steps[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e05	$.steps[].seq	연결	관찰	X1	X1 원래 번호(STOP 순번)
+e05	$.steps[].place	장소	관찰	place	M 멈춘 자리 = 프레임 장소(함수와 줄)
+e05	$.steps[].place.function	장소	관찰	place/target	P3 실행 위치
+e05	$.steps[].place.loc	장소	관찰	place.loc	M 프레임 장소의 소스 위치
+e05	$.steps[].place.loc.path	장소	관찰	place.loc	M 프레임 장소의 소스 경로
+e05	$.steps[].place.loc.line	장소	관찰	place.loc	M 프레임 장소의 줄
+e05	$.steps[].values[]	사건	관찰	X7	X7 멈춘 순간 읽은 값 목록(사건이 아니라 값)
+e05	$.steps[].stack	장소	관찰	stack	S1 스택 그릇
+e05	$.steps[].stack[]	장소	관찰	stack	S1 스택 그릇
+e05	$.steps[].stack[].function	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+e05	$.steps[].stack[].loc	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+e05	$.steps[].stack[].loc.path	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+e05	$.steps[].stack[].loc.line	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+e05	$.counts[].function	장소	관찰	place/target	P3 실행 위치
+c3	$.endUs	시각	도출	end_ns	M 질의 구간(받은 순간 0부터)의 끝
+c3	$.hops[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+c3	$.hops[].n	연결	도출	X1	X1 원래 번호(이동)
+c3	$.hops[].pid	장소	관찰	place.parent	M 이동을 실행한 프로세스 = 이동 장소(코드 자리)의 부모
+c3	$.hops[].proc	장소	도출	recompute	M 다시 셈: 이동의 프로세스가 질의 구간의 장소(백엔드)면 backend, 아니면 other(1,194행 모두 맞음)
+c3	$.hops[].from	장소	도출	from	P1 이동의 출발 칸(형식의 from 칸)
+c3	$.hops[].to	장소	도출	target	P2 이동의 도착 칸
+c3	$.hops[].kind	사건	이름	name	K1 사건 종류
+c3	$.hops[].msgs[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+c3	$.hops[].msgs[].type	사건	관찰	name	K1 사건 종류
+c3	$.hops[].t0	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+c3	$.hops[].t1	시각	도출	end_ns	T1 사건 끝
+c3	$.hops[].stack	장소	관찰	stack	S1 스택 그릇
+c3	$.hops[].stack[]	장소	관찰	stack	S1 스택 그릇
+c3	$.hops[].stack[].fn	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+c3	$.hops[].stack[].at	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+c3	$.hops[].site	장소	관찰	place	M 이동의 장소 = 코드 자리(함수 이름 없는 경로:줄). 빈 글(5행)이면 프로세스
+c3	$.hops[].files	장소	관찰	from/target	M 파일 장소(칸 아래)가 출발 칸이 파일 칸이면 from을, 아니면 target을 좁힘(198행 모두 하나)
+c3	$.hops[].files[]	장소	관찰	from/target	M 파일 장소(칸 아래)가 출발 칸이 파일 칸이면 from을, 아니면 target을 좁힘(198행 모두 하나)
+c3	$.pid	장소	관찰	place	M 질의 구간 사건의 장소 = 그 질의의 백엔드 프로세스
+c3	$.stages[]	사건	도출	row	R1 행을 만드는 목록의 원소
+c3	$.stages[].t0	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+c3	$.stages[].fn	장소	관찰	place	M 단계 사건의 장소 = 단계 함수
+c3	$.stages[].at	장소	관찰	stack	M 부른 줄 = 스택 0번 프레임의 위치(concept-3은 caller가 없어 코드 자리)
+c4	$.data.endUs	시각	도출	end_ns	M 질의 구간(받은 순간 0부터)의 끝
+c4	$.data.hops[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+c4	$.data.hops[].n	연결	도출	X1	X1 원래 번호(이동)
+c4	$.data.hops[].pid	장소	관찰	place.parent	M 이동을 실행한 프로세스 = 이동 장소(코드 자리)의 부모
+c4	$.data.hops[].proc	장소	도출	recompute	M 다시 셈: 이동의 프로세스가 질의 구간의 장소(백엔드)면 backend, 아니면 other(1,194행 모두 맞음)
+c4	$.data.hops[].from	장소	도출	from	P1 이동의 출발 칸(형식의 from 칸)
+c4	$.data.hops[].to	장소	도출	target	P2 이동의 도착 칸
+c4	$.data.hops[].kind	사건	이름	name	K1 사건 종류
+c4	$.data.hops[].msgs[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+c4	$.data.hops[].msgs[].type	사건	관찰	name	K1 사건 종류
+c4	$.data.hops[].t0	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+c4	$.data.hops[].t1	시각	도출	end_ns	T1 사건 끝
+c4	$.data.hops[].stack	장소	관찰	stack	S1 스택 그릇
+c4	$.data.hops[].stack[]	장소	관찰	stack	S1 스택 그릇
+c4	$.data.hops[].stack[].fn	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+c4	$.data.hops[].stack[].at	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+c4	$.data.hops[].site	장소	관찰	place	M 이동의 장소 = 코드 자리(함수 이름 없는 경로:줄). 빈 글(5행)이면 프로세스
+c4	$.data.hops[].files	장소	관찰	from/target	M 파일 장소(칸 아래)가 출발 칸이 파일 칸이면 from을, 아니면 target을 좁힘(198행 모두 하나)
+c4	$.data.hops[].files[]	장소	관찰	from/target	M 파일 장소(칸 아래)가 출발 칸이 파일 칸이면 from을, 아니면 target을 좁힘(198행 모두 하나)
+c4	$.data.pid	장소	관찰	place	M 질의 구간 사건의 장소 = 그 질의의 백엔드 프로세스
+c4	$.data.stages[]	사건	도출	row	R1 행을 만드는 목록의 원소
+c4	$.data.stages[].t0	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+c4	$.data.stages[].fn	장소	관찰	place	M 단계 사건의 장소 = 단계 함수
+c4	$.data.stages[].caller	장소	관찰	stack	M 스택 0번 = 단계 함수를 부른 쪽 프레임
+c4	$.data.stages[].at	장소	관찰	stack	M 부른 줄 = 스택 0번 프레임의 위치(concept-3은 caller가 없어 코드 자리)
+c4	$.procs	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.procs.io_worker	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.procs.io_worker[]	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.procs.walwriter	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.procs.walwriter[]	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.procs.checkpointer	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.procs.checkpointer[]	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.procs.bgwriter	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.procs.bgwriter[]	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.procs.autovacuum	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.procs.autovacuum[]	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.procs.logrep	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.procs.logrep[]	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.procs.postmaster	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.procs.postmaster[]	장소	관찰	place	P3 서버 프로세스 역할표
+c4	$.data.hops[].msgs[].cut	연결	도출	link	M 다시 셈: 나가는 continues 연결이 있거나 그런 메시지의 copy 사본이면 참(이 송신의 보이는 바이트 밖으로 이어짐, journey.go 190·219행)
+c4	$.data.hops[].msgs[].cont	연결	도출	link	M 앞 송신의 잘린 메시지에서 오는 continues 연결(journey.go 346행)
+c4	$.data.hops[].sysUs	시각	관찰	dur_ns	M strace가 잰 시스템 콜 길이 = strace 출처의 시스템 콜 사건(길이만), 이동과 syscall 연결
+c4	$.data.hops[].kernel[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+c4	$.data.hops[].kernel[].fn	장소	관찰	place	M 커널 마디의 장소 = 커널 함수(at이 있으면 그 아래 프레임)
+c4	$.data.hops[].kernel[].us	시각	관찰	dur_ns	T2 길이만 아는 사건
+c4	$.data.hops[].kernel[].at	장소	관찰	place.loc	M 커널 프레임 장소의 위치(at이 없으면 함수 장소)
+c4	$.data.hops[].kernel[].kids	연결	관찰	parent	L1 커널 마디 포함
+c4	$.data.hops[].kernel[].kids[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+c4	$.data.hops[].kernel[].kids[].fn	장소	관찰	place	M 커널 마디의 장소 = 커널 함수(at이 있으면 그 아래 프레임)
+c4	$.data.hops[].kernel[].kids[].us	시각	관찰	dur_ns	T2 길이만 아는 사건
+c4	$.data.hops[].kernel[].kids[].at	장소	관찰	place.loc	M 커널 프레임 장소의 위치(at이 없으면 함수 장소)
+c4	$.data.hops[].kernel[].kids[].kids	연결	관찰	parent	L1 커널 마디 포함
+c4	$.data.hops[].kernel[].kids[]{2+}.fn	장소	관찰	place	M 커널 마디의 장소 = 커널 함수(at이 있으면 그 아래 프레임)
+c4	$.data.hops[].kernel[].kids[]{2+}.us	시각	관찰	dur_ns	T2 길이만 아는 사건
+c4	$.data.hops[].kernel[].kids[]{2+}.at	장소	관찰	place.loc	M 커널 프레임 장소의 위치(at이 없으면 함수 장소)
+c4	$.data.hops[].kernel[].kids[]{2+}.kids	연결	관찰	parent	L1 커널 마디 포함
+c4	$.data.kernelPid	장소	관찰	place.parent	M 커널 마디 장소(커널 함수·프레임)의 프로세스
+tx	$.bystanders[]	사건	도출	row	R1 행을 만드는 목록의 원소
+tx	$.bystanders[].pid	장소	도출	place	M 해석기 요약 사건(sample, 시각 미기록)의 장소 = 그 프로세스(110행 모두 server.procs에 있음)
+tx	$.captures[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.captures[].activity[].pid	장소	관찰	X3	X3 관찰 안의 행
+tx	$.captures[].activity[].xid	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].afterStep	연결	관찰	link	M 관찰 → 단계의 after 연결(근거 txlab). 0(첫 단계 앞, 44행)은 연결 없음이고 내보내기가 0으로 되살림
+tx	$.captures[].pages.acct[].block	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].pages.acct[].ctid	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].pages.acct[].lp	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].pages.acct[].values.id	장소	관찰	X2	X2 행 값
+tx	$.captures[].reads	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 그릇
+tx	$.captures[].reads.activity	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+tx	$.captures[].reads.activity[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+tx	$.captures[].reads.locks	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+tx	$.captures[].reads.locks[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+tx	$.captures[].reads.pages	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+tx	$.captures[].reads.pages[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+tx	$.captures[].reads.running	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+tx	$.captures[].reads.running[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+tx	$.captures[].reads.xacts	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+tx	$.captures[].reads.xacts[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+tx	$.captures[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+tx	$.captures[].locks[].page	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].locks[].pid	장소	관찰	X3	X3 관찰 안의 행
+tx	$.captures[].locks[].relation	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].locks[].tuple	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].locks[].vxid	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].locks[].xid	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.hintChanges[]	사건	도출	row	R1 행을 만드는 목록의 원소
+tx	$.hintChanges[].at	장소	도출	place	M 힌트 사건의 장소 = 코드 자리(SetHintBits를 부른 경로:줄, 함수 이름 없음)
+tx	$.hintChanges[].by	연결	도출	place.parent	M 힌트를 바꾼 세션의 백엔드 = 힌트 장소(코드 자리)의 부모. 사건 출처가 추정이라 이 장소 선택도 추정. 내보내기는 그 프로세스의 세션 이름
+tx	$.hintChanges[].ctid	장소	도출	X2	X2 데이터 대상의 이름
+tx	$.hintChanges[].step	연결	도출	link	M 단계 → 힌트 사건의 contains 연결(근거 힌트 출처, 추정). 18행은 by와 그 단계의 세션이 달라 by로 다시 셀 수 없음
+tx	$.hintChanges[].t	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+tx	$.hintChanges[].table	장소	도출	X2	X2 데이터 대상(표)의 이름
+tx	$.server.events[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.server.events[].f.durUs	시각	관찰	X2	X2 기록기 칸 f 안의 대상 이름
+tx	$.server.events[].f.file	장소	관찰	X2	X2 기록기 칸 f 안의 대상 이름
+tx	$.server.events[].f.off	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.server.events[].kind	사건	관찰	name	K1 사건 종류
+tx	$.server.events[].pid	장소	관찰	place.parent	M 사건 장소(가장 안쪽 프레임, 스택이 없으면 그 자신)의 프로세스
+tx	$.server.events[].stack	장소	관찰	stack	S1 스택 그릇
+tx	$.server.events[].stack[]	장소	관찰	stack	S1 스택 그릇
+tx	$.server.events[].stack[].at	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+tx	$.server.events[].stack[].fn	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+tx	$.server.events[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+tx	$.server.events[].t1	시각	관찰	end_ns	T1 사건 끝
+tx	$.server.procs[]	장소	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.server.procs[].pid	장소	관찰	place	M 프로세스 장소의 이름(pid). 역할은 역할 장소(부모)로 둠(여정과 같게)
+tx	$.server.procs[].t0	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+tx	$.server.procs[].t1	시각	관찰	end_ns	T1 사건 끝
+tx	$.server.procs[].session	장소	관찰	recompute	M 다시 셈: 그 프로세스에 요청이 놓인 세션(88행 모두 sessions[].pid와 같고 모두 backend)
+tx	$.sessions[]	장소	관찰	place	M 세션 장소(kind session, txlab 장소 아래). 차례는 장소 id 차례
+tx	$.sessions[].name	장소	관찰	place	M 세션 장소의 이름
+tx	$.sessions[].pid	장소	관찰	recompute	M 다시 셈: 그 세션의 단계가 contains로 품은 요청 구간의 장소(백엔드 프로세스). 세션마다 하나가 아니면 적재기가 멈춤(88행 모두 하나)
+tx	$.steps[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.steps[].n	연결	관찰	X1	X1 원래 번호(단계)
+tx	$.steps[].requests[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.steps[].requests[].in[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.steps[].requests[].in[].type	사건	관찰	name	K1 사건 종류
+tx	$.steps[].requests[].out[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.steps[].requests[].out[].type	사건	관찰	name	K1 사건 종류
+tx	$.steps[].requests[].t0	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+tx	$.steps[].requests[].t1	시각	도출	end_ns	T1 사건 끝
+tx	$.steps[].session	장소	관찰	place	M 단계 구간의 장소 = 세션 장소
+tx	$.steps[].t0	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+tx	$.steps[].t1	시각	관찰	end_ns	T1 사건 끝
+tx	$.steps[].requests[].checks[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.steps[].requests[].checks[].ctid	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.steps[].requests[].checks[].lines[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.steps[].requests[].checks[].lines[].at	장소	관찰	stack	M 부른 줄 = 스택 1번의 코드 자리(함수 이름 없음)
+tx	$.steps[].requests[].checks[].lines[].fn	장소	관찰	place	M 사건의 장소 = 부른 함수(백엔드 프로세스 아래)
+tx	$.steps[].requests[].checks[].path	장소	관찰	recompute	M 다시 셈: 판정 경로 사건(이름 path)이 없으면 null(4행). 빈 목록은 원본에 없음
+tx	$.steps[].requests[].checks[].path[]	장소	관찰	row	R1 판정 경로의 호출 하나 = 줄 판정 사건의 자식 instant(이름 path, 시각 미기록)
+tx	$.steps[].requests[].checks[].path[].at	장소	관찰	stack	M 부른 줄 = 스택 1번의 코드 자리(함수 이름 없음)
+tx	$.steps[].requests[].checks[].path[].fn	장소	관찰	place	M 사건의 장소 = 부른 함수(백엔드 프로세스 아래)
+tx	$.steps[].requests[].checks[].path[].inner[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.steps[].requests[].checks[].path[].inner[].at	장소	관찰	stack	M 부른 줄 = 스택 1번의 코드 자리(함수 이름 없음)
+tx	$.steps[].requests[].checks[].path[].inner[].fn	장소	관찰	place	M 사건의 장소 = 부른 함수(백엔드 프로세스 아래)
+tx	$.steps[].requests[].checks[].stack	장소	관찰	stack	S1 스택 그릇
+tx	$.steps[].requests[].checks[].stack[]	장소	관찰	stack	S1 스택 그릇
+tx	$.steps[].requests[].checks[].stack[].at	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+tx	$.steps[].requests[].checks[].stack[].fn	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+tx	$.steps[].requests[].checks[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+tx	$.steps[].requests[].checks[].table	장소	관찰	X2	X2 데이터 대상(표)의 이름
+tx	$.steps[].requests[].events[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.steps[].requests[].events[].kind	사건	관찰	name	K1 사건 종류
+tx	$.steps[].requests[].events[].stack	장소	관찰	stack	S1 스택 그릇
+tx	$.steps[].requests[].events[].stack[]	장소	관찰	stack	S1 스택 그릇
+tx	$.steps[].requests[].events[].stack[].at	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+tx	$.steps[].requests[].events[].stack[].fn	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+tx	$.steps[].requests[].events[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+tx	$.steps[].requests[].events[].t1	시각	관찰	end_ns	T1 사건 끝
+tx	$.steps[].requests[].snapshots[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.steps[].requests[].snapshots[].kind	사건	관찰	name	K1 사건 종류
+tx	$.steps[].requests[].snapshots[].stack	장소	관찰	stack	S1 스택 그릇
+tx	$.steps[].requests[].snapshots[].stack[]	장소	관찰	stack	S1 스택 그릇
+tx	$.steps[].requests[].snapshots[].stack[].at	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+tx	$.steps[].requests[].snapshots[].stack[].fn	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+tx	$.steps[].requests[].snapshots[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+tx	$.tables[]	장소	관찰	X2	X2 데이터 대상(표)의 정의 = run attrs의 값(txlab 출처)
+tx	$.tables[].columns[]	장소	관찰	X2	X2 데이터 대상(열)의 정의
+tx	$.tables[].columns[].name	장소	관찰	X2	X2 데이터 대상(열)의 이름
+tx	$.tables[].name	장소	관찰	X2	X2 데이터 대상(표)의 이름
+tx	$.tupleAddrs	장소	도출	X2	X2 데이터 대상(행)의 공유 버퍼 주소 = run attrs의 값(해석기 출처)
+tx	$.steps[].requests[].checks[].tup	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.tupleAddrs[]	장소	도출	X2	X2 데이터 대상(행)의 공유 버퍼 주소
+tx	$.tupleAddrs[].addrs	장소	도출	X2	X2 데이터 대상(행)의 공유 버퍼 주소
+tx	$.tupleAddrs[].addrs[]	장소	도출	X2	X2 데이터 대상(행)의 공유 버퍼 주소
+tx	$.tupleAddrs[].ctid	장소	도출	X2	X2 데이터 대상의 이름
+tx	$.tupleAddrs[].table	장소	도출	X2	X2 데이터 대상(표)의 이름
+tx	$.captures[].pages.parent	연결	관찰	X3	X3 관찰 안의 행
+tx	$.captures[].pages.parent[]	연결	관찰	X3	X3 관찰 안의 행
+tx	$.captures[].pages.parent[].block	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].pages.parent[].ctid	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].pages.parent[].lp	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].pages.parent[].values.id	장소	관찰	X2	X2 행 값
+tx	$.captures[].pages.parent[].values.name	장소	관찰	X2	X2 행 값(표 parent의 name 열)
+tx	$.captures[].pages.child[].block	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].pages.child[].ctid	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].pages.child[].lp	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].pages.child[].values.id	장소	관찰	X2	X2 행 값
+tx	$.pauses[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.pauses[].beforeStep	연결	관찰	link	M 멈춤 → 그 뒤에 보낸 단계의 before 연결(근거 txlab, txlab/run.go 35행)
+tx	$.pauses[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+tx	$.pauses[].t1	시각	관찰	end_ns	T1 사건 끝
+tx	$.captures[].pages.payment[].block	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].pages.payment[].ctid	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].pages.payment[].lp	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].afterKill	연결	관찰	link	M 관찰 → kill의 after 연결(근거 txlab). 이 관찰은 kill 앞 마지막 단계와도 after로 잇는다(txlab/run.go 80행, 8행 모두 beforeStep - 1)
+tx	$.kills[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.kills[].beforeStep	연결	관찰	link	M kill → 그 뒤에 보낸 단계의 before 연결(근거 txlab). 시나리오가 kill로 끝나면 단계 수 + 1이라 이을 단계가 없어 적재기가 멈춤(txlab/run.go 42행, 지금 기록에는 없음)
+tx	$.kills[].pid	장소	관찰	target	M kill의 target = 죽인 백엔드 프로세스
+tx	$.kills[].session	장소	관찰	recompute	M 다시 셈: kill target 프로세스의 세션(8행 모두 맞음). kill의 장소는 txlab 장소
+tx	$.kills[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+tx	$.kills[].tReady	시각	관찰	end_ns	M kill 구간의 끝 = txlab이 server.log에서 접속 재개 줄을 본 시각(scenario.go 660행, 50 ms 간격으로 봄)
+tx	$.kills[].walWrittenT	시각	관찰	link	M kill → kill 전에 끝난 pg_wal 쓰기 가운데 쓴 범위의 끝(LSN)이 가장 먼 것의 wal 연결(근거 해석기, walExtentBefore). 시각은 그 사건의 끝으로 다시 셈(6행 모두 pg_wal 파일의 pwrite64 하나와 t1이 정확히 같고, 그 쓰기의 lsn1이 walWritten과 같음)
+tx	$.server.events[].f.to	장소	관찰	X2	X2 기록기 칸 f 안의 대상 이름
+tx	$.server.events[].f.xid	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.server.spans[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+tx	$.server.spans[].at	장소	관찰	place.loc	M 함수 입구 프레임의 위치 = 함수가 정의된 줄(scenario_server.go 293행 serverSpan.At)
+tx	$.server.spans[].fn	장소	관찰	place	M 구간의 장소 = 함수 입구 프레임(함수 장소 아래, 위치는 at)
+tx	$.server.spans[].pid	장소	관찰	place.parent	M 구간 장소(함수 입구 프레임)의 프로세스
+tx	$.server.spans[].t0	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+tx	$.server.spans[].t1	시각	관찰	end_ns	T1 사건 끝
+tx	$.captures[].pages.doctors[].block	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].pages.doctors[].ctid	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].pages.doctors[].lp	장소	관찰	X2	X2 데이터 대상의 이름
+tx	$.captures[].pages.doctors[].values.name	장소	관찰	X2	X2 행 값(표 doctors의 name 열)
+tx	$.tables[].indexes[]	장소	관찰	X2	X2 데이터 대상(색인)의 정의
+tx	$.tables[].indexes[].name	장소	관찰	X2	X2 데이터 대상(색인)의 이름
+e03	$.borrows[]	사건	도출	row	R1 행을 만드는 목록의 원소
+e03	$.borrows[].t0	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.borrows[].t1	시각	도출	end_ns	T1 사건 끝
+e03	$.borrows[].thread	장소	도출	place/target	P3 실행 위치
+e03	$.borrows[].conn	연결	도출	place/target	P3 실행 위치
+e03	$.borrows[].idleMs	시각	도출	X6	X6 길이·설정·시계 차
+e03	$.captures[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e03	$.captures[].afterStep	연결	관찰	TBD	규칙 없음
+e03	$.captures[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.captures[].pages.acct[].block	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.captures[].pages.acct[].lp	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.captures[].pages.acct[].ctid	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.captures[].pages.acct[].values.id	장소	관찰	X2	X2 행 값
+e03	$.captures[].activity[].pid	장소	관찰	X3	X3 관찰 안의 행
+e03	$.captures[].activity[].xid	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.captures[].reads	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 그릇
+e03	$.captures[].reads.activity	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+e03	$.captures[].reads.activity[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+e03	$.captures[].reads.locks	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+e03	$.captures[].reads.locks[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+e03	$.captures[].reads.pages	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+e03	$.captures[].reads.pages[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+e03	$.captures[].reads.running	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+e03	$.captures[].reads.running[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+e03	$.captures[].reads.xacts	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+e03	$.captures[].reads.xacts[]	시각	관찰	start_ns/end_ns	T3 관찰 안의 읽기 구간 = 자식 구간
+e03	$.captures[].span	시각	도출	TBD	규칙 없음
+e03	$.captures[].span[]	시각	도출	TBD	규칙 없음
+e03	$.captures[].visible.acct[].ctid	장소	도출	X2	X2 데이터 대상의 이름
+e03	$.captures[].visible.acct[].id	장소	도출	X3	X3 관찰 안의 행
+e03	$.captures[].locks[].pid	장소	관찰	X3	X3 관찰 안의 행
+e03	$.captures[].locks[].relation	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.captures[].locks[].page	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.captures[].locks[].tuple	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.captures[].locks[].xid	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.captures[].locks[].vxid	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.checkpoints[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e03	$.checkpoints[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.checkpoints[].tCapture	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.checkpoints[].tGo	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.conns[]	장소	관찰	place	P3 연결
+e03	$.conns[].conn	장소	관찰	place/target	P3 실행 위치
+e03	$.conns[].pid	장소	관찰	place/target	P3 실행 위치
+e03	$.conns[].name	장소	관찰	TBD	이름 칸: 장소 이름인지 값인지 입력마다
+e03	$.conns[].thread	장소	관찰	place/target	P3 실행 위치
+e03	$.conns[].accept	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.conns[].close	시각	관찰	end_ns	T1 사건 끝
+e03	$.conns[].messages[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e03	$.conns[].messages[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.conns[].messages[].tc	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.conns[].messages[].dir	사건	관찰	name	K1 사건 종류
+e03	$.conns[].messages[].type	사건	관찰	name	K1 사건 종류
+e03	$.conns[].messages[].f.pid	장소	관찰	X2	X2 기록기 칸 f 안의 대상 이름
+e03	$.conns[].messages[].name	장소	관찰	TBD	이름 칸: 장소 이름인지 값인지 입력마다
+e03	$.conns[].requests[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e03	$.conns[].requests[].seq	연결	도출	X1	X1 원래 번호(요청)
+e03	$.conns[].requests[].sent	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.conns[].requests[].done	시각	도출	end_ns	T1 사건 끝
+e03	$.conns[].requests[].server.t0	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.conns[].requests[].server.t1	시각	도출	end_ns	T1 사건 끝
+e03	$.conns[].requests[].server.events[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e03	$.conns[].requests[].server.events[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.conns[].requests[].server.events[].kind	사건	관찰	name	K1 사건 종류
+e03	$.conns[].requests[].server.events[].f.sxact	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.conns[].requests[].server.events[].stack	장소	관찰	stack	S1 스택 그릇
+e03	$.conns[].requests[].server.events[].stack[]	장소	관찰	stack	S1 스택 그릇
+e03	$.conns[].requests[].server.events[].stack[].fn	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+e03	$.conns[].requests[].server.events[].stack[].at	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+e03	$.conns[].requests[].server.snapshots[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e03	$.conns[].requests[].server.snapshots[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.conns[].requests[].server.snapshots[].kind	사건	관찰	name	K1 사건 종류
+e03	$.conns[].requests[].server.snapshots[].stack	장소	관찰	stack	S1 스택 그릇
+e03	$.conns[].requests[].server.snapshots[].stack[]	장소	관찰	stack	S1 스택 그릇
+e03	$.conns[].requests[].server.snapshots[].stack[].fn	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+e03	$.conns[].requests[].server.snapshots[].stack[].at	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+e03	$.conns[].requests[].server.checks[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e03	$.conns[].requests[].server.checks[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.conns[].requests[].server.checks[].table	장소	관찰	TBD	이름 칸: 장소 이름인지 값인지 입력마다
+e03	$.conns[].requests[].server.checks[].ctid	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.conns[].requests[].server.checks[].tup	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.conns[].requests[].server.checks[].path	장소	관찰	TBD	규칙 없음
+e03	$.conns[].requests[].server.checks[].path[]	장소	관찰	TBD	규칙 없음
+e03	$.conns[].requests[].server.checks[].path[].fn	장소	관찰	place/target	P3 실행 위치
+e03	$.conns[].requests[].server.checks[].path[].at	장소	관찰	stack	S1 JFR 스택 그릇(목록)
+e03	$.conns[].requests[].server.checks[].path[].inner[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e03	$.conns[].requests[].server.checks[].path[].inner[].fn	장소	관찰	place/target	P3 실행 위치
+e03	$.conns[].requests[].server.checks[].path[].inner[].at	장소	관찰	stack	S1 JFR 스택 그릇(목록)
+e03	$.conns[].requests[].server.checks[].lines[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e03	$.conns[].requests[].server.checks[].lines[].fn	장소	관찰	place/target	P3 실행 위치
+e03	$.conns[].requests[].server.checks[].lines[].at	장소	관찰	stack	S1 JFR 스택 그릇(목록)
+e03	$.conns[].requests[].server.checks[].stack	장소	관찰	stack	S1 스택 그릇
+e03	$.conns[].requests[].server.checks[].stack[]	장소	관찰	stack	S1 스택 그릇
+e03	$.conns[].requests[].server.checks[].stack[].fn	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+e03	$.conns[].requests[].server.checks[].stack[].at	장소	관찰	stack	S1 스택 칸 = 프레임 장소
+e03	$.conns[].requests[].server.events[].f.rel	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.conns[].requests[].server.events[].t1	시각	관찰	end_ns	T1 사건 끝
+e03	$.conns[].requests[].server.events[].f.at	장소	관찰	stack	S1 JFR 스택 그릇(목록)
+e03	$.conns[].requests[].server.events[].f.tup	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.conns[].requests[].server.events[].f.xid	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.conns[].requests[].server.events[].f.buf	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.conns[].requests[].server.events[].f.ctid	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.conns[].requests[].server.events[].f.txid	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.conns[].requests[].server.events[].f.off	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.conns[].requests[].server.events[].f.blk	장소	관찰	X2	X2 데이터 대상의 이름
+e03	$.java.spans[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e03	$.java.spans[].fn	장소	관찰	place/target	P3 실행 위치
+e03	$.java.spans[].desc	장소	관찰	place/target	P3 실행 위치
+e03	$.java.spans[].thread	장소	관찰	place/target	P3 실행 위치
+e03	$.java.spans[].t0	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.java.spans[].t1	시각	관찰	end_ns	T1 사건 끝
+e03	$.java.spans[].caller	연결	도출	X5	X5 관찰 구간에 해석기가 붙인 호출 관계
+e03	$.java.spans[].depth	연결	도출	X5	X5 관찰 구간에 해석기가 붙인 호출 관계
+e03	$.java.throws[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e03	$.java.throws[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.java.throws[].thread	장소	관찰	place/target	P3 실행 위치
+e03	$.java.throws[].at	장소	관찰	stack	S1 JFR 스택 그릇(목록)
+e03	$.java.throws[].at[]	장소	관찰	stack	S1 JFR 스택 칸
+e03	$.notes[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e03	$.notes[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.sessions.{*}	장소	관찰	place	P3 세션
+e03	$.tables[]	장소	관찰	TBD	규칙 없음
+e03	$.tables[].name	장소	관찰	TBD	이름 칸: 장소 이름인지 값인지 입력마다
+e03	$.tables[].columns[]	장소	관찰	TBD	규칙 없음
+e03	$.tables[].columns[].name	장소	관찰	TBD	이름 칸: 장소 이름인지 값인지 입력마다
+e03	$.tables[].indexes[]	장소	관찰	TBD	규칙 없음
+e03	$.tables[].indexes[].name	장소	관찰	TBD	이름 칸: 장소 이름인지 값인지 입력마다
+e03	$.transactions[]	사건	도출	row	R1 행을 만드는 목록의 원소
+e03	$.transactions[].conn	장소	도출	place/target	P3 실행 위치
+e03	$.transactions[].first	연결	도출	TBD	규칙 없음
+e03	$.transactions[].last	연결	도출	TBD	규칙 없음
+e03	$.transactions[].t0	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.transactions[].t1	시각	도출	end_ns	T1 사건 끝
+e03	$.transactions[].xids[]	사건	도출	TBD	규칙 없음
+e03	$.transactions[].xids[].xid	장소	도출	X2	X2 데이터 대상의 이름
+e03	$.transactions[].xids[].t	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.transactions[].clog[]	사건	도출	row	R1 행을 만드는 목록의 원소
+e03	$.transactions[].clog[].kind	사건	도출	name	K1 사건 종류
+e03	$.transactions[].clog[].t	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.transactions[].clog[].xid	장소	도출	X2	X2 데이터 대상의 이름
+e03	$.transactions[].next	연결	도출	TBD	규칙 없음
+e03	$.transactions[].next.t	연결	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.transactions[].next.tc	연결	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.transactions[].next.dir	연결	도출	name	K1 사건 종류
+e03	$.transactions[].next.type	연결	도출	name	K1 사건 종류
+e03	$.transactions[].next.len	연결	도출	TBD	규칙 없음
+e03	$.view.window	시각	도출	TBD	규칙 없음
+e03	$.view.window[]	시각	도출	TBD	규칙 없음
+e03	$.view.tree[]	사건	도출	row	R1 행을 만드는 목록의 원소
+e03	$.view.tree[].id	연결	도출	X1	X1 원래 번호(트리 마디)
+e03	$.view.tree[].parent	연결	도출	parent	L1 트리 포함
+e03	$.view.tree[].fn	장소	도출	place/target	P3 실행 위치
+e03	$.view.tree[].desc	장소	도출	place/target	P3 실행 위치
+e03	$.view.tree[].lane	장소	도출	place/target	P3 실행 위치
+e03	$.view.tree[].t0	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.view.tree[].t1	시각	도출	end_ns	T1 사건 끝
+e03	$.view.tree[].site	장소	도출	place/target	P3 실행 위치
+e03	$.view.tree[].hidden	장소	도출	TBD	규칙 없음
+e03	$.view.tree[].hidden[]	장소	도출	TBD	규칙 없음
+e03	$.view.tree[].self	시각	도출	X6	X6 길이·설정·시계 차
+e03	$.view.tree[].kids	연결	도출	parent	L1 트리 포함
+e03	$.view.tree[].kids[]	연결	도출	row	R1 행을 만드는 목록의 원소
+e03	$.view.tree[].branch	연결	도출	TBD	규칙 없음
+e03	$.view.tree[].branch.key	연결	도출	TBD	규칙 없음
+e03	$.view.tree[].branch.alt	연결	도출	TBD	규칙 없음
+e03	$.view.tree[].effects[]	사건	도출	row	R1 행을 만드는 목록의 원소
+e03	$.view.tree[].effects[].kind	사건	도출	name	K1 사건 종류
+e03	$.view.tree[].effects[].conn	장소	도출	place/target	P3 실행 위치
+e03	$.view.tree[].effects[].idleMs	시각	도출	X6	X6 길이·설정·시계 차
+e03	$.view.tree[].effects[].seq	연결	도출	TBD	규칙 없음
+e03	$.view.tree[].effects[].seq[]	연결	도출	TBD	규칙 없음
+e03	$.view.tree[].seen	시각	도출	TBD	규칙 없음
+e03	$.view.tree[].effects[].t0	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.view.tree[].effects[].at	장소	도출	stack	S1 JFR 스택 그릇(목록)
+e03	$.view.roots	연결	도출	parent	L1 트리 뿌리 = 부모 없음
+e03	$.view.roots[]	연결	도출	parent	L1 트리 뿌리 = 부모 없음
+e03	$.view.binding[]	사건	도출	row	R1 행을 만드는 목록의 원소
+e03	$.view.binding[].t	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.view.binding[].bound	연결	도출	TBD	규칙 없음
+e03	$.view.binding[].held	연결	도출	TBD	규칙 없음
+e03	$.view.binding[].by	연결	도출	TBD	규칙 없음
+e03	$.view.slots[]	사건	도출	row	R1 행을 만드는 목록의 원소
+e03	$.view.slots[].conn	장소	도출	place/target	P3 실행 위치
+e03	$.view.slots[].t0	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.view.slots[].t1	시각	도출	end_ns	T1 사건 끝
+e03	$.view.pauses	시각	도출	TBD	규칙 없음
+e03	$.view.pauses[]	시각	도출	row	R1 행을 만드는 목록의 원소
+e03	$.view.pauses[][]	시각	도출	TBD	규칙 없음
+e03	$.view.branches.{*}.fn	장소	도출	X4	X4 교차 기록 비교
+e03	$.view.branches.{*}.desc	장소	도출	X4	X4 교차 기록 비교
+e03	$.view.branches.{*}.alts[]	사건	도출	X4	X4 교차 기록 비교
+e03	$.view.branches.{*}.alts[].seq	연결	도출	X4	X4 교차 기록 비교
+e03	$.view.branches.{*}.alts[].seq[]	연결	도출	X4	X4 교차 기록 비교
+e03	$.view.branches.{*}.alts[].sites	장소	도출	X4	X4 교차 기록 비교
+e03	$.view.branches.{*}.alts[].sites[]	장소	도출	X4	X4 교차 기록 비교
+e03	$.view.branches.{*}.alts[].records	연결	도출	X4	X4 교차 기록 비교
+e03	$.view.branches.{*}.alts[].records[]	연결	도출	X4	X4 교차 기록 비교
+e03	$.view.branches.{*}.lines	장소	도출	X4	X4 교차 기록 비교
+e03	$.view.branches.{*}.lines[]	장소	도출	row	R1 행을 만드는 목록의 원소
+e03	$.view.compared	연결	도출	X4	X4 교차 기록 비교
+e03	$.view.compared[]	연결	도출	X4	X4 교차 기록 비교
+e03	$.captures[].overlap[]	사건	도출	TBD	규칙 없음
+e03	$.captures[].overlap[].t	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.captures[].overlap[].tc	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.captures[].overlap[].dir	사건	도출	name	K1 사건 종류
+e03	$.captures[].overlap[].type	사건	도출	name	K1 사건 종류
+e03	$.transactions[].next.text	연결	도출	TBD	규칙 없음
+e03	$.view.binding[].held[]	연결	도출	TBD	규칙 없음
+e03	$.blocked[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e03	$.blocked[].after	연결	관찰	TBD	규칙 없음
+e03	$.blocked[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.blocked[].tCapture	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.blocked[].waiters	장소	관찰	place/target	P3 실행 위치
+e03	$.captures[].overlap[].name	장소	도출	TBD	이름 칸: 장소 이름인지 값인지 입력마다
+e03	$.java.parks[]	사건	관찰	row	R1 행을 만드는 목록의 원소
+e03	$.java.parks[].t0	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
+e03	$.java.parks[].t1	시각	관찰	end_ns	T1 사건 끝
+e03	$.java.parks[].thread	장소	관찰	place/target	P3 실행 위치
+e03	$.java.parks[].under	장소	관찰	place/target	P3 실행 위치
+e03	$.java.parks[].at	장소	관찰	stack	S1 JFR 스택 그릇(목록)
+e03	$.java.parks[].at[]	장소	관찰	stack	S1 JFR 스택 칸
+e03	$.view.tree[].effects[].t1	시각	도출	end_ns	T1 사건 끝
+e03	$.view.waitCycles[]	사건	도출	row	R1 행을 만드는 목록의 원소
+e03	$.view.waitCycles[].kind	사건	도출	name	K1 사건 종류
+e03	$.view.waitCycles[].t0	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.view.waitCycles[].t1	시각	도출	end_ns	T1 사건 끝
+e03	$.view.waitCycles[].waiter	연결	도출	TBD	규칙 없음
+e03	$.view.waitCycles[].xid	장소	도출	X2	X2 데이터 대상의 이름
+e03	$.view.waitCycles[].holder	연결	도출	TBD	규칙 없음
+e03	$.view.waitCycles[].thread	장소	도출	place/target	P3 실행 위치
+e03	$.view.waitCycles[].call	연결	도출	TBD	규칙 없음
+e03	$.view.waitCycles[].heldBy	연결	도출	TBD	규칙 없음
+e03	$.view.waitCycles[].cycle	연결	도출	TBD	규칙 없음
+e03	$.blocked[].waiters[]	장소	관찰	place/target	P3 실행 위치
+e03	$.view.waits[]	사건	도출	row	R1 행을 만드는 목록의 원소
+e03	$.view.waits[].conn	장소	도출	place/target	P3 실행 위치
+e03	$.view.waits[].seq	연결	도출	X1	X1 원래 번호(기다림의 요청 번호)
+e03	$.view.waits[].t0	시각	도출	start_ns	T1 사건 시작(시계는 출처)
+e03	$.view.waits[].t1	시각	도출	end_ns	T1 사건 끝
+e03	$.view.waits[].xid	장소	도출	X2	X2 데이터 대상의 이름

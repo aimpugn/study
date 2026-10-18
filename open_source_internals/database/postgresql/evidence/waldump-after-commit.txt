@@ -1,0 +1,19 @@
+# pg_waldump -s 0/0179F328 -e 0/0179F6D8 (2026-10-12, run-strace.sh로 on/off INSERT를 실행한 직후)
+rmgr: Heap        len (rec/tot):     61/    61, tx:        764, lsn: 0/0179F328, prev 0/0179F2C8, desc: INSERT off: 4, flags: 0x00, blkref #0: rel 1663/5/16384 blk 0
+rmgr: Transaction len (rec/tot):     34/    34, tx:        764, lsn: 0/0179F368, prev 0/0179F328, desc: COMMIT 2026-10-12 12:04:14.891210 UTC
+rmgr: Heap        len (rec/tot):     61/    61, tx:        765, lsn: 0/0179F390, prev 0/0179F368, desc: INSERT off: 5, flags: 0x00, blkref #0: rel 1663/5/16384 blk 0
+rmgr: Transaction len (rec/tot):     34/    34, tx:        765, lsn: 0/0179F3D0, prev 0/0179F390, desc: COMMIT 2026-10-12 12:04:15.523972 UTC
+rmgr: Heap        len (rec/tot):     61/    61, tx:        766, lsn: 0/0179F3F8, prev 0/0179F3D0, desc: INSERT off: 6, flags: 0x00, blkref #0: rel 1663/5/16384 blk 0
+rmgr: Transaction len (rec/tot):     34/    34, tx:        766, lsn: 0/0179F438, prev 0/0179F3F8, desc: COMMIT 2026-10-12 12:04:15.825554 UTC
+rmgr: Heap        len (rec/tot):     61/    61, tx:        767, lsn: 0/0179F460, prev 0/0179F438, desc: INSERT off: 7, flags: 0x00, blkref #0: rel 1663/5/16384 blk 0
+rmgr: Transaction len (rec/tot):     34/    34, tx:        767, lsn: 0/0179F4A0, prev 0/0179F460, desc: COMMIT 2026-10-12 12:04:16.847219 UTC
+rmgr: Standby     len (rec/tot):     50/    50, tx:          0, lsn: 0/0179F4C8, prev 0/0179F4A0, desc: RUNNING_XACTS nextXid 768 latestCompletedXid 767 oldestRunningXid 768
+rmgr: Heap        len (rec/tot):     61/    61, tx:        768, lsn: 0/0179F500, prev 0/0179F4C8, desc: INSERT off: 8, flags: 0x00, blkref #0: rel 1663/5/16384 blk 0
+rmgr: Transaction len (rec/tot):     34/    34, tx:        768, lsn: 0/0179F540, prev 0/0179F500, desc: COMMIT 2026-10-12 12:04:18.705289 UTC
+rmgr: Heap        len (rec/tot):     61/    61, tx:        769, lsn: 0/0179F568, prev 0/0179F540, desc: INSERT off: 9, flags: 0x00, blkref #0: rel 1663/5/16384 blk 0
+rmgr: Transaction len (rec/tot):     34/    34, tx:        769, lsn: 0/0179F5A8, prev 0/0179F568, desc: COMMIT 2026-10-12 12:04:19.357061 UTC
+rmgr: Heap        len (rec/tot):     61/    61, tx:        770, lsn: 0/0179F5D0, prev 0/0179F5A8, desc: INSERT off: 10, flags: 0x00, blkref #0: rel 1663/5/16384 blk 0
+rmgr: Transaction len (rec/tot):     34/    34, tx:        770, lsn: 0/0179F610, prev 0/0179F5D0, desc: COMMIT 2026-10-12 12:04:19.639580 UTC
+rmgr: Heap        len (rec/tot):     61/    61, tx:        771, lsn: 0/0179F638, prev 0/0179F610, desc: INSERT off: 11, flags: 0x00, blkref #0: rel 1663/5/16384 blk 0
+rmgr: Transaction len (rec/tot):     34/    34, tx:        771, lsn: 0/0179F678, prev 0/0179F638, desc: COMMIT 2026-10-12 12:04:20.658298 UTC
+rmgr: Standby     len (rec/tot):     50/    50, tx:          0, lsn: 0/0179F6A0, prev 0/0179F678, desc: RUNNING_XACTS nextXid 772 latestCompletedXid 771 oldestRunningXid 772

@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spring 전파 관측</title>
+<style>
+:root{--bg:#fbfaf7;--card:#ffffff;--line:#d9d6cc;--ink:#2c2c2a;--sub:#5f5e5a;--mute:#888780;--acc:#534AB7;--accbg:#EEEDFE;
+--app:#5F5E5A;--tx:#3B6D11;--jdbc:#0E7490;--hk:#A2550A;--pg:#185FA5;--eff:#185FA5;--c1:#534AB7;--c2:#0F6E56;--srv:#8A6A00;
+--hl:#FAEEDA;--now:#BA7517;--wait:#A32D2D;--waitbg:#FCEBEB;--ok:#3B6D11;--okbg:#EAF3DE;--time:#B9470E;--sel:#E4E1FA;--chain:#F1EFE8;--halo:#ffffff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1f1e1c;--card:#2a2927;--line:#444441;--ink:#f1efe8;--sub:#d3d1c7;--mute:#b4b2a9;--acc:#AFA9EC;--accbg:#3C3489;
+--app:#D3D1C7;--tx:#97C459;--jdbc:#5FC4D6;--hk:#F0A050;--pg:#85B7EB;--eff:#85B7EB;--c1:#AFA9EC;--c2:#5DCAA5;--srv:#E8C860;
+--hl:#633806;--now:#FAC775;--wait:#F09595;--waitbg:#791F1F;--ok:#97C459;--okbg:#27500A;--time:#FF8A6B;--sel:#3C3489;--chain:#363532;--halo:#2a2927}}
+:root[data-theme="dark"]{--bg:#1f1e1c;--card:#2a2927;--line:#444441;--ink:#f1efe8;--sub:#d3d1c7;--mute:#b4b2a9;--acc:#AFA9EC;--accbg:#3C3489;
+--app:#D3D1C7;--tx:#97C459;--jdbc:#5FC4D6;--hk:#F0A050;--pg:#85B7EB;--eff:#85B7EB;--c1:#AFA9EC;--c2:#5DCAA5;--srv:#E8C860;
+--hl:#633806;--now:#FAC775;--wait:#F09595;--waitbg:#791F1F;--ok:#97C459;--okbg:#27500A;--time:#FF8A6B;--sel:#3C3489;--chain:#363532;--halo:#2a2927}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif}
+main{max-width:1500px;margin:0 auto;padding:10px 16px}
+.top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.top h1{font-size:16px;margin:0 6px 0 0}
+.bar2{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;font-size:12.5px;color:var(--sub)}
+button{font:inherit;font-size:13px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:3px 10px;cursor:pointer}
+button[aria-pressed="true"]{background:var(--accbg);border-color:var(--acc);font-weight:600}
+.grp{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.lens button{border-radius:12px;font-size:12.5px}
+.pin{font:11.5px ui-monospace,Menlo,monospace;border:1px solid var(--acc);border-radius:10px;padding:0 6px;cursor:pointer;background:var(--bg)}
+.g1{display:grid;grid-template-columns:minmax(0,1fr) 470px;gap:10px;margin-bottom:10px;align-items:start}
+.g2{display:grid;grid-template-columns:minmax(0,1fr) 470px;gap:10px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.mm{padding:6px 8px}
+.tag{display:inline-block;font-size:10.5px;border-radius:5px;padding:0 4px;margin-left:3px;border:1px solid}
+.tag.fact{color:var(--ok);border-color:var(--ok)}.tag.inf{color:var(--now);border-color:var(--now)}
+.java{display:flex;flex-direction:column;gap:6px;height:262px;overflow:hidden}
+.win{border:1px solid var(--line);border-radius:10px;background:var(--bg);flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.win .wt{font-size:11.5px;color:var(--sub);padding:3px 8px;border-bottom:1px solid var(--line);flex:none}
+.code{font:11.5px/1.5 ui-monospace,Menlo,monospace;overflow:auto}
+.code div{white-space:pre;display:flex;tab-size:4}
+.code .no{color:var(--mute);min-width:40px;text-align:right;padding-right:9px;flex:none}
+.code .on{background:var(--hl)}
+.code .note{color:var(--now);font-family:system-ui,-apple-system,sans-serif;font-size:11px;margin-left:10px}
+.lanes{max-height:calc(100vh - 360px);min-height:460px;overflow:auto}
+#lanehead{position:sticky;top:0;z-index:1;display:block;background:var(--card)}
+#lanes{display:block}
+#lanes text{font-family:ui-monospace,Menlo,monospace;font-size:11px;paint-order:stroke;stroke:var(--halo);stroke-width:3px;stroke-linejoin:round}
+#lanes .row{cursor:pointer}
+.leg{display:flex;gap:12px;font-size:11.5px;color:var(--sub);flex-wrap:wrap;margin-top:6px;line-height:1.7}
+.sw{display:inline-block;width:12px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.d h2{font-size:14px;margin:0 0 2px;word-break:break-all}
+.d .path{font:11.5px ui-monospace,Menlo,monospace;color:var(--mute);word-break:break-all;margin-bottom:4px}
+.sec{font-size:11.5px;color:var(--mute);margin:10px 0 4px;letter-spacing:.02em}
+.facts{font-size:12.5px;line-height:1.6}
+.badge{display:inline-block;font-size:11.5px;border-radius:6px;padding:0 6px;margin:2px 4px 2px 0;border:1px solid var(--line)}
+.why-효과{border-color:var(--eff);color:var(--eff)}.why-갈림{border-color:var(--now);color:var(--now)}.why-시간{border-color:var(--time);color:var(--time)}
+.why-고정{border-color:var(--acc);color:var(--acc)}.why-앱{border-color:var(--app);color:var(--app)}.why-뿌리{border-color:var(--mute);color:var(--sub)}.why-사슬{border-color:var(--mute);color:var(--sub)}.why-펼침{border-color:var(--mute);color:var(--sub)}
+.chain div{font:11.5px/1.55 ui-monospace,Menlo,monospace;border-left:3px solid var(--line);padding:1px 6px;margin:1px 0;cursor:pointer;word-break:break-all}
+.chain .so{border-left-style:dashed}
+.chain .me{background:var(--sel);font-weight:600}
+.chain .hid{cursor:default;color:var(--mute);border-left-color:transparent;font-family:system-ui,-apple-system,sans-serif;font-size:11px}
+.chain .dn{display:inline-block;min-width:18px;color:var(--mute)}
+.alt{border:1px solid var(--line);border-radius:8px;padding:4px 7px;margin:4px 0;font:11.5px/1.5 ui-monospace,Menlo,monospace}
+.alt.mine{border-color:var(--now);background:var(--hl)}
+.alt.cut{opacity:.7;border-style:dashed}
+.alt .who{font-family:system-ui,-apple-system,sans-serif;color:var(--sub);font-size:11px}
+table.t{border-collapse:collapse;width:100%;font:11.5px ui-monospace,Menlo,monospace}
+table.t td{padding:2px 4px;border-top:1px solid var(--line);vertical-align:top}
+.src{border:1px solid var(--line);border-radius:8px;background:var(--bg);max-height:230px;overflow:auto;margin-top:4px}
+.src .wt{font-size:11px;color:var(--sub);padding:2px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg)}
+.mute{color:var(--mute)}
+a.sel{color:var(--acc);cursor:pointer;text-decoration:underline}
+.warn{color:var(--wait)}
+.about{margin-bottom:8px;padding:6px 10px;font-size:12.5px;line-height:1.65}
+.about .q{font-weight:600}
+.oc{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.txp{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-left:4px solid var(--c);border-radius:6px;padding:0 6px;font:11.5px ui-monospace,Menlo,monospace}
+.txp.idle{border-style:dashed;border-left-style:dashed;color:var(--mute)}
+.txp .ok{color:var(--ok);font-weight:700}.txp .rb{color:var(--wait);font-weight:700}
+.bal{font:11.5px ui-monospace,Menlo,monospace;color:var(--sub)}.bal b{color:var(--ink)}
+.exc{font:11.5px ui-monospace,Menlo,monospace;color:var(--wait)}
+#scrub{display:block;width:100%;margin-top:4px}
+#scrub .mk,#scrub .hit,#board .hit{cursor:pointer}
+#board{display:block;width:100%;min-width:900px}
+#board text{font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif}
+.legs{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:11.5px;color:var(--sub);margin-top:4px}
+.legs b{font:600 11.5px ui-monospace,Menlo,monospace;color:var(--ink);margin-right:3px}
+details.more{margin-top:6px}details.more summary{cursor:pointer;color:var(--acc);font-size:12px}
+.gl{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1px 16px;font-size:11.5px;color:var(--sub);margin-top:6px;line-height:1.55}
+.gl b{color:var(--ink);font-weight:600;font-family:ui-monospace,Menlo,monospace;font-size:11px}
+.gl .gh2{grid-column:1 / -1;color:var(--mute);margin-top:4px;border-bottom:1px dashed var(--line)}
+.d .did{font-size:12.5px;line-height:1.55;border-left:3px solid var(--acc);padding:2px 8px;margin:4px 0;background:var(--bg)}
+/* 좁은 폭: 코드 창과 자세한 내용을 아래로 내리고, 그림판과 줄 그림은 글자를 줄이는 대신 옆으로 밀어 봅니다(800px에서 그림판 상자가 세로로 찌그러졌음). */
+.mm{overflow-x:auto}#lanehead,#lanes{min-width:900px}
+@media (max-width:1180px){.g1,.g2{grid-template-columns:minmax(0,1fr)}.java{height:auto}.java .win{max-height:230px}.lanes{max-height:70vh}}
+</style>
+</head>
+<body>
+<main>
+<div class="top">
+  <h1 id="title"></h1>
+  <span class="grp" id="scs"></span>
+  <span class="grp" id="runs"></span>
+</div>
+<div class="bar2">
+  <span>보이는 줄</span><span class="grp lens" id="lenses"></span>
+  <span id="pins" class="grp"></span>
+  <span id="count" class="mute"></span>
+</div>
+<div class="card about" id="about"></div>
+<div class="g1">
+  <div class="card mm" id="mm"></div>
+  <div class="java" id="java"></div>
+</div>
+<div class="g2">
+  <section class="card"><div class="lanes" id="lanewrap"><svg id="lanehead" viewBox="0 0 960 30" width="100%" aria-hidden="true"></svg><svg id="lanes" viewBox="0 0 960 400" width="100%" role="img" aria-label="호출과 상대와 오간 메시지, 상대 쪽 사건의 시간 순서"></svg></div>
+    <div class="leg" id="legend"></div>
+  </section>
+  <section class="card d" id="detail"></section>
+</div>
+</main>
+<script>
+// 값은 모두 txlab 기록을 decode spring으로 풀고 decode spring-compare로 기록끼리 견준 것입니다(장면/실행 → 해석 결과).
+// 화면은 고르고 그리기만 합니다. 호출 트리·깊이·끝난 꼴·자기 시간·효과·렌즈 이유·갈림·연결 묶임·풀 사용은 해석기가 셈했고(view),
+// 화면이 하는 일은 렌즈와 펼침으로 보일 마디를 고르는 것, 시각을 장면 시작(go) 기준 ms로 바꾸는 것, 줄을 놓는 것입니다.
+//
+// 파일은 세 덩어리입니다. 「공통 도구」는 글·수 꼴 맞추기, 「주제별」은 이 주제(Spring·HikariCP·pgjdbc·PostgreSQL)에만 있는 칸·효과·상대
+// 쪽 사건·상태 그림, 「공통 화면」은 호출 트리를 줄로 고르고 깊이·사슬·접기·갈림·소스 창으로 그리는 부분입니다. 공통 화면은 주제의
+// 칸 이름이나 효과 종류를 직접 알지 않고 TOPIC만 부릅니다. 다른 주제(소켓·커널 등)는 TOPIC을 바꿔 끼우는 것으로 시작합니다
+// (WORK 실험 5 「범용화 경계」).
+const RUNS = __RUNS__;
+
+// ───────── 공통 도구 ─────────
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const f1 = (v, d = 1) => v.toLocaleString("ko-KR", {minimumFractionDigits: d, maximumFractionDigits: d});
+const ms = us => f1(us / 1000, us >= 100000 ? 0 : us >= 10000 ? 1 : 2);
+const clip = (s, n) => (s = String(s ?? "")).length > n ? s.slice(0, n - 1) + "…" : s;
+const fileLine = at => (at || "").split("/").pop();
+const rel = t => t - V.window[0];
+const plus = t => (rel(t) < 0 ? "−" : "+") + ms(Math.abs(rel(t)));
+const tag = (cls, text, title) => `<span class="tag ${cls}"${title ? ` title="${esc(title)}"` : ""}>${esc(text)}</span>`;
+const fact = (text, title) => tag("fact", text, title), inf = (text, title) => tag("inf", text || "추론", title);
+const store = {get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
+// 소스 발췌 {from, lines} 하나를 줄 번호와 함께 그리고, line 줄을 칠합니다.
+function excerpt(s, line, title) {
+  return `<div class="src"><div class="wt">${esc(title)}</div><div class="code">${s.lines.map((l, i) => `<div${s.from + i === line ? ' class="on"' : ""}><span class="no">${s.from + i}</span>${esc(l)}</div>`).join("")}</div></div>`;
+}
+
+// ───────── 주제별: Spring 트랜잭션 · HikariCP · pgjdbc · PostgreSQL ─────────
+// 칸의 w는 줄 그림에서의 폭(합이 908)입니다. side: proc는 앱 프로세스 안의 호출 칸(해석기가 마디에 붙인 lane과 같은 이름), link는 오가는 메시지 칸, peer는 상대 프로세스 칸.
+// anchor 칸(장면 코드)의 호출은 렌즈와 상관없이 늘 줄로 보여, 깊이 계단의 출발점이 되게 합니다.
+const TOPIC = {
+  title: "Spring 전파",
+  storeKey: "spring-view-pins",
+  // 장면마다 이름, 이 장면이 답하는 질문, 장면 코드가 하는 일(txlab/spring/src/lab의 Outer·Inner를 읽고 적은 글. 기록이 아니라 소스의 요약).
+  // 메서드 이름은 장면 이름을 따릅니다: Outer.x가 바깥 트랜잭션, Inner.x가 안쪽입니다(사용성 시험 1차: Outer.requiresNew를 안쪽으로 읽음).
+  scenes: {
+    "5-required": {name: "REQUIRED · 안쪽이 실패", q: "안쪽이 실패하고 바깥이 그 예외를 삼키면, 바깥은 커밋되나?",
+      code: "바깥 Outer.required(REQUIRED)가 1번 행(kim)에서 10을 빼고, 안쪽 Inner.requiredFails(REQUIRED: 바깥 트랜잭션에 참여)를 부릅니다. 안쪽은 2번 행(lee)에 10을 더한 뒤 IllegalStateException을 던지고, 바깥은 그 예외를 잡고 정상으로 끝납니다."},
+    "5-requires-new": {name: "REQUIRES_NEW", q: "REQUIRES_NEW는 연결을 몇 개 쓰고, 그동안 바깥 트랜잭션은 어디에 있나?",
+      code: "바깥 Outer.requiresNew(REQUIRED)가 1번 행에서 10을 빼고, 안쪽 Inner.requiresNew(REQUIRES_NEW: 새 트랜잭션)를 부릅니다. 안쪽은 2번 행에 10을 더하고 정상으로 끝납니다."},
+    "5-requires-new-same-row": {name: "REQUIRES_NEW · 같은 행", q: "REQUIRES_NEW 안쪽이 바깥이 이미 고친 같은 행을 고치면 어떻게 되나?",
+      code: "바깥 Outer.requiresNewSameRow(REQUIRED)가 1번 행에서 10을 빼고, 안쪽 Inner.requiresNewSameRow(REQUIRES_NEW)를 부릅니다. 안쪽은 SET LOCAL lock_timeout = '3s'로 락 기다림을 3초로 묶은 뒤 같은 1번 행에 10을 더하려 합니다."},
+    "5-requires-new-pool1": {name: "REQUIRES_NEW · 풀 1칸", q: "풀에 연결이 한 칸뿐이면 REQUIRES_NEW는 어떻게 되나?",
+      code: "REQUIRES_NEW 장면과 같은 코드(Outer.requiresNew → Inner.requiresNew)를 풀 최대 1칸으로 돌립니다."},
+    "5-nested": {name: "NESTED · 안쪽이 실패", q: "NESTED 안쪽이 실패하면 무엇이 되돌아가나?",
+      code: "바깥 Outer.nested(REQUIRED)가 1번 행에서 10을 빼고, 안쪽 Inner.nestedFails(NESTED: 같은 트랜잭션 안의 저장점)를 부릅니다. 안쪽은 2번 행에 10을 더한 뒤 IllegalStateException을 던지고, 바깥은 그 예외를 잡고 정상으로 끝납니다."},
+    "5-reborrow": {name: "0.5초 안에 다시 빌림", q: "HikariCP는 연결을 빌려줄 때마다 살아 있는지 검사하나?",
+      code: "Outer.once(REQUIRED: 1번 행에서 10을 뺌)를 멈춤 없이 두 번 잇달아 부릅니다. 둘째 빌리기는 첫째가 연결을 돌려준 뒤 0.5초 안에 옵니다."}},
+  lanes: [
+    {key: "app", name: "앱 코드", color: "--app", w: 78, anchor: true},
+    {key: "tx", name: "Spring 트랜잭션", color: "--tx", w: 170},
+    {key: "jdbc", name: "JdbcTemplate", color: "--jdbc", w: 80},
+    {key: "hikari", name: "HikariCP", color: "--hk", w: 110},
+    {key: "pg", name: "pgjdbc", color: "--pg", w: 80},
+    {key: "wire", name: "연결 위 메시지", color: "--mute", w: 190, side: "link"},
+    {key: "C1", name: "백엔드 C1", color: "--c1", w: 100, side: "peer"},
+    {key: "C2", name: "백엔드 C2", color: "--c2", w: 100, side: "peer"}],
+  codeNote: "앱 코드(이 앱이 PostgreSQL의 클라이언트)",
+  stackSource: "JFR 기록",
+  effectLegend: "연결 위로 보냄·풀에서 빌림·돌려줌·연결을 스레드에서 떼고 다시 묶음·자동 커밋 바꿈·롤백 전용 표시·연결 생존 검사·잠듦·예외 생성",
+  // 줄 끝의 효과 기호 풀이(범례 한 줄에 공통 기호와 함께 보임).
+  rowLegend: [["⇠ ⇢", "빌림 · 돌려줌"], ["⏸ ▶", "떼어 둠 · 다시 묶음"], ["⚑", "롤백 전용 표시"], ["✓검사", "생존 검사"], ["⏳", "잠듦"]],
+  // 효과 한 줄 요약. 해석기가 붙인 효과(callEffect)의 칸을 글로 옮깁니다. 이 주제의 효과가 아니면 null(공통 화면이 처리).
+  effect(e, D) {
+    switch (e.kind) {
+      case "wire": { const c = D.conns.find(c => c.name === e.conn);
+        return `→ ${e.conn} ` + e.seq.map(s => reqText(c.requests.find(r => r.seq === s), 22)).join(" + "); }
+      case "borrow": { const w = V.poolConfig?.aliveBypassMs;
+        // 줄 글은 그림 오른쪽 끝에서 잘리므로 창과의 비교를 기호로 짧게 씁니다(자세한 글은 자세한 내용에).
+        return e.result === "timeout" ? "풀에서 받지 못함(시간 초과)" : `풀에서 ${e.conn} 빌림 · 쉰 지 ${f1(e.idleMs, 0)} ms${w ? (e.validated ? ` > 창 ${f1(w, 0)} ms → 생존 검사` : ` < 창 ${f1(w, 0)} ms → 검사 건너뜀`) : ""}`; }
+      case "return": return `${e.conn}을 풀에 돌려줌`;
+      case "suspend": return `${e.conn}을 스레드에서 떼어 둠`;
+      case "resume": return `${e.conn}을 스레드에 다시 묶음`;
+      case "autocommit": return `자동 커밋 ${e.value || "?"} · 보낸 것 ${e.sent || 0}개`;
+      case "rollbackOnly": return "롤백 전용 표시(연결 위로는 보내지 않음)";
+      case "validate": return "연결이 살아 있는지 검사";
+    }
+    return null;
+  },
+  // 효과의 자세한 글. n은 그 효과가 붙은 마디입니다.
+  effectDetail(e, D, n) {
+    const pc = V.poolConfig || {};
+    switch (e.kind) {
+      case "wire": { const c = D.conns.find(c => c.name === e.conn);
+        return e.seq.map(s => { const r = c.requests.find(r => r.seq === s);
+          return `<div><span style="color:${col(e.conn)}">→ ${e.conn}</span> 요청 ${s} · ${esc(r.types.join(" "))}${r.stmt ? ` (준비 문장 ${esc(r.stmt)})` : ""} · <code>${esc(sqlText(r))}</code> · ${plus(r.sent)} ~ ${plus(r.done)} ms · ${esc(backText(r))} <a class="sel" data-sel="w${e.conn}:${s}">줄로</a></div>`; }).join(""); }
+      case "borrow": {
+        if (e.result === "timeout") return `<div>풀에서 받지 못함(시간 초과)${pc.connectionTimeoutMs ? `: 빈 칸을 기다리는 한도 connectionTimeout <b>${f1(pc.connectionTimeoutMs, 0)} ms</b> ${fact("앱 설정", pc.connectionTimeoutAt)}` : ""}</div>${srcBlock(pc.connectionTimeoutAt, `${pc.connectionTimeoutAt} · 앱 설정`)}`;
+        const why = pc.aliveBypassMs ? (e.validated ? ` · 쉰 시간이 aliveBypassWindowMs ${f1(pc.aliveBypassMs, 0)} ms보다 길어 살아 있는지 검사함(isConnectionDead)` : ` · 쉰 시간이 aliveBypassWindowMs ${f1(pc.aliveBypassMs, 0)} ms보다 짧아 살아 있는지 검사하지 않음`)
+          : e.validated ? " · 살아 있는지 검사함(isConnectionDead)" : " · 검사하지 않음";
+        return `<div>풀에서 <b>${e.conn}</b>을 받음 · 그 연결은 직전 메시지부터 ${f1(e.idleMs, 1)} ms 쉼${why} ${inf("", "쉰 시간은 해석기가 그 연결의 직전 메시지부터 잰 값입니다. HikariCP가 견주는 값(마지막으로 돌려받은 때부터)과 조금 다릅니다. 검사했는지는 isConnectionDead 호출이 있는지로 셈")}</div>`
+          + srcBlock(pc.aliveCheckAt, `${pc.aliveCheckAt} · 쉰 시간이 이 창보다 길 때만 검사`) + srcBlock(pc.aliveBypassAt, `${pc.aliveBypassAt} · 창의 기본값(HikariCP)`); }
+      case "rollbackOnly": {
+        const commit = V.tree.find(x => x.t0 > n.t0 && x.fn.endsWith("AbstractPlatformTransactionManager::commit"));
+        return `<div>지금 트랜잭션(안쪽이 참여한 바깥 트랜잭션)에 <b>롤백 전용 표시</b>를 함. 연결 위로는 아무것도 보내지 않음 ${fact(TOPIC.stackSource)}. 나중에 바깥이 커밋하려 하면 이 표시를 보고 커밋 대신 롤백하며 UnexpectedRollbackException을 던짐 ${inf("", "Spring 소스(AbstractPlatformTransactionManager.commit·processRollback)로 읽은 뜻")}${commit ? ` · <a class="sel" data-sel="n${commit.id}">이 기록의 그 commit ${plus(commit.t0)} ms</a>` : ""}</div>`; }
+      case "validate": {
+        const sent = [], walk = x => { for (const k of x.kids) { for (const f of NODE[k].effects) if (f.kind === "wire") sent.push(f); walk(NODE[k]); } }; walk(n);
+        return `<div>빌린 연결이 살아 있는지 검사함${sent.length ? ` · 이 검사 안에서 보낸 것: ${sent.map(f => esc(TOPIC.effect(f, D))).join(" · ")}` : ""}${pc.aliveBypassMs ? ` · HikariCP는 연결이 aliveBypassWindowMs(기본 ${f1(pc.aliveBypassMs, 0)} ms)보다 오래 쉬었을 때만 이 검사를 부름` : ""}</div>`
+          + srcBlock(pc.aliveCheckAt, `${pc.aliveCheckAt} · 검사를 부르는 조건`) + srcBlock(pc.aliveBypassAt, `${pc.aliveBypassAt} · 창의 기본값`); }
+      case "autocommit": return `<div>자동 커밋을 <b>${e.value || "?"}</b>로 바꿈 <span class="mute">(값은 부른 줄의 소스 글에서 읽음)</span> · 그 안에서 보낸 요청 ${e.sent || 0}개</div>`;
+      case "return": case "suspend": case "resume":
+        return `<div>${esc(TOPIC.effect(e, D))} ${inf("호출 순서로 셈", "빌리기·doSuspend·doResume·정리의 호출 순서로 다시 셈한 값")}</div>`;
+    }
+    return null;
+  },
+  // 호출 마디 말고 줄이 될 것: 연결 위 요청(같은 시각에 한 번에 보낸 묶음은 한 줄), 응답, 서버 사건, 앱 알림, 멈춘 채로 찍은 관찰.
+  rows(D, V, inWin) {
+    const R = [];
+    for (const c of D.conns) {
+      const rq = c.requests.filter(r => r.seq > 0 && inWin(r.sent));
+      for (let i = 0; i < rq.length;) {
+        const g = [rq[i++]]; while (i < rq.length && rq[i].sent === g[0].sent) g.push(rq[i++]);
+        const refs = g.map(r => `w${c.name}:${r.seq}`), last = g[g.length - 1];
+        R.push({key: refs[0], refs, t: g[0].sent, lane: "wire", peer: c.name, draw: "out", text: `${c.name} · ${g.map(r => reqText(r, 26)).join(" + ")}`,
+          detail: el => wireDetail(c, g, el)});
+        if (inWin(last.done)) R.push({key: `z${c.name}:${last.seq}`, refs: g.map(r => `z${c.name}:${r.seq}`), t: last.done, lane: "wire", peer: c.name, draw: "in",
+          tone: last.error ? "err" : "", text: `${c.name} · ${g.map(backText).join(" · ")}`, detail: el => wireDetail(c, g, el)});
+        for (const r of g) for (const e of r.server?.events || []) {
+          const s = serverText(e); if (!s) continue;
+          R.push({key: `s${c.name}:${r.seq}:${e.t}`, t: e.t, lane: c.name, draw: "event", tone: s.tone, text: s.text, detail: el => serverDetail(c, r, e, s.text, el)});
+        }
+      }
+    }
+    for (const n of D.notes || []) if (inWin(n.t)) R.push({key: "a" + n.t, t: n.t, lane: "app", draw: "note", tone: "err",
+      text: `앱: ${n.where} · ${n.chain.split(" <- ")[0].split(".").pop()}`,
+      detail: el => { el.innerHTML = `<h2>앱이 받은 예외</h2><div class="path">${esc(n.where)} · ${plus(n.t)} ms</div><div class="facts">${esc(n.chain)}<br>${esc(n.message)}</div>`; }});
+    for (const c of D.captures) if (c.label === "blocked") R.push({key: "c" + c.t, t: c.span[0], t1: c.span[1], lane: "time", draw: "band", tone: "acc", flawed: !!c.overlap?.length,
+      short: `◉ 관찰 ${plus(c.span[0])} ~ ${plus(c.span[1])} ms${c.overlap?.length ? ` ⚠${c.overlap.length}` : ""}`,
+      text: `◉ 막힌 동안 찍은 관찰 ${plus(c.span[0])} ~ ${plus(c.span[1])} ms · 도구가 앱을 세우지 않음(장면 스레드가 스스로 막혀 있던 때)${c.overlap?.length ? ` · ⚠ 찍는 도중 연결 위 메시지 ${c.overlap.length}개가 오감` : ""}`, detail: el => capDetail(c, el)});
+    return R;
+  },
+  // 칸 안의 구간 막대: 연결마다 트랜잭션(BEGIN부터 끝까지), 서버가 다른 트랜잭션을 기다린 구간.
+  intervals(D, V) {
+    return [...D.transactions.map(t => ({lane: "C" + t.conn, t0: t.t0, t1: t.t1, kind: "bar"})),
+      ...V.waits.map(w => ({lane: w.conn, t0: w.t0, t1: w.t1, kind: "wait"}))];
+  },
+  // 줄 끝에 붙일 효과의 짧은 꼴(기호와 값). 뜻은 범례의 기호 풀이와 줄에 마우스를 올렸을 때의 글이 맡습니다.
+  effGlyph(e, D) {
+    switch (e.kind) {
+      case "wire": { const c = D.conns.find(c => c.name === e.conn);
+        return `→${e.conn} ` + e.seq.map(s => reqText(c.requests.find(r => r.seq === s), 16)).join(" + "); }
+      case "borrow": return e.result === "timeout" ? "⇠✕ 빈 칸 없음" : `⇠${e.conn} ${f1(e.idleMs, 0)} ms 쉼${V.poolConfig?.aliveBypassMs ? (e.validated ? " ✓검사" : " 검사 없음") : ""}`;
+      case "return": return `⇢${e.conn}`;
+      case "suspend": return `⏸${e.conn}`;
+      case "resume": return `▶${e.conn}`;
+      case "autocommit": return `AC=${e.value || "?"}`;
+      case "rollbackOnly": return "⚑롤백 전용";
+      case "validate": return "✓검사";
+    }
+    return null;
+  },
+  // 그림판: 고른 순간 T의 구성도. 위는 장면 스레드가 지금 지나는 층(칸마다 가장 깊은 호출), 아래는 스레드 → 풀의 칸 → 연결 → DB 백엔드와
+  // 트랜잭션 번호, 서버의 락 기다림 화살표, 기다림의 고리(해석기의 waitCycles)를 그립니다. 글은 이름과 값만 쓰고, 뜻은 <title>에 둡니다.
+  // 선 모양: 묶인 연결은 실선, 떼어 둔 연결은 점선과 ⏸, 고리에 든 선은 빨강. 출처: 표지 없음은 기록 그대로, ◉는 관찰(찍은 시각), ≈는 추론.
+  board(T, D, V, chain) {
+    const o = [], pc = V.poolConfig || {}, proc = TOPIC.lanes.filter(l => !l.side);
+    const ttl = s => `<title>${esc(s)}</title>`;
+    const line = (x1, y1, x2, y2, c, w, dash, arrow, t) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${w}"${dash ? ` stroke-dasharray="${dash}"` : ""}${arrow ? ' marker-end="url(#bar)"' : ""}>${t ? ttl(t) : ""}</line>`;
+    o.push(`<defs><marker id="bar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="context-stroke"/></marker></defs>`);
+    // ① 위: 지금 스택이 지나는 층. 지나지 않는 층은 점선 테두리만.
+    let px = null; const arrows = [];
+    proc.forEach((l, i) => {
+      const x = 8 + i * 110, fr = chain.filter(n => n.lane === l.key), d = fr[fr.length - 1];
+      o.push(`<g${d ? ` class="hit" data-sel="n${d.id}"` : ""}>${ttl(`${l.name}${d ? ` · 깊이 ${d.depth} · ${d.label}` : " · 지금 스택에 없음"}`)}`
+        + `<rect x="${x}" y="6" width="100" height="44" rx="6" fill="${d ? "var(--bg)" : "var(--card)"}" stroke="${d ? col(l.key) : "var(--line)"}" stroke-width="${d ? 1.6 : 1}"${d ? "" : ' stroke-dasharray="3,3"'}/>`
+        + `<text x="${x + 6}" y="22" font-size="11" font-weight="600" fill="${d ? col(l.key) : "var(--mute)"}">${esc(l.name)}</text>`
+        + (d ? `<text x="${x + 6}" y="40" font-size="10" font-family="ui-monospace,Menlo,monospace" fill="var(--ink)"><tspan fill="var(--mute)">${d.depth} </tspan>${esc(clip(frameName(d), 14))}</text>` : "") + `</g>`);
+      if (d) { if (px != null) arrows.push(line(px, 28, x - 1, 28, "var(--mute)", 1.2, "", true)); px = x + 100; }
+    });
+    o.splice(1, 0, ...arrows);
+    o.push(`<text x="932" y="34" text-anchor="end" font-size="22" font-weight="700" fill="var(--acc)">${plus(T)} ms${ttl("고른 순간(장면 시작부터)")}</text>`);
+    // ② 아래: 영역(앱 프로세스, PostgreSQL).
+    o.push(`<rect x="4" y="60" width="596" height="186" rx="10" fill="none" stroke="var(--line)"/><text x="12" y="74" font-size="10.5" fill="var(--mute)">앱 프로세스(JVM)</text>`);
+    o.push(`<rect x="640" y="60" width="296" height="186" rx="10" fill="none" stroke="var(--srv)" stroke-dasharray="5,4">${ttl("PostgreSQL 서버. 서버의 교착 검사는 이 상자 안의 기다림만 봅니다")}</rect><text x="648" y="74" font-size="10.5" fill="var(--srv)">PostgreSQL</text>`);
+    // 풀의 칸: 연결 i를 칸 i에. 칸 수는 풀 크기와 연결 수 가운데 큰 쪽.
+    const n = Math.max(D.pool, D.conns.length), cy = i => 70 + 174 * (i + 0.5) / n, yOf = name => cy(D.conns.findIndex(c => c.name === name));
+    const st = [...V.binding].filter(b => b.t <= T).pop() || {bound: "", held: []};
+    const cyc = (V.waitCycles || []).find(c => c.t0 <= T && T <= c.t1 && c.cycle);
+    const red = (on, c) => on ? "var(--wait)" : c;
+    o.push(`<rect x="180" y="80" width="160" height="160" rx="8" fill="none" stroke="var(--hk)">${ttl(`HikariCP 풀 · 최대 ${D.pool}칸(실험 설정)`)}</rect><text x="188" y="94" font-size="10.5" fill="var(--hk)">HikariCP · 최대 ${D.pool}칸</text>`);
+    // 누르면 갈 줄: 그 연결의 T 이전 마지막 빌리기, 그 연결의 T 이전 마지막 메시지·서버 사건.
+    const lastBorrow = name => V.tree.filter(x => x.t0 <= T && x.effects.some(e => e.kind === "borrow" && e.conn === name)).pop();
+    const lastOn = name => ROWS.filter(r => r.t <= T && (r.peer === name || r.lane === name)).pop();
+    const hit = k => k ? ` class="hit" data-sel="${esc(k)}"` : "";
+    for (let i = 0; i < n; i++) {
+      const c = D.conns[i], y = cy(i), lent = c && V.slots.some(s => s.conn === c.name && s.t0 <= T && (!s.t1 || T < s.t1));
+      o.push(`<g${hit(c && lastBorrow(c.name) && "n" + lastBorrow(c.name).id)}><rect x="225" y="${y - 15}" width="80" height="30" rx="5" fill="${lent ? col(c.name) : "none"}" fill-opacity="0.22" stroke="${c ? col(c.name) : "var(--mute)"}" stroke-width="${lent ? 1.8 : 1.2}"${lent ? "" : ' stroke-dasharray="4,3"'}>${ttl(c ? `${c.name}: ${lent ? "빌려줌(≈ 빌리기부터 close까지로 셈)" : "풀에 있음"}` : "빈 칸")}</rect>`
+        + `<text x="265" y="${y + 4}" text-anchor="middle" font-size="12" font-weight="700" fill="${c ? col(c.name) : "var(--mute)"}">${c ? c.name : "—"}</text></g>`);
+    }
+    // 스레드와 묶인 연결(실선)·떼어 둔 연결(점선 ⏸). 고리에 들면 빨강이고, 쥔 연결은 스레드 쪽으로 화살표(그 연결이 스레드를 기다림).
+    o.push(`<rect x="14" y="139" width="64" height="36" rx="18" fill="var(--bg)" stroke="var(--app)" stroke-width="1.6">${ttl("장면 스레드 main")}</rect><text x="46" y="161" text-anchor="middle" font-size="12" font-weight="700" fill="var(--app)">main</text>`);
+    o.push(`<text x="82" y="136" font-size="11" fill="var(--now)">≈${ttl("묶임·떼어 둠은 빌리기·doSuspend·doResume·정리의 호출 순서로 다시 셈한 값(추론)")}</text>`);
+    const poolCyc = cyc?.kind === "pool";
+    if (st.bound) { const y = yOf(st.bound), on = cyc && cyc.kind === "server" && cyc.waiter === st.bound;
+      o.push(line(78, 157, 223, y, red(on, col(st.bound)), on ? 3 : 2.4, "", on, `${st.bound}: 스레드에 묶인 연결${on ? " · main이 이 연결의 응답을 기다림" : ""}`)); }
+    for (const h of st.held) { const y = yOf(h), on = cyc && cyc.holder === h;
+      o.push(on ? line(223, y, 80, 157, "var(--wait)", 3, "6,4", true, `${h}: 스레드에서 떼어 둔 연결 · 이 연결의 트랜잭션은 main이 끝내야 끝남`)
+        : line(78, 157, 223, y, col(h), 2, "6,4", false, `${h}: 스레드에서 떼어 둔 연결(바깥 트랜잭션은 서버에서 열린 채)`));
+      o.push(`<text x="${(80 + 223) / 2}" y="${(157 + y) / 2 - 4}" text-anchor="middle" font-size="12" fill="${red(on, col(h))}">⏸</text>`); }
+    if (poolCyc) {
+      o.push(line(78, 150, 178, 112, "var(--wait)", 3, "", true, "main이 풀의 빈 칸을 기다림"));
+      o.push(`<text x="84" y="100" font-size="11" fill="var(--wait)">⏳ ≤ ${f1(pc.connectionTimeoutMs || 0, 0)} ms${ttl(`빈 칸을 기다리는 한도 connectionTimeout(앱 설정 ${pc.connectionTimeoutAt || ""})`)}</text>`);
+    }
+    // 연결 선: 칸에서 백엔드로. 고른 순간에 보낸 뒤 응답을 기다리는 요청이 있으면 굵은 화살표와 그 요청.
+    const tr = c => D.transactions.filter(t => "C" + t.conn === c.name && t.t0 <= T + 1).pop();
+    for (const c of D.conns) {
+      const y = yOf(c.name), open = c.accept <= T && (!c.close || T < c.close), on = cyc?.kind === "server" && (c.name === cyc.waiter || c.name === cyc.holder);
+      if (!open) continue;
+      const q = c.requests.find(r => r.seq > 0 && r.sent <= T && T < r.done);
+      o.push(line(305, y, 658, y, red(on, col(c.name)), q || on ? 2.4 : 1, "", !!q, q ? `${c.name}: 요청 ${q.seq} 보냄, 응답 기다리는 중 · ${sqlText(q)}` : `${c.name}: 오가는 메시지 없음`));
+      if (q) o.push(`<text x="480" y="${y - 6}" text-anchor="middle" font-size="10" font-family="ui-monospace,Menlo,monospace" fill="${col(c.name)}">${esc(reqText(q, 18))}</text>`);
+      // 백엔드: 함수 기록의 기다림이 먼저, 없으면 마지막 관찰(◉ 찍은 시각; 오래되면 흐리게).
+      const w = V.waits.find(w => w.conn === c.name && w.t0 <= T && T <= w.t1);
+      const cap = lastCapture(D, T), a = cap?.activity?.find(a => +a.pid === c.pid);
+      const old = cap && (cap.t < V.window[0] || T - cap.t > 1000);
+      const pill = w ? {t: "🔒 락 기다림", c: "var(--wait)", tip: `${w.xid} 끝나기를 기다림(함수 기록 ${plus(w.t0)}부터)`}
+        : a ? {t: `◉ ${a.state === "idle in transaction" ? "⌛ idle in tx" : a.state}`, c: a.state === "idle in transaction" ? "var(--now)" : "var(--sub)",
+          tip: `관찰 ${plus(cap.t)}: ${a.state} · ${a.waitType}/${a.waitEvent}${cap.t < V.window[0] ? " · 장면 시작 전에 찍음" : T - cap.t > 1000 ? ` · 이 순간보다 ${ms(T - cap.t)} ms 전` : ""}${cap.overlap?.length ? ` · ⚠ 찍는 도중 메시지 ${cap.overlap.length}개` : ""}`}
+        : {t: "?", c: "var(--mute)", tip: "이 시각 전의 관찰 없음"};
+      o.push(`<g${hit(lastOn(c.name)?.key)}>${ttl(`${c.name} 백엔드 pid ${c.pid}`)}<rect x="660" y="${y - 20}" width="132" height="40" rx="6" fill="var(--bg)" stroke="${col(c.name)}" stroke-width="1.4"/>`
+        + `<text x="668" y="${y - 5}" font-size="11" font-weight="700" fill="${col(c.name)}">${c.name} · ${c.pid}</text></g>`
+        + `<text x="668" y="${y + 12}" font-size="10.5" fill="${pill.c}"${old && !w ? ' opacity="0.55"' : ""}>${esc(pill.t)}${cap?.overlap?.length && !w ? " ⚠" : ""}${ttl(pill.tip)}</text>`);
+      // 트랜잭션 번호: 받은 번호만, 색은 그 순간의 끝(진행 중 테두리, 커밋 초록, 중단 빨강). 함수 기록.
+      const t = tr(c), xs = (t?.xids || []).filter(x => x.t <= T);
+      xs.forEach((x, k) => {
+        const end = (t.clog || []).find(g => g.xid === x.xid && g.t <= T), done = end && (end.kind === "commit_clog" ? "ok" : "wait");
+        const bx = 806 + k * 62, sub = x.level !== "1";
+        o.push(`<g>${ttl(`${sub ? "하위 " : ""}트랜잭션 번호 ${x.xid} · ${done ? (done === "ok" ? "커밋" : "중단") : "진행 중"}(함수 기록)`)}<rect x="${bx}" y="${y - 11}" width="${sub ? 54 : 50}" height="22" rx="11" fill="${done ? `var(--${done})` : "var(--bg)"}" stroke="${done ? `var(--${done})` : "var(--now)"}" stroke-width="1.5"/>`
+          + `<text x="${bx + (sub ? 27 : 25)}" y="${y + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="${done ? "var(--card)" : "var(--now)"}">${sub ? "↳" : ""}${x.xid}${done ? (done === "ok" ? " ✓" : " ✕") : ""}</text></g>`);
+      });
+    }
+    // 서버의 락 기다림: 기다리는 백엔드에서 그 번호를 쥔 연결의 번호 표로. lock_timeout이 있으면 시계.
+    for (const w of V.waits.filter(w => w.t0 <= T && T <= w.t1)) {
+      const hc = D.transactions.find(t => t.xids.some(x => x.xid === w.xid)), hy = hc ? yOf("C" + hc.conn) : null, wy = yOf(w.conn);
+      if (hy == null) continue;
+      const wc = D.conns.find(x => x.name === w.conn), nb = c => Math.max(1, (D.transactions.filter(t => "C" + t.conn === c && t.t0 <= T + 1).pop()?.xids || []).filter(x => x.t <= T).length);
+      const sx = 806 + nb(w.conn) * 62 - 6, ex = 806 + nb("C" + hc.conn) * 62 - 4;
+      const lt = wc && wc.requests.map(r => (r.sql || []).join(" ").match(/lock_timeout\s*=\s*'([^']+)'/)).find(Boolean);
+      o.push(`<path${hit(`s${w.conn}:${w.seq}:${w.t0}`)} d="M${sx},${wy} C${sx + 60},${wy} ${ex + 60},${hy} ${ex},${hy}" fill="none" stroke="var(--wait)" stroke-width="2.4" marker-end="url(#bar)">${ttl(`${w.conn} 백엔드가 ${w.xid}이 끝나기를 기다림(함수 기록 XactLockTableWait)`)}</path>`);
+      if (lt) o.push(`<text x="${Math.max(sx, ex) + 40}" y="${(wy + hy) / 2 + 4}" text-anchor="middle" font-size="10.5" fill="var(--wait)">⏱${esc(lt[1])}${ttl(`${w.conn}의 lock_timeout ${lt[1]}: 넘으면 오류 55P03으로 끝냄`)}</text>`);
+      const dl = (wc?.requests || []).flatMap(r => r.server?.events || []).find(e => e.kind === "deadlock_check" && e.t >= w.t0 && e.t <= w.t1 && e.t <= T);
+      if (dl) o.push(`<text x="648" y="240" font-size="10.5" fill="var(--srv)">교착 검사 → ${esc(dl.f?.result || "?")}${ttl(`PostgreSQL의 교착 검사는 서버 안(점선 상자)의 락 기다림 그래프에서 고리를 찾습니다(함수 기록 ${plus(dl.t)}). main이 쥔 연결과 main이 기다리는 응답은 앱 안의 일이라 그래프에 없습니다(≈ 해석)`)}</text>`);
+    }
+    if (cyc) o.push(`<text${hit("n" + cyc.call)} x="${poolCyc ? 140 : 480}" y="${poolCyc ? 222 : 166}" text-anchor="middle" font-size="26" font-weight="700" fill="var(--wait)">↻${ttl(cyc.kind === "pool"
+      ? `기다림의 고리(풀): main이 빈 칸을 기다리는데, 하나뿐인 칸의 ${cyc.holder}는 main이 떼어 둔 채 쥐고 있음. 앱 안의 일이라 DB는 모름(≈ 해석)`
+      : `기다림의 고리: main → ${cyc.waiter} 응답 → ${cyc.waiter} 백엔드가 ${cyc.xid} 기다림 → ${cyc.xid}의 ${cyc.holder}는 main이 떼어 둔 채 쥠 → main(≈ 해석). 서버의 교착 검사는 점선 상자(PostgreSQL) 안의 기다림만 보므로 이 고리를 보지 못함`)}</text>`);
+    // 롤백 전용 표시: 표시한 뒤 그 트랜잭션이 끝나기 전까지, 표시할 때 묶여 있던 연결의 칸 옆에 ⚑.
+    for (const x of V.tree) if (x.t0 <= T && x.effects.some(e => e.kind === "rollbackOnly")) {
+      const b = [...V.binding].filter(b => b.t <= x.t0).pop()?.bound, t = b && D.transactions.find(t => "C" + t.conn === b && t.t0 <= x.t0 && T <= t.t1);
+      if (t) o.push(`<text x="190" y="${yOf(b) + 5}" font-size="15" fill="var(--wait)">⚑${ttl(`롤백 전용 표시(doSetRollbackOnly ${plus(x.t0)}): 연결 위로는 보내지 않음. 바깥이 커밋하려 하면 롤백함`)}</text>`);
+    }
+    // 생존 검사 창: 고른 순간이 빌리기 안이면, 그 연결이 쉰 시간을 창(aliveBypassWindowMs)과 견준 막대. 창을 넘으면 검사함.
+    const bn = chain.find(x => x.effects.some(e => e.kind === "borrow" && e.result !== "timeout")), be = bn?.effects.find(e => e.kind === "borrow");
+    if (be && pc.aliveBypassMs) {
+      const y = yOf(be.conn) + 19, k = Math.min(be.idleMs / (2 * pc.aliveBypassMs), 1) * 80;
+      o.push(`<g>${ttl(`쉰 시간 ${f1(be.idleMs, 0)} ms ${be.idleMs > pc.aliveBypassMs ? ">" : "<"} 생존 검사 창 ${f1(pc.aliveBypassMs, 0)} ms(HikariPool ${(pc.aliveCheckAt || "").split(":").pop()}행) → ${be.validated ? "검사함" : "검사 안 함"}`)}<rect x="225" y="${y}" width="80" height="6" rx="3" fill="none" stroke="var(--line)"/><rect x="225" y="${y}" width="${Math.max(k, 1.5)}" height="6" rx="3" fill="${be.validated ? "var(--hk)" : "var(--mute)"}"/>`
+        + `<line x1="265" y1="${y - 3}" x2="265" y2="${y + 9}" stroke="var(--ink)" stroke-width="1.2"/><text x="310" y="${y + 7}" font-size="10" fill="var(--sub)">${f1(be.idleMs, 0)} ms ${be.validated ? "✓" : "—"}</text></g>`);
+    }
+    return o.join("");
+  },
+  boardLegend: [["━", "묶인 연결"], ["┅⏸", "떼어 둔 연결"], ["→", "보낸 요청(응답 기다림)"], ["🔒", "락 기다림"], ["↻", "기다림의 고리"], ["753", "번호(테두리 진행 · ✓커밋 · ✕중단)"], ["⚑", "롤백 전용 표시"], ["▬|", "쉰 시간 · 생존 검사 창"], ["◉", "관찰"], ["≈", "추론"]],
+  // 장면 미니맵의 줄: 장면 스레드(잠듦), 연결마다 트랜잭션 막대·빌린 구간·서버의 기다림. 해석기 값을 고르기만 합니다.
+  ganttRows(D, V) {
+    const rows = [{name: "main", color: "var(--app)", spans: V.tree.flatMap(n => n.effects.filter(e => e.kind === "park").map(e => ({t0: e.t0, t1: e.t1, kind: "wait", sel: "n" + n.id, title: `main 잠듦 ${ms(e.t1 - e.t0)} ms · ${n.label}`}))),
+      marks: (D.notes || []).map(n => ({t: n.t, g: "✕", c: "var(--wait)", sel: "a" + n.t, title: `앱이 받은 예외 · ${n.where} · ${n.chain.split(" <- ")[0]}`}))}];
+    for (const c of D.conns) {
+      const tx = D.transactions.filter(t => t.conn === c.conn);
+      rows.push({name: c.name, color: col(c.name),
+        spans: [...V.slots.filter(s => s.conn === c.name).map(s => ({t0: s.t0, t1: s.t1 ?? V.window[1], kind: "lend", title: `${c.name}을 풀에서 빌린 구간`})),
+          ...tx.map(t => ({t0: t.t0, t1: t.t1, kind: "bar", sel: `w${c.name}:${t.first}`, title: `${c.name} 트랜잭션 ${t.xids.map(x => x.xid).join("·") || "번호 없음"} → ${t.end}`})),
+          ...V.waits.filter(w => w.conn === c.name).map(w => ({t0: w.t0, t1: w.t1, kind: "wait", sel: `s${c.name}:${w.seq}:${w.t0}`, title: `${c.name} 백엔드가 ${w.xid} 끝나기를 기다림 → ${w.end === "error" ? "오류" : w.end}`}))],
+        marks: tx.map(t => ({t: t.t1, g: t.end === "COMMIT" ? "✓" : "↺", c: t.end === "COMMIT" ? "var(--ok)" : "var(--wait)", sel: `w${c.name}:${t.last}`, title: `${c.name} ${t.end}`}))});
+    }
+    return rows;
+  },
+  // 결과 칩: 트랜잭션마다 연결·번호·끝, 잔액의 처음 → 끝(바뀐 값은 굵게), 앱이 받은 예외. 트랜잭션을 열지 않은 연결은 점선.
+  outcomeChips(D) {
+    const vis = c => Object.fromEntries((c?.visible?.acct || []).map(r => [r.owner, r.balance]));
+    const s = vis(D.captures.find(c => c.label === "start")), e = vis(D.captures.find(c => c.label === "end") || D.captures[D.captures.length - 1]);
+    const used = new Set(D.transactions.map(t => "C" + t.conn));
+    return D.transactions.map(t => `<span class="txp" style="--c:${col("C" + t.conn)}" title="연결 위 메시지로 본 트랜잭션의 끝"><b>C${t.conn}</b>${t.xids.map(x => x.level === "1" ? x.xid : "↳" + x.xid).join(" ")}<span class="${t.end === "COMMIT" ? "ok" : "rb"}">${t.end === "COMMIT" ? "✓" : "↺"} ${esc(t.end)}</span></span>`).join("")
+      + D.conns.filter(c => !used.has(c.name)).map(c => `<span class="txp idle" style="--c:${col(c.name)}" title="풀이 ${c.accept < V.window[0] ? "장면 시작 전에 " : ""}열어 두기만 한 연결(트랜잭션 없음)"><b>${c.name}</b>—</span>`).join("")
+      + `<span class="bal" title="관찰 start·end의 잔액">${Object.keys(s).map(k => `${k} ${s[k]}→${s[k] === e[k] ? e[k] : `<b>${e[k] ?? "?"}</b>`}`).join(" · ")}</span>`
+      + (D.notes || []).map(n => `<span class="exc" title="${esc(n.chain)}">✕ ${esc(n.chain.split(" <- ")[0].split(".").pop())}</span>`).join("");
+  },
+  // 장면을 열 때 처음 고를 줄. 구성도에 장면의 요점이 보이는 순간을 고릅니다: 결함 없는 막힌 동안의 관찰, 기다림·오류인 첫 주요 순간,
+  // 둘째 연결의 첫 요청(바깥 연결을 떼어 둔 채 둘째 연결을 쓰는 때), 같은 연결의 둘째 빌리기. 없으면 null(공통 화면이 첫 갈림 줄을 고름).
+  // 찍는 도중 메시지가 오간 관찰은 고르지 않습니다(사용성 시험 1차: 그 관찰의 커밋 로그가 뒤의 롤백을 먼저 보여 줌).
+  startRow(R, M) {
+    const band = R.find(r => r.draw === "band" && !r.pause && !r.flawed); if (band) return band.key;
+    const m = M.find(m => m.tone); if (m) return m.key;
+    const outs = R.filter(r => r.draw === "out"), other = outs.find(r => r.peer !== outs[0].peer); if (other) return other.key;
+    const b = R.filter(r => r.n?.effects.some(e => e.kind === "borrow")); return b.length > 1 ? b[1].key : null;
+  },
+  // 실행(같은 장면을 다시 돌린 기록) 하나에 붙일 경고. 찍는 도중 연결 위 메시지가 오간 관찰이 있으면 그 수.
+  runFlaw: D => D.captures.reduce((k, c) => k + (c.label === "blocked" ? c.overlap?.length || 0 : 0), 0),
+  // 주요 순간: 해석기가 붙인 효과·기다림·트랜잭션의 끝·앱 알림 가운데 장면을 따라가는 데 쓰일 것만 고릅니다(새로 셈하지 않음).
+  moments(D, V) {
+    const M = [], seen = new Set();
+    for (const n of V.tree) for (const e of n.effects) {
+      const k = "n" + n.id;
+      if (e.kind === "borrow") M.push({t: n.t0, key: k, g: e.result === "timeout" ? "⇠✕" : "⇠", text: e.result === "timeout" ? "풀에서 받지 못함" : `${e.conn} 빌림`, tone: e.result === "timeout" ? "err" : ""});
+      else if (e.kind === "suspend" || e.kind === "resume") M.push({t: n.t0, key: k, g: e.kind === "suspend" ? "⏸" : "▶", text: `${e.conn} ${e.kind === "suspend" ? "떼어 둠" : "다시 묶음"}`});
+      else if (e.kind === "rollbackOnly") M.push({t: n.t0, key: k, g: "⚑", text: "롤백 전용 표시", tone: "err"});
+      else if (e.kind === "validate") M.push({t: n.t0, key: k, g: "✓", text: "생존 검사"});
+      else if (e.kind === "throw" && !seen.has(e.class)) { seen.add(e.class); M.push({t: e.t0, key: k, g: "✕", text: e.class.split(".").pop(), tone: "err"}); }
+    }
+    for (const c of D.conns) for (const r of c.requests) for (const e of r.server?.events || []) if (e.kind === "xact_wait") M.push({t: e.t, key: `s${c.name}:${r.seq}:${e.t}`, g: "🔒", text: `${c.name} 백엔드가 ${e.f?.xid} 끝나기를 기다림`, tone: "wait"});
+    for (const t of D.transactions) { const c = D.conns.find(x => x.conn === t.conn), r = c?.requests.find(q => q.seq === t.last);
+      if (r) M.push({t: r.sent, key: `w${c.name}:${r.seq}`, g: t.end === "COMMIT" ? "✓" : "↺", text: `${c.name} ${t.end}`, tone: t.end === "COMMIT" ? "" : "err"}); }
+    for (const c of D.conns) for (const r of c.requests) { const q = (r.sql || []).find(q => /SAVEPOINT/.test(q || ""));
+      if (q) M.push({t: r.sent, key: `w${c.name}:${r.seq}`, g: "⤺", text: `${c.name} ${q.replace(/\s*"[^"]*"/, "")}`}); }
+    for (const n of D.notes || []) M.push({t: n.t, key: "a" + n.t, g: "✕", text: `앱이 받은 예외: ${n.where}`, tone: "err"});
+    return M.filter(m => m.t >= V.window[0] - 1 && m.t <= V.window[1] + 1).sort((a, b) => a.t - b.t);
+  },
+  // 이 주제의 표지와 약어 풀이(범례 아래에 늘 보임). 공통 화면의 표기는 공통 화면이 풉니다.
+  glossary: [
+    ["출처 표지", [
+      ["관찰 +t", "실험 도구가 PostgreSQL의 상태 뷰(pg_stat_activity·pg_locks·커밋 로그)를 읽은 값. +t는 찍은 시각이라 고른 순간보다 앞설 수 있음"],
+      ["JFR 기록", "JVM에 들어 있는 기록기(JDK Flight Recorder)가 남긴 메서드 호출의 시작·끝·스택. 앱 쪽 호출 줄은 모두 여기서 옴"],
+      ["함수 기록", "PostgreSQL 백엔드 안에서 불린 함수를 밖에서 잡아 남긴 기록. 서버 쪽 사건(번호 받음·기다림·교착 검사·오류)은 여기서 옴"],
+      ["추론", "직접 찍히지 않아 해석기가 다른 기록(호출 순서, 소스 글)으로 셈한 값. 표지에 마우스를 올리면 셈한 방법이 나옴"],
+      ["◉ 막힌 동안의 관찰", "장면 스레드가 DB 응답이나 풀을 기다리며 스스로 막혀 있을 때, 도구가 앱을 세우지 않고 찍은 관찰. ⏸ 멈춤 자리는 도구가 앱을 세우고 찍은 것"]]],
+    ["연결 위 메시지(PostgreSQL 프로토콜)", [
+      ["Q", "간단 질의(Simple Query): SQL 글을 그대로 보내 실행. Q \"\"는 빈 질의"],
+      ["P B D E S", "확장 질의: Parse(문장 준비) · Bind(값 묶기) · Describe(결과 꼴 묻기) · Execute(실행) · Sync(묶음 끝, 응답 요청). S_1은 미리 준비해 둔 문장 이름"],
+      ["C …", "CommandComplete: 명령이 끝났다는 응답과 꼬리표(UPDATE 1은 한 행을 고침)"],
+      ["E 55P03", "ErrorResponse: 오류 응답. 뒤 다섯 글자는 SQLSTATE이고 55P03은 lock_not_available(락을 기다리다 lock_timeout으로 취소)"],
+      ["Z(I/T/E)", "ReadyForQuery: 다음 명령을 받을 준비가 됨. I는 트랜잭션 밖, T는 트랜잭션 안, E는 실패한 트랜잭션 안"]]],
+    ["PostgreSQL", [
+      ["xid · 번호", "트랜잭션이 처음 행을 고치거나 잠글 때 PostgreSQL이 주는 트랜잭션 번호. 고친 행에 이 번호가 남음"],
+      ["idle in transaction", "트랜잭션을 연 채 클라이언트의 다음 명령을 기다리는 상태(대기 Client/ClientRead). 서버 안에서는 아무것도 기다리지 않음"],
+      ["Lock/transactionid", "다른 트랜잭션 번호가 끝나기(커밋·롤백)를 기다리는 대기. 같은 행을 먼저 고친 트랜잭션이 끝나야 진행함"],
+      ["커밋 로그", "트랜잭션 번호마다 커밋·중단을 적는 곳(pg_xact)"],
+      ["SAVEPOINT", "트랜잭션 안의 되돌림 지점. ROLLBACK TO SAVEPOINT는 그 뒤에 고친 것만 되돌림"],
+      ["하위 트랜잭션", "저장점 뒤에 고친 일에 따로 붙는 번호(결과 줄의 「하위 754」). 저장점으로 되돌리면 그 번호만 중단되고 바깥 번호는 남음"]]],
+    ["Spring · HikariCP", [
+      ["스레드에 묶인 연결", "Spring이 지금 스레드의 트랜잭션에 쓰는 연결(TransactionSynchronizationManager). 같은 스레드의 JdbcTemplate은 이 연결로 보냄"],
+      ["떼어 둔 연결", "REQUIRES_NEW가 새 트랜잭션을 열려고 바깥 트랜잭션의 연결을 스레드에서 잠시 내려 둔 것(doSuspend). 바깥 트랜잭션은 서버에서 열린 채 남음"],
+      ["롤백 전용 표시", "참여한 안쪽이 실패하면 함께 쓰는 트랜잭션에 남기는 표시(doSetRollbackOnly). 바깥이 커밋하려 하면 롤백하고 UnexpectedRollbackException을 던짐"],
+      ["빌림 · 돌려줌", "HikariCP 풀에서 연결을 받는 것(getConnection)과 다 쓴 연결을 풀에 돌려주는 것(close). 연결 자체는 닫히지 않음"]]]],
+};
+// 요청 하나를 짧은 글로: 간단 질의는 Q와 SQL, 확장 질의는 보낸 메시지 종류와 SQL(준비 문장을 다시 쓰면 그 이름).
+// 준비해 둔 문장을 다시 쓰는 요청(Parse 없이 Bind부터)은 SQL이 없어 sql이 null입니다.
+function reqText(r, n) {
+  const q = (r.sql || [])[0];
+  return r.types[0] === "Q" ? `Q ${q ? clip(q, n) : '""'}` : `${r.types.join(" ")} · ${q ? clip(q, n) : "(SQL 없음)"}${r.stmt ? ` (${r.stmt})` : ""}`;
+}
+const sqlText = r => (r.sql || []).map(q => q || '""').join("; ") || "(SQL 없음, 준비 문장 재사용)";
+const backText = r => r.error ? `E ${r.error.code} · Z(${r.status})` : `${(r.tags || []).map(t => "C " + t).join(" · ") || "I"} · Z(${r.status})`;
+const lastCapture = (D, T) => [...D.captures].filter(c => c.t <= T + 1).pop();
+// 서버 사건 가운데 이 주제에서 줄로 보일 것과 그 글. 나머지 사건은 요청의 자세한 내용에만 나옵니다.
+function serverText(e) {
+  const f = e.f || {}, k = e.kind;
+  if (k === "xid") return {text: `번호 ${f.xid} 받음`};
+  if (k === "assign_xid" && f.level !== "1") return {text: `하위 트랜잭션(깊이 ${f.level})`};
+  if (k === "update_check" && f.result === "TM_BeingModified") return {text: `행 (0,${f.off})은 ${f.xmax}이 고치는 중`};
+  if (k === "xact_wait") return {text: `${f.xid} 끝나기를 기다림`, tone: "wait"};
+  if (k === "deadlock_check") return {text: `교착 검사 → ${f.result}`};
+  if (k === "ereport") return {text: `오류 · ${fileLine(f.at)}`, tone: "err"};
+  if (k === "commit_clog" || k === "abort_clog") return {text: `커밋 로그: ${f.xid} ${k === "commit_clog" ? "커밋" : "중단"}`};
+  return null;
+}
+function wireDetail(c, g, el) {
+  const o = [`<h2>${c.name} · 요청 ${g.map(q => q.seq).join(", ")}</h2>`];
+  for (const q of g) {
+    o.push(`<div class="facts"><b>요청 ${q.seq}</b> · ${esc(q.types.join(" "))}${q.stmt ? ` · 준비 문장 ${esc(q.stmt)}` : ""}<br><code>${esc(sqlText(q))}</code><br>보냄 ${plus(q.sent)} ms · Z(${q.status}) ${plus(q.done)} ms · ${esc((q.tags || []).join(", "))}${q.error ? ` · <span style="color:var(--wait)">오류 ${esc(q.error.code)} ${esc(q.error.message)} (${esc(q.error.where)})</span>` : ""}</div>`);
+    const ev = q.server?.events || [];
+    if (ev.length) o.push(`<div class="sec">서버 사건(이 요청을 처리한 구간, 함수 기록)</div><table class="t">${ev.map(e => `<tr><td>${plus(e.t)}</td><td>${esc(serverText(e)?.text || "")} <span class="mute">${esc(e.kind)}</span></td><td>${esc(Object.entries(e.f || {}).map(([k, v]) => `${k}=${v}`).join(" "))}</td></tr>`).join("")}</table>`);
+  }
+  const sender = V.tree.find(n => n.effects.some(e => e.kind === "wire" && e.conn === c.name && e.seq.includes(g[0].seq)));
+  if (sender) o.push(`<div class="facts" style="margin-top:6px">보낸 호출: <a class="sel" data-sel="n${sender.id}">${esc(sender.label)} (깊이 ${sender.depth})</a></div>`);
+  el.innerHTML = o.join("");
+}
+function serverDetail(c, r, e, text, el) {
+  const at = e.stack?.[e.stack.length - 1]?.at;
+  const o = [`<h2>${esc(text)}</h2><div class="path">${esc(c.name)} 백엔드 · 요청 ${r.seq} · ${plus(e.t)} ms · 함수 기록</div>`];
+  o.push(`<div class="facts">${esc(Object.entries(e.f || {}).map(([k, v]) => `${k}=${v}`).join(" · "))}</div>`);
+  if (e.stack) o.push(`<div class="sec">백엔드 스택(안쪽이 아래)</div><div class="chain">${e.stack.map((f, i) => `<div style="margin-left:${i * 6}px;cursor:default">${esc(f.fn)} <span class="mute">${esc(fileLine(f.at))}</span></div>`).join("")}</div>`);
+  const s = at && D.src?.[at];
+  if (s) o.push(excerpt(s, +at.split(":").pop(), `PostgreSQL 18.6 · ${at}`));
+  el.innerHTML = o.join("");
+}
+function capDetail(c, el) {
+  const name = pid => D.conns.find(x => x.pid === +pid)?.name || pid;
+  el.innerHTML = `<h2>◉ 막힌 동안 찍은 관찰</h2><div class="path">${plus(c.span[0])} ~ ${plus(c.span[1])} ms · 도구가 앱을 세우지 않고 찍음 · 찍는 도중 연결 위 메시지 ${(c.overlap || []).length}개</div>
+${c.overlap?.length ? `<div class="did warn">⚠ 찍는 도중 앱이 연결 위로 메시지를 주고받았습니다. 관찰은 여러 뷰를 차례로 읽으므로, 아래 값은 뷰마다 다른 시각의 것이 섞였을 수 있습니다(예: 끝난 뒤의 커밋 로그). 같은 장면의 다른 실행을 보세요.</div>` : ""}
+${c.overlap?.length ? `<div class="sec">찍는 도중 오간 메시지</div><table class="t">${c.overlap.map(m => `<tr><td>${plus(m.t)}</td><td>${m.dir === "F" ? "→ 앱이 보냄" : "← 서버가 보냄"}</td><td>${esc(m.type)} ${esc(m.text || m.name || "")}</td></tr>`).join("")}</table>` : ""}
+<div class="sec">세션</div><table class="t">${(c.activity || []).map(a => `<tr><td style="color:${col(name(a.pid))}">${name(a.pid)} ${a.pid}</td><td>${esc(a.state)}</td><td>${esc(a.waitType)}/${esc(a.waitEvent)}</td><td>xid ${esc(a.xid || "-")}</td></tr>`).join("")}</table>
+<div class="sec">받지 못한 락</div><div class="facts">${(c.locks || []).filter(l => !l.granted).map(l => `${name(l.pid)} → ${esc(l.type)} ${esc(l.xid || "")} ${esc(l.mode)}`).join("<br>") || "없음"}</div>
+<div class="sec">커밋 로그</div><div class="facts">${esc(Object.entries(c.xacts || {}).map(([x, s]) => `${x} ${s}`).join(" · "))}</div>`;
+}
+
+// ───────── 공통 화면 ─────────
+const LANES = [{key: "time", w: 52}, ...TOPIC.lanes];
+const X = {}; { let x = 0; for (const l of LANES) { X[l.key] = [x, x + l.w]; x += l.w; } }
+const W = X[LANES[LANES.length - 1].key][1];
+const PROC = TOPIC.lanes.filter(l => !l.side), LAST_PROC = PROC[PROC.length - 1].key, LINK = TOPIC.lanes.find(l => l.side === "link")?.key;
+const col = k => `var(${TOPIC.lanes.find(l => l.key === k)?.color || "--mute"})`;
+const SCS = [...new Set(Object.keys(RUNS).map(k => k.split("/")[0]))].sort((a, b) => Object.keys(TOPIC.scenes).indexOf(a) - Object.keys(TOPIC.scenes).indexOf(b));
+const sceneName = k => TOPIC.scenes[k]?.name || k;
+const LENSES = [["효과", "• 효과", "밖에 드러나는 일(연결 위로 보냄·빌림·떼어 둠·예외 등)이 있는 호출"], ["갈림", "⑂ 갈림", "함께 견준 기록마다 자식을 부른 차례가 다른 자리"], ["시간", "◔ ≥1 ms", "자기 시간이 1 ms 이상인 호출"], ["전부", "전부", "모든 호출"]];
+const WHYGLYPH = {효과: "•", 갈림: "⑂", 시간: "◔", 고정: "▪"};
+const WHYCOLOR = {효과: "--eff", 갈림: "--now", 시간: "--time", 고정: "--acc", 앱: "--app"};
+const END = {return: "끝 기록 있음(예외의 흔적 없음)", throw: "예외를 만들고 끝남", twice: "같은 시작의 사건 둘: 메서드 안의 throw를 finally가 받은 뒤 끝남",
+  passed: "스택에만 보임: 아래에서 올라온 예외가 지나가며 끝남(끝 시각 없음)", rethrow: "끝 기록은 있으나 부모가 스택에만 보여, 예외를 다시 던지며 끝났다고 추론"};
+const hp = new URLSearchParams(location.hash.slice(1));
+let SC = SCS.includes(hp.get("sc")) ? hp.get("sc") : SCS[0];
+let RUN = RUNS[SC + "/" + hp.get("run")] ? hp.get("run") : "a";
+let SEL = hp.get("sel") || "";
+let ON = new Set((hp.get("lens") ?? "효과,갈림,시간").split(",").filter(Boolean));
+let OPEN = new Set();           // 사용자가 ＋를 눌러 자식을 펼친 마디
+let CHAIN = true;               // 고른 마디의 조상 사슬을 줄로 펼침
+let PINS = new Set(store.get(TOPIC.storeKey) || []);
+let D, V, NODE, ROWS, MOMENTS;
+
+const selNode = () => SEL.startsWith("n") ? NODE[+SEL.slice(1)] : null;
+const cur = () => ROWS.find(q => q.key === SEL) || ROWS[0];
+const isAnchor = n => TOPIC.lanes.find(l => l.key === n.lane)?.anchor;
+// 줄에 쓸 이름. 인자가 길면 첫 인자와 인자 수만 남깁니다(이름이 같은 메서드끼리 구별되게). 전체 이름은 자세한 내용에 있습니다.
+function shortLabel(label, max = 44) {
+  const i = label.indexOf("("); if (label.length <= max || i < 0) return label;
+  const ps = label.slice(i + 1, -1).split(", ");
+  return `${label.slice(0, i)}(${ps[0]}, … ${ps.length}개)`;
+}
+// 그림판 칸에 쓸 이름: 장면 코드는 클래스까지, 나머지는 메서드만(칸 이름이 이미 층을 말함).
+const frameName = n => shortLabel(isAnchor(n) ? n.label : n.label.slice(n.label.indexOf(".") + 1), 30);
+function effText(n) {
+  return n.effects.map(e => TOPIC.effect(e, D) ?? (e.kind === "park" ? `잠듦 ${ms(e.t1 - e.t0)} ms` : e.kind === "throw" ? `✕ ${e.class.split(".").pop()}` : e.kind)).join(" · ");
+}
+
+const effShort = n => n.effects.map(e => TOPIC.effGlyph?.(e, D) ?? (e.kind === "park" ? `⏳${ms(e.t1 - e.t0)} ms` : e.kind === "throw" ? `✕ ${e.class.split(".").pop()}` : e.kind)).join(" ");
+
+// 지금 기록의 마디 가운데 보일 것과 그 이유를 고릅니다. 이유는 렌즈(해석기의 why), 장면 코드와 뿌리, 늘 보기, 펼침, 고른 마디의 사슬입니다.
+function visible() {
+  const why = new Map();
+  const add = (n, w) => { if (!why.has(n.id)) why.set(n.id, []); if (!why.get(n.id).includes(w)) why.get(n.id).push(w); };
+  for (const n of V.tree) {
+    if (ON.has("전부")) add(n, "전부");
+    for (const w of n.why) if (ON.has(w)) add(n, w);
+    if (isAnchor(n)) add(n, "앱");
+    if (!NODE[n.parent]) add(n, "뿌리");
+    if (PINS.has(n.label)) add(n, "고정");
+  }
+  for (const id of OPEN) for (const k of NODE[id]?.kids || []) add(NODE[k], "펼침");
+  const sel = selNode();
+  if (sel && CHAIN) for (let p = NODE[sel.parent]; p; p = NODE[p.parent]) add(p, "사슬");
+  if (sel && !why.has(sel.id)) add(sel, "사슬");
+  return why;
+}
+
+// 줄 만들기: 보일 마디, 주제의 줄(메시지·상대 쪽 사건·관찰), 실험 도구의 멈춤.
+function rows() {
+  const why = visible(), R = [], [w0, w1] = V.window;
+  const inWin = t => t >= w0 - 1 && t <= w1 + 1;
+  for (const n of V.tree) if (why.has(n.id)) R.push({key: "n" + n.id, t: n.t0, lane: n.lane, draw: "node", n, why: why.get(n.id)});
+  R.push(...TOPIC.rows(D, V, inWin));
+  for (const [a, b] of V.pauses) if (b > w0 && a < w1) {
+    const cp = D.checkpoints.find(c => Math.abs(c.t - a) < 1);
+    R.push({key: "p" + a, t: a, t1: b, lane: "time", draw: "band", pause: true, short: `⏸ ${cp ? cp.label + " " : ""}${plus(a)} ~ ${plus(b)} ms`, text: `⏸ 멈춤 자리 ${cp ? cp.label : ""} · 실험 도구가 앱을 세우고 상대 쪽 상태를 찍은 구간(앱이 기다린 시간이 아님) ${plus(a)} ~ ${plus(b)} ms`,
+      detail: el => { el.innerHTML = `<h2>⏸ 멈춤 자리 ${esc(cp ? cp.label : "")}</h2><div class="facts">실험 도구(txlab)가 멈춤 자리에서 앱을 세우고 상대 쪽 상태를 찍은 구간입니다(${plus(a)} ~ ${plus(b)} ms). 앱의 시간이 아니므로 자기 시간에서 뺍니다.</div>`; }});
+  }
+  const ord = LANES.map(l => l.key);
+  R.sort((a, b) => a.t - b.t || ord.indexOf(a.lane) - ord.indexOf(b.lane) || (a.n?.depth ?? 0) - (b.n?.depth ?? 0));
+  return R;
+}
+// 다른 곳에서 가리킨 줄 이름(묶음 안의 요청 하나 등)을 실제 줄 이름으로.
+const resolve = k => ROWS.find(r => r.key === k)?.key || ROWS.find(r => r.refs?.includes(k))?.key || k;
+
+function header() {
+  document.getElementById("title").textContent = TOPIC.title;
+  document.getElementById("scs").innerHTML = SCS.map(k => `<button data-sc="${k}" aria-pressed="${k === SC}">${esc(sceneName(k))}</button>`).join("");
+  const runs = Object.keys(RUNS).filter(k => k.startsWith(SC + "/")).map(k => k.split("/")[1]).sort();
+  document.getElementById("runs").innerHTML = runs.map(r => { const f = TOPIC.runFlaw?.(RUNS[SC + "/" + r]);
+    return `<button data-run="${r}" aria-pressed="${r === RUN}" title="같은 장면을 처음부터 다시 돌린 기록${f ? ` · ⚠ 이 실행의 관찰은 찍는 도중 메시지 ${f}개가 오가 값이 섞였을 수 있음` : ""}">실행 ${r}${f ? " ⚠" : ""}</button>`; }).join("");
+  document.getElementById("lenses").innerHTML = LENSES.map(([k, t, tip]) => `<button data-lens="${k}" aria-pressed="${ON.has(k)}" title="${esc(tip)}">${esc(t)}</button>`).join("");
+  document.getElementById("pins").innerHTML = PINS.size ? `<span>늘 보기</span>` + [...PINS].map(p => `<span class="pin" data-unpin="${esc(p)}" title="누르면 늘 보기에서 뺌">${esc(p)} ✕</span>`).join("") : "";
+  const nodes = ROWS.filter(r => r.draw === "node").length;
+  const cnt = document.getElementById("count"); cnt.textContent = `${nodes} / ${V.tree.length}`; cnt.title = `호출 ${V.tree.length}개 가운데 ${nodes}개를 줄로 보임. 나머지는 줄 끝의 ＋n으로 접혀 있음`;
+}
+
+// 장면 설명 줄: 이 장면이 답하는 질문(장면 코드의 요약은 마우스를 올리면), 결과 칩, 장면 미니맵.
+function about() {
+  const sc = TOPIC.scenes[SC] || {};
+  document.getElementById("about").innerHTML = `<div class="oc"><span class="q" title="${esc(sc.code || "")}">${esc(sc.q || sceneName(SC))}</span>${TOPIC.outcomeChips ? TOPIC.outcomeChips(D) : ""}</div>` + scrubber();
+}
+// 장면 미니맵: 장면 시작부터 끝까지를 시간에 비례해 놓고, 줄마다(장면 스레드, 연결) 주제가 고른 막대·기다림·표식을, 위에는 주요 순간을 기호로
+// 찍습니다. 세로선은 고른 순간입니다. 표식을 누르면 그 줄을, 빈 곳을 누르면 그 시각에 가장 가까운 줄을 고릅니다.
+const SCRUB = {W: 1400, L: 48, R: 8};
+const scrubX = t => SCRUB.L + Math.max(0, Math.min(1, (t - V.window[0]) / (V.window[1] - V.window[0]))) * (SCRUB.W - SCRUB.L - SCRUB.R);
+function scrubber() {
+  const [w0, w1] = V.window, G = TOPIC.ganttRows ? TOPIC.ganttRows(D, V) : [], x = scrubX;
+  const tiers = [], mk = MOMENTS.map(m => { const mx = x(m.t); let k = 0; while (tiers[k] != null && mx - tiers[k] < 13) k++; tiers[k] = mx; return {...m, x: mx, k}; });
+  const top = 6 + Math.min(tiers.length, 3) * 13, rh = 13, H = top + G.length * (rh + 3) + 14;
+  const o = [`<defs><pattern id="sh" width="5" height="5" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="5" height="5" fill="none"/><line x1="0" y1="0" x2="0" y2="5" stroke="var(--line)" stroke-width="2.5"/></pattern>
+<pattern id="sw" width="5" height="5" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="5" height="5" fill="var(--waitbg)"/><line x1="0" y1="0" x2="0" y2="5" stroke="var(--wait)" stroke-width="2"/></pattern></defs>`];
+  for (const [a, b] of V.pauses) if (b > w0 && a < w1) o.push(`<rect x="${x(a)}" y="${top - 2}" width="${Math.max(x(b) - x(a), 1)}" height="${G.length * (rh + 3)}" fill="url(#sh)"><title>⏸ ${plus(a)} ~ ${plus(b)} ms: 실험 도구가 앱을 세우고 상대 쪽 상태를 찍은 구간(앱의 시간이 아님)</title></rect>`);
+  G.forEach((g, i) => {
+    const y = top + i * (rh + 3);
+    o.push(`<text x="${SCRUB.L - 6}" y="${y + 10}" text-anchor="end" font-size="10.5" font-weight="600" fill="${g.color}">${esc(g.name)}</text><line x1="${SCRUB.L}" y1="${y + rh / 2}" x2="${SCRUB.W - SCRUB.R}" y2="${y + rh / 2}" stroke="var(--line)" stroke-width="0.6"/>`);
+    for (const s of g.spans) {
+      const a = x(s.t0), w = Math.max(x(s.t1) - a, 2), at = s.sel ? ` class="mk" data-sel="${esc(s.sel)}"` : "";
+      o.push(s.kind === "bar" ? `<rect${at} x="${a}" y="${y + 1}" width="${w}" height="${rh - 2}" rx="3" fill="${g.color}" fill-opacity="0.4" stroke="${g.color}"><title>${esc(s.title)}</title></rect>`
+        : s.kind === "lend" ? `<rect x="${a}" y="${y + rh - 1}" width="${w}" height="3" fill="var(--hk)"><title>${esc(s.title)}</title></rect>`
+        : `<rect${at} x="${a}" y="${y + 2}" width="${w}" height="${rh - 4}" fill="url(#sw)" stroke="var(--wait)"><title>${esc(s.title)}</title></rect>`);
+    }
+    for (const m of g.marks || []) o.push(`<text class="mk" data-sel="${esc(m.sel)}" x="${x(m.t)}" y="${y + 10}" text-anchor="middle" font-size="11" font-weight="700" fill="${m.c}">${esc(m.g)}<title>${esc(m.title)}</title></text>`);
+  });
+  for (const m of mk) if (m.k < 3) o.push(`<text class="mk" data-sel="${esc(m.key)}" x="${m.x}" y="${15 + m.k * 13}" text-anchor="middle" font-size="11.5" fill="${m.tone ? "var(--wait)" : "var(--ink)"}"${resolve(m.key) === SEL ? ' font-weight="800" text-decoration="underline"' : ""}>${esc(m.g || "•")}<title>${plus(m.t)} ms · ${esc(m.text)}</title></text>`);
+  const r = cur(); if (r) o.push(`<line x1="${x(r.t)}" y1="2" x2="${x(r.t)}" y2="${H - 12}" stroke="var(--acc)" stroke-width="1.6"/>`);
+  const step = [1e6, 5e5, 2.5e5, 1e5, 5e4, 2.5e4, 1e4, 5e3].find(k => (w1 - w0) / k >= 3) || 1e3;
+  // 1초가 넘는 눈금은 초로 쓰되, 눈금 간격이 1초보다 잘면 소수 자리를 남겨 1.5 s가 2 s로 반올림되어 옆 눈금과 겹치지 않게 합니다.
+  const tickLabel = (t, k) => t < 1e6 && k < 1e6 ? f1(t / 1e3, 0) + " ms" : f1(t / 1e6, k % 1e6 === 0 ? 0 : k % 1e5 === 0 ? 1 : 2) + " s";
+  for (let t = 0; w0 + t <= w1; t += step) o.push(`<text x="${x(w0 + t)}" y="${H - 2}" font-size="9.5" fill="var(--mute)" text-anchor="middle">${tickLabel(t, step)}</text>`);
+  return `<svg id="scrub" viewBox="0 0 ${SCRUB.W} ${H}" role="img" aria-label="장면 미니맵"><rect class="hit" data-scrub="1" x="${SCRUB.L}" y="0" width="${SCRUB.W - SCRUB.L - SCRUB.R}" height="${H}" fill="transparent"/>${o.join("")}</svg>`;
+}
+
+// 줄 놓기. 줄 간격은 시간 비례가 아니고 사건 순서입니다. 60 ms 넘게 비면 그 줄 위에 틈을 적습니다.
+function layout(R) {
+  let y = 6; const Y = [];
+  R.forEach((r, i) => {
+    const prev = R[i - 1], gap = prev ? r.t - (prev.t1 ?? prev.t) : 0;
+    if (gap > 60000 && !r.pause) y += 12;
+    const h = r.draw === "band" ? 24 : 21;
+    Y.push({y, h, gap}); y += h;
+  });
+  return {Y, H: y + 26};
+}
+// 시각 t가 놓일 y. 시작은 t 이상인 첫 줄의 위, 끝은 t 이하인 마지막 줄의 아래입니다.
+function yAt(R, Y, t, end) {
+  if (end) { let i = R.length - 1; while (i > 0 && R[i].t > t + 0.5) i--; return Y[i].y + Y[i].h * 0.8; }
+  let i = 0; while (i < R.length - 1 && R[i].t < t - 0.5) i++; return Y[i].y + Y[i].h * 0.25;
+}
+
+function lanes() {
+  const R = ROWS, {Y, H} = layout(R);
+  const minDepth = {};
+  for (const n of V.tree) minDepth[n.lane] = Math.min(minDepth[n.lane] ?? 99, n.depth);
+  const indent = n => 6 * (n.depth - minDepth[n.lane]);
+  document.getElementById("lanehead").setAttribute("viewBox", `0 0 ${W} 30`);
+  document.getElementById("lanehead").innerHTML = TOPIC.lanes.map(l => { const [a, b] = X[l.key], fs = l.name.length * 7.2 > b - a - 8 ? 10.5 : 12;
+    return `<rect x="${a + 2}" y="4" width="${b - a - 4}" height="22" rx="5" fill="var(--bg)" stroke="${col(l.key)}"/><text x="${(a + b) / 2}" y="19" text-anchor="middle" fill="${col(l.key)}" font-size="${fs}" font-weight="600">${esc(l.name)}</text>`; }).join("");
+  const o = [`<defs><pattern id="hatch" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="var(--chain)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--line)" stroke-width="3"/></pattern>
+<pattern id="hatchw" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="var(--waitbg)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--wait)" stroke-width="2"/></pattern>
+<marker id="ar" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="context-stroke"/></marker></defs>`];
+  for (const l of TOPIC.lanes) o.push(`<line x1="${X[l.key][0]}" y1="0" x2="${X[l.key][0]}" y2="${H}" stroke="var(--line)" stroke-width="0.6"/>`);
+  // 줄 바탕: 고른 줄, 사슬, 멈춤.
+  const x0 = X[PROC[0].key][0], xp = X[LAST_PROC][1];
+  R.forEach((r, i) => {
+    const {y, h} = Y[i];
+    if (r.key === SEL) o.push(`<rect x="0" y="${y}" width="${W}" height="${h}" fill="var(--sel)"/>`);
+    else if (r.pause) o.push(`<rect x="${x0}" y="${y + 2}" width="${W - x0}" height="${h - 4}" fill="url(#hatch)"/>`);
+    else if (r.why && r.why.length === 1 && r.why[0] === "사슬") o.push(`<rect x="${x0}" y="${y}" width="${xp - x0}" height="${h}" fill="var(--chain)"/>`);
+  });
+  // 막대: 보이는 호출의 시작~끝(스택에만 보인 호출은 점선, 끝 대신 마지막으로 보인 때까지), 시각 구간이 있는 효과(잠듦 등), 주제의 구간.
+  R.forEach((r, i) => {
+    if (r.draw !== "node") return;
+    const n = r.n, x = (X[n.lane]?.[0] ?? x0) + 3 + indent(n);
+    const y0 = Y[i].y + 3, y1 = Math.max(yAt(R, Y, n.t1 ?? n.seen, true), y0 + 4);
+    o.push(n.t1 == null ? `<rect x="${x}" y="${y0}" width="4" height="${y1 - y0}" fill="none" stroke="${col(n.lane)}" stroke-dasharray="3,2"/>`
+      : `<rect x="${x}" y="${y0}" width="4" height="${y1 - y0}" fill="${col(n.lane)}" opacity="0.75"/>`);
+    for (const e of n.effects) if (e.t0 != null && e.t1 != null) {
+      const p0 = yAt(R, Y, e.t0), p1 = Math.max(yAt(R, Y, e.t1, true), p0 + 4);
+      o.push(`<rect x="${x + 5}" y="${p0}" width="9" height="${p1 - p0}" fill="url(#hatchw)"/>`);
+    }
+  });
+  for (const iv of TOPIC.intervals(D, V)) {
+    if (!X[iv.lane] || iv.t1 < V.window[0]) continue;
+    const [a, b] = X[iv.lane], y0 = yAt(R, Y, iv.t0), y1 = Math.max(yAt(R, Y, iv.t1, true), y0 + 4);
+    o.push(iv.kind === "wait" ? `<rect x="${a + 13}" y="${y0}" width="${b - a - 17}" height="${y1 - y0}" fill="url(#hatchw)" opacity="0.8"/>`
+      : `<rect x="${a + 4}" y="${y0}" width="7" height="${y1 - y0}" fill="${col(iv.lane)}" opacity="0.5"/>`);
+  }
+  // 줄의 글. 호출 줄은 깊이 숫자부터 쓰고 깊이만큼 들여 씁니다(칸마다 그 칸에서 가장 얕은 호출이 왼쪽 끝).
+  const toneColor = (r, d) => r.tone === "err" || r.tone === "wait" ? "var(--wait)" : r.tone === "acc" ? "var(--acc)" : d;
+  R.forEach((r, i) => {
+    const {y, h, gap} = Y[i], ty = y + 14;
+    if (gap > 60000 && !r.pause) o.push(`<text x="4" y="${y - 2}" fill="var(--now)" font-size="9.5">⋮ ${ms(gap)} ms</text>`);
+    const tip = r.draw === "node" ? `${r.n.label} · 깊이 ${r.n.depth}${r.n.t1 == null ? " · 스택에만 보인 호출(끝 시각 없음)" : ""} · 보이는 이유: ${r.why.join(", ")}${r.n.effects.length ? " · " + effText(r.n) : ""}` : r.text;
+    o.push(`<g class="row" data-k="${esc(r.key)}"><title>${esc(tip)}</title><rect x="0" y="${y}" width="${W}" height="${h}" fill="transparent"/>`);
+    if (r.draw !== "band") o.push(`<text x="4" y="${ty}" fill="var(--mute)" font-size="10">${plus(r.t)}</text>`);
+    if (r.draw === "node") {
+      const n = r.n, x = (X[n.lane]?.[0] ?? x0) + 10 + indent(n);
+      const hidden = n.kids.filter(k => !R.some(q => q.n?.id === k)).length;
+      const eff = effShort(n), fold = hidden ? `${OPEN.has(n.id) ? "－" : "＋"}${hidden}` : OPEN.has(n.id) ? "－" : "";
+      // 부모가 줄로 보이지 않으면 부모 이름을 흐리게 앞에 붙여, 이 호출이 어디 안에서 불렸는지 줄만 보고 알게 합니다.
+      const p = NODE[n.parent], crumb = p && !R.some(q => q.n === p) ? clip(frameName(p), 22) : "";
+      o.push(`<text x="${x}" y="${ty}" fill="${col(n.lane)}"${n.t1 == null ? ' font-style="italic"' : ""}><tspan fill="var(--mute)" font-size="10">${n.depth} </tspan>${crumb ? `<tspan fill="var(--mute)" font-size="9.5">${esc(crumb)} › </tspan>` : ""}${esc(shortLabel(n.label))}`
+        + r.why.filter(w => WHYGLYPH[w]).map(w => ` <tspan fill="var(${WHYCOLOR[w] || "--mute"})" font-size="11" font-weight="700">${WHYGLYPH[w]}</tspan>`).join("")
+        + (fold ? ` <tspan data-fold="${n.id}" fill="var(--acc)" font-size="10" font-weight="600">${fold}</tspan>` : "")
+        + (eff ? `<tspan fill="var(--ink)">  ${esc(eff)}</tspan>` : "") + `</text>`);
+    } else if (r.draw === "out" || r.draw === "in") {
+      const c = col(r.peer), a0 = X[LAST_PROC][1] - 2, a1 = X[r.peer][0] + 8, ly = y + 17;
+      o.push(r.draw === "out" ? `<line x1="${a0}" y1="${ly}" x2="${a1}" y2="${ly}" stroke="${c}" stroke-width="1.3" marker-end="url(#ar)"/>`
+        : `<line x1="${a1}" y1="${ly}" x2="${a0 + 2}" y2="${ly}" stroke="${c}" stroke-width="1.3" stroke-dasharray="4,2" marker-end="url(#ar)"/>`);
+      o.push(`<text x="${X[LINK][0] + 4}" y="${y + 12}" fill="${toneColor(r, c)}" font-size="10">${r.draw === "out" ? "→" : "←"} ${esc(r.text)}</text>`);
+    } else if (r.draw === "event") {
+      o.push(`<text x="${X[r.lane][1] - 4}" y="${ty}" text-anchor="end" fill="${toneColor(r, col(r.lane))}">${esc(r.text)}</text>`);
+    } else if (r.draw === "note") {
+      o.push(`<text x="${X[r.lane][0] + 6}" y="${ty}" fill="${toneColor(r, col(r.lane))}">${esc(r.text)}</text>`);
+    } else {
+      o.push(`<text x="${x0 + 8}" y="${y + 16}" fill="${toneColor(r, "var(--sub)")}" font-family="system-ui,sans-serif" font-size="11.5"${r.tone ? ' font-weight="600"' : ""}>${esc(r.short ?? r.text)}</text>`);
+    }
+    o.push(`</g>`);
+  });
+  const svg = document.getElementById("lanes");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = o.join("");
+}
+
+function legend() {
+  const G = [["│", "호출(시작~끝)"], ["┆", "스택에만 보인 호출(기울임)"], ["0 1 2", "호출 깊이"], ["＋n", "접힌 자식"], ["•", "효과"], ["⑂", "갈림"], ["◔", "자기 시간 ≥ 1 ms"], ["▨", "기다림"], ["→ ←", "보냄 · 받음"], ...(TOPIC.rowLegend || []), ["✕", "예외"], ["◉", "관찰"], ["⏸ 띠", "도구가 앱을 세운 구간"]];
+  const open = document.querySelector("#legend details")?.open;
+  document.getElementById("legend").innerHTML = `<div class="legs">${G.map(([g, t]) => `<span><b>${esc(g)}</b>${esc(t)}</span>`).join("")}</div>`
+    + `<details class="more"${open ? " open" : ""}><summary>? 표기와 약어 풀이</summary><div class="leg">` + [
+    `<span><b>숫자</b>는 호출 깊이: 뿌리가 0이고, 추적한 호출과 스택에만 보인 호출을 한 단씩 셈. 추적하지 않은 칸(프록시·반사 등)은 사슬에서 ⋯n칸으로 접음. 들여쓰기는 칸 안에서 깊이 차이</span>`,
+    `<span>점선 막대와 기울인 글씨는 스택에만 보인 호출(끝 시각 없음): 아래에서 올라온 예외가 지나가며 끝나 자기 끝 기록이 없고, 다른 기록의 스택에만 칸으로 남은 호출</span>`,
+    `<span>보이는 이유 · • 효과: ${esc(TOPIC.effectLegend)} · ⑂ 갈림: 함께 견준 기록에서 이 메서드가 자식을 부른 차례(길)가 둘 이상 · ◔ 자기 시간 1 ms 이상 · ▪ 늘 보기</span>`,
+    `<span>줄을 누르면 그 호출까지의 사슬이 펼쳐지고 오른쪽에 자세한 내용 · ＋n은 접힌 자식 수(누르면 펼침) · 흐린 <span class="mute">이름 ›</span>은 줄로 보이지 않는 부모 · ↑ ↓ 키로 줄 이동 · 줄에 마우스를 올리면 긴 글</span>`,
+    `<span>시각은 장면 시작(start의 go)부터 ms이고 −는 시작 전(연결 준비 등) · 줄 간격은 시간 비례가 아님(⋮는 60 ms 넘는 틈) · ⏸ 멈춤 자리는 실험 도구가 앱을 세우고 상대 쪽 상태를 찍은 구간이라 앱의 시간에서 뺌 · 상대 쪽 시간에는 모든 함수 호출을 기록하는 비용이 들어 있음 · 실행 a~d는 같은 장면을 다시 돌린 기록 한 벌씩</span>`].join("")
+    + `</div><div class="gl">${(TOPIC.glossary || []).map(([g, items]) => `<div class="gh2">${esc(g)}</div>` + items.map(([k, t]) => `<div><b>${esc(k)}</b> ${esc(t)}</div>`).join("")).join("")}</div></details>`;
+}
+
+// 시각 T에 장면 스레드에서 열려 있던 가장 깊은 호출(고른 줄이 호출이면 그 호출).
+function nodeAt(T) {
+  const s = selNode(); if (s) return s;
+  let best = null;
+  for (const n of V.tree) if (n.t0 <= T && T <= (n.t1 ?? n.seen) && (!best || n.depth > best.depth)) best = n;
+  return best;
+}
+function chainOf(n) { const c = []; for (let p = n; p; p = NODE[p.parent]) c.unshift(p); return c; }
+
+// 그림판: 고른 순간의 구성도(주제가 그림)와 그 기호 풀이 한 줄.
+function minimap() {
+  const r = cur(), T = r ? r.t : V.window[0], at = nodeAt(T), chain = at ? chainOf(at) : [];
+  document.getElementById("mm").innerHTML = `<svg id="board" viewBox="0 0 940 250" role="img" aria-label="고른 순간의 구성도">${TOPIC.board(T, D, V, chain)}</svg>`
+    + `<div class="legs">${(TOPIC.boardLegend || []).map(([g, t]) => `<span><b>${esc(g)}</b>${esc(t)}</span>`).join("")}</div>`;
+}
+
+// 장면 코드 창: 고른 줄(또는 그 시각의 가장 깊은 호출)의 사슬에 든 장면 메서드마다, 다음 호출을 부른 줄을 칠합니다.
+// 사슬에 없는 클래스는 그 클래스의 첫 장면 메서드 머리를 보입니다.
+function codeWins() {
+  const r = cur(), at = nodeAt(r ? r.t : V.window[0]), chain = at ? chainOf(at) : [];
+  const marks = {};
+  chain.forEach((n, i) => { if (isAnchor(n) && chain[i + 1]) (marks[n.fn.split("::")[0]] ||= []).push({line: chain[i + 1].site, note: `${shortLabel(chain[i + 1].label, 36)} 부름`}); });
+  const o = [];
+  for (const [cls, f] of Object.entries(V.java)) {
+    const mk = marks[cls] || [];
+    let center = mk.length ? mk[mk.length - 1].line : 0;
+    if (!center) { const m = V.tree.find(n => n.fn.split("::")[0] === cls)?.fn.split("::")[1];
+      // 메서드 선언 줄: 이름 앞에 공백(반환 타입 뒤)이 있고 주석 줄이 아닌 곳. 주석 안의 {@link #m()}는 건너뜁니다.
+      center = m ? f.lines.findIndex(l => !/^\s*(\*|\/\/|\/\*)/.test(l) && new RegExp(`\\s${m}\\s*\\(`).test(l)) + 1 : 1;
+      if (center < 1) center = 1; }
+    const from = Math.max(1, center - 8), to = Math.min(f.lines.length, center + 8);
+    let rows = "";
+    for (let k = from; k <= to; k++) { const m = mk.find(x => x.line === k); rows += `<div${k === center ? ' class="on"' : ""}><span class="no">${k}</span>${esc(f.lines[k - 1])}${m ? `<span class="note">← ${esc(m.note)}</span>` : ""}</div>`; }
+    o.push(`<div class="win"><div class="wt">${esc(f.path)} · ${esc(TOPIC.codeNote)}${V.javaFrom === "record" ? " · 기록 때 컴파일한 사본" : ""}${mk.length ? "" : " · 지금 이 클래스의 칸이 스택에 없음"}</div><div class="code">${rows}</div></div>`);
+  }
+  // 소스가 기록 때 컴파일한 사본이 아니거나(javaFrom), 부른 줄의 대조가 어긋나면(siteMismatch) 칠한 줄을 믿을 수 없다고 알립니다.
+  const warn = V.javaFrom !== "record" ? "기록에 소스 사본이 없어 지금 저장소의 소스를 보임: 칠한 줄이 어긋날 수 있음"
+    : V.siteMismatch?.length ? `부른 줄 ${V.siteMismatch.length}곳이 소스와 맞지 않음: ${V.siteMismatch.join(", ")}` : "";
+  if (warn) o.unshift(`<div class="facts" style="color:var(--wait);flex:none">⚠ ${esc(warn)}</div>`);
+  const el = document.getElementById("java"); el.innerHTML = o.join("");
+  for (const c of el.querySelectorAll(".code")) { const on = c.querySelector(".on"); if (on) c.scrollTop = on.offsetTop - c.offsetTop - c.clientHeight / 2 + on.offsetHeight / 2; }
+}
+
+const cls = fn => fn.split("::")[0];
+function srcBlock(key, title) { const s = V.jsrc[key]; return s ? excerpt(s, +key.split(":").pop(), title || key) : ""; }
+
+function nodeDetail(n, el) {
+  const chain = chainOf(n);
+  const o = [`<h2>${esc(n.label)}</h2><div class="path">${esc(n.fn)}${esc(n.desc)}</div>`];
+  const why = ROWS.find(r => r.n === n)?.why || [];
+  o.push(`<div>${why.map(w => `<span class="badge why-${w}">${w}</span>`).join("")}<span class="badge">${esc(END[n.end] || n.end)}</span></div>`);
+  // 한 일 요약을 맨 위에: 효과와 만든 예외의 첫 줄. 자세한 근거는 아래 「효과」에 있습니다(사용성 시험 1차: 답이 긴 패널 끝에 묻혀 못 찾음).
+  const did = n.effects.map(e => e.kind === "throw" ? `✕ ${e.class.split(".").pop()}${e.message ? `: ${clip(e.message.split("\n")[0], 90)}` : ""}` : TOPIC.effect(e, D) ?? (e.kind === "park" ? `잠듦 ${ms(e.t1 - e.t0)} ms` : e.kind));
+  if (did.length) o.push(`<div class="did">한 일: ${did.map(esc).join(" · ")}</div>`);
+  o.push(`<div class="facts">시작 ${plus(n.t0)} ms${n.t1 == null ? ` · 끝 기록 없음(${plus(n.seen)} ms까지 열려 있었음)` : ` · 끝 ${plus(n.t1)} ms`} · 깊이 ${n.depth}` +
+    ` · 자기 시간 ${n.self == null ? "셈하지 않음(끝 시각을 모르는 자식이 있음)" : ms(n.self) + " ms"}</div>`);
+  // 사슬: 뿌리부터 이 호출까지. 단마다 깊이, 이름, 부모 안에서 부른 줄, 그 사이에 접힌 추적 안 한 칸.
+  o.push(`<div class="sec">호출 사슬 · 바깥(깊이 0)부터 이 호출까지 · 누르면 그 호출로</div><div class="chain">`);
+  for (const c of chain) {
+    if (c.hidden.length) o.push(`<div class="hid" style="margin-left:${c.depth * 10}px" title="${esc(c.hidden.join("\n"))}">⋯ ${c.hidden.length}칸 추적 안 함(${esc(c.hiddenKinds.join(", "))})</div>`);
+    const p = NODE[c.parent];
+    o.push(`<div class="${c.t1 == null ? "so" : ""}${c === n ? " me" : ""}" data-sel="n${c.id}" style="margin-left:${c.depth * 10}px;border-left-color:${col(c.lane)}"><span class="dn">${c.depth}</span>${esc(c.label)}${p && c.site > 0 ? ` <span class="mute">← ${esc(p.label.split(".").pop())}:${c.site}</span>` : ""}${c.t1 == null ? ' <span class="mute">스택에만 보임</span>' : ""}</div>`);
+  }
+  o.push(`</div>`);
+  if (n.effects.length) {
+    o.push(`<div class="sec">효과</div><div class="facts">`);
+    for (const e of n.effects) {
+      const t = TOPIC.effectDetail(e, D, n);
+      if (t != null) o.push(t);
+      else if (e.kind === "park") o.push(`<div>스레드가 잠듦 ${plus(e.t0)} ~ ${plus(e.t1)} ms · 잠든 자리 ${esc(e.at)}</div>${srcBlock(cls(e.at) + ":" + e.at.split(":").pop(), "잠든 자리")}`);
+      else if (e.kind === "throw") o.push(`<div>예외를 만듦 ${plus(e.t0)} ms · <b>${esc(e.class)}</b>${e.message ? ` · “${esc(clip(e.message.split("\n")[0], 110))}”` : ""} · 만든 자리 ${esc(e.at)}</div>`);
+      else o.push(`<div>${esc(e.kind)}</div>`);
+    }
+    o.push(`</div>`);
+  }
+  // 갈림: 함께 견준 기록에서 이 메서드가 간 길들.
+  const b = n.branch && V.branches?.[n.branch.key];
+  if (b) {
+    o.push(`<div class="sec">${b.flagged ? "갈림" : "길"} · 함께 견준 기록 ${V.compared.length}벌(장면 ${new Set(V.compared.map(x => x.split("/")[0])).size}개를 여러 번 돌린 것)에서 ${esc(b.label)}가 간 길</div>`);
+    if (!b.flagged) o.push(`<div class="facts mute">끊김이 아닌 길이 하나뿐이라 갈림이 아님</div>`);
+    b.alts.forEach((a, i) => {
+      const scenes = [...new Set(a.records.map(x => sceneName(x.split("/")[0])))];
+      const here = V.tree.filter(x => x.branch?.key === n.branch.key && x.branch.alt === i);
+      o.push(`<div class="alt${i === n.branch.alt ? " mine" : ""}${a.cut ? " cut" : ""}">${a.labels.length ? a.labels.map((l, k) => `${esc(shortLabel(l, 36))}${a.sites[k] ? `<span class="mute">:${a.sites[k]}</span>` : ""}`).join(" → ") : "(추적한 자식 호출 없음)"} <b>${a.end === "exception" ? "✕ 예외로 끝" : "↩ 끝"}</b>`
+        + `<div class="who">${i === n.branch.alt ? "이 호출이 간 길 · " : ""}${a.cut ? "끊김: 마지막 자식이 예외로 끝나 뒤가 빠짐(이 메서드의 판단이 아님) · " : ""}호출 ${a.n}번 · 기록 ${a.records.length}벌 · ${esc(scenes.join(", "))}`
+        + ` · ${here.length ? `이 기록에서 ${here.length}번: ${here.slice(0, 4).map(x => `<a class="sel" data-sel="n${x.id}">${plus(x.t0)}</a>`).join(" ")}${here.length > 4 ? " …" : ""}` : "이 기록에는 없음"}</div></div>`);
+    });
+    if (b.flagged) {
+      const common = b.alts.find(a => !a.cut).labels.slice(0, b.common);
+      o.push(`<div class="facts">갈린 자리: ${common.length ? `<b>${esc(shortLabel(common[common.length - 1], 36))}</b> 다음` : "첫 자식 호출부터"}${b.lines.length ? ` · ${esc(b.label.split(".")[0])}의 ${b.lines.join(", ")}행` : " · 자식 차례는 같고 끝난 꼴만 다름"} ${inf("", "기록은 반환값을 남기지 않으므로, 무엇이 길을 정했는지는 아래 소스와 다음 호출로 읽음")}</div>`);
+      for (const l of b.lines) o.push(srcBlock(`${cls(b.fn)}:${l}`, `${cls(b.fn)} · 갈린 줄 ${l}`));
+    }
+  }
+  const p = NODE[n.parent];
+  if (p && n.site > 0) o.push(`<div class="sec">부른 자리</div>${srcBlock(`${cls(p.fn)}:${n.site}`, `${cls(p.fn)} · ${n.site}행에서 ${n.label} 부름`) || `<div class="facts mute">${esc(cls(p.fn))}:${n.site} · 소스 발췌 없음(장면 코드는 위 창)</div>`}`);
+  o.push(`<div style="margin-top:8px"><button data-pin="${esc(n.label)}">${PINS.has(n.label) ? "늘 보기에서 빼기" : "이 메서드를 늘 보기"}</button> <button data-chain="1">${CHAIN ? "사슬 줄 접기" : "사슬 줄 펼치기"}</button></div>`);
+  el.innerHTML = o.join("");
+}
+
+function detail() {
+  const el = document.getElementById("detail"), r = ROWS.find(q => q.key === SEL);
+  if (!r) { el.innerHTML = `<div class="facts mute">줄을 누르면 자세한 내용이 나옵니다.</div>`; return; }
+  if (r.draw === "node") nodeDetail(r.n, el); else if (r.detail) r.detail(el); else el.innerHTML = `<h2>${esc(r.text)}</h2>`;
+}
+
+function save() { location.replace("#" + new URLSearchParams({sc: SC, run: RUN, sel: SEL, lens: [...ON].join(",")})); }
+function load() {
+  D = RUNS[SC + "/" + RUN]; V = D.view; NODE = Object.fromEntries(V.tree.map(n => [n.id, n]));
+  ROWS = rows(); MOMENTS = TOPIC.moments ? TOPIC.moments(D, V) : [];
+  SEL = resolve(SEL);
+  if (!ROWS.some(r => r.key === SEL) && !(SEL.startsWith("n") && NODE[+SEL.slice(1)])) {
+    // 처음 고를 줄: 주제가 고른 줄, 없으면 첫 갈림 줄.
+    const k = TOPIC.startRow?.(ROWS, MOMENTS), c = (k && ROWS.find(r => r.key === resolve(k))) || ROWS.find(r => r.why?.includes("갈림")) || ROWS[0];
+    SEL = c ? c.key : "";
+  }
+}
+function render() {
+  ROWS = rows(); header(); about(); minimap(); codeWins(); lanes(); legend(); detail(); save();
+  const g = document.querySelector(`#lanes g[data-k="${CSS.escape(SEL)}"]`), wrap = document.getElementById("lanewrap");
+  if (g) { const head = document.getElementById("lanehead").getBoundingClientRect().height, top = g.getBoundingClientRect().top - wrap.getBoundingClientRect().top;
+    if (top < head || top + 60 > wrap.clientHeight) wrap.scrollTop += top - head - 40; }
+}
+document.addEventListener("click", e => {
+  const f = e.target.closest("[data-fold]");
+  if (f) { const id = +f.dataset.fold; OPEN.has(id) ? OPEN.delete(id) : OPEN.add(id); render(); return; }
+  const s = e.target.closest("[data-sel]");
+  // 설명 줄의 칩과 그림판의 연결은 화면 위쪽에 있어, 고른 줄이 화면 밖이면 그 줄이 화면 가운데에 오게 페이지를 옮깁니다(사용성 시험 2차:
+  // 눌러도 반응이 없다고 읽음). 이미 보이면 옮기지 않아 위쪽 그림판이 밀려나지 않습니다.
+  if (s) { SEL = resolve(s.dataset.sel); CHAIN = true; render();
+    const g = s.closest("#about, #mm") && document.querySelector(`#lanes g[data-k="${CSS.escape(SEL)}"]`), b = g?.getBoundingClientRect();
+    if (b && (b.top > innerHeight - 30 || b.bottom < 0)) scrollBy(0, b.top - innerHeight / 2);
+    return; }
+  const sb = e.target.closest("[data-scrub]");
+  if (sb) { const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(sb.ownerSVGElement.getScreenCTM().inverse());
+    const t = V.window[0] + (p.x - SCRUB.L) / (SCRUB.W - SCRUB.L - SCRUB.R) * (V.window[1] - V.window[0]);
+    SEL = ROWS.reduce((b, r) => Math.abs(r.t - t) < Math.abs(b.t - t) ? r : b, ROWS[0]).key; CHAIN = true; render(); return; }
+  const g = e.target.closest("#lanes g[data-k]");
+  if (g) { if (SEL === g.dataset.k && SEL.startsWith("n")) CHAIN = !CHAIN; else { SEL = g.dataset.k; CHAIN = true; } render(); return; }
+  const u = e.target.closest("[data-unpin]");
+  if (u) { PINS.delete(u.dataset.unpin); store.set(TOPIC.storeKey, [...PINS]); render(); return; }
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.sc) { SC = b.dataset.sc; RUN = "a"; SEL = ""; OPEN.clear(); load(); render(); }
+  else if (b.dataset.run) { RUN = b.dataset.run; OPEN.clear(); load(); render(); }
+  else if (b.dataset.lens) { const k = b.dataset.lens; ON.has(k) ? ON.delete(k) : ON.add(k); render(); }
+  else if (b.dataset.pin) { const k = b.dataset.pin; PINS.has(k) ? PINS.delete(k) : PINS.add(k); store.set(TOPIC.storeKey, [...PINS]); render(); }
+  else if (b.dataset.chain) { CHAIN = !CHAIN; render(); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  const i = ROWS.findIndex(r => r.key === SEL), j = Math.max(0, Math.min(ROWS.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)));
+  if (j !== i) { SEL = ROWS[j].key; CHAIN = true; e.preventDefault(); render(); }
+});
+load(); render();
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+1293  11:00:40.047623 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/16456", O_RDWR|O_CREAT|O_EXCL|O_CLOEXEC, 0600) = 9</var/lib/pgsql/data/base/5/16456>
+1293  11:00:40.051760 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/1247_fsm", O_RDWR|O_CLOEXEC) = 9</var/lib/pgsql/data/base/5/1247_fsm>
+1293  11:00:40.052534 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/1247", O_RDWR|O_CLOEXEC) = 10</var/lib/pgsql/data/base/5/1247>
+1293  11:00:40.053755 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/2608_fsm", O_RDWR|O_CLOEXEC) = 11</var/lib/pgsql/data/base/5/2608_fsm>
+1293  11:00:40.053918 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/2608", O_RDWR|O_CLOEXEC) = 12</var/lib/pgsql/data/base/5/2608>
+1293  11:00:40.055857 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/1259_fsm", O_RDWR|O_CLOEXEC) = 13</var/lib/pgsql/data/base/5/1259_fsm>
+1293  11:00:40.056532 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/1259", O_RDWR|O_CLOEXEC) = 14</var/lib/pgsql/data/base/5/1259>
+1293  11:00:40.056651 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/1259_vm", O_RDWR|O_CLOEXEC) = 15</var/lib/pgsql/data/base/5/1259_vm>
+1293  11:00:40.056955 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/1249_fsm", O_RDWR|O_CLOEXEC) = 16</var/lib/pgsql/data/base/5/1249_fsm>
+1293  11:00:40.057486 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/1249", O_RDWR|O_CLOEXEC) = 17</var/lib/pgsql/data/base/5/1249>
+1293  11:00:40.058758 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/16459", O_RDWR|O_CREAT|O_EXCL|O_CLOEXEC, 0600) = 18</var/lib/pgsql/data/base/5/16459>
+1293  11:00:40.059308 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/16460", O_RDWR|O_CREAT|O_EXCL|O_CLOEXEC, 0600) = 18</var/lib/pgsql/data/base/5/16460>
+1293  11:00:40.059582 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/2610_fsm", O_RDWR|O_CLOEXEC) = 19</var/lib/pgsql/data/base/5/2610_fsm>
+1293  11:00:40.060162 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/2610", O_RDWR|O_CLOEXEC) = 20</var/lib/pgsql/data/base/5/2610>
+1293  11:00:40.060226 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/2610_vm", O_RDWR|O_CLOEXEC) = 21</var/lib/pgsql/data/base/5/2610_vm>
+1293  11:00:40.060661 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/16459", O_RDWR|O_CLOEXEC) = 22</var/lib/pgsql/data/base/5/16459>
+1293  11:00:40.063263 pwrite64(18</var/lib/pgsql/data/base/5/16460>, "..", 8192, 0) = 8192
+1293  11:00:40.063358 openat(AT_FDCWD</var/lib/pgsql/data>, "base/5/16460.1", O_RDWR|O_CLOEXEC) = -1 ENOENT (No such file or directory)
+1293  11:00:40.063917 openat(AT_FDCWD</var/lib/pgsql/data>, "pg_wal/000000010000000000000001", O_RDWR|O_CLOEXEC) = 18</var/lib/pgsql/data/pg_wal/000000010000000000000001>
+1293  11:00:40.064005 pwrite64(18</var/lib/pgsql/data/pg_wal/000000010000000000000001>, "..", 131072, 8388608) = 131072
+1293  11:00:40.064193 fdatasync(18</var/lib/pgsql/data/pg_wal/000000010000000000000001>) = 0
+1293  11:00:40.077280 +++ exited with 0 +++

@@ -1,0 +1,69 @@
+{
+ "design/tx-view.tmpl.html": {
+  "LABEL": {
+   "1-rc-read": "RC · 두 번 읽기",
+   "1-rr-read": "RR · 두 번 읽기",
+   "1-ru-read": "RU · 두 번 읽기",
+   "1-rc-write": "RC · 같은 행 바꾸기",
+   "1-rr-write": "RR · 같은 행 바꾸기",
+   "2-lost-update": "덮어쓰기",
+   "2-for-update": "FOR UPDATE",
+   "2-deadlock": "교착",
+   "2-fk-nokey": "외래 키 · 이름 바꾸기",
+   "2-fk-delete": "외래 키 · 부모 지우기",
+   "2-idem-commit": "멱등성 키 · 첫 요청 커밋",
+   "2-idem-rollback": "멱등성 키 · 첫 요청 취소",
+   "2-idem-onconflict": "멱등성 키 · ON CONFLICT",
+   "3-rollback": "취소 (ROLLBACK)",
+   "3-crash-sync-on": "kill · 동기 커밋",
+   "3-crash-sync-off": "kill · 비동기 커밋 바로 뒤",
+   "3-crash-sync-off-wait": "kill · 비동기 11초 뒤",
+   "3-crash-sync-off-wait2": "kill · 비동기 21초 뒤",
+   "4-skew-rr": "RR · 둘 다 세고 빠짐",
+   "4-skew-ssi": "SERIALIZABLE · 둘 다 세고 빠짐",
+   "4-skew-ssi-row": "SERIALIZABLE · 상대 행을 보고 빠짐",
+   "4-ssi-own": "SERIALIZABLE · 자기 행만 보고 빠짐"
+  },
+  "TITLE": {
+   "1": "트랜잭션 둘이 같은 행을 볼 때",
+   "2": "트랜잭션 둘이 같은 행을 잠글 때",
+   "3": "트랜잭션을 취소하거나 서버가 죽을 때",
+   "4": "트랜잭션 둘이 서로 읽은 것을 바꿀 때 (write skew)"
+  }
+ },
+ "design/spring-view.tmpl.html": {
+  "TOPIC.title": "Spring 전파",
+  "TOPIC.scenes": {
+   "5-required": {
+    "name": "REQUIRED · 안쪽이 실패",
+    "q": "안쪽이 실패하고 바깥이 그 예외를 삼키면, 바깥은 커밋되나?",
+    "code": "바깥 Outer.required(REQUIRED)가 1번 행(kim)에서 10을 빼고, 안쪽 Inner.requiredFails(REQUIRED: 바깥 트랜잭션에 참여)를 부릅니다. 안쪽은 2번 행(lee)에 10을 더한 뒤 IllegalStateException을 던지고, 바깥은 그 예외를 잡고 정상으로 끝납니다."
+   },
+   "5-requires-new": {
+    "name": "REQUIRES_NEW",
+    "q": "REQUIRES_NEW는 연결을 몇 개 쓰고, 그동안 바깥 트랜잭션은 어디에 있나?",
+    "code": "바깥 Outer.requiresNew(REQUIRED)가 1번 행에서 10을 빼고, 안쪽 Inner.requiresNew(REQUIRES_NEW: 새 트랜잭션)를 부릅니다. 안쪽은 2번 행에 10을 더하고 정상으로 끝납니다."
+   },
+   "5-requires-new-same-row": {
+    "name": "REQUIRES_NEW · 같은 행",
+    "q": "REQUIRES_NEW 안쪽이 바깥이 이미 고친 같은 행을 고치면 어떻게 되나?",
+    "code": "바깥 Outer.requiresNewSameRow(REQUIRED)가 1번 행에서 10을 빼고, 안쪽 Inner.requiresNewSameRow(REQUIRES_NEW)를 부릅니다. 안쪽은 SET LOCAL lock_timeout = '3s'로 락 기다림을 3초로 묶은 뒤 같은 1번 행에 10을 더하려 합니다."
+   },
+   "5-requires-new-pool1": {
+    "name": "REQUIRES_NEW · 풀 1칸",
+    "q": "풀에 연결이 한 칸뿐이면 REQUIRES_NEW는 어떻게 되나?",
+    "code": "REQUIRES_NEW 장면과 같은 코드(Outer.requiresNew → Inner.requiresNew)를 풀 최대 1칸으로 돌립니다."
+   },
+   "5-nested": {
+    "name": "NESTED · 안쪽이 실패",
+    "q": "NESTED 안쪽이 실패하면 무엇이 되돌아가나?",
+    "code": "바깥 Outer.nested(REQUIRED)가 1번 행에서 10을 빼고, 안쪽 Inner.nestedFails(NESTED: 같은 트랜잭션 안의 저장점)를 부릅니다. 안쪽은 2번 행에 10을 더한 뒤 IllegalStateException을 던지고, 바깥은 그 예외를 잡고 정상으로 끝납니다."
+   },
+   "5-reborrow": {
+    "name": "0.5초 안에 다시 빌림",
+    "q": "HikariCP는 연결을 빌려줄 때마다 살아 있는지 검사하나?",
+    "code": "Outer.once(REQUIRED: 1번 행에서 10을 뺌)를 멈춤 없이 두 번 잇달아 부릅니다. 둘째 빌리기는 첫째가 연결을 돌려준 뒤 0.5초 안에 옵니다."
+   }
+  }
+ }
+}

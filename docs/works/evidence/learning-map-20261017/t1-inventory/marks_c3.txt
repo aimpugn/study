@@ -1,0 +1,42 @@
+$  n=2  obj:2 len[min=6,max=6,sum=12]  | 모음 | 관찰 | G9
+$.endUs  n=2  int:2  | 시각 | 도출 | C20
+$.hops  n=2  list:2 len[min=10,max=97,sum=107]  | 모음 | 관찰 | G9
+$.hops[]  n=107  obj:107 len[min=12,max=15,sum=1466]  | 사건 | 관찰 | G8
+$.hops[].n  n=107  int:107  | 연결 | 도출 | C6
+$.hops[].pid  n=107  int:107  | 장소 | 관찰 | G4
+$.hops[].stage  n=107  str:107  | 값 | 도출 | C3
+$.hops[].proc  n=107  str:107  | 장소 | 도출 | C8
+$.hops[].from  n=107  str:107  | 장소 | 도출 | C7
+$.hops[].to  n=107  str:107  | 장소 | 도출 | C7
+$.hops[].kind  n=107  str:107  | 사건 | 이름 | C2
+$.hops[].count  n=107  int:107  | 값 | 도출 | C1+G9
+$.hops[].bytes  n=46  int:46  | 값 | 관찰 | G9
+$.hops[].msgs  n=10  list:10 len[min=1,max=6,sum=18]  | 모음 | 관찰 | G9
+$.hops[].msgs[]  n=18  obj:18 len[min=3,max=3,sum=54]  | 사건 | 관찰 | G8
+$.hops[].msgs[].type  n=18  str:18  | 사건 | 관찰 | G6
+$.hops[].msgs[].len  n=18  int:18  | 값 | 관찰 | G9
+$.hops[].msgs[].text  n=18  str:18  | 값 | 관찰 | G9
+$.hops[].t0  n=107  int:47,float:60  | 시각 | 관찰 | G3
+$.hops[].t1  n=107  int:47,float:60  | 시각 | 도출 | C1+G3
+$.hops[].stack  n=107  list:107 len[min=3,max=45,sum=3106]  | 장소 | 관찰 | G2
+$.hops[].stack[]  n=3106  obj:3106 len[min=2,max=2,sum=6212]  | 장소 | 관찰 | G2
+$.hops[].stack[].fn  n=3106  str:3106  | 장소 | 관찰 | G2
+$.hops[].stack[].at  n=3106  str:3106  | 장소 | 관찰 | G2
+$.hops[].site  n=107  str:107  | 장소 | 관찰 | G4
+$.hops[].catalog  n=83  bool:83  | 값 | 도출 | C3
+$.hops[].files  n=43  list:43 len[min=1,max=1,sum=43]  | 장소 | 관찰 | G4
+$.hops[].files[]  n=43  str:43  | 장소 | 관찰 | G4
+$.pid  n=2  int:2  | 장소 | 관찰 | G4
+$.query  n=2  str:2  | 값 | 관찰 | C19
+$.src  n=2  obj:2 len[min=100,max=237,sum=337] (dynamic keys)  | 발췌 | 관찰 | G1
+$.src.{*}  n=337  obj:337 len[min=2,max=2,sum=674]  | 발췌 | 관찰 | G1
+$.src.{*}.from  n=337  int:337  | 발췌 | 관찰 | G1
+$.src.{*}.lines  n=337  list:337 len[min=18,max=21,sum=7074]  | 발췌 | 관찰 | G1
+$.src.{*}.lines[]  n=7074  str:7074  | 발췌 | 관찰 | G1
+$.stages  n=2  list:2 len[min=7,max=7,sum=14]  | 모음 | 관찰 | G9
+$.stages[]  n=14  obj:14 len[min=2,max=4,sum=52]  | 사건 | 도출 | C5
+$.stages[].name  n=14  str:14  | 이름 | 도출 | C4
+$.stages[].t0  n=14  int:2,float:12  | 시각 | 관찰 | G3
+$.stages[].fn  n=12  str:12  | 장소 | 관찰 | G4
+$.stages[].at  n=12  str:12  | 장소 | 관찰 | G4
+# role x provenance line counts: {('장소', '관찰'): 11, ('발췌', '관찰'): 5, ('모음', '관찰'): 4, ('값', '관찰'): 4, ('사건', '관찰'): 3, ('값', '도출'): 3, ('장소', '도출'): 3, ('시각', '도출'): 2, ('시각', '관찰'): 2, ('연결', '도출'): 1, ('사건', '이름'): 1, ('사건', '도출'): 1, ('이름', '도출'): 1}

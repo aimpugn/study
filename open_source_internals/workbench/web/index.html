@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>오픈소스 내부 작업대</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="title-row">
+      <h1 id="title">오픈소스 내부 작업대</h1>
+      <p id="origin" class="origin"></p>
+    </div>
+
+    <form id="run-form" class="run-form" hidden>
+      <label class="field">
+        <span>감시 목록</span>
+        <select id="watch"></select>
+      </label>
+      <label class="field grow">
+        <span>SQL 한 문장</span>
+        <input id="sql" type="text" autocomplete="off" spellcheck="false" maxlength="1000">
+      </label>
+      <button id="run" type="submit" class="primary">실행하고 추적</button>
+      <p id="examples" class="examples"></p>
+      <p class="status">SQL은 두 번 실행됩니다. 첫 번째는 캐시를 데우는 실행이고, 기록은 두 번째 실행의 것입니다. INSERT와 UPDATE는 테이블을 두 번 바꿉니다. 끝에 ';'가 있는 한 문장만 받습니다.</p>
+      <p id="lab-status" class="status" role="status"></p>
+    </form>
+
+    <p id="message" class="message" role="alert" hidden></p>
+
+    <div id="summary" class="summary" hidden>
+      <code id="summary-sql" class="sql"></code>
+      <nav class="stepper" aria-label="단계 이동">
+        <button id="prev" type="button" aria-label="이전 단계">이전</button>
+        <span id="position" class="position" aria-live="polite"></span>
+        <button id="next" type="button" aria-label="다음 단계">다음</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="main" hidden>
+    <section class="pane flow" aria-labelledby="flow-title">
+      <h2 id="flow-title">실행 흐름</h2>
+      <p class="hint">점 하나가 gdb가 멈춘 단계 하나입니다. 가로 위치는 그 함수가 있는 소스 디렉터리의 층입니다. 층 이름은 작업대가 디렉터리를 보고 붙인 분류입니다.</p>
+      <ol id="lane-legend" class="lane-legend"></ol>
+      <div id="steps" class="steps" role="listbox" aria-label="실행 단계" tabindex="0"></div>
+      <details class="extra">
+        <summary>함수별 멈춘 횟수(END 줄)</summary>
+        <p class="hint">한 번도 멈추지 않은 함수는 이 목록에 없습니다. 목록에 없으면 0회입니다.</p>
+        <table id="counts" class="counts"></table>
+      </details>
+      <details class="extra" id="output-box">
+        <summary>psql 출력</summary>
+        <p class="hint">캐시를 데우는 실행과 추적한 실행의 결과가 차례로 나옵니다.</p>
+        <pre id="output" class="output"></pre>
+      </details>
+    </section>
+
+    <section id="code-pane" class="pane code-pane" aria-labelledby="code-title">
+      <div class="code-head">
+        <h2 id="code-title"><span id="fn"></span></h2>
+        <p class="where"><code id="loc"></code> <span id="layer" class="layer"></span></p>
+        <p id="frame-note" class="frame-note" hidden>
+          <span id="frame-text"></span>
+          <button id="frame-back" type="button">멈춘 자리로 돌아가기</button>
+        </p>
+      </div>
+      <div id="code" class="code" tabindex="0" aria-label="소스 코드"></div>
+
+      <div class="facts">
+        <section aria-labelledby="values-title">
+          <h3 id="values-title">멈춘 순간 gdb가 읽은 값</h3>
+          <table id="values" class="values"></table>
+          <p id="no-values" class="hint" hidden>이 단계는 감시 목록에 값을 읽을 식이 없습니다.</p>
+        </section>
+        <section id="stack-box" aria-labelledby="stack-title" hidden>
+          <h3 id="stack-title">호출 스택</h3>
+          <p class="hint">0번 칸이 멈춘 함수이고, 아래로 갈수록 그 함수를 부른 바깥 함수입니다. 칸을 누르면 그 위치의 소스를 봅니다.</p>
+          <ol id="stack" class="stack"></ol>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p id="provenance"></p>
+  </footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

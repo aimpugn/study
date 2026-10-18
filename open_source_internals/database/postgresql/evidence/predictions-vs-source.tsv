@@ -1,0 +1,36 @@
+P1	PostgresMain	일치	src/backend/tcop/postgres.c:4188
+P2	exec_simple_query	일치	src/backend/tcop/postgres.c:1012
+P3	pg_parse_query	일치	src/backend/tcop/postgres.c:604
+P4	raw_parser	일치	src/backend/parser/parser.c:42
+P5	pg_analyze_and_rewrite_fixedparams	일치	src/backend/tcop/postgres.c:666
+P6	parse_analyze_fixedparams	일치	src/backend/parser/analyze.c:105
+P7	pg_plan_queries	일치	src/backend/tcop/postgres.c:971
+P8	pg_plan_query	일치	src/backend/tcop/postgres.c:883
+P9	standard_planner	일치	src/backend/optimizer/plan/planner.c:316
+P10	PortalStart	일치	src/backend/tcop/pquery.c:434
+P11	PortalRun	일치	src/backend/tcop/pquery.c:685
+P12	standard_ExecutorStart	일치	src/backend/executor/execMain.c:141
+P13	standard_ExecutorRun	일치	src/backend/executor/execMain.c:307
+P14	ExecutePlan	일치	src/backend/executor/execMain.c:1660
+P15	ExecSeqScan	일치	src/backend/executor/nodeSeqscan.c:110
+P16	heap_getnextslot	일치	src/backend/access/heap/heapam.c:1388
+P17	ReadBufferExtended	일치	src/backend/storage/buffer/bufmgr.c:805
+P18	printtup	일치	src/backend/access/common/printtup.c:304
+P19	ReadyForQuery	일치	src/backend/tcop/dest.c:256
+P20	CommitTransaction	일치	src/backend/access/transam/xact.c:2228 src/bin/pg_dump/pg_backup_db.c:476
+P21	RecordTransactionCommit	일치	src/backend/access/transam/xact.c:1315
+P22	XLogInsert	일치	src/backend/access/transam/xloginsert.c:474
+P23	XLogFlush	일치	src/backend/access/transam/xlog.c:2780
+P24	issue_xlog_fsync	일치	src/backend/access/transam/xlog.c:8746
+P25	XLogSetAsyncXactLSN	일치	src/backend/access/transam/xlog.c:2609
+P26	heap_insert	일치	src/backend/access/heap/heapam.c:2081
+P27	ExecInsert	일치	src/backend/executor/nodeModifyTable.c:850
+P28	HeapTupleHeaderData	일치	src/include/access/htup_details.h:153
+P29	heap_update	일치	src/backend/access/heap/heapam.c:3321
+P30	HeapTupleSatisfiesMVCC	일치	src/backend/access/heap/heapam_visibility.c:960
+== README
+있음	src/backend/access/heap/README.HOT	520줄
+있음	src/backend/access/heap/README.tuplock	233줄
+있음	src/backend/access/nbtree/README	1083줄
+있음	src/backend/access/transam/README	913줄
+있음	src/backend/storage/buffer/README	279줄

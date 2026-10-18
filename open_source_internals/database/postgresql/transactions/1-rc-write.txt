@@ -1,0 +1,12 @@
+# 1-rc-write: S2가 바꾸는 중인 행을 READ COMMITTED의 S1이 읽고 바꾸기
+setup: CREATE TABLE acct(id int PRIMARY KEY, owner text, balance int);
+setup: INSERT INTO acct VALUES (1, 'kim', 100), (2, 'lee', 200);
+watch: acct
+S2: BEGIN;
+S2: UPDATE acct SET balance = 150 WHERE id = 1;
+S1: BEGIN ISOLATION LEVEL READ COMMITTED;
+S1: SELECT pg_current_snapshot() AS snap, ctid, xmin, xmax, id, balance FROM acct WHERE balance >= 100 ORDER BY id;
+S1: UPDATE acct SET balance = balance - 30 WHERE id = 1;
+S2: COMMIT;
+S1: COMMIT;
+S1: SELECT pg_current_snapshot() AS snap, ctid, xmin, xmax, id, balance FROM acct WHERE balance >= 100 ORDER BY id;

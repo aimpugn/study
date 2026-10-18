@@ -1,0 +1,28 @@
+STOP 1 exec_simple_query src/backend/tcop/postgres.c:1014 query_string=0xaaaaf5ae38e8 "SELECT * FROM t;"
+STOP 2 CommitTransaction src/backend/access/transam/xact.c:2230
+STOP 3 RecordTransactionCommit src/backend/access/transam/xact.c:1317
+STOP 4 ReadyForQuery src/backend/tcop/dest.c:258
+END CommitTransaction=1 ReadyForQuery=1 RecordTransactionCommit=1 exec_simple_query=1
+--- psql
+1|a
+2|b
+3|c
+4|d
+4|d
+4|d
+4|d
+4|d
+4|d
+4|d
+4|d
+1|a
+2|b
+3|c
+4|d
+4|d
+4|d
+4|d
+4|d
+4|d
+4|d
+4|d

@@ -1,0 +1,8 @@
+# 5-reborrow: 같은 연결을 0.5초 안에 다시 빌리면 HikariCP는 그 연결이 살아 있는지 검사하지 않는다
+# 앱: Main이 spring/src/lab/Outer.once(1번 행에서 10을 뺌)를 멈춤 없이 두 번 부릅니다. 멈춤 자리는 start와 end뿐입니다
+# (두 빌리기 사이에 관찰을 넣으면 그 멈춤이 연결이 쉬는 시간이 됨, WORK 실험 5 「덧붙인 장면 5-reborrow」).
+setup: CREATE TABLE acct(id int PRIMARY KEY, owner text, balance int);
+setup: INSERT INTO acct VALUES (1, 'kim', 100), (2, 'lee', 200);
+watch: acct
+spring: reborrow
+pool: 2
