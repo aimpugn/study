@@ -3,6 +3,7 @@ package atlas
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -495,5 +496,28 @@ func TestExtractFollowsOneRuleKind(t *testing.T) {
 		if _, err := Extract(r, []FactRule{bad}); err == nil {
 			t.Fatalf("규칙 %q를 거부해야 함", bad.Fact)
 		}
+	}
+}
+
+// TestLinkedOrdersByEventIDs 함수는 Linked가 연결 표의 차례가 아니라 출발·도착 사건의 id 차례로 짝을 내는지 봅니다(형식 규칙 7, 재검토 N2).
+//
+// Given 같은 종류의 연결을 거꾸로 넣은 run에서, When Linked로 뽑으면, Then 출발 사건의 id, 같으면 도착 사건의 id 차례입니다.
+func TestLinkedOrdersByEventIDs(t *testing.T) {
+	b := NewBuilder("r", "t", "s", "a", Origin{Label: "시작"})
+	b.AddSource(Source{ID: "o", Tool: "x", Nature: Observed})
+	p := b.Place(PlaceSpec{Kind: "process", Name: "1", Source: "o"})
+	var ids []int
+	for i := 0; i < 4; i++ {
+		ids = append(ids, b.AddEvent(Event{Place: p, Kind: Instant, Name: "e", Source: "o"}))
+	}
+	b.AddLink(ids[2], ids[3], "copy", "o")
+	b.AddLink(ids[0], ids[3], "copy", "o")
+	b.AddLink(ids[0], ids[1], "copy", "o")
+	got := ""
+	for _, pr := range Linked(b.Run(), "copy") {
+		got += fmt.Sprintf("%d→%d ", pr[0].Event, pr[1].Event)
+	}
+	if want := fmt.Sprintf("%d→%d %d→%d %d→%d ", ids[0], ids[1], ids[0], ids[3], ids[2], ids[3]); got != want {
+		t.Errorf("차례 %q, 기대 %q", got, want)
 	}
 }

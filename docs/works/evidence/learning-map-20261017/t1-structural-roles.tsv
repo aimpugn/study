@@ -208,7 +208,7 @@ tx	$.tables[].name	장소	관찰	X2	X2 데이터 대상(표)의 이름
 tx	$.tupleAddrs	장소	도출	X2	X2 데이터 대상(행)의 공유 버퍼 주소 = run attrs의 값(해석기 출처)
 tx	$.steps[].blocked	시각	관찰	start_ns	M 관찰용 접속이 그 세션의 락 기다림을 처음 본 시각(txlab/run.go 24·433) = txlab 장소의 instant(이름 blocked, target은 그 세션의 백엔드), 단계 → 그 사건의 blocked 연결(근거 txlab). Spring의 막힘 관찰과 같은 자리. 18행
 tx	$.steps[].requests[].events[].f.ctid	장소	관찰	X2	X2 데이터 대상의 이름: 다루는 행의 주소(실행 위치가 아님)
-tx	$.steps[].requests[].events[].f.who	장소	관찰	target	M wake 사건의 target = 깨운 프로세스(16행 모두 프로세스 표의 pid)
+tx	$.steps[].requests[].events[].f.who	장소	관찰	target	M wake 사건의 target = 깨움을 받는(깨어날) 프로세스(해석기 탐침 ProcWakeup who=$arg1->pid, 16행 모두 프로세스 표의 pid)
 tx	$.steps[].requests[].events[].f.at	장소	관찰	recompute	M 다시 셈: hint·ereport의 부른 줄 = 스택(안쪽부터) 1번 칸의 코드 자리(28/28 같음). Spring 서버 사건 f.at(C14)과 같은 꼴
 tx	$.steps[].requests[].checks[].tup	장소	관찰	X2	X2 데이터 대상의 이름
 tx	$.steps[].requests[].events[].f.table	장소	관찰	X2	X2 데이터 대상의 이름: 다루는 표의 이름(실행 위치가 아님)
@@ -247,7 +247,7 @@ tx	$.kills[].session	장소	관찰	recompute	M 다시 셈: kill target 프로세
 tx	$.kills[].t	시각	관찰	start_ns	T1 사건 시작(시계는 출처)
 tx	$.kills[].tReady	시각	관찰	end_ns	M kill 구간의 끝 = txlab이 server.log에서 접속 재개 줄을 본 시각(scenario.go 660행, 50 ms 간격으로 봄)
 tx	$.kills[].walWrittenT	시각	관찰	link	M kill → kill 전에 끝난 pg_wal 쓰기 가운데 쓴 범위의 끝(LSN)이 가장 먼 것의 wal 연결(근거 해석기, walExtentBefore). 시각은 그 사건의 끝으로 다시 셈(6행 모두 pg_wal 파일의 pwrite64 하나와 t1이 정확히 같고, 그 쓰기의 lsn1이 walWritten과 같음)
-tx	$.server.events[].f.to	장소	관찰	target	M signal 사건의 target = 신호를 받은 프로세스(198행 모두 프로세스 표의 pid). f.to는 그 장소의 이름으로 다시 셈
+tx	$.server.events[].f.to	장소	관찰	target	M signal 사건의 target = 신호를 받은 프로세스(198행 모두 프로세스 표의 pid). f.to는 그 장소의 이름으로 다시 셈. 그룹 신호(f.group, 72행)는 해석기가 kill(-pid)의 -를 떼고 group=1을 적은 것이라(scenario_server.go 437~444) target은 그 그룹의 우두머리 프로세스 하나다(그룹의 다른 프로세스는 기록에 없음)
 tx	$.server.events[].f.xid	장소	관찰	X2	X2 데이터 대상의 이름
 tx	$.server.spans[]	사건	관찰	row	R1 행을 만드는 목록의 원소
 tx	$.server.spans[].at	장소	관찰	place.loc	M 함수 입구 프레임의 위치 = 함수가 정의된 줄(scenario_server.go 293행 serverSpan.At)
@@ -267,7 +267,7 @@ tx	$.tables[].indexes[]	장소	관찰	X2	X2 데이터 대상(색인)의 정의
 tx	$.tables[].indexes[].name	장소	관찰	X2	X2 데이터 대상(색인)의 이름
 tx	$.steps[].requests[].events[].f.rpid	장소	관찰	target	M rw_conflict 사건의 target = 읽은 쪽 프로세스(8행 모두 프로세스 표의 pid)
 tx	$.steps[].requests[].events[].f.rxid	장소	관찰	X2	X2 데이터 대상의 이름: 읽은 쪽 트랜잭션 번호(실행 위치가 아님)
-tx	$.steps[].requests[].events[].f.wpid	장소	관찰	recompute	M 다시 셈: rw_conflict의 쓴 쪽 = 사건이 일어난 백엔드(사건 장소의 프로세스, 8/8 같음)
+tx	$.steps[].requests[].events[].f.wpid	장소	관찰	recompute	M 다시 셈: rw_conflict의 쓴 쪽 = 사건이 일어난 백엔드(사건 장소의 프로세스). 규칙이 아니라 이 자료에서 관찰한 사실이다(8/8 모두 쓰는 쪽에서 불림). FlagRWConflict는 읽는 쪽에서도 불리므로, 그런 기록이 오면 적재기가 멈추고 이 행을 다시 연다
 tx	$.steps[].requests[].events[].f.wxid	장소	관찰	X2	X2 데이터 대상의 이름: 쓴 쪽 트랜잭션 번호(실행 위치가 아님)
 e03	$.borrows[]	사건	도출	row	R1 행을 만드는 목록의 원소
 e03	$.borrows[].t0	시각	도출	start_ns	T1 사건 시작(시계는 출처)

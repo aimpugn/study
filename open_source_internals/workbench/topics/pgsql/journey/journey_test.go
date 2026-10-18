@@ -297,6 +297,11 @@ func originalFacts(t *testing.T, data map[string]any, suffix string) map[string]
 				out["메시지 사본"+suffix] = append(out["메시지 사본"+suffix], fmt.Sprintf("inferred|%s→%s", h["kind"], m["type"]))
 				continue
 			}
+			if m["cont"] == true {
+				// 앞 송신에서 이어진 나머지의 길이·글은 해석기의 값이라 기록기의 len으로 뽑히지 않습니다(재검토 N1).
+				out["이어진 메시지"+suffix] = append(out["이어진 메시지"+suffix], fmt.Sprintf("observed|%s|1|%s|-~-|-|0|instant|len=%v", m["type"], route, m["len"]))
+				continue
+			}
 			out["메시지"+suffix] = append(out["메시지"+suffix], fmt.Sprintf("observed|%s|1|%s|-~-|-|0|instant|len=%v", m["type"], route, m["len"]))
 		}
 		if s, ok := h["sysUs"]; ok {
@@ -429,5 +434,50 @@ func TestExportReturnsErrorsInsteadOfPanicking(t *testing.T) {
 		if err == nil {
 			t.Errorf("%s: 오류가 아님", c.name)
 		}
+	}
+}
+
+// TestKernelPlaceKeysUseKernelVersion 함수는 커널 장소의 key가 PostgreSQL의 판과 무관한지 봅니다(앞선 적재기 코드 검토 지적 12, 재검토 N2).
+//
+// Given 커널 기록이 있는 질의를 PostgreSQL 판 둘로 적재하면, When 장소의 key를 견줄 때, Then 커널 함수·프레임의 key는 같고 PostgreSQL 함수의 key는 다릅니다.
+func TestKernelPlaceKeysUseKernelVersion(t *testing.T) {
+	var q, c3 map[string]any
+	for _, l := range loadAll(t) {
+		if l.key == "kernel_insert" {
+			q, c3 = l.q, l.c3
+		}
+	}
+	a, err := Import(q, c3, "/src/postgresql-18.6")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := Import(q, c3, "/src/postgresql-99")
+	if err != nil {
+		t.Fatal(err)
+	}
+	isKernel := func(r *atlas.Run, p atlas.Place) bool {
+		for q := p; q.Parent != nil; q = r.Places[*q.Parent] {
+			if pp := r.Places[*q.Parent]; pp.Kind == "process" {
+				return pp.Source == srcFtrace
+			}
+		}
+		return false
+	}
+	kernelSame, pgDiff := 0, 0
+	for i, p := range a.Run.Places {
+		if p.Key == "" {
+			continue
+		}
+		if isKernel(a.Run, p) {
+			if p.Key != b.Run.Places[i].Key {
+				t.Fatalf("커널 장소 %s의 key가 PostgreSQL 판에 따라 바뀜", p.Name)
+			}
+			kernelSame++
+		} else if p.Key != b.Run.Places[i].Key {
+			pgDiff++
+		}
+	}
+	if kernelSame == 0 || pgDiff == 0 {
+		t.Errorf("커널 장소 %d개, 판에 따라 바뀐 PostgreSQL 장소 %d개", kernelSame, pgDiff)
 	}
 }

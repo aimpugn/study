@@ -199,8 +199,12 @@ func (v *view) hop(d decoder, e atlas.Event, backend int) (map[string]any, error
 		msgs := []any{}
 		for _, id := range ms {
 			m := r.Events[id]
-			msg := map[string]any{"type": m.Name, "len": m.Attrs[d.rec]["len"]}
-			if t, ok := m.Attrs[d.rec]["text"]; ok {
+			src := d.rec
+			if _, ok := m.Attrs[d.journey]["len"]; ok {
+				src = d.journey
+			}
+			msg := map[string]any{"type": m.Name, "len": m.Attrs[src]["len"]}
+			if t, ok := m.Attrs[src]["text"]; ok {
 				msg["text"] = t
 			}
 			if len(v.out[id]["continues"]) > 0 {

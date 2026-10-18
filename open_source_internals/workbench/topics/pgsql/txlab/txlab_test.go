@@ -808,3 +808,36 @@ func TestServerLogClockRelationMatchesErrorLines(t *testing.T) {
 		t.Errorf("짝 %d개, 기대 12(오류로 끝난 요청)", pairs)
 	}
 }
+
+// TestOutNullIsUnrecordedNotZero 함수는 보낸 메시지가 null인 요청이 '보낸 메시지 0개'가 아니라 미기록과 ambiguity note로 남는지 셉니다(앞선 적재기 코드 검토 지적 4, 재검토 N2).
+//
+// Given 44벌에서, When 요청 사건 범위의 ambiguity note와 strace 출처의 message.out 미기록을 세면, Then note는 65개이고 미기록은 out이 null인 요청이 있는 벌마다 하나입니다.
+func TestOutNullIsUnrecordedNotZero(t *testing.T) {
+	notes, runs, nullRuns := 0, 0, 0
+	for _, l := range loadAll(t) {
+		hasNull := false
+		for _, s := range l.raw["steps"].([]any) {
+			for _, q := range s.(map[string]any)["requests"].([]any) {
+				if q.(map[string]any)["out"] == nil {
+					hasNull = true
+				}
+			}
+		}
+		if hasNull {
+			nullRuns++
+		}
+		for _, n := range l.result.Run.Notes {
+			if n.Kind == "ambiguity" && n.Scope.Kind == "event" {
+				notes++
+			}
+		}
+		for _, u := range l.result.Run.Unrecorded {
+			if u.Source == srcStrace && u.Field == "message.out" {
+				runs++
+			}
+		}
+	}
+	if notes != 65 || runs != nullRuns || runs == 0 {
+		t.Errorf("요청 note %d개(기대 65), message.out 미기록 %d벌(기대 %d)", notes, runs, nullRuns)
+	}
+}

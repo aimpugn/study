@@ -617,8 +617,8 @@ var requestFieldKeys = []string{"args", "async", "at", "bit", "blk", "buf", "cal
 //
 // 다시 세는 칸은 저장하지 않고 원본과 같은지만 봅니다(앞선 적재기 코드 검토 지적 1·3): hint·ereport의 at은 스택 1번 칸의 자리,
 // rw_conflict의 wpid는 사건이 일어난 백엔드, durUs는 (t1 − t) ns를 1000으로 나눈 몫(해석기의 int64 나눗셈)입니다.
-// 장소인 칸은 target으로 둡니다: wake의 who(깨운 프로세스), rw_conflict의 rpid(읽은 쪽 프로세스), kill의 args 앞의 pid(신호를 받은 프로세스).
-// kill의 args는 strace가 적은 인자 글이라 그대로 두되, 그 앞의 pid가 target과 같은지 봅니다. 모르는 열쇠나 규칙과 다른 값이면 멈춥니다.
+// 장소인 칸은 target으로 둡니다: wake의 who(깨움을 받는 프로세스), rw_conflict의 rpid(읽은 쪽 프로세스), kill의 args 앞의 pid(신호를 받은 프로세스).
+// kill의 args는 strace가 적은 인자 글이라 그대로 두고, target은 그 글 앞의 pid에서 뽑습니다(같은 pid가 둘에 남음). 모르는 열쇠나 규칙과 다른 값이면 멈춥니다.
 func (l *loader) requestFields(ev *atlas.Event, pid string, e map[string]any, fv any, where string) (map[string]any, error) {
 	f, err := load.Object(fv, where+".f")
 	if err != nil {

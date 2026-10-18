@@ -28,7 +28,8 @@ const (
 // calls는 이름으로 찾은 후보(decode/kernel.go 22), callsOf는 그 좁히기(478), guess는 층을 부모에게서 물려받았다는 표시입니다(앞선 적재기 코드 검토 지적 5).
 var kernelGuessKeys = []string{"calls", "callsOf", "guess"}
 
-// InferredGroups 함수는 질의 하나(q)의 추정 목록(설계 메모 7)에 든 경로 무리를 돌려줍니다. 실행 명령과 시험이 같은 목록을 씁니다.
+// InferredGroups 함수는 질의 하나(q)의 추정 목록(설계 메모 7)에 든 경로 무리를 돌려줍니다. 검사 4를 돌리는 곳(지금은 시험)이 이 목록을 씁니다.
+// 실행 명령은 검사 2만 돌립니다. 새 기록을 명령으로 옮기는 T2에서 명령도 검사 3·4를 돌리게 다시 엽니다.
 //
 // 순서와 인자로 맞춘 메시지·시스템 콜·커널 짝, 커널 마디의 calls·callsOf·guess, procsGuess인 역할표입니다.
 func InferredGroups(q map[string]any) map[string]bool {
@@ -590,9 +591,15 @@ func (l *loader) message(d decoder, raw any, where string, hop atlas.Event) (int
 	}
 	id := l.B.AddEvent(atlas.Event{Place: hop.Place, From: hop.From, Target: hop.Target, Kind: atlas.Instant, Name: f.typ, Source: d.rec})
 	l.Origins[atlas.RecordRef{Table: "event", ID: id}] = d.pre + ".hops[].msgs[]"
-	l.B.EventAttrs(id, d.rec, "len", json.Number(f.length))
+	// 앞 송신에서 이어진 나머지(cont)의 길이는 앞 메시지에서 옮긴 값이고 글은 해석기가 지은 것이라 해석기의 값입니다(재검토 N1).
+	// 그 바이트가 이 송신에 있었다는 것만 기록기의 관찰입니다.
+	src := d.rec
+	if f.cont {
+		src = d.journey
+	}
+	l.B.EventAttrs(id, src, "len", json.Number(f.length))
 	if f.hasText {
-		l.B.EventAttrs(id, d.rec, "text", f.text)
+		l.B.EventAttrs(id, src, "text", f.text)
 	}
 	return id, f, nil
 }

@@ -8,6 +8,7 @@
   "journey": [
     {"fact": "이동", "select": {"sources": ["rec"], "require": ["journey.n"], "attrs": ["journey.stage", "rec.bytes"]}},
     {"fact": "메시지", "select": {"sources": ["rec"], "require": ["rec.len"], "attrs": ["rec.len"]}},
+    {"fact": "이어진 메시지", "select": {"sources": ["rec"], "require": ["journey.len"], "attrs": ["journey.len"]}},
     {"fact": "단계", "select": {"sources": ["journey"], "kinds": ["instant"]}},
     {"fact": "시스템 콜", "select": {"sources": ["strace"]}},
     {"fact": "합친 시스템 콜", "select": {"sources": ["journey"], "names": ["syscall"]}},

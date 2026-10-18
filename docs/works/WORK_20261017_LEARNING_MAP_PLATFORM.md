@@ -589,10 +589,10 @@ T2가 재는 질의는 셋이다. Q1 함수 X를 지난 실행 목록, Q2 두 �
 
 | 지적 | 처분 | 고친 곳 | 확인 |
 | --- | --- | --- | --- |
-| 1 트랜잭션 실험 요청 사건의 `f`가 동적 열쇠 한 줄('값')로 표시되어 코드 자리와 pid가 숨음(중간) | 받음. 원인은 키 트리가 열쇠 41개인 그릇을 동적 열쇠로 접은 것이라 `keytree.py --fixed`로 펼치고 표시 규칙 T15를 지움(표시 파일은 다시 만들어 의도한 줄만 바뀜). `f`를 `f.<칸>` 열쇠로 나누고 열쇠 목록을 확인. hint·ereport의 `at`은 스택 1번 칸에서 다시 셈, wake `who`와 rw_conflict `rpid`는 `target`, `wpid`는 사건의 백엔드에서 다시 셈(8/8), kill은 `args` 앞의 pid를 `target`으로 두고 글은 그대로 둠(같은지 확인). 나머지 대상 이름 칸은 행마다 까닭을 적은 X2 | `keytree.py`·`keytree2.py`·`marks.py`, `marks_tx.txt`, `roles.py`, 대응표, `txlab.go`·`export.go` | 검토자의 네 사례(hint·ereport `f.at`, wake `who` 99999, 모르는 열쇠 `conn`)와 wpid·kill pid 변이가 모두 적재기에서 멈춤(`TestImportRejectsFieldsThatDisagree`) |
+| 1 트랜잭션 실험 요청 사건의 `f`가 동적 열쇠 한 줄('값')로 표시되어 코드 자리와 pid가 숨음(중간) | 받음. 원인은 키 트리가 열쇠 46개인 그릇을 동적 열쇠로 접은 것이라 `keytree.py --fixed`로 펼치고 표시 규칙 T15를 지움(표시 파일은 다시 만들어 의도한 줄만 바뀜). `f`를 `f.<칸>` 열쇠로 나누고 열쇠 목록을 확인. hint·ereport의 `at`은 스택 1번 칸에서 다시 셈, wake `who`와 rw_conflict `rpid`는 `target`, `wpid`는 사건의 백엔드에서 다시 셈(8/8), kill은 `args` 글 앞의 pid에서 `target`을 뽑고 글은 strace의 인자 그대로 둠(같은 pid가 둘에 남음, 재검토 N4로 고쳐 씀). 나머지 대상 이름 칸은 행마다 까닭을 적은 X2 | `keytree.py`·`keytree2.py`·`marks.py`, `marks_tx.txt`, `roles.py`, 대응표, `txlab.go`·`export.go` | 검토자의 네 사례(hint·ereport `f.at`, wake `who` 99999, 모르는 열쇠 `conn`)와 wpid·kill pid 변이가 모두 적재기에서 멈춤(`TestImportRejectsFieldsThatDisagree`) |
 | 2 서버 사건 `f.to`·`f.durUs`의 X2가 순환 논증(중간) | 받음. signal의 `to`는 `target`(198행 모두 프로세스 표의 pid)이고 그 장소 이름으로 다시 셈. 서버 사건 `f`도 `f.<칸>`으로 나눔. `f.file`은 X2로 두되 까닭을 고쳐 적고, 여정이 같은 파일을 장소로 두는 차이와 다시 열 조건을 대응표에 적음 | `roles.py`, 대응표, `txlab.go`·`export.go` | `to` 99999 변이가 멈춤 |
 | 3 `durUs`가 시작·끝과 같은 사실(낮음) | 받음(다시 셈). 해석기는 `fmt.Sprint(e.DurNs / 1e3)`로 int64 나눗셈을 하므로(`scenario.go` 535, `scenario_server.go` 557) `(t1 − t) ns / 1000`의 몫과 글자까지 같다. 적재기가 같은지 보고 저장하지 않으며 내보내기가 다시 셈 | `txlab.go`·`export.go`, 대응표 | 614행 모두 되돌림 같음, 요청 io·sleep_syscall·서버 wal_io의 `durUs` 변이 셋이 멈춤 |
-| 4 `out = null`을 "보낸 메시지 없음"으로 옮김(중간) | 받음. strace 출처의 미기록 `message.out`(65개)과 요청마다 ambiguity note. 메모 5의 3 문장을 고침 | `txlab.go`, 메모 5의 3 | 적재 결과에 note 65개, 되돌림 같음 |
+| 4 `out = null`을 "보낸 메시지 없음"으로 옮김(중간) | 받음. strace 출처의 미기록 `message.out`(out이 null인 요청이 있는 41벌에 한 줄씩, 요청 65개)과 요청마다 ambiguity note(65개). 메모 5의 3 문장을 고침 | `txlab.go`, 메모 5의 3 | 적재 결과에 note 65개, 되돌림 같음 |
 | 5 여정 커널 마디의 `calls`·`callsOf`·`guess`가 도출 열쇠(중간) | 받음. 추정 출처 `kernel-guess`의 열쇠로 옮기고, guess인 마디의 `layer`(부모에게서 물려받은 짐작)도 그 열쇠에 둠. 여정에도 `InferredGroups()`를 두어 시험과 명령이 같은 목록을 씀 | `journey.go`·`export.go`·시험 | 검사 4가 이 경로를 봄, `TestKernelGuessesAreInferred`(calls 316·guess 31·callsOf 30이 모두 추정 열쇠, 검토자의 셈과 같음) |
 | 6 버퍼 쓰기 사본 메시지 42개가 관찰 사건(중간) | 받음(둘째 안). 사본 사건을 만들지 않고 버퍼 쓰기 이동 → 송신 메시지의 `copy` 연결(추정 `pair`) 하나로 둠. 내보내기는 그 연결로 `msgs`를 되살림(같은 사실을 두 사건에 두지 않음). 재추출 규칙에 「메시지 사본」(연결)을 더함 | `journey.go`·`export.go`, `facts.json`, 시험 | 되돌림 11벌, 재추출의 메시지와 사본이 원본과 차례까지 같음 |
 | 7 `blocked`가 시각인데 값으로 숨음(중간) | 받음. 표시 규칙 T12를 둘로 나눠 `blocked`를 시각(관찰)으로 표시하고, txlab 장소의 instant(이름 `blocked`, target은 그 세션의 백엔드)와 단계 → 그 사건의 `blocked` 연결로 둠. 재추출 규칙에 「막힘 관찰」 | `marks.py`, `marks_tx.txt`, `roles.py`, `txlab.go`·`export.go`, `facts.json` | 18개 되돌림 같음, 단계 밖으로 옮긴 변이가 멈춤 |
@@ -604,7 +604,22 @@ T2가 재는 질의는 셋이다. Q1 함수 X를 지난 실행 목록, Q2 두 �
 | 13 형식 규칙 1과 실제 차례, `atlas.Linked`의 차례, 대응표 글(낮음) | 받음. 규칙 1을 '원본 목록을 읽은 차례'로 고침, `Linked`는 출발·도착 사건의 id 차례, c3·c4 단계 행의 "스택 0번"을 "1번"으로 | 메모 1, `internal/atlas/extract.go`, `roles.py` | 「메시지 사본」 재추출이 이 차례에 기댐 |
 | 14 serverlog 시계 관계를 고정하는 시험이 없음(낮음) | 받음. ereport와 같은 pid의 ERROR 로그 줄 12짝의 차이가 관계 범위 안인지 봄 | txlab 시험 | 관계의 부호를 뒤집으면 시험 실패(돌려 보고 되돌림) |
 
-결정이 바뀐 것은 1·2·5·6·7·8·9이다. 그래서 적재 결과는 여정 11벌과 트랜잭션 실험 44벌이 바뀌었고 gdb 8벌과 Spring 14벌은 바이트 동일이다(이 처분 전 산출과 `diff -rq`). 시험·lint(`internal`·`topics` 0건)·검사 6이 통과한다. 고친 곳과 회귀는 다른 하위 에이전트가 재검토한다(아래).
+결정이 바뀐 것은 1·2·5·6·7·8·9이다. 그래서 적재 결과는 여정 11벌과 트랜잭션 실험 44벌이 바뀌었고 gdb 8벌과 Spring 14벌은 바이트 동일이다(이 처분 전 산출과 `diff -rq`). 시험·lint(`internal`·`topics` 0건)·검사 6이 통과한다(커밋 5bc7b4d).
+
+**재검토(다른 하위 에이전트, 고친 곳과 회귀만).** 커밋 `afaa64d..5bc7b4d`를 보였다. 요청과 답 전문은 [`t1-e04e05-code-rereview.md`](evidence/learning-map-20261017/t1-e04e05-code-rereview.md)이고 판정은 「수정 후 승인」이다. 지적 1~14 가운데 13개 닫힘, 6은 일부(곁가지 하나). 받지 않거나 고쳐 받은 부분의 까닭은 타당하다고 봤다. 회귀는 없었다: 표시 파일과 대응표가 두 커밋 모두 생성기로 바이트까지 재현되고(`--fixed` 없이 돌리면 옛 트리와 같음), 적재 결과는 gdb·Spring이 바이트 동일, 여정·트랜잭션 실험의 차이는 처분이 말한 것과 N8뿐이다. 고친 규칙을 한 줄씩 되돌린 변이 23개 가운데 17개를 시험이 잡았다. 새 문제 여덟은 모두 낮음이고 모두 받았다.
+
+| 새 문제 | 처분 | 고친 곳 | 확인 |
+| --- | --- | --- | --- |
+| N1 앞 송신에서 이어진 메시지(`cont`)가 관찰 | 받음. 그 메시지의 길이·글은 해석기 열쇠(바이트가 이 송신에 있었다는 사건만 관찰). 재추출에 「이어진 메시지」 | `journey.go`·`export.go`, `facts.json`, 시험 | 되돌림·재추출 통과 |
+| N2 처분 4·12·13을 고정하는 시험이 없음(변이 m05·m12·m15d가 살아남음) | 받음. 요청 note 65개와 미기록 벌 수, 커널 장소 key가 PostgreSQL 판과 무관함(판 둘로 적재), 연결을 거꾸로 넣은 run에서 `Linked`의 차례 | txlab·journey·atlas 시험 | 셋 모두 통과, 세 처리를 되돌리면 각 시험의 판정이 바뀌는 꼴 |
+| N3 `InferredGroups` 주석이 "실행 명령도 씀" | 받음. 지금은 시험만 쓰고 명령은 검사 2만 돈다고 고치고 T2에서 다시 엶을 적음 | `journey.go` | |
+| N4 열쇠 수(46), wake `who`(깨움을 받는 프로세스), kill 처분의 "같은지 확인" | 받음. 글을 고침 | `keytree.py`, `roles.py`·대응표, `txlab.go`, 위 처분 표 | |
+| N5 그룹 신호 `f.group` 처리가 없음 | 받음. 대응표 `f.to` 행에 적음(target은 그룹 우두머리 하나, 그룹의 다른 프로세스는 기록에 없음) | `roles.py`·대응표 | |
+| N6 `wpid` 다시 셈은 이 자료의 사실 | 받음. 대응표에 "8/8 관찰, 읽는 쪽 호출이 오면 적재기가 멈추고 다시 엶" | `roles.py`·대응표 | |
+| N7 export 변이 사례가 durUs 경로로 걸림 | 고칠 것 없음(recover를 보이는 데 씀). 기록만 | | |
+| N8 `pair` 출처 설명 글이 바뀜 | 받음. 바뀐 출력에 더함: 여정 11벌의 `pair` 설명이 「순서와 인자로 맞춘 짝」으로 하나가 됨 | 이 문단 | |
+
+재검토가 닫지 않은 지적은 없고 새 문제를 모두 제안대로 고쳤으므로 두 번째 재검토는 생략한다. T1 체크를 다시 낼 때 이 절(「앞선 적재기 코드 검토와 처분」)과 두 답 전문을 근거로 넣는다.
 
 ### T4 지도 화면 v1(진행 중, 클라우드 세션)
 
