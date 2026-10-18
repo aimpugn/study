@@ -158,11 +158,13 @@ type Loader struct {
 	index   map[string]int
 	byName  map[string][]int
 	added   map[string]bool
+	paths   map[int]map[string]map[string]bool // 프로세스 장소 → 함수 이름 → 소스 경로(NotePath)
 }
 
 // NewLoader 함수는 빈 장부를 만듭니다. run의 경로 무리는 "$"로 적습니다.
 func NewLoader(b *atlas.Builder, version string) *Loader {
-	l := &Loader{B: b, Origins: atlas.Origins{}, Version: version, index: map[string]int{}, byName: map[string][]int{}, added: map[string]bool{}}
+	l := &Loader{B: b, Origins: atlas.Origins{}, Version: version, index: map[string]int{}, byName: map[string][]int{}, added: map[string]bool{},
+		paths: map[int]map[string]map[string]bool{}}
 	l.Origins[atlas.RecordRef{Table: "run", ID: 0}] = "$"
 	return l
 }

@@ -101,7 +101,6 @@ type loader struct {
 	kills   []int                // kill 사건(차례대로)
 	killAt  map[int]int          // kill 사건 → beforeStep
 	writes  map[int64][]walWrite // 끝 시각 → pg_wal 쓰기 사건
-	paths   map[string]map[string]map[string]bool
 	xipNull int
 }
 
@@ -291,33 +290,22 @@ func (l *loader) places(sv, pv any) error {
 	return nil
 }
 
-// scanPaths 메서드는 스택 칸과 서버 함수 구간에서 프로세스마다 함수 이름의 소스 경로를 모읍니다.
+// scanPaths 메서드는 스택 칸과 서버 함수 구간에서 프로세스마다 함수 이름의 소스 경로를 장부(load.Loader.NotePath)에 모읍니다.
 //
 // 줄 판정 안의 호출은 부른 함수의 이름과 부른 줄만 남겨, 부른 함수의 위치는 같은 프로세스에서 그 이름이 나온 경로로 찾습니다.
-// 그래야 같은 함수가 위치 있는 장소와 위치 없는 장소 둘로 갈리지 않습니다.
+// 그래야 같은 함수가 위치 있는 장소와 위치 없는 장소 둘로 갈리지 않습니다. 프로세스 표에 없는 pid는 뒤에서 오류가 되므로 건너뜁니다.
 func (l *loader) scanPaths(steps []any, server map[string]any) error {
-	l.paths = map[string]map[string]map[string]bool{}
 	add := func(pid string, raw any) {
-		f, ok := raw.(map[string]any)
-		if !ok {
+		proc, ok := l.proc[pid]
+		f, isObj := raw.(map[string]any)
+		if !ok || !isObj {
 			return
 		}
 		fn, ok1 := f["fn"].(string)
 		at, ok2 := f["at"].(string)
-		if !ok1 || !ok2 {
-			return
+		if ok1 && ok2 {
+			l.NotePath(proc, fn, at)
 		}
-		path, _, err := load.ParseAt(at)
-		if err != nil {
-			return
-		}
-		if l.paths[pid] == nil {
-			l.paths[pid] = map[string]map[string]bool{}
-		}
-		if l.paths[pid][fn] == nil {
-			l.paths[pid][fn] = map[string]bool{}
-		}
-		l.paths[pid][fn][path] = true
 	}
 	each := func(v any, fn func(any)) {
 		if list, ok := v.([]any); ok {
@@ -353,63 +341,9 @@ func (l *loader) scanPaths(steps []any, server map[string]any) error {
 	return nil
 }
 
-// callee 메서드는 위치를 남기지 않은 함수 fn(줄 판정 안에서 부른 함수, 줄을 모르는 스택 칸)의 장소를 돌려줍니다.
-// 위치는 scanPaths가 모은 경로가 하나일 때만 붙이고, 둘 이상이면 어느 것인지 가를 수 없어 오류입니다.
-func (l *loader) callee(pid, fn, src, group string) (int, error) {
-	path := ""
-	switch ps := l.paths[pid][fn]; len(ps) {
-	case 0:
-	case 1:
-		for p := range ps {
-			path = p
-		}
-	default:
-		return 0, fmt.Errorf("프로세스 %s의 함수 %s가 경로 %d개에 나옴", pid, fn, len(ps))
-	}
-	return l.Function(l.proc[pid], fn, path, src, group), nil
-}
-
-// stack 메서드는 원본 스택(바깥 함수부터)을 프레임 장소 목록으로 뒤집어 돌려줍니다. 0번이 가장 안쪽 프레임(사건의 장소)입니다.
-// 스택이 없으면(nil) 둘 다 비고, 빈 목록은 없음과 가를 수 없어 오류입니다.
+// stack 메서드는 백엔드 pid의 원본 스택을 프레임 장소 목록으로 뒤집어 돌려줍니다(load.Loader.Stack). 0번이 가장 안쪽 프레임입니다.
 func (l *loader) stack(pid string, v any, src, group, where string) ([]int, error) {
-	if v == nil {
-		return nil, nil
-	}
-	list, ok := v.([]any)
-	if !ok || len(list) == 0 {
-		return nil, fmt.Errorf("%s.stack이 비지 않은 목록이 아님", where)
-	}
-	out := make([]int, 0, len(list))
-	for k := len(list) - 1; k >= 0; k-- {
-		f, err := load.Object(list[k], where+".stack[]")
-		if err != nil {
-			return nil, err
-		}
-		if err := load.Keys(f, where+".stack[]", "fn", "at"); err != nil {
-			return nil, err
-		}
-		fn, err := load.Text(f["fn"], where+".stack[].fn")
-		if err != nil {
-			return nil, err
-		}
-		at, err := load.Text(f["at"], where+".stack[].at")
-		if err != nil {
-			return nil, err
-		}
-		// 줄을 모르는 칸은 같은 프로세스의 스택에서 그 함수가 나온 경로 아래에 둡니다. 같은 함수가 위치 없는 장소로 갈리지 않게 합니다.
-		var fr int
-		if at == load.UnknownAt {
-			f, err := l.callee(pid, fn, src, group+".stack[].fn")
-			if err != nil {
-				return nil, fmt.Errorf("%s: %w", where, err)
-			}
-			fr = l.UnknownFrame(f, fn, src, group+".stack[].at")
-		} else if fr, err = l.Frame(l.proc[pid], fn, at, src, group+".stack[].fn", group+".stack[].at"); err != nil {
-			return nil, fmt.Errorf("%s: %w", where, err)
-		}
-		out = append(out, fr)
-	}
-	return out, nil
+	return l.Stack(l.proc[pid], v, src, group, where)
 }
 
 // timed 함수는 원본의 시작 t와 끝 t1(있으면)으로 사건의 종류와 시각을 정합니다. 끝이 있으면 구간, 없으면 순간입니다.
@@ -795,7 +729,7 @@ func (l *loader) call(parent int, pid, name string, raw any, where, group string
 	if err != nil {
 		return 0, err
 	}
-	place, err := l.callee(pid, fn, srcRec, group+".fn")
+	place, err := l.Callee(l.proc[pid], fn, srcRec, group+".fn")
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", where, err)
 	}

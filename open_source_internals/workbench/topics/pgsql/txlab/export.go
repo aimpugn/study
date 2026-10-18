@@ -99,14 +99,7 @@ func (v *view) processOf(place int) (json.Number, error) {
 }
 
 // stackOf 메서드는 스택(0번이 가장 안쪽)을 원본의 꼴(바깥 함수부터 {fn, at})로 되돌립니다.
-func (v *view) stackOf(stack []int) []any {
-	out := make([]any, 0, len(stack))
-	for k := len(stack) - 1; k >= 0; k-- {
-		f := v.r.Places[stack[k]]
-		out = append(out, map[string]any{"fn": f.Name, "at": load.LocText(f.Loc)})
-	}
-	return out
-}
+func (v *view) stackOf(stack []int) []any { return load.StackOf(v.r.Places, stack) }
 
 // Export 함수는 Import가 만든 run에서 기록 한 벌(RUNS의 값 하나)을 다시 만듭니다.
 //
