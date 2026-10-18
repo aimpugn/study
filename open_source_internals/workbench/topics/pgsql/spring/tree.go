@@ -420,6 +420,16 @@ func (l *loader) finish() {
 			Basis: "파일: 중계기가 앱의 모든 접속을 받아 넘기며 메시지마다 적음(txlab/spring.go 211~236)"})
 		l.Origins[atlas.RecordRef{Table: "coverage", ID: len(l.B.Run().Coverage) - 1}] = "$.conns[].messages[]"
 	}
+	// JFR의 예외와 잠듦은 남긴 것이 일부입니다(결정 검토 지적 9). 메서드 추적의 필터는 해석 결과에 없어 미기록입니다.
+	for _, c := range []struct {
+		what, basis, group string
+	}{
+		{"예외(jdk.JavaExceptionThrow)", "파일: 장면 시작(start 멈춤 자리의 go) 뒤의 것만 남기고 잡음 클래스(NoSuchMethodError, NoSuchFieldError, ClassNotFoundException)는 뺌(decode/spring_jfr.go 24~31·270~282). 뺀 수는 run attrs spring.java.dropped", "$.java.throws[]"},
+		{"잠듦(jdk.ThreadPark)", "파일: 1 ms보다 긴 잠듦만 기록하고(txlab/spring.go 248 jdk.ThreadPark#threshold=1ms) 스택에 추적 대상 메서드가 있는 것만 남김(decode/spring_jfr.go 299~313)", "$.java.parks[]"},
+	} {
+		l.B.AddCoverage(atlas.Coverage{Source: srcJFR, What: c.what, Completeness: "partial", Basis: c.basis})
+		l.Origins[atlas.RecordRef{Table: "coverage", ID: len(l.B.Run().Coverage) - 1}] = c.group
+	}
 }
 
 // overloadFrames 메서드는 서술자가 둘 이상인 자바 메서드의 수와, 그 메서드 아래 프레임을 가리키는 스택 칸의 수를 돌려줍니다.

@@ -221,8 +221,17 @@ func TestRoundTripCatchesBrokenStructure(t *testing.T) {
 		}},
 		{"빌린 연결을 지움", row, func(r *atlas.Run) { r.Events[eventOf(t, r, srcGuess, nameBorrow, 0)].Target = nil }},
 		{"창이 품은 사건을 다른 창으로", row, func(r *atlas.Run) {
-			i := linkOf(t, r, "contains", srcRec)
-			r.Links[i].Src = eventOf(t, r, srcRec, nameServer, 3)
+			i := linkOf(t, r, "contains", srcCont)
+			r.Links[i].Src = eventOf(t, r, srcCont, nameServer, 3)
+		}},
+		{"관찰의 끝을 다른 관찰의 끝으로", row, func(r *atlas.Run) { r.Links[linkOf(t, r, "end", "")].Dst = eventOf(t, r, srcCont, nameCaptureEnd, 1) }},
+		{"JFR 구간의 부른 쪽 프레임을 지움", row, func(r *atlas.Run) {
+			r.Events[eventOf(t, r, srcJFR, "org.postgresql.core.v3.QueryExecutorImpl::execute", 0)].Stack = nil
+		}},
+		{"BackendKeyData의 백엔드를 다른 연결의 것으로", row, func(r *atlas.Run) {
+			k := eventOf(t, r, srcWireMac, "K", 0)
+			other := r.Events[eventOf(t, r, srcWireMac, "K", 1)].From
+			r.Events[k].From = other
 		}},
 	}
 	for _, m := range mutations {
@@ -492,7 +501,7 @@ func originalFacts(t *testing.T, run map[string]any) map[string][]string {
 	}
 	for _, cr := range run["captures"].([]any) {
 		c := cr.(map[string]any)
-		add("결과 값", fmt.Sprintf("observed|capture|client txlab|→|%s~%s|sample|%s", us(c["t"]), us(c["span"].([]any)[1]), attrs(c, "label", "pages", "visible")))
+		add("결과 값", fmt.Sprintf("observed|capture|client txlab|→|%s~-|sample|%s", us(c["t"]), attrs(c, "label", "pages", "visible")))
 	}
 	return out
 }
@@ -604,6 +613,18 @@ func TestImportRejectsShapesItCannotRebuild(t *testing.T) {
 			for _, n := range run["view"].(map[string]any)["tree"].([]any) {
 				if e := n.(map[string]any)["effects"].([]any); len(e) == 2 {
 					e[0], e[1] = e[1], e[0]
+					return
+				}
+			}
+		}},
+		{"null이 아닌 서버 창의 in", "5-nested/a", func(run map[string]any) {
+			q := run["conns"].([]any)[0].(map[string]any)["requests"].([]any)[1].(map[string]any)
+			q["server"].(map[string]any)["in"] = []any{map[string]any{"type": "Q", "len": json.Number("5")}}
+		}},
+		{"BackendKeyData가 아닌 메시지의 f.pid", "5-nested/a", func(run map[string]any) {
+			for _, m := range run["conns"].([]any)[0].(map[string]any)["messages"].([]any) {
+				if mm := m.(map[string]any); mm["type"] == "R" {
+					mm["f"].(map[string]any)["pid"] = "1"
 					return
 				}
 			}

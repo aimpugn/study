@@ -91,6 +91,8 @@ const (
 	nameBinding    = "binding"
 	nameSlot       = "slot"
 	nameWait       = "wait"
+	nameCatalog    = "catalogSnapshots"
+	nameCaptureEnd = "capture_end"
 )
 
 // sceneThread 는 장면 메서드가 도는 스레드입니다. 호출 트리, 연결 묶임, 슬롯은 이 스레드의 것뿐입니다(decode/spring_tree.go 22).
@@ -305,11 +307,11 @@ func (l *loader) header(v, view map[string]any) error {
 		lo, hi = min(lo, a), max(hi, b)
 	}
 	l.B.AddClock(atlas.Clock{ID: clockMac, PrecisionNS: 1000,
-		Note: "맥의 벽시계: txlab의 time.Now, 맥 쪽 중계기, 앱이 Instant.now()로 찍어 알린 멈춤 자리·예외 알림(Lab.java 37·67·74~78). 해석기가 startNs부터 센 µs로 옮김"})
+		Note: "맥의 벽시계: txlab의 time.Now, 맥 쪽 중계기, 앱이 Instant.now()로 찍어 알린 멈춤 자리·예외 알림(Lab.java 37·67·71~75). 해석기가 startNs부터 센 µs로 옮김"})
 	l.B.AddClock(atlas.Clock{ID: clockCont, PrecisionNS: 1, Relation: &atlas.ClockRelation{To: clockMac, Known: true, LoNS: lo, HiNS: hi, Basis: srcSpring,
 		Note: "연결마다 맞댄 메시지로 잰 (컨테이너 − 맥) 구간(run attrs spring.clock.wire, decode/spring.go 98~107)을 모두 덮는 범위"}})
 	l.B.AddClock(atlas.Clock{ID: clockJFR, PrecisionNS: 1,
-		Note: "JFR의 startTime을 해석기가 startNs부터 센 µs로 옮긴 축. Lab.java 74행 주석은 맥 쪽 기록과 같은 벽시계라고 적지만 확인한 기록이 없어 맥 시계와의 관계는 모름"})
+		Note: "JFR의 startTime을 해석기가 startNs부터 센 µs로 옮긴 축. Lab.java 71행 주석은 맥 쪽 기록과 같은 벽시계라고 적지만 확인한 기록이 없어 맥 시계와의 관계는 모름"})
 
 	// run attrs: 열쇠에 원본의 아래 경로를 적습니다(run의 경로 무리가 $ 하나).
 	for _, k := range []string{"scene", "pool", "javaVersion", "javaExit", "title", "tables"} {
@@ -505,6 +507,10 @@ func (l *loader) java(v any) error {
 	if err != nil {
 		return err
 	}
+	// 구간의 장소(스레드 → 메서드 → 서술자)를 먼저 모두 세웁니다. 부른 쪽 프레임(caller)이 같은 메서드를 가리킬 때 그 메서드 장소가
+	// 관찰(JFR 구간)의 것으로 남게 하려는 것입니다.
+	type spanPlace struct{ place, thread int }
+	at := make([]spanPlace, len(spans))
 	for i, raw := range spans {
 		where := fmt.Sprintf("$.java.spans[%d]", i)
 		s, err := load.Object(raw, where)
@@ -519,7 +525,11 @@ func (l *loader) java(v any) error {
 			return err
 		}
 		th := l.threadPlace(names[2], srcJFR, "$.java.spans[].thread")
-		place := l.descriptor(th, names[0], names[1], srcJFR, "$.java.spans[].fn", "$.java.spans[].desc")
+		at[i] = spanPlace{l.descriptor(th, names[0], names[1], srcJFR, "$.java.spans[].fn", "$.java.spans[].desc"), th}
+	}
+	for i, raw := range spans {
+		where := fmt.Sprintf("$.java.spans[%d]", i)
+		s := raw.(map[string]any)
 		t0, err := l.micros(s["t0"], where+".t0")
 		if err != nil {
 			return err
@@ -528,8 +538,22 @@ func (l *loader) java(v any) error {
 		if err != nil {
 			return err
 		}
-		id := l.Event(atlas.Event{Place: place, Kind: atlas.Span, Name: names[0], StartNS: &t0, EndNS: &t1, Source: srcJFR}, "$.java.spans[]")
-		for _, k := range []string{"caller", "depth", "twice"} {
+		// 스택은 [구간의 서술자, 부른 쪽 프레임]입니다. caller는 JFR 스택의 0번 칸(spring_jfr.go 265~267)이고, 트리 마디가 없는 구간에서는
+		// 이것이 유일한 호출 사슬 기록입니다(결정 검토 지적 4). 표시 파일이 caller를 도출로 표시해 그 프레임 장소는 해석기 출처입니다.
+		caller, err := load.Text(s["caller"], where+".caller")
+		if err != nil {
+			return err
+		}
+		var stack []int
+		if caller != "" {
+			f, err := l.frame(at[i].thread, caller, srcSpring, "$.java.spans[].caller")
+			if err != nil {
+				return fmt.Errorf("%s.caller: %w", where, err)
+			}
+			stack = []int{at[i].place, f}
+		}
+		id := l.Event(atlas.Event{Place: at[i].place, Kind: atlas.Span, Name: s["fn"].(string), StartNS: &t0, EndNS: &t1, Stack: stack, Source: srcJFR}, "$.java.spans[]")
+		for _, k := range []string{"depth", "twice"} {
 			if val, ok := s[k]; ok {
 				l.B.EventAttrs(id, srcSpring, k, val)
 			}
@@ -799,14 +823,50 @@ func (l *loader) wire(conns []any) error {
 				return err
 			}
 			mac := l.Event(atlas.Event{Place: l.conn[name], From: from, Target: target, Kind: atlas.Instant, Name: names[1], StartNS: &t, Source: srcWireMac}, "$.conns[].messages[]")
-			for _, key := range []string{"len", "name", "text", "f"} {
+			for _, key := range []string{"len", "name", "text"} {
 				if val, ok := m[key]; ok {
 					l.B.EventAttrs(mac, srcWireMac, key, val)
 				}
 			}
+			if err := l.wireFields(mac, names[1], from, m, where); err != nil {
+				return err
+			}
 			cnt := l.Event(atlas.Event{Place: l.conn[name], From: from, Target: target, Kind: atlas.Instant, Name: names[1], StartNS: &tc, Source: srcWireCnt}, "$.conns[].messages[]")
 			l.Link(mac, cnt, "message", srcSpring, WirePair)
 			l.msgs[name] = append(l.msgs[name], [2]int{mac, cnt})
+		}
+	}
+	return nil
+}
+
+// wireFields 메서드는 메시지의 나머지 칸 f(decode/spring.go 222~249 wireText)를 칸마다 attrs의 "f.<칸>" 열쇠로 둡니다.
+//
+// f.pid는 BackendKeyData(서버가 보낸 K)가 알린 백엔드 pid, 곧 메시지의 from 장소라 저장하지 않고 다시 셉니다(결정 검토 지적 3).
+// 그래서 f를 통째로 attrs에 두지 않습니다(그 아래의 장소 칸이 attrs에 숨음). K가 아닌 메시지에 pid가 있거나, 그 값이 이 연결의
+// 백엔드가 아니거나, K에 pid가 없으면 다시 셀 수 없어 멈춥니다.
+func (l *loader) wireFields(mac int, typ string, from *int, m map[string]any, where string) error {
+	raw, ok := m["f"]
+	var f map[string]any
+	if ok {
+		var err error
+		if f, err = load.Object(raw, where+".f"); err != nil {
+			return err
+		}
+		if err := load.Keys(f, where+".f", "auth", "code", "pid", "severity", "where"); err != nil {
+			return err
+		}
+	}
+	pid, hasPid := f["pid"]
+	if typ == "K" {
+		if !hasPid || from == nil || pid != l.B.Run().Places[*from].Name {
+			return fmt.Errorf("%s: BackendKeyData의 f.pid %v가 이 연결의 백엔드가 아님", where, pid)
+		}
+	} else if hasPid {
+		return fmt.Errorf("%s: %s 메시지에 f.pid가 있어 다시 셀 수 없음", where, typ)
+	}
+	for _, k := range []string{"auth", "code", "severity", "where"} {
+		if val, ok := f[k]; ok {
+			l.B.EventAttrs(mac, srcWireMac, "f."+k, val)
 		}
 	}
 	return nil
@@ -1000,12 +1060,21 @@ func (l *loader) server(req int, name string, proc, seq int, raw any, where stri
 	if err != nil {
 		return err
 	}
-	win := l.Event(atlas.Event{Place: proc, Kind: atlas.Span, Name: nameServer, StartNS: &t0, EndNS: &t1, Source: srcRec}, "$.conns[].requests[].server")
-	l.B.EventAttrs(win, srcRec, "catalogSnapshots", s["catalogSnapshots"])
-	for _, k := range []string{"in", "out"} {
-		l.B.EventAttrs(win, srcSpring, k, s[k])
-	}
+	// 창은 두 ReadyForQuery 입구 사이를 요청 하나로 보는 해석기의 규칙이 만든 것이라 해석기 출처입니다(결정 검토 지적 1).
+	// 창 안에서 기록기가 센 카탈로그 스냅숏의 수는 관찰이라, 그 수를 담은 기록기의 sample을 창이 품게 합니다.
+	win := l.Event(atlas.Event{Place: proc, Kind: atlas.Span, Name: nameServer, StartNS: &t0, EndNS: &t1, Source: srcCont}, "$.conns[].requests[].server.t0")
 	l.Link(req, win, nameServer, srcSpring, ServerWindow)
+	cat := l.Event(atlas.Event{Place: proc, Kind: atlas.Sample, Name: nameCatalog, Source: srcRec}, "$.conns[].requests[].server")
+	l.B.EventAttrs(cat, srcRec, "catalogSnapshots", s["catalogSnapshots"])
+	l.Link(win, cat, "contains", srcSpring, RequestWindow)
+	if l.Once("unrecorded:catalog") {
+		l.B.AddUnrecorded(atlas.Unrecorded{Source: srcRec, Field: "catalogSnapshots.start_ns", Note: "서버 창 안에서 카탈로그 스냅숏(CatalogSnapshotData)을 잡은 횟수만 남았습니다(decode/scenario.go 820~821)"})
+	}
+
+	// in·out은 해석기가 Spring 창에 채우지 않는 칸이라 늘 null입니다(decode/spring.go 523). null이 아니면 그 안의 메시지를 둘 자리가 정해지지 않아 멈춥니다.
+	if s["in"] != nil || s["out"] != nil {
+		return fmt.Errorf("%s: in·out이 null이 아님(Spring 창에서 다시 셀 규칙이 없음)", where)
+	}
 
 	evs, err := load.List(s["events"], where+".events")
 	if err != nil {
@@ -1255,8 +1324,8 @@ func (l *loader) wait(win, proc int, w map[string]any) error {
 	return nil
 }
 
-// captures 메서드는 관찰을 txlab 장소의 sample로(끝은 관찰용 접속이 마지막 답을 보낸 span[1]), 부분마다 실제로 읽은 구간을 그 자식 구간으로
-// 옮깁니다. 관찰마다 같은 시각(tCapture)의 멈춤 자리나 막힘 관찰이 정확히 하나여야 하고 그것과 same 연결입니다. 겹친 메시지는 컨테이너 쪽
+// captures 메서드는 관찰을 txlab 장소의 sample로, 부분마다 실제로 읽은 구간을 그 자식 구간으로, 관찰용 접속이 마지막 답을 보낸 span[1]을
+// 해석기의 순간으로 옮깁니다. 관찰마다 같은 시각(tCapture)의 멈춤 자리나 막힘 관찰이 정확히 하나여야 하고 그것과 same 연결입니다. 겹친 메시지는 컨테이너 쪽
 // 메시지 사건과 overlap 연결입니다.
 func (l *loader) captures(v any) error {
 	caps, err := load.List(v, "$.captures")
@@ -1291,7 +1360,7 @@ func (l *loader) captures(v any) error {
 		if s0 != t || s1 < s0 {
 			return fmt.Errorf("%s.span[0]이 관찰 시각이 아니거나 끝이 시작보다 이름", where)
 		}
-		id := l.Event(atlas.Event{Place: l.client, Kind: atlas.Sample, Name: nameCapture, StartNS: &t, EndNS: &s1, Source: srcObserve}, "$.captures[]")
+		id := l.Event(atlas.Event{Place: l.client, Kind: atlas.Sample, Name: nameCapture, StartNS: &t, Source: srcObserve}, "$.captures[]")
 		for _, k := range []string{"activity", "label", "locks", "pages", "running", "wal", "xacts"} {
 			l.B.EventAttrs(id, srcObserve, k, c[k])
 		}
@@ -1329,6 +1398,11 @@ func (l *loader) captures(v any) error {
 			}
 			l.Event(atlas.Event{Place: l.client, Kind: atlas.Span, Name: p, Parent: &id, StartNS: &a, EndNS: end, Source: srcObserve}, "$.captures[].reads."+p)
 		}
+
+		// span[1]은 해석기가 관찰용 접속의 strace에서 고른 값(마지막 부분의 답을 보낸 sendto, decode/spring.go 772~803)이라 관찰의 끝이
+		// 아니라 해석기의 순간으로 두고 관찰에서 end 연결로 잇습니다(결정 검토 지적 2).
+		endID := l.Event(atlas.Event{Place: l.client, Kind: atlas.Instant, Name: nameCaptureEnd, StartNS: &s1, Source: srcCont}, "$.captures[].span")
+		l.Link(id, endID, "end", srcSpring, "$.captures[].span")
 
 		// 같은 시각에 찍었다고 txlab이 적은 멈춤 자리나 막힘 관찰 하나와 잇습니다. afterStep은 그 짝으로 다시 셉니다.
 		cps, bls := l.cpCapture[t], l.blCapture[t]
@@ -1376,7 +1450,7 @@ func (l *loader) findMessage(o any) ([2]int, error) {
 	r := l.B.Run()
 	for _, n := range names {
 		for _, m := range l.msgs[n] {
-			got, err := load.Canonical(wireView(r.Events[m[0]], r.Events[m[1]]))
+			got, err := load.Canonical(wireView(r, r.Events[m[0]], r.Events[m[1]]))
 			if err != nil {
 				return [2]int{}, err
 			}

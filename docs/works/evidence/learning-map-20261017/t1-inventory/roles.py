@@ -229,6 +229,20 @@ for _path in ("$.conns[].requests[].server.checks[].lines[]", "$.conns[].request
         _path + ".fn": ("place", "M 사건의 장소 = 부른 함수(백엔드 프로세스 아래)"),
         _path + ".at": ("stack", "M 부른 줄 = 스택 1번의 코드 자리(함수 이름 없음)"),
     })
+# 2026-10-18 결정 검토(하위 에이전트, 「수정 후 승인」)의 지적으로 고친 행. 근거는 ../t1-e03-evidence.md 8절.
+_E03.update({
+    # 지적 1: 서버 창은 두 ReadyForQuery 입구 사이를 요청 하나로 보는 해석기 규칙의 창이라 도출(142개 가운데 122개가 첫 F가 닿기 전에 시작).
+    "$.conns[].requests[].server.t0": ("start_ns", "M 서버 창 = 해석기 출처(spring-cont)의 구간의 시작: 앞 ReadyForQuery 입구(spring.go 516~535). 두 입구 사이를 요청 하나로 보는 해석기 규칙의 창이라 도출이고, 142개 가운데 122개가 그 요청의 첫 F가 컨테이너 쪽에 닿기 전에 시작함(백엔드가 앱을 기다린 시간이 듦)"),
+    "$.conns[].requests[].server.t1": ("end_ns", "M 서버 창의 끝: 이번 ReadyForQuery 입구"),
+    # 지적 2: span[1]은 해석기가 관찰용 접속의 strace에서 고른 값이라 관찰 사건의 끝이 아니라 해석기의 순간.
+    "$.captures[].span": ("row", "M span[1] = 해석기 출처(spring-cont)의 순간 하나(관찰용 접속이 마지막 부분의 답을 보낸 sendto, spring.go 772~803 captureSpans)이고 관찰 → 그 순간의 end 연결. span[0]은 관찰 t와 같아 다시 셈(C5 74/74). 관찰 sample은 끝을 두지 않음(읽기 구간 370개 가운데 60개가 span[1]보다 늦게 끝남)"),
+    "$.captures[].span[]": ("start_ns", "M span[1]은 그 해석기 순간의 시각, span[0]은 다시 셈"),
+    # 지적 3: 연결 위 메시지의 f는 기록기 칸이 아니고, f.pid는 BackendKeyData가 알린 백엔드 pid(장소 식별자)라 X2가 아님.
+    "$.conns[].messages[].f.pid": ("recompute", "M 다시 셈: B·K 메시지의 from(백엔드 프로세스 장소)의 이름(C9f 24/24). 기록기 칸 f의 X2 규칙이 연결 위 메시지의 f(wireText, spring.go 222~249)에 잘못 맞았음. f의 나머지 칸은 f.auth·f.code·f.severity·f.where 열쇠로 나눠 둠"),
+    # 지적 4: caller는 해석기가 붙인 관계가 아니라 관찰한 JFR 스택의 0번 칸이고, 트리 마디가 없는 구간 258개에서는 유일한 호출 사슬 기록.
+    "$.java.spans[].caller": ("stack", "M 구간 스택 1번 = JFR 스택 0번 칸(부른 쪽, spring_jfr.go 265~267)의 프레임(메서드 아래). 트리 마디가 없는 구간 258개(장면 밖 main 238, 다른 스레드 20)에서는 이것이 유일한 호출 사슬 기록이고, 1,592개 모두 비지 않음"),
+    "$.java.spans[].depth": ("X5", "X5 해석기가 셈한 값: 같은 스레드에서 이 호출을 감싼 기록된 호출의 수(spring_jfr.go 325~341). 트리의 깊이와 뜻이 달라(트리 마디가 있는 1,334개 가운데 750개가 다름) 구조 칸이 대신하지 않고 다른 칸에서 다시 세지 않음"),
+})
 OVERRIDES.update({("e03", p): d for p, d in _E03.items()})
 
 RULES = [
@@ -255,8 +269,9 @@ RULES = [
     (None, r"\.view\.waits\[\]\.seq$", "X1", "X1 원래 번호(기다림의 요청 번호)"),
     # Cross-run comparisons produced by the decoder (class X4).
     (None, r"\.view\.(branches|compared)", "X4", "X4 교차 기록 비교"),
-    # Decoder call relation on observed JFR spans; the same relation is structural in the tree (X5).
-    (None, r"\.java\.spans\[\]\.(caller|depth)$", "X5", "X5 관찰 구간에 해석기가 붙인 호출 관계"),
+    # A count the decoder computed onto observed JFR spans that no other field rebuilds (X5). The caller frame
+    # is not here: it is the observed JFR stack, so the e03 override puts it on the span stack.
+    (None, r"\.java\.spans\[\]\.depth$", "X5", "X5 관찰 구간에 해석기가 셈해 붙인 값"),
     # Durations, settings and clock offsets are values, not event times (class X6).
     (None, r"\.(idleMs|self|durs\[\]|maxDeviationUs|medianOffsetUs|lo|hi|.*Ms|durUs)$", "X6", "X6 길이·설정·시계 차"),
     # Event times.

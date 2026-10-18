@@ -129,16 +129,28 @@ func (v *view) refs(stack []int) []any {
 }
 
 // wireView 함수는 맥 쪽·컨테이너 쪽 메시지 사건 짝에서 원본의 메시지 하나({t, tc, dir, type, len, name?, text?, f?})를 만듭니다.
-// 백엔드가 target이면 앱이 보낸 F, from이면 서버가 보낸 B입니다.
-func wireView(mac, cnt atlas.Event) map[string]any {
+// 백엔드가 target이면 앱이 보낸 F, from이면 서버가 보낸 B입니다. f는 "f.<칸>" attrs와, BackendKeyData(K)면 from 백엔드의 pid로 다시 짭니다.
+func wireView(r *atlas.Run, mac, cnt atlas.Event) map[string]any {
 	m := map[string]any{"t": micros(mac.StartNS), "tc": micros(cnt.StartNS), "type": mac.Name, "dir": "B"}
 	if mac.Target != nil {
 		m["dir"] = "F"
 	}
-	for _, k := range []string{"len", "name", "text", "f"} {
+	for _, k := range []string{"len", "name", "text"} {
 		if val, ok := mac.Attrs[srcWireMac][k]; ok {
 			m[k] = val
 		}
+	}
+	f := map[string]any{}
+	for _, k := range []string{"auth", "code", "severity", "where"} {
+		if val, ok := mac.Attrs[srcWireMac]["f."+k]; ok {
+			f[k] = val
+		}
+	}
+	if mac.Name == "K" && mac.From != nil {
+		f["pid"] = r.Places[*mac.From].Name
+	}
+	if len(f) > 0 {
+		m["f"] = f
 	}
 	return m
 }
@@ -149,7 +161,7 @@ func (v *view) message(id int) (map[string]any, error) {
 	if len(pair) != 1 {
 		return nil, fmt.Errorf("메시지 %d의 컨테이너 쪽 짝 %d개", id, len(pair))
 	}
-	return wireView(v.r.Events[id], v.r.Events[pair[0]]), nil
+	return wireView(v.r, v.r.Events[id], v.r.Events[pair[0]]), nil
 }
 
 // Export 함수는 Import가 만든 run에서 기록 한 벌(RUNS의 값 하나)을 다시 만듭니다.
@@ -352,7 +364,6 @@ func (v *view) request(e atlas.Event, seq int) (map[string]any, error) {
 	}
 	for _, id := range members {
 		m := v.r.Events[id]
-		f, _ := m.Attrs[srcWireMac]["f"].(map[string]any)
 		text := v.text(m, srcWireMac, "text")
 		if m.Target != nil {
 			if seq == 0 {
@@ -371,9 +382,7 @@ func (v *view) request(e atlas.Event, seq int) (map[string]any, error) {
 		case "C":
 			tags = append(tags, text)
 		case "E":
-			code, _ := f["code"].(string)
-			where, _ := f["where"].(string)
-			errm = map[string]any{"code": code, "message": text, "where": where}
+			errm = map[string]any{"code": v.text(m, srcWireMac, "f.code"), "message": text, "where": v.text(m, srcWireMac, "f.where")}
 		case "Z":
 			status = text
 		}
@@ -417,18 +426,19 @@ func (v *view) request(e atlas.Event, seq int) (map[string]any, error) {
 	return q, nil
 }
 
-// window 메서드는 서버 창 하나를 되살립니다. 품은 것은 연결 차례로 가릅니다: 이름이 check면 줄 판정, curcid가 있으면 스냅숏, 해석기의
-// 기다림은 view.waits라 빼고, 나머지는 사건입니다. sql은 요청의 sql을 "; "로 이은 것입니다.
+// window 메서드는 서버 창 하나를 되살립니다. 품은 것은 연결 차례로 가릅니다: 기록기의 sample은 카탈로그 스냅숏의 수, 이름이 check면
+// 줄 판정, curcid가 있으면 스냅숏, 해석기의 기다림은 view.waits라 빼고, 나머지는 사건입니다. sql은 요청의 sql을 "; "로 이은 것이고,
+// in·out은 해석기가 Spring 창에 채우지 않아 늘 null입니다(적재기가 null이 아니면 멈춤).
 func (v *view) window(w atlas.Event, sql string) (map[string]any, error) {
-	s := map[string]any{"sql": sql, "t0": micros(w.StartNS), "t1": micros(w.EndNS)}
-	v.copyAttrs(s, w, srcRec, "catalogSnapshots")
-	v.copyAttrs(s, w, srcSpring, "in", "out")
+	s := map[string]any{"sql": sql, "t0": micros(w.StartNS), "t1": micros(w.EndNS), "in": nil, "out": nil}
 	events, snaps, checks := []any{}, []any{}, []any{}
 	for _, id := range v.out[w.ID]["contains"] {
 		m := v.r.Events[id]
 		_, isSnap := v.attr(m, srcRec, "curcid")
 		switch {
 		case m.Source == srcCont:
+		case m.Kind == atlas.Sample && m.Name == nameCatalog:
+			v.copyAttrs(s, m, srcRec, "catalogSnapshots")
 		case m.Name == nameCheck:
 			c, err := v.check(m)
 			if err != nil {
@@ -603,12 +613,17 @@ func (v *view) blocked(evs []atlas.Event) ([]any, error) {
 	return out, nil
 }
 
-// captures 메서드는 관찰을 되살립니다. afterStep은 same 연결로 들어온 멈춤 자리의 n(막힘 관찰이면 그 after), span은 [시작, 끝],
+// captures 메서드는 관찰을 되살립니다. afterStep은 same 연결로 들어온 멈춤 자리의 n(막힘 관찰이면 그 after), span은 [시작, end 연결이
+// 가리키는 해석기 순간],
 // reads는 자식 구간(끝이 비면 시작과 같음), overlap은 연결한 메시지입니다.
 func (v *view) captures(evs []atlas.Event) ([]any, error) {
 	out := []any{}
 	for _, e := range evs {
-		c := map[string]any{"t": micros(e.StartNS), "span": []any{micros(e.StartNS), micros(e.EndNS)}}
+		end := v.out[e.ID]["end"]
+		if len(end) != 1 {
+			return nil, fmt.Errorf("관찰 %d의 end 연결 %d개", e.ID, len(end))
+		}
+		c := map[string]any{"t": micros(e.StartNS), "span": []any{micros(e.StartNS), micros(v.r.Events[end[0]].StartNS)}}
 		v.copyAttrs(c, e, srcObserve, "activity", "label", "locks", "pages", "running", "wal", "xacts")
 		v.copyAttrs(c, e, srcSpring, "visible")
 		same := v.in[e.ID]["same"]
@@ -671,8 +686,11 @@ func (v *view) java() (map[string]any, error) {
 		switch {
 		case e.Kind == atlas.Span && place.Kind == "descriptor":
 			m := v.r.Places[*place.Parent]
-			s := map[string]any{"fn": m.Name, "desc": place.Name, "thread": th.Name, "t0": micros(e.StartNS), "t1": micros(e.EndNS)}
-			v.copyAttrs(s, e, srcSpring, "caller", "depth", "twice")
+			s := map[string]any{"fn": m.Name, "desc": place.Name, "thread": th.Name, "t0": micros(e.StartNS), "t1": micros(e.EndNS), "caller": ""}
+			if len(e.Stack) > 1 {
+				s["caller"] = v.ref(e.Stack[1])
+			}
+			v.copyAttrs(s, e, srcSpring, "depth", "twice")
 			spans = append(spans, s)
 		case e.Name == nameThrow:
 			t := map[string]any{"t": micros(e.StartNS), "thread": th.Name, "at": v.refs(e.Stack)}

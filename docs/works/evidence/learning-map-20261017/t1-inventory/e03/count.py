@@ -6,7 +6,9 @@ The script reads the RUNS literal (line 129 of concept-9) and re-applies, in Pyt
 produced each field (decode/spring.go, spring_jfr.go, spring_tree.go, spring_compare.go). Every check prints
 "<id> ok/total description". A check passes when ok == total; the last line says how many failed and the exit
 code is 1 if any did. The ids are cited in ../../t1-e03-evidence.md. Nothing here is imported from the
-workbench; the rules are written out so that a reader can compare them with the Go code line by line.
+workbench. Most rules are the Go code rewritten step by step (the docstring names the lines); two are not
+(C15k and C16f): they are different rules that give the same value on these records, and the importer
+uses them as recompute rules that stop the import when they do not hold.
 """
 import collections
 import json
@@ -307,6 +309,8 @@ def main(path):
                 count("C6", a <= b)
                 if a == b:
                     count("C6b-last", k == len(caps) - 1)
+                copies["읽기 구간 가운데 끝이 관찰 span의 끝보다 늦은 것"] += b > x["span"][1]
+                copies["읽기 구간"] += 1
 
         # C7 겹친 메시지 = 관찰 span 안의 tc를 가진 메시지(모든 연결, tc 차례), 메시지 사본과 하나씩 같음
         allc = sorted([m for c in conns for m in c["messages"]], key=lambda m: m["tc"])
@@ -319,6 +323,14 @@ def main(path):
         # C8 두 시계: 연결마다 같은 순번으로 잘렸고(same) 구간이 비지 않음, ms → ns가 정확
         for w in r["clock"]["wire"]:
             count("C8", w["same"] and w["lo"] <= w["hi"] and round(w["lo"] * 1e6) / 1e6 == w["lo"] and round(w["hi"] * 1e6) / 1e6 == w["hi"])
+        # C8b clock.wire = 저장된 메시지의 (tc − t)로 다시 셈(compareClocks, spring.go 204~220): B의 최댓값이 lo, F의 최솟값이 hi
+        ns = lambda us: round(us * 1000)
+        for w in r["clock"]["wire"]:
+            c = [x for x in conns if x["conn"] == w["conn"]][0]
+            d = [(m["dir"], ns(m["tc"]) - ns(m["t"])) for m in c["messages"]]
+            lo = max(v for k, v in d if k == "B") / 1e6
+            hi = min(v for k, v in d if k != "B") / 1e6
+            count("C8b", w["n"] == len(c["messages"]) and w["lo"] == lo and w["hi"] == hi)
 
         # C9 연결: 이름 = "C" + 번호, pid = BackendKeyData의 pid, sessions = {pid: 이름}, 마지막 메시지 종류
         sess = {}
@@ -328,6 +340,12 @@ def main(path):
             count("C9b", len(ks) == 1 and ks[0]["f"]["pid"] == str(c["pid"]))
             count("C9c", c["lastMac"] == c["messages"][-1]["type"] and c["lastCont"] == c["lastMac"])
             count("C9d", all(m["t"] != 0 and m["tc"] != 0 for m in c["messages"]))
+            # C9f 연결 위 메시지의 f.pid는 BackendKeyData(B·K)에만 있고 그 연결의 백엔드 pid(장소 식별자)
+            for m in c["messages"]:
+                if "pid" in (m.get("f") or {}):
+                    count("C9f", m["dir"] == "B" and m["type"] == "K" and m["f"]["pid"] == str(c["pid"]))
+                elif m["type"] == "K":
+                    count("C9f", False)
             sess[str(c["pid"])] = c["name"]
         count("C9e", r["sessions"] == sess)
 
@@ -345,6 +363,12 @@ def main(path):
                 ms = [c["messages"][j] for j in g["members"]]
                 count("C10d", ms[0]["t"] == q["sent"] and ms[-1]["type"] == "Z" and ms[-1]["t"] == q["done"])
                 q["_members"] = g["members"]
+            # C10f 앞 요청의 답이 오기 전에 보낸 요청(pgjdbc가 묶음 둘을 한 번에 보냄, spring.go 252~253)은 보낸 시각이 앞 요청과 같음.
+            # 같으면 구간이 포개지고, 다르면(중계기가 두 묶음을 따로 읽은 기록) 같은 연결 장소에서 어긋납니다.
+            rq = c["requests"]
+            for a, b in zip(rq, rq[1:]):
+                if b["sent"] < a["done"]:
+                    count("C10f", b["sent"] == a["sent"])
             free = [m["dir"] + m["type"] for j, m in enumerate(c["messages"]) if j not in set(members)]
             tot["C10e-free"] += len(free)
             acc["C10e-free"] += sum(1 for x in free if x == "FX")
@@ -360,6 +384,10 @@ def main(path):
                     continue
                 count("C11c", s["sql"] == "; ".join(q["sql"] or []))
                 count("C11d", s["in"] is None and s["out"] is None and s["t0"] <= s["t1"])
+                # 창이 그 요청의 첫 F가 컨테이너 쪽에 닿기 전에 시작하는지(같은 컨테이너 시계): 창에 백엔드가 앱을 기다린 시간이 듦
+                first_f = min(c["messages"][j]["tc"] for j in q["_members"] if c["messages"][j]["dir"] == "F")
+                copies["서버 창 가운데 첫 F가 컨테이너 쪽에 닿기 전에 시작하는 것"] += s["t0"] < first_f
+                copies["서버 창"] += 1
                 if prev is not None:
                     count("C11e", prev["t1"] == s["t0"])
                 prev = s
@@ -386,6 +414,15 @@ def main(path):
                         th = s["thread"]
                         break
             count("C13", th == c["thread"])
+        # 트리 마디가 없는 JFR 구간(장면 밖이거나 main이 아닌 스레드): caller가 그 호출 사슬의 유일한 기록
+        keyed = {(n["fn"], n["desc"], n["t0"], n["t1"]) for n in view["tree"] if n["t1"] is not None}
+        bare = [s for s in java["spans"] if not (s["thread"] == "main" and (s["fn"], s["desc"], s["t0"], s["t1"]) in keyed)]
+        copies["트리 마디가 없는 JFR 구간"] += len(bare)
+        w0, w1 = view["window"]
+        copies["트리 마디가 없는 JFR 구간 가운데 장면 구간 밖의 main 스레드 구간"] += sum(1 for s in bare if s["thread"] == "main" and (s["t1"] < w0 or s["t0"] > w1))
+        copies["트리 마디가 없는 JFR 구간 가운데 main이 아닌 스레드 구간"] += sum(1 for s in bare if s["thread"] != "main")
+        copies["JFR 구간"] += len(java["spans"])
+        copies["caller가 빈 JFR 구간"] += sum(1 for s in java["spans"] if s["caller"] == "")
         # C13b JFR 구간은 (t0 오름, t1 내림)으로 정렬돼 있음(buildSpringJava 326-331): id 차례 = spans 차례
         sp = java["spans"]
         count("C13b", all((sp[i]["t0"], -sp[i]["t1"]) <= (sp[i + 1]["t0"], -sp[i + 1]["t1"]) for i in range(len(sp) - 1)))
@@ -420,7 +457,8 @@ def main(path):
                 count("C15i-alt", alt_index(n, byid, view["branches"][n["fn"] + n["desc"]]["alts"]) == n["branch"]["alt"])
         roots = sorted([n["id"] for n in tree if n["parent"] < 0], key=lambda i: byid[i]["t0"])
         count("C15j", view["roots"] == roots)
-        # 스택에만 보인 마디: t0 = 기록된 자손의 t0 최솟값, seen = 기록된 자손의 t1 최댓값
+        # 스택에만 보인 마디: t0 = 기록된 자손의 t0 최솟값, seen = 기록된 자손의 t1 최댓값. 해석기는 스택을 걸으며 그 마디를 지난
+        # 구간마다 min·max를 갱신하므로(spring_tree.go 206~214) Go를 옮긴 것이 아니라 같은 값을 내는 다른 규칙입니다.
         for n in tree:
             if n["t1"] is not None:
                 continue
@@ -466,6 +504,8 @@ def main(path):
                 if e["kind"] == "park":
                     m = [p for p in java["parks"] if p["thread"] == "main" and p["t0"] == e["t0"] and p["t1"] == e["t1"]]
                     count("C16e-park", len(m) == 1 and m[0]["under"] == e["at"] and ref_split(e["at"])[0] == n["fn"])
+                # 예외 효과의 at: 해석기는 예외 스택 전체에서 첫 추적 대상 칸을 고르지만(spring_tree.go 830~845·903~904), 그 칸은
+                # 마디와 메서드가 같은 첫 칸이고 at[](앞 8칸) 안에 있으면 이 규칙으로 같은 값이 나옵니다(다른 규칙, 같은 값).
                 if e["kind"] == "throw":
                     m = [t for t in java["throws"] if t["thread"] == "main" and t["t"] == e["t0"]]
                     firsts = [a for a in (m[0]["at"] if len(m) == 1 else []) if ref_split(a)[0] == n["fn"]]
@@ -599,6 +639,10 @@ def main(path):
     uniq = sum(1 for r in runs.values() for n in r["view"]["tree"] if n["t1"] is not None and
                sum(1 for s in r["java"]["spans"] if s["thread"] == "main" and (s["fn"], s["desc"], s["t0"], s["t1"]) == (n["fn"], n["desc"], n["t0"], n["t1"])) == 1)
     info("I", "기록된 트리 마디 가운데 값이 같은 JFR 구간이 정확히 하나인 것", uniq)
+    # JFR 구간의 depth(같은 스레드에서 감싼 기록된 호출 수, spring_jfr.go)가 짝인 트리 마디의 깊이와 다른 수: X5인 까닭의 크기
+    differ = sum(1 for r in runs.values() for n in r["view"]["tree"] if n["t1"] is not None for s in r["java"]["spans"]
+                 if s["thread"] == "main" and (s["fn"], s["desc"], s["t0"], s["t1"]) == (n["fn"], n["desc"], n["t0"], n["t1"]) and s["depth"] != n["depth"])
+    info("I", "값이 같은 JFR 구간이 있는 트리 마디 가운데 구간의 depth가 트리 깊이와 다른 것", differ)
 
     for k, v in sorted(copies.items()):
         info("I", k, v)
