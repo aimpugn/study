@@ -135,7 +135,20 @@ if (chromium) {
       check(heads.length === 1 && heads[0].includes("≈"), `길이가 추정인 칸의 함수 줌 머리에 ≈가 없음: ${JSON.stringify(heads)}`);
       await page.evaluate(() => window.__atlas.setZoom("process"));
       check((await page.locator("#canvas line.descent.inferred").count()) > 0, "추정 근거 하강선이 점선(inferred)으로 그려지지 않음");
-    }
+    } else fails.push("커널 경로에 길이가 추정인 하강 칸이 없어 ≈ 검사를 못 함");
+    // 하강선의 class는 그 칸 하강의 실제 성격입니다. 추정이 아닌 하강에 점선 class가 붙으면 안 됩니다.
+    const plain = await page.evaluate(() => { const V = window.__atlas.V; for (let i = 0; i < V.routes.length; i++) { const k = V.routes[i].steps.findIndex((s) => s.descent && s.descent.nature !== "inferred"); if (k >= 0) return [i, k, V.routes[i].steps[k].descent.nature]; } return null; });
+    if (plain) {
+      await page.evaluate(([i]) => { window.__atlas.setRoute(i); window.__atlas.setZoom("process"); }, plain);
+      const cls = await page.locator(`#canvas g[data-cell="${plain[1]}"] line.descent`).evaluateAll((ls) => ls.map((l) => l.getAttribute("class")));
+      check(cls.length > 0 && cls.every((c) => c === `descent ${plain[2]}`), `성격이 ${plain[2]}인 하강선의 class ${JSON.stringify(cls)}`);
+      await page.evaluate((i) => window.__atlas.setRoute(i), kernelRoute);
+    } else fails.push("추정이 아닌 하강이 없어 하강선 class 검사를 못 함");
+    // 도출 값의 표지: 처리 단계 열 머리(단계별 안내)와 ×N 알약, 후보 카드의 추정 길이.
+    await page.evaluate(() => { const A = window.__atlas; A.setRoute(A.V.default); A.setZoom("process"); });
+    check((await page.locator("#guide .col .badge.derived").count()) > 0, "처리 단계 열 머리에 「규칙으로 셈」이 없음");
+    check((await page.locator("#canvas text").allTextContents()).some((t) => /^×\d+ \(셈\)$/.test(t)), "×N 알약에 (셈)이 없음");
+    check((await page.locator("#cands .cand.on .tops").textContent()).includes("≈"), "후보 카드의 추정 길이에 ≈가 없음");
     // 기록하지 않은 하강(X1): 선은 지면에서 멈추고 빗금 칸만 있습니다. 그 칸의 하강선은 집 띠 → 지면 하나뿐입니다.
     const unseenStep = await page.evaluate((i) => window.__atlas.V.routes[i].steps.findIndex((s) => s.descent && s.descent.state === "unseen"), kernelRoute);
     if (unseenStep >= 0) {

@@ -540,14 +540,18 @@ func TestRangeFixtureIsCurrent(t *testing.T) {
 // Given 이 패키지와 명령 cmd/atlas-map, 플랫폼 폴더의 시험 아닌 파일에서, When 의존 목록과 파일 글을 보면,
 // Then 의존에 topics/가 없고 주제 이름 글자가 없습니다. 위 시험들은 가짜 주제(toy)만으로 보기 모형을 만듭니다.
 // 또 저장소의 모든 주제 자료 파일(topics/*/*/map.json)이 쓰는 장소 종류·출처 id·attrs 열쇠·run 앞부분의 낱말이 플랫폼 Go 코드의 글자 상수로
-// 나오지 않습니다(코드 검토 지적 4). 플랫폼이 스스로 정한 상수(줌·띠 상태 이름)는 빼고 봅니다. 그래서 그 상수와 같은 글(예: process)로
-// 주제를 가르는 코드는 이 시험이 잡지 못합니다.
+// 나오지 않습니다(코드 검토 지적 4, 재검토 N1). 글자 상수도 같은 규칙으로 쪼개 조각마다 봅니다. 플랫폼이 스스로 정한 상수(줌·띠 상태 이름)는 빼고 봅니다.
+// 그래서 그 상수와 같은 글(예: process)이나 자료 파일에 없는 글(run 이름 전체, 낱말의 앞부분)로 주제를 가르는 코드는 이 시험이 잡지 못합니다.
+// 이 시험은 디스크의 소스를 읽으므로 go test -overlay로 넣은 변이는 보지 못합니다.
 func TestPlatformDoesNotKnowTopics(t *testing.T) {
 	vocab := topicVocabulary(t)
 	reserved, lits := platformLiterals(t)
+	// 글자 상수도 자료 파일 값과 같은 규칙("."과 "/")으로 쪼개 조각마다 봅니다. 그래야 "strace.text"나 e.Source+".text" 같은 열쇠 조각도 걸립니다.
 	for lit, where := range lits {
-		if vocab[lit] && !reserved[lit] {
-			t.Errorf("%s: 플랫폼 코드에 주제 자료 파일의 낱말 %q", where, lit)
+		for _, w := range strings.FieldsFunc(lit, func(r rune) bool { return r == '.' || r == '/' }) {
+			if vocab[w] && !reserved[w] {
+				t.Errorf("%s: 플랫폼 코드의 글자 %q에 주제 자료 파일의 낱말 %q", where, lit, w)
+			}
 		}
 	}
 
@@ -615,8 +619,16 @@ func TestWriteHTMLEmbedsViewOnly(t *testing.T) {
 //
 // Given io 칸(순간) 아래 시스템 콜이 추정 근거(guess)로, 커널 나무가 다시 추정 근거로 붙은 경로에서, When 보기 모형을 만들면,
 // Then 관찰 출처인 커널 마디(sleepfn, tiny)도 추정이고, io 칸의 머문 시간은 가장 긴 마디(syscall)의 길이이며 그 성격이 추정입니다.
+// io 칸을 품은 시스템 칸도 길이의 성격을 받아 추정이고, 접힌 칸(touch ×2)은 접기 열쇠(dec.f)의 출처대로 「규칙으로 셈」입니다.
 func TestNatureFollowsThePath(t *testing.T) {
-	st := toyView(t).Routes[0].Steps[4]
+	r := toyView(t).Routes[0]
+	if sy := r.System[len(r.System)-1]; sy.Nature != atlas.Inferred {
+		t.Errorf("io를 품은 시스템 칸 성격 %s, 기대 inferred", sy.Nature)
+	}
+	if f := r.Steps[1]; f.Fold != 2 || f.FoldNature != atlas.Derived {
+		t.Errorf("접힌 칸 ×%d 성격 %q, 기대 ×2 derived", f.Fold, f.FoldNature)
+	}
+	st := r.Steps[4]
 	for _, n := range st.Tree {
 		if n.Parent >= 0 && n.Nature != atlas.Inferred {
 			t.Errorf("마디 %s 성격 %s, 기대 inferred(추정 연결 아래)", n.Name, n.Nature)
@@ -651,7 +663,7 @@ func TestStepDwellPrefersItsOwnSpan(t *testing.T) {
 // TestTimeDivergenceNamesTheLargestDifference 함수는 구조가 같은 두 나무의 갈림이 길 위에서 시간 차가 가장 큰 마디인지 봅니다(코드 검토 지적 3).
 //
 // Given 구조가 같고 mid의 길이만 5 다른 a·d와, 모든 것이 같은 a·e에서, When 보기 모형을 만들면,
-// Then a·d의 갈림은 time:mid(차 5)이고 잎(sleepfn, 차 0)이 아니며, a·e는 갈림 없음(none)입니다.
+// Then a·d의 갈림은 time:mid(차 5)이고 잎(sleepfn, 차 0)이 아니며, 뿌리 길이까지 다른 a·f도 mid이고, a·e는 나무가 같음(same)입니다.
 func TestTimeDivergenceNamesTheLargestDifference(t *testing.T) {
 	d := toyRun("s1/d", true, 0)
 	for i := range d.Events {
@@ -659,7 +671,17 @@ func TestTimeDivergenceNamesTheLargestDifference(t *testing.T) {
 			d.Events[i].DurNS = atlas.Ptr(int64(18))
 		}
 	}
-	v, err := Build(MemStore{"toy/s1/a": toyRun("s1/a", true, 0), "toy/s1/d": d, "toy/s1/e": toyRun("s1/e", true, 0)}, toySpec(), ".")
+	// f는 mid 차 5에 더해 뿌리(io)의 길이가 20 달라도, 뿌리의 차는 칸 머문 시간으로 이미 보이므로 갈림은 mid여야 합니다.
+	f := toyRun("s1/f", true, 0)
+	for i := range f.Events {
+		switch f.Events[i].Name {
+		case "mid":
+			f.Events[i].DurNS = atlas.Ptr(int64(18))
+		case "io":
+			f.Events[i].EndNS = atlas.Ptr(int64(60))
+		}
+	}
+	v, err := Build(MemStore{"toy/s1/a": toyRun("s1/a", true, 0), "toy/s1/d": d, "toy/s1/e": toyRun("s1/e", true, 0), "toy/s1/f": f}, toySpec(), ".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -670,8 +692,11 @@ func TestTimeDivergenceNamesTheLargestDifference(t *testing.T) {
 	if g := got["toy/s1/d"]; g.Kind != "time" || g.Name != "mid" || g.DiffNS != 5 {
 		t.Errorf("a·d 갈림 %+v, 기대 time:mid 차 5", g)
 	}
-	if g := got["toy/s1/e"]; g.Kind != "none" {
-		t.Errorf("a·e 갈림 %+v, 기대 none", g)
+	if g := got["toy/s1/f"]; g.Kind != "time" || g.Name != "mid" || g.DiffNS != 5 {
+		t.Errorf("a·f 갈림 %+v, 기대 time:mid 차 5(뿌리 io의 차 20은 갈림이 아님)", g)
+	}
+	if g := got["toy/s1/e"]; g.Kind != "same" {
+		t.Errorf("a·e 갈림 %+v, 기대 same(나무를 견줬고 모두 같음)", g)
 	}
 }
 
@@ -859,7 +884,7 @@ func platformLiterals(t *testing.T) (reserved map[string]bool, lits map[string]s
 // TestViaBasisWeakensSteps 함수는 뿌리에서 칸까지 거친 연결 근거가 칸의 성격에 들어가는지 봅니다(고친 규칙 6, 코드 검토 지적 1의 c).
 //
 // Given 뿌리 req에서 칸 사건마다 해석기 근거(dec, 도출)의 contains 연결이 있고 장면이 그 연결로만 칸을 고를 때, When 보기 모형을 만들면,
-// Then 관찰 출처의 칸도 모두 「규칙으로 셈」(derived) 이하입니다.
+// Then 관찰 출처의 칸과 그 나무의 마디(뿌리 포함), 시각 없는 사건 목록도 모두 「규칙으로 셈」(derived) 이하입니다.
 func TestViaBasisWeakensSteps(t *testing.T) {
 	r := toyRun("s1/a", true, 0)
 	root := -1
@@ -869,7 +894,7 @@ func TestViaBasisWeakensSteps(t *testing.T) {
 		}
 	}
 	for _, e := range r.Events {
-		if e.Source == "rec" && e.StartNS != nil {
+		if e.Source == "rec" {
 			r.Links = append(r.Links, atlas.Link{ID: len(r.Links), Src: root, Dst: e.ID, Kind: "contains", Basis: "dec"})
 		}
 	}
@@ -883,6 +908,15 @@ func TestViaBasisWeakensSteps(t *testing.T) {
 		if st.Nature == atlas.Observed {
 			t.Errorf("칸 %s 성격 observed, 기대 derived 이하(도출 연결로 고른 칸)", st.Name)
 		}
+		for _, n := range st.Tree {
+			if n.Nature == atlas.Observed {
+				t.Errorf("칸 %s의 마디 %s 성격 observed, 기대 derived 이하(나무 뿌리도 칸까지 온 길을 받음)", st.Name, n.Name)
+			}
+		}
+	}
+	un := v.Routes[0].Untimed
+	if len(un) != 1 || un[0].Nature == atlas.Observed {
+		t.Errorf("시각 없는 사건 %+v, 기대 하나이고 derived 이하", un)
 	}
 }
 

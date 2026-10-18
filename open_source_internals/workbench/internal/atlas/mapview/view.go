@@ -111,6 +111,8 @@ type Step struct {
 	T1     *int64 `json:"t1"`
 	DurNS  int64  `json:"dur_ns"`
 	// DurNature는 머문 시간의 성격입니다. 칸이 순간이라 펼친 나무의 마디 길이를 쓰면 그 마디의 성격이고, 아니면 칸의 성격과 같습니다.
+	// 칸의 성격에는 칸이 경로에 든 근거(장면 Via의 연결 근거)도 들어가므로, 관찰한 구간이라도 도출 연결로 고른 칸이면 길이도 「규칙으로 셈」입니다.
+	// 길이 숫자 자체는 관찰이어도 「이 경로의 이 칸」이라는 판단이 규칙에 기대기 때문입니다(고친 규칙 6).
 	DurNature string `json:"dur_nature"`
 	Count     int    `json:"count"`
 	Fold      int    `json:"fold,omitempty"`
@@ -185,7 +187,7 @@ type SysStep struct {
 //
 // Kind가 steps면 칸 차례가 Step 칸에서 처음 다르고, tree면 칸 차례는 같고 머문 시간 차가 가장 큰 Step 칸의 나무에서 Node 마디의
 // 자식 차례가 다르며(주된 갈림), time이면 잎까지 구조가 같고 Node가 시간 차가 가장 큰 마디입니다. unrecorded면 Node 아래를 한쪽만 기록해
-// 실행이 갈렸는지 기록 범위가 다른지 가를 수 없습니다(X1). none이면 견줄 나무가 없습니다.
+// 실행이 갈렸는지 기록 범위가 다른지 가를 수 없습니다(X1). same이면 나무를 견준 칸이 모두 구조와 시간이 같고, none이면 견줄 나무가 없습니다.
 type Divergence struct {
 	Other  int    `json:"other"`
 	Kind   string `json:"kind"`

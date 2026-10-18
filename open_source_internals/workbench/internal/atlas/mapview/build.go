@@ -1098,9 +1098,10 @@ func nodeDur(n Node) int64 {
 // diverge 함수는 경로 a가 같은 무리의 경로 b와 갈리는 곳을 셈합니다(고친 규칙 9).
 //
 // 칸 차례(띠와 이름)가 다르면 처음 다른 칸이 갈림입니다. 같으면 나무가 있는 칸마다 두 나무를 같이 걸어 봅니다: 뿌리 목록부터 자식 차례(이름과 띠)가
-// 같은 동안 머문 시간 차가 가장 큰 자식 짝을 따라가다가, 자식 차례가 다른 마디를 만나면 그 칸의 주된 갈림(tree)이고, 잎까지 같으면 그 길의 끝 마디가
-// 「구조 같음, 시간 차 최대 마디」(time)입니다. 한쪽만 아래가 있으면 '한쪽만 기록'(unrecorded)입니다. 고르는 차례는 tree, unrecorded, time이고
-// 같은 종류 안에서는 칸의 머문 시간 차가 가장 큰 것입니다. 뿌리만 견준 time은 갈림으로 내지 않습니다.
+// 같은 동안 머문 시간 차가 가장 큰 자식 짝을 따라가다가, 자식 차례가 다른 마디를 만나면 그 칸의 주된 갈림(tree)이고, 잎까지 같으면 걸어 내려간 길에서
+// 시간 차가 가장 큰 뿌리 아래 마디가 「구조 같음, 시간 차 최대 마디」(time)입니다. 한쪽만 아래가 있으면 '한쪽만 기록'(unrecorded)입니다. 고르는 차례는
+// tree, unrecorded, time이고 같은 종류 안에서는 칸의 머문 시간 차가 가장 큰 칸입니다. 뿌리의 차는 칸의 머문 시간으로 이미 보이므로 time으로 내지 않습니다.
+// 나무를 견준 칸이 있었는데 모두 구조와 시간이 같으면 same이고, 견줄 나무가 하나도 없으면 none입니다.
 func diverge(a, b *Route, other int) Divergence {
 	d := Divergence{Other: other, Node: -1, Step: -1}
 	n := min(len(a.Steps), len(b.Steps))
@@ -1119,10 +1120,12 @@ func diverge(a, b *Route, other int) Divergence {
 	}
 	best := map[string]Divergence{}
 	bestDiff := map[string]int64{"tree": -1, "time": -1, "unrecorded": -1}
+	compared := false
 	for i := range a.Steps {
 		if len(a.Steps[i].Tree) < 2 || len(b.Steps[i].Tree) < 2 {
 			continue
 		}
+		compared = true
 		kind, node, diff := walkTrees(a.Steps[i].Tree, b.Steps[i].Tree)
 		if kind == "" {
 			// 구조가 같고 뿌리 아래 마디의 시간 차가 모두 0이면 갈림이 아닙니다(뿌리의 차는 칸의 머문 시간으로 이미 보임).
@@ -1143,6 +1146,9 @@ func diverge(a, b *Route, other int) Divergence {
 		return x
 	}
 	d.Kind = "none"
+	if compared {
+		d.Kind = "same"
+	}
 	return d
 }
 

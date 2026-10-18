@@ -248,7 +248,7 @@
       const d = (r.divergence || []).find((v) => v.other === i);
       let div = "";
       if (i !== S.route && d) {
-        const where = d.kind === "steps" ? `칸 ${d.step + 1} ${esc(d.name)}(프로세스 안)` : d.kind === "none" ? "견줄 나무 없음" : `${esc(d.name)}(함수·커널, 칸 ${d.step + 1})`;
+        const where = d.kind === "steps" ? `칸 ${d.step + 1} ${esc(d.name)}(프로세스 안)` : d.kind === "none" ? "견줄 나무 없음" : d.kind === "same" ? "나무의 구조와 시간이 같음" : `${esc(d.name)}(함수·커널, 칸 ${d.step + 1})`;
         const kind = d.kind === "tree" ? "갈리는 곳" : d.kind === "time" ? "구조 같음 · 시간 차 최대" : d.kind === "steps" ? "칸 차례가 갈리는 곳" : "";
         div = `<div class="div">${kind}: <b>${where}</b>${d.diff_ns ? ` · 차 ${dur(d.diff_ns)}` : ""} <span class="badge derived">규칙으로 셈</span> <button class="tiny" data-go="${i}">그 자리로</button></div>`;
       }
@@ -480,7 +480,7 @@
   function divergenceMark(svg, xs, zoom, y) {
     const r = route();
     // 비교할 후보: 구조가 갈리는 후보, 그다음 시간만 다른 후보, 그다음 칸 차례가 다른 후보입니다.
-    const ds = (r.divergence || []).filter((v) => v.kind !== "none");
+    const ds = (r.divergence || []).filter((v) => v.kind !== "none" && v.kind !== "same");
     const d = ["tree", "time", "steps"].map((k) => ds.find((v) => v.kind === k)).find(Boolean);
     if (!d) return;
     const other = candName(d.other);
@@ -545,7 +545,8 @@
       const cx = (xs[i].x0 + xs[i].x1) / 2, cy = yOf(i);
       const g = el("g", { "data-cell": i }, svg);
       if (i < lo || i > hi) g.setAttribute("opacity", "0.45");
-      const share = n.dur_ns != null ? n.dur_ns / base : 0;
+      // 칸과 시계가 다른 마디는 칸 길이에 대한 몫을 셈하지 않습니다(다른 시계·다른 뜻의 길이라 100%를 넘을 수 있음).
+      const share = n.dur_ns != null && !n.other_clock ? n.dur_ns / base : 0;
       if (n.sleep && n.dur_ns) {
         const wdt = Math.max(16, unit * 0.9);
         el("rect", { x: cx - wdt / 2, y: cy - 7, width: wdt, height: 14, rx: 7, class: `cap sleep ${shareClass(share)}` }, g);
@@ -686,7 +687,7 @@
         html = `<div class="name">${esc(n.name)} ${badge(n.nature)}</div>
           <div class="kv"><span class="k">층</span><span>${esc(BAND[n.band].name)}</span>
           ${n.loc ? `<span class="k">코드</span><span class="mono">${esc(n.loc)}</span>` : ""}
-          <span class="k">머문 시간</span><span>${dur(n.dur_ns)}${n.dur_ns && st.dur_ns ? ` · 칸의 ${Math.round((100 * n.dur_ns) / st.dur_ns)}%` : ""}</span>
+          <span class="k">머문 시간</span><span>${dur(n.dur_ns)}${n.dur_ns && st.dur_ns && !n.other_clock ? ` · 칸의 ${Math.round((100 * n.dur_ns) / st.dur_ns)}%` : ""}</span>
           <span class="k">깊이</span><span>${n.depth}${n.via && n.via !== "parent" ? ` · ${esc(n.via)} 연결로 옴` : ""}</span>
           ${n.sleep ? `<span class="k">상태</span><span>잠듦(CPU를 내줌)</span>` : ""}
           ${n.other_clock ? `<span class="k">시계</span><span>칸과 다른 시계라 가로 차례는 시각이 아님</span>` : ""}
