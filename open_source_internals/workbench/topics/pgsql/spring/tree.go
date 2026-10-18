@@ -107,9 +107,11 @@ func (l *loader) tree(v any) error {
 			start, end = &t0, &t1
 		}
 		id := l.Event(atlas.Event{Place: place, Kind: atlas.Span, Name: names[0], StartNS: start, EndNS: end, Parent: parentEvent, Stack: stack, Source: srcTree}, "$.view.tree[]")
-		for _, k := range []string{"id", "label", "end", "hiddenKinds", "self", "why"} {
+		for _, k := range []string{"id", "label", "end", "hiddenKinds", "why"} {
 			l.B.EventAttrs(id, srcTree, k, n[k])
 		}
+		// 자기 시간은 JFR 시계의 구간에서 맥 시계의 멈춤이 겹친 길이를 빼 셉니다. 두 시계의 관계를 모르므로(설계 메모 3) 추정 출처의 값입니다.
+		l.B.EventAttrs(id, srcGuess, "self", n["self"])
 		l.node[i] = id
 		if err := l.effects(id, place, n, where); err != nil {
 			return err
@@ -200,10 +202,13 @@ func (l *loader) effects(node, place int, n map[string]any, where string) error 
 				return err
 			}
 			id := l.Event(atlas.Event{Place: place, Kind: atlas.Instant, Name: kind, Parent: &node, Source: srcTree}, "$.view.tree[].effects[]")
-			for _, key := range []string{"value", "sent"} {
-				if val, ok := e[key]; ok {
-					l.B.EventAttrs(id, srcTree, key, val)
-				}
+			if val, ok := e["value"]; ok {
+				l.B.EventAttrs(id, srcTree, "value", val)
+			}
+			// sent는 맥 시계의 요청 보낸 시각이 JFR 시계의 마디 구간 안인 요청의 수라(spring_tree.go 878~882) wire 효과처럼 추정입니다.
+			// 14벌에는 없어 표시 파일에도 없으므로, 나오면 검사 3이 결정을 요구합니다.
+			if val, ok := e["sent"]; ok {
+				l.B.EventAttrs(id, srcGuess, "sent", val)
 			}
 		case "wire":
 			if err := load.Keys(e, ew, "kind", "conn", "seq"); err != nil {

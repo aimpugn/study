@@ -387,6 +387,18 @@ func TestCheckNatureFollowsMarksAndInferredList(t *testing.T) {
 			t.Fatalf("근거 %s를 잡아야 함: %v", basis, errs)
 		}
 	}
+	r.Links[0].Basis = "dec"
+
+	// When/Then: 추정 목록에 든 attrs 경로의 값을 도출 출처 열쇠에 두면 실패하고, 추정 출처 열쇠에 두면 통과한다(Spring 바깥 검토 지적 1)
+	guess["$.server.self"] = true
+	r.Events[1].Attrs = Attrs{"dec": {"self": json.Number("3")}}
+	if errs := CheckNature(r, origins, roles, guess); len(errs) != 1 || !strings.Contains(errs[0].Error(), "attrs[dec].self") {
+		t.Fatalf("도출 출처의 짐작 값을 잡아야 함: %v", errs)
+	}
+	r.Events[1].Attrs = Attrs{"guess": {"self": json.Number("3")}}
+	if errs := CheckNature(r, origins, roles, guess); len(errs) != 0 {
+		t.Fatalf("추정 출처 열쇠면 통과: %v", errs)
+	}
 }
 
 // TestCrossingSpansFindsOnlyMisnestedPairs 함수는 같은 장소에서 어긋나 겹치는 구간만 찾고 바르게 포개진 구간은 내지 않는지 확인합니다.

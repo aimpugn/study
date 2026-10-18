@@ -201,7 +201,8 @@ func (v *view) tree(branches any) ([]any, []any, error) {
 		desc := v.r.Places[e.Place]
 		method := v.r.Places[*desc.Parent]
 		m := map[string]any{"fn": method.Name, "desc": desc.Name, "lane": laneOf(method.Name), "depth": e.Depth, "t0": atlas.NanosToMicros(n.t0)}
-		v.copyAttrs(m, e, srcTree, "id", "label", "end", "hiddenKinds", "self", "why")
+		v.copyAttrs(m, e, srcTree, "id", "label", "end", "hiddenKinds", "why")
+		v.copyAttrs(m, e, srcGuess, "self")
 		if e.EndNS != nil {
 			m["t1"] = micros(e.EndNS)
 		} else {
@@ -373,7 +374,8 @@ func (v *view) effects(n *node) ([]any, error) {
 			continue
 		}
 		m := map[string]any{"kind": e.Name}
-		v.copyAttrs(m, e, srcTree, "value", "sent")
+		v.copyAttrs(m, e, srcTree, "value")
+		v.copyAttrs(m, e, srcGuess, "sent")
 		out = append(out, m)
 	}
 	for _, id := range v.out[n.e.ID]["park"] {

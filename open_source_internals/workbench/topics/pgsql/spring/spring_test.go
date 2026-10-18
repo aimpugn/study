@@ -312,6 +312,23 @@ func TestChecksCatchHiddenStructureAndWrongNature(t *testing.T) {
 	if errs := atlas.CheckNature(r, base.result.Origins, rs, InferredGroups()); len(errs) != 1 {
 		t.Fatalf("요청 출처를 잡아야 함: %v", errs)
 	}
+
+	// When/Then: 트리 마디의 자기 시간(JFR 구간에서 맥 시계의 멈춤을 뺀 값)을 트리의 도출 출처 열쇠로 옮기면 실패한다(바깥 검토 지적 1)
+	r = copyRun(t, base.result.Run)
+	moved := false
+	for i, e := range r.Events {
+		if v, ok := e.Attrs[srcGuess]["self"]; ok && !moved {
+			delete(r.Events[i].Attrs[srcGuess], "self")
+			r.Events[i].Attrs[srcTree]["self"] = v
+			moved = true
+		}
+	}
+	if !moved {
+		t.Fatal("자기 시간이 추정 출처 열쇠에 있어야 함")
+	}
+	if errs := atlas.CheckNature(r, base.result.Origins, rs, InferredGroups()); len(errs) != 1 || !strings.Contains(errs[0].Error(), "attrs[spring-jfr].self") {
+		t.Fatalf("도출 출처의 자기 시간을 잡아야 함: %v", errs)
+	}
 }
 
 // rowText 함수는 재추출한 행 하나를 견줄 글 한 줄로 씁니다: 출처 성격|이름|장소|출발→도착|시작~끝|종류|attrs.
@@ -737,6 +754,54 @@ func TestImportRejectsShapesItCannotRebuild(t *testing.T) {
 		case c.want != "" && !strings.Contains(err.Error(), c.want):
 			t.Errorf("%s: 다른 까닭으로 멈춤: %v", c.name, err)
 		}
+	}
+}
+
+// TestAutocommitSentIsAGuessAndUndecided 함수는 14벌에 없는 autocommit 효과의 sent(맥 시계의 보낸 시각을 JFR 마디 구간에 견준 수)가
+// 나오면 추정 출처 열쇠에 놓이고, 표시 파일에 없어 검사 3이 결정을 요구하는지 확인합니다(Spring 바깥 검토의 덧붙인 물음).
+func TestAutocommitSentIsAGuessAndUndecided(t *testing.T) {
+	// Given: autocommit 효과 하나에 sent를 더한 원본
+	rs, err := roles.Load("e03")
+	if err != nil {
+		t.Fatal(err)
+	}
+	runs, keys := freshRuns(t)
+	var key string
+	for _, k := range keys {
+		for _, n := range runs[k].(map[string]any)["view"].(map[string]any)["tree"].([]any) {
+			for _, e := range n.(map[string]any)["effects"].([]any) {
+				if eff := e.(map[string]any); eff["kind"] == "autocommit" && key == "" {
+					eff["sent"] = json.Number("1")
+					key = k
+				}
+			}
+		}
+	}
+	if key == "" {
+		t.Fatal("autocommit 효과가 있는 기록이 없음")
+	}
+
+	// When: 적재하면
+	res, err := Import(key, runs[key].(map[string]any), version)
+
+	// Then: 되돌림까지 통과하고, sent는 추정 출처 열쇠에 있어 검사 4를 통과하며, 표시 파일에 없는 경로라 검사 3이 실패한다
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, e := range res.Run.Events {
+		if _, ok := e.Attrs[srcGuess]["sent"]; ok {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("sent가 추정 출처 열쇠에 있어야 함")
+	}
+	if errs := atlas.CheckNature(res.Run, res.Origins, rs, InferredGroups()); len(errs) != 0 {
+		t.Fatalf("검사 4는 통과해야 함: %v", errs)
+	}
+	if errs := atlas.ScanStructure(res.Run, res.Origins, rs); len(errs) != 1 || !strings.Contains(errs[0].Error(), "effects[].sent가 표시 파일에 없음") {
+		t.Fatalf("결정하지 않은 경로를 잡아야 함: %v", errs)
 	}
 }
 

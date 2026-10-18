@@ -150,6 +150,8 @@ var natureOf = map[string][]string{
 // (관찰 → observed, 도출 → derived 또는 inferred, 이름 → human), inferred에 든 경로 무리는 반드시 inferred여야 합니다.
 // "topic:"으로 시작하는 경로 무리는 주제가 정한 것이라 human이어야 하고, "rule:"로 시작하는 경로 무리는 해석기가 정한 규칙으로
 // 만든 것(요청 창 묶음 등, 설계 메모 7)이라 derived여야 합니다. 경로 무리가 없거나 Roles에 없으면 어긴 것입니다.
+// attrs의 값은 그 값을 낸 출처의 id가 열쇠라, 경로(행의 경로 무리 + "." + 열쇠)가 inferred에 들면 그 열쇠의 출처가 inferred여야 합니다
+// (Spring 바깥 검토 지적 1). attrs의 나머지 값은 출처 성격을 보지 않습니다.
 func CheckNature(r *Run, origins Origins, roles Roles, inferred map[string]bool) []error {
 	var errs []error
 	check := func(ref RecordRef, sourceID string) {
@@ -202,6 +204,42 @@ func CheckNature(r *Run, origins Origins, roles Roles, inferred map[string]bool)
 	// 짐작한 감시 목록처럼 관찰 범위도 추정일 수 있어 같은 규칙으로 봅니다.
 	for i, c := range r.Coverage {
 		check(RecordRef{"coverage", i}, c.Source)
+	}
+
+	// 관찰 사건에 붙은 짐작(시계 관계를 모르는 두 시계를 견준 값 등)은 사건의 출처가 아니라 attrs의 출처 열쇠로 드러나므로 거기서 봅니다.
+	// 경로 무리가 없는 행은 검사 3이 잡습니다.
+	checkAttrs := func(ref RecordRef, a Attrs) {
+		group, ok := origins[ref]
+		if !ok {
+			return
+		}
+		for _, src := range sortedKeys(a) {
+			for _, k := range sortedKeys(a[src]) {
+				if !inferred[group+"."+k] {
+					continue
+				}
+				s, ok := r.SourceByID(src)
+				switch {
+				case !ok:
+					errs = append(errs, fmt.Errorf("%s %d: attrs의 출처 %q가 없음", ref.Table, ref.ID, src))
+				case s.Nature != Inferred:
+					errs = append(errs, fmt.Errorf("%s %d: attrs[%s].%s는 추정 목록의 경로 %s인데 출처 성격이 %s", ref.Table, ref.ID, src, k, group+"."+k, s.Nature))
+				}
+			}
+		}
+	}
+	checkAttrs(RecordRef{"run", 0}, r.Attrs)
+	for _, p := range r.Places {
+		checkAttrs(RecordRef{"place", p.ID}, p.Attrs)
+	}
+	for _, e := range r.Events {
+		checkAttrs(RecordRef{"event", e.ID}, e.Attrs)
+	}
+	for _, l := range r.Links {
+		checkAttrs(RecordRef{"link", l.ID}, l.Attrs)
+	}
+	for _, n := range r.Notes {
+		checkAttrs(RecordRef{"note", n.ID}, n.Attrs)
 	}
 	return errs
 }

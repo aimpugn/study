@@ -36,11 +36,13 @@ const (
 )
 
 // InferredGroups 함수는 추정 목록(설계 메모 7)에 든 경로 무리를 돌려줍니다: 100 ms 창으로 연결을 붙인 빌림, 그 빌림 위에서 다시 센 연결
-// 묶임·슬롯·묶임 효과, 맥 시계의 보낸 시각을 JFR 구간에 견준 wire 효과.
+// 묶임·슬롯·묶임 효과, 맥 시계의 보낸 시각을 JFR 구간에 견준 wire 효과와 autocommit 효과의 sent, JFR 구간에서 맥 시계의 멈춤을 뺀 트리 마디의
+// 자기 시간(self).
 func InferredGroups() map[string]bool {
 	return map[string]bool{
 		"$.borrows[]": true, "$.view.binding[]": true, "$.view.binding[].by": true, "$.view.slots[]": true,
-		"$.view.tree[].effects[].conn": true, "$.view.tree[].effects[].seq": true,
+		"$.view.tree[].effects[].conn": true, "$.view.tree[].effects[].seq": true, "$.view.tree[].effects[].sent": true,
+		"$.view.tree[].self": true,
 	}
 }
 
@@ -269,7 +271,7 @@ func (l *loader) header(v, view map[string]any) error {
 		{ID: srcMac, Tool: "해석기 decode/spring.go의 요청 묶음(splitRequests)과 트랜잭션(deriveTxs)", Clock: clockMac, Nature: atlas.Derived},
 		{ID: srcCont, Tool: "해석기의 컨테이너 시계 값: 서버 창(두 ReadyForQuery 입구 사이, decode/spring.go 516~535), 서버 기다림(spring_tree.go serverWaits), 관찰의 읽기 구간(scenario_check.go captureReads)과 관찰용 접속이 마지막 답을 보낸 순간(spring.go captureSpans)", Clock: clockCont, Nature: atlas.Derived},
 		{ID: srcTree, Tool: "해석기 decode/spring_tree.go의 호출 트리(buildCallTree)와 효과(annotateTree)", Clock: clockJFR, Nature: atlas.Derived},
-		{ID: srcGuess, Tool: "해석기의 짐작: 100 ms 창으로 붙인 빌림의 연결(spring_jfr.go borrows), 그 위의 연결 묶임·슬롯·묶임 효과(bindingReplay), 맥 시각을 JFR 구간에 견준 wire 효과", Clock: clockJFR, Nature: atlas.Inferred},
+		{ID: srcGuess, Tool: "해석기의 짐작: 100 ms 창으로 붙인 빌림의 연결(spring_jfr.go borrows), 그 위의 연결 묶임·슬롯·묶임 효과(bindingReplay), 맥 시각을 JFR 구간에 견준 wire 효과, JFR 구간에서 맥 시계의 멈춤(pauses)을 뺀 트리 마디의 자기 시간과 마디 구간 안에 보낸 요청의 수(spring_tree.go annotateTree)", Clock: clockJFR, Nature: atlas.Inferred},
 		{ID: srcCompare, Tool: "해석기 decode/spring_compare.go(14벌을 견준 갈림)", Nature: atlas.Derived},
 		{ID: srcSrc, Tool: "PostgreSQL 소스 발췌(서버 사건 스택이 가리킨 줄)", Nature: atlas.Observed},
 		{ID: srcJsrc, Tool: "자바 소스 발췌(기록의 app-src 사본과 라이브러리 소스, view.javaFrom)", Nature: atlas.Observed},

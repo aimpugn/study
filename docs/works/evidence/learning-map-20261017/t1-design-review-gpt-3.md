@@ -1,6 +1,6 @@
 # T1 설계 고침의 바깥 검토(2026-10-18, 셋째)
 
-- 검토자: Codex `gpt-6-luna`(reasoning high, 읽기 전용, `--ignore-user-config --ephemeral`)
+- 검토자: Codex `gpt-6-luna`(reasoning high, `--ignore-user-config --ephemeral`, 읽기만 하라고 지시). 처음에 '읽기 전용'으로 적었으나, `-s read-only`를 주었어도 셸 별칭(`codex --yolo`) 때문에 샌드박스는 꺼져 있었다(2026-10-18 정정, WORK 「Spring 바깥 검토와 처분」)
 - 대상: 커밋 95570c867, 82044c08f의 고친 곳과 회귀만(커널 규칙 9)
 - 요청문: 아래 「요청」, 답: 아래 「답 전문」
 
